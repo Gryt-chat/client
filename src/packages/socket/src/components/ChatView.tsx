@@ -182,6 +182,11 @@ export const ChatView = memo(({
   const threads = useThreads(socketConnection, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
   const isForum = layout === "forum" && conversationKind !== "dm";
 
+  /* thread:status:set is the author's or a moderator's. Everyone else got the
+     button and a refusal, so they do not get the button (GRYT-1389). */
+  const maySetThreadStatus =
+    (!!currentUserId && threads.open?.thread.created_by === currentUserId) || !!canDeleteAny;
+
   /* The same filter `chatMessages` arrived with: a thread's messages are fetched
      here rather than upstream, so a blocked sender still turned up. */
   const visibleThreadMessages = useMemo(
@@ -221,6 +226,17 @@ export const ChatView = memo(({
     editorRef,
     forceScrollToBottomRef,
   });
+
+  /* The server deletes a root's whole thread with it, so the confirm has to
+     count the replies going too rather than say "this message" (GRYT-1389). */
+  const deleteReplyCount =
+    pendingDeleteMessage && !pendingDeleteMessage.thread_id
+      ? threads.summaries[pendingDeleteMessage.message_id]?.reply_count ?? 0
+      : 0;
+  const deleteDescription =
+    deleteReplyCount > 0
+      ? `This deletes the message and the ${deleteReplyCount} ${deleteReplyCount === 1 ? "reply" : "replies"} in its thread. You can't undo it.`
+      : "This deletes the message for everyone. You can't undo it.";
 
   const { typingUsers, emitTyping, emitStopTyping } = useTypingIndicator(
     (socketConnection as Socket) ?? null,
@@ -799,12 +815,12 @@ export const ChatView = memo(({
               error={threads.open.error}
               onRetry={threads.retryFetch}
               onClose={closeThread}
-              onSetStatus={threads.setStatus}
+              onSetStatus={maySetThreadStatus ? threads.setStatus : undefined}
               typingIndicator={
                 <TypingIndicator typingUsers={threadTypingUsers} serverHost={serverHost} />
               }
               forumTags={forumTags ?? []}
-              onSetTags={threads.setTags}
+              onSetTags={maySetThreadStatus ? threads.setTags : undefined}
             />
           )}
         </div>
@@ -820,7 +836,7 @@ export const ChatView = memo(({
         open={!!pendingDeleteMessage}
         onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}
         title="Delete message?"
-        description="This will permanently delete this message. This action cannot be undone."
+        description={deleteDescription}
         confirmLabel="Delete"
         onConfirm={confirmDelete}
       />

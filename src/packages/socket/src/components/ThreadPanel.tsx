@@ -13,6 +13,8 @@ interface ThreadSummary {
   title: string | null;
   status: "open" | "solved" | "closed";
   reply_count: number;
+  /** Locked to new replies, the way closed is. chat:send refuses both. */
+  locked?: boolean;
   tags?: string[];
 }
 
@@ -53,6 +55,10 @@ interface ThreadPanelProps {
 }
 
 export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags, error, onRetry }: ThreadPanelProps) {
+  /* What chat:send checks before it takes a reply. Drawing a composer the
+     server will refuse is what GRYT-1389 was about. */
+  const takesReplies = thread.status !== "closed" && thread.locked !== true;
+
   /* Escape closes the panel, but only when nothing inside it took the key
      first: an autocomplete or an edit being called off used to close it too. */
   useEffect(() => {
@@ -129,13 +135,14 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           <div style={{ fontSize: 11, color: "var(--gryt-neutral-10)" }}>
             {thread.reply_count} {thread.reply_count === 1 ? "reply" : "replies"}
             {thread.status === "solved" && <span style={{ color: "var(--gryt-accent-11)", marginLeft: 8 }}>Solved</span>}
+            {!takesReplies && <span style={{ color: "var(--gryt-neutral-11)", marginLeft: 8 }}>Closed</span>}
           </div>
         </div>
         {/* The old "Mark solved" was #5cc79a on a #5cc79a border — a green
             picked against the dark theme and left there for the light one.
             Marking something solved is an ordinary action, so it takes the
             accent; the solved *state* keeps the success tone on its chip. */}
-        {onSetStatus && (thread.status === "solved" ? (
+        {onSetStatus && (thread.status !== "open" ? (
           <Button
             size="xsmall"
             tone="neutral"
@@ -207,11 +214,17 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
         {/* 14 inline, matching the header, the tag row and the composer. Without
             it an avatar sits against the panel edge while the channel's does not. */}
         <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: "auto", paddingBottom: 8, paddingInline: 14 }}>
-        {root && (
+        {root ? (
           <div className="mb-1 border-b border-gryt-border pb-1.5">
             {renderMessage(root)}
           </div>
-        )}
+        ) : !loading && !error ? (
+          /* The root can be gone while the replies are not: deleting it takes
+             the thread with it, but a blocked sender only hides it. */
+          <div className="mb-1 border-b border-gryt-border pb-1.5" style={{ padding: "12px 2px", fontSize: 13, color: "var(--gryt-neutral-10)" }}>
+            The message this thread started from is gone.
+          </div>
+        ) : null}
         {error ? (
           <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-11)", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
             <span>{error}</span>
@@ -238,8 +251,16 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           and the upload cap are the ones the channel already enforces rather
           than a second copy of them. */}
       <div className="shrink-0 border-t border-gryt-border px-3.5 pt-2.5 pb-3.5">
-        {typingIndicator}
-        {renderComposer()}
+        {takesReplies ? (
+          <>
+            {typingIndicator}
+            {renderComposer()}
+          </>
+        ) : (
+          <p className="m-0 py-1.5 text-center text-xs text-gryt-muted">
+            This thread is closed, so you can&rsquo;t reply to it.
+          </p>
+        )}
       </div>
     </aside>
   );

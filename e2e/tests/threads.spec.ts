@@ -1,7 +1,9 @@
 import type { Page } from "@playwright/test";
 
-import { channelComposer, composer, messageRow, sendMessage, unique } from "../support/app";
-import { expect, test } from "../support/fixtures";
+import { accessTokenOf, ask, serverUserIdOf, withSocket } from "../support/admin";
+import { channelComposer, composer, messageRow, sendMessage, sidebarChannelRow, unique } from "../support/app";
+import { expect, test, uniqueName } from "../support/fixtures";
+import type { GrytServer } from "../support/server";
 
 /** The hover toolbar only draws over the row the pointer is on. */
 async function threadButton(page: Page, text: string, name: "Start thread" | "Open thread") {
@@ -77,4 +79,101 @@ test("the count survives a channel switch inside the history cache window", asyn
   await expect(channelComposer(alice.page)).toBeVisible();
 
   await expect(replyLine(alice.page, root)).toContainText("1 reply");
+});
+
+/** A forum channel made with the owner's token, waited for in the owner's sidebar. */
+async function addForumChannel(owner: Page, server: GrytServer, name: string): Promise<void> {
+  const accessToken = await accessTokenOf(owner, server.host);
+  await withSocket(server.httpBase, async (socket) => {
+    socket.emit("server:channels:upsert", { accessToken, name, type: "text", layout: "forum" });
+    await expect(sidebarChannelRow(owner, name)).toBeVisible();
+  });
+}
+
+async function openChannel(page: Page, name: string): Promise<void> {
+  await sidebarChannelRow(page, name).click();
+  await expect(page.getByRole("button", { name: "New topic" })).toBeVisible();
+}
+
+async function createTopic(page: Page, title: string, body: string): Promise<void> {
+  await page.getByRole("button", { name: "New topic" }).click();
+  const dialog = page.getByRole("dialog", { name: "New topic" });
+  await dialog.getByPlaceholder("Title").fill(title);
+  await dialog.getByPlaceholder(/Describe/).fill(body);
+  await dialog.getByRole("button", { name: "Create topic" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: new RegExp(title) })).toBeVisible();
+}
+
+/** The ids of a topic by title, read off the last forum:topics:list on the wire. */
+function topicIds(frames: string[], title: string): { conversationId: string; threadId: string } {
+  for (const frame of [...frames].reverse()) {
+    if (!frame.includes('"forum:topics:list"') || !frame.includes(title)) continue;
+    const body = JSON.parse(frame.slice(frame.indexOf("["))) as
+      [string, { conversation_id: string; topics: { thread_id: string; title: string | null }[] }];
+    const topic = body[1].topics.find((t) => t.title === title);
+    if (topic) return { conversationId: body[1].conversation_id, threadId: topic.thread_id };
+  }
+  throw new Error(`no forum:topics:list frame holding ${title}`);
+}
+
+test("a closed topic is out of All and under Closed", async ({ newMember, owner, gryt }) => {
+  const forum = uniqueName("forum");
+  await addForumChannel(owner.page, gryt.server, forum);
+
+  const alice = await newMember();
+  await openChannel(alice.page, forum);
+  const title = unique("a topic that gets closed");
+  await createTopic(alice.page, title, "Something that stops being worth replying to.");
+
+  const { conversationId, threadId } = topicIds(alice.frames, title);
+  const accessToken = await accessTokenOf(owner.page, gryt.server.host);
+  await withSocket(gryt.server.httpBase, async (socket) => {
+    socket.emit("thread:status:set", { conversationId, threadId, status: "closed", accessToken });
+    await expect
+      .poll(() => alice.frames.some((f) => f.includes('"thread:updated"') && f.includes('"status":"closed"')))
+      .toBe(true);
+  });
+
+  const row = alice.page.getByRole("button", { name: new RegExp(title) });
+  await expect(row, "All leaves closed topics out").toHaveCount(0);
+
+  await alice.page.getByRole("button", { name: /^Closed/ }).click();
+  await expect(row, "and Closed is the way back to them").toBeVisible();
+  await expect(row).toContainText("Closed");
+
+  await row.click();
+  const panel = alice.page.getByRole("complementary", { name: "Thread" });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText("This thread is closed, so you can’t reply to it.");
+});
+
+test("a topic whose first post you cannot see says so", async ({ newMember, owner, gryt }) => {
+  const forum = uniqueName("forum");
+  await addForumChannel(owner.page, gryt.server, forum);
+
+  const bob = await newMember();
+  await openChannel(bob.page, forum);
+  const title = unique("a topic by somebody about to be blocked");
+  await createTopic(bob.page, title, "The first post of a topic nobody else will read.");
+
+  const alice = await newMember();
+  await openChannel(alice.page, forum);
+  const row = alice.page.getByRole("button", { name: new RegExp(title) });
+  await expect(row).toBeVisible();
+
+  /* thread:fetch drops a blocked sender's root, and the index does not, so this
+     is the one way to open a topic with nothing above the divider. */
+  const aliceToken = await accessTokenOf(alice.page, gryt.server.host);
+  const bobId = serverUserIdOf(await accessTokenOf(bob.page, gryt.server.host));
+  await withSocket(gryt.server.httpBase, async (socket) => {
+    await ask(socket, "user:block", { accessToken: aliceToken, serverUserId: bobId }, "user:blocked");
+  });
+
+  await row.click();
+  const panel = alice.page.getByRole("complementary", { name: "Thread" });
+  await expect(panel).toBeVisible();
+  await expect(panel, "a blank panel reads as a broken app").toContainText(
+    "The message this thread started from is gone.",
+  );
 });
