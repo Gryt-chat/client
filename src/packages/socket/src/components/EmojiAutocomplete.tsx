@@ -56,7 +56,10 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
         e.stopPropagation();
         onSelect(results[selectedIndex]);
       } else if (e.key === "Escape") {
+        // Stopped as well as prevented, the way the emoji picker does it: the
+        // thread panel listens on window and closed with the suggestions.
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     },

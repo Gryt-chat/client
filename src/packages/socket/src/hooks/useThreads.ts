@@ -5,6 +5,7 @@ import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/comm
 
 import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
+import { type ChatErrorPayload, isNonRetryableError } from "./chatEventHandlers";
 import { draftKey, returnDraft } from "./returnedDrafts";
 import { uploadChatFile } from "./uploadChatFile";
 
@@ -34,6 +35,46 @@ interface OpenThread {
   hasOlder: boolean;
   /** A page is on its way, so the scroll handler does not ask twice. */
   loadingOlder: boolean;
+  /** Why the replies are not here. Drawn in their place, with a way to retry. */
+  error: string | null;
+}
+
+/** The panel as it looks with the fetch in flight. Four call sites open one. */
+function pendingOpen(thread: ThreadSummary): OpenThread {
+  return { thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false, error: null };
+}
+
+/** A reply waiting on the server, kept so a refusal can send it a second time. */
+interface ThreadRetryEntry {
+  payload: {
+    conversationId: string;
+    threadId: string;
+    text: string;
+    attachments: string[] | null;
+    replyToMessageId?: string;
+    nonce: string;
+  };
+  // The files as picked rather than as uploaded: a resend puts them up again
+  // instead of naming keys the first attempt never finished writing.
+  files: File[];
+  retryCount: number;
+  timeoutId?: ReturnType<typeof setTimeout>;
+}
+
+/** The same wait useChatSend gives a channel message. */
+const RETRY_AFTER_MS = 3000;
+
+/* The newest reply still waiting, retried or not. Only looking at the ones with
+   a retry left meant the second refusal fell through and left the row pending. */
+function latestPending(queue: Map<string, ThreadRetryEntry>): ThreadRetryEntry | null {
+  let latest: ThreadRetryEntry | null = null;
+  for (const entry of queue.values()) latest = entry;
+  return latest;
+}
+
+function errorText(e: ChatErrorPayload): string {
+  if (typeof e === "string") return e || "Something went wrong.";
+  return e?.message || e?.error || "Something went wrong.";
 }
 
 // The slice of a socket.io client this hook touches, so nothing has to be typed
@@ -76,6 +117,8 @@ export interface UseThreadsResult {
   /** Open a topic straight from a summary the forum index already holds. */
   openSummary: (summary: ThreadSummary) => void;
   closeThread: () => void;
+  /** Ask for the open thread again, after the panel drew a refusal. */
+  retryFetch: () => void;
   /** Files go up the same way a channel's do; nothing here is sealed. */
   sendReply: (text: string, files?: File[], replyToMessageId?: string) => void;
   /** Fetch the page before the oldest reply held. No-op when there is none. */
@@ -103,9 +146,9 @@ export function useThreads(
   // The root someone just started a thread on, so the matching thread:created
   // opens the panel for them and nobody else.
   const pendingOpenRoot = useRef<string | null>(null);
-  // The reply we are waiting on, so a refusal can mark that one failed rather
-  // than leaving it sitting there looking sent.
-  const pendingReply = useRef<string | null>(null);
+  /* Replies waiting on the server, keyed by nonce. The channel keeps the same
+     queue in useChatSend; a refusal retries once and then gives the text back. */
+  const retryQueueRef = useRef<Map<string, ThreadRetryEntry>>(new Map());
 
   // Reset when the open conversation changes — summaries and the panel belong
   // to one channel.
@@ -120,10 +163,12 @@ export function useThreads(
   useEffect(() => {
     const socket = asSocket(socketConnection);
     if (!socket || !conversationId) return;
+    const retryQueue = retryQueueRef.current;
 
     const fetchThread = (thread: ThreadSummary) => {
-      setOpen({ thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
-      openRef.current = { thread, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+      const opening = pendingOpen(thread);
+      setOpen(opening);
+      openRef.current = opening;
       enterThread(socket, serverHost || "", conversationId, thread.thread_id);
       socket.emit("thread:fetch", { conversationId, threadId: thread.thread_id });
     };
@@ -157,8 +202,12 @@ export function useThreads(
         delete next[p.root_message_id];
         return next;
       });
-      if (openRef.current?.thread.thread_id === p.thread_id) setOpenThread(serverHost || "", null);
-      setOpen(null);
+      // Only the panel showing this thread. Outside the guard, any delete in
+      // the channel shut whatever you had open (GRYT-1387).
+      if (openRef.current?.thread.thread_id === p.thread_id) {
+        setOpenThread(serverHost || "", null);
+        setOpen(null);
+      }
     };
 
     const onHistory = (p: {
@@ -192,6 +241,7 @@ export function useThreads(
             loading: false,
             loadingOlder: false,
             hasOlder: p.hasMore ?? false,
+            error: null,
           };
         }
 
@@ -202,6 +252,7 @@ export function useThreads(
           loading: false,
           loadingOlder: false,
           hasOlder: p.hasMore ?? false,
+          error: null,
         };
       });
     };
@@ -212,7 +263,11 @@ export function useThreads(
       if (!msg.thread_id) return;
       const cur = openRef.current;
       if (!cur || cur.thread.thread_id !== msg.thread_id) return;
-      if (msg.nonce && pendingReply.current === msg.nonce) pendingReply.current = null;
+      if (msg.nonce) {
+        const done = retryQueueRef.current.get(msg.nonce);
+        if (done?.timeoutId) clearTimeout(done.timeoutId);
+        retryQueueRef.current.delete(msg.nonce);
+      }
       setOpen((o) => {
         if (!o) return o;
         const withoutPending = o.messages.filter(
@@ -292,24 +347,54 @@ export function useThreads(
       });
     };
 
-    const onError = (e: { message?: string } | string) => {
-      const message = typeof e === "string" ? e : e?.message;
-      if (message) toast.error(message);
-    };
-
-    // A reply the server refused must stop looking like it sent. Marked failed
-    // the way the main chat marks one, instead of sitting there until a reload.
-    const onChatError = (e: { message?: string } | string) => {
-      const nonce = pendingReply.current;
-      if (!nonce) return;
-      pendingReply.current = null;
-      const message = typeof e === "string" ? e : e?.message;
-      if (message) toast.error(message);
+    /* The row stops looking sent, and the text lands back in the composer the
+       way a channel's does rather than only existing on a row nobody can act on. */
+    const failReply = (nonce: string) => {
+      const entry = retryQueueRef.current.get(nonce);
+      if (entry?.timeoutId) clearTimeout(entry.timeoutId);
+      retryQueueRef.current.delete(nonce);
       setOpen((o) =>
         o
           ? { ...o, messages: o.messages.map((m) => (m.nonce === nonce ? { ...m, pending: false, failed: true } : m)) }
           : o,
       );
+      if (!entry) return;
+      returnDraft(draftKey(serverHost || "", conversationId, entry.payload.threadId), {
+        text: entry.payload.text,
+        files: entry.files,
+      });
+    };
+
+    /* A refused fetch is drawn where the replies would be. Toasted only when
+       there is no panel to draw it in, or nothing was on its way. */
+    const onError = (e: ChatErrorPayload) => {
+      const message = errorText(e);
+      const cur = openRef.current;
+      if (cur && (cur.loading || cur.loadingOlder)) {
+        setOpen((o) => (o ? { ...o, loading: false, loadingOlder: false, error: message } : o));
+        return;
+      }
+      toast.error(message);
+    };
+
+    /* A refused reply follows the channel: one automatic retry, and if that
+       goes too the row is marked failed and the text goes back in the box. */
+    const onChatError = (e: ChatErrorPayload) => {
+      const entry = latestPending(retryQueueRef.current);
+      if (!entry) return;
+
+      if (!isNonRetryableError(e) && entry.retryCount < 1) {
+        const wait = typeof e === "object" && e?.retryAfterMs && e.retryAfterMs > 0 ? e.retryAfterMs : RETRY_AFTER_MS;
+        entry.retryCount++;
+        entry.timeoutId = setTimeout(() => {
+          const token = getServerAccessToken(serverHost || "");
+          if (token) socket.emit("chat:send", { ...entry.payload, accessToken: token });
+        }, wait);
+        return;
+      }
+
+      failReply(entry.payload.nonce);
+      toast.error(errorText(e));
     };
 
     socket.on("thread:created", onCreated as (p: never) => void);
@@ -335,6 +420,11 @@ export function useThreads(
       socket.off("chat:edited", onEdited as (p: never) => void);
       socket.off("chat:deleted", onMessageDeleted as (p: never) => void);
       socket.off("chat:merge_user", onMergeUser as (p: never) => void);
+      // A retry scheduled against this socket would fire after it is gone.
+      for (const entry of retryQueue.values()) {
+        if (entry.timeoutId) clearTimeout(entry.timeoutId);
+      }
+      retryQueue.clear();
     };
   }, [socketConnection, conversationId, serverHost]);
 
@@ -345,8 +435,9 @@ export function useThreads(
     // Already threaded — just open it.
     const existing = summaries[message.message_id];
     if (existing) {
-      setOpen({ thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
-      openRef.current = { thread: existing, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+      const opening = pendingOpen(existing);
+      setOpen(opening);
+      openRef.current = opening;
       enterThread(socket, serverHost || "", conversationId, existing.thread_id);
       socket.emit("thread:fetch", { conversationId, threadId: existing.thread_id });
       return;
@@ -359,8 +450,9 @@ export function useThreads(
     const socket = asSocket(socketConnection);
     const summary = summaries[rootMessageId];
     if (!socket || !summary) return;
-    setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
-    openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+    const opening = pendingOpen(summary);
+    setOpen(opening);
+    openRef.current = opening;
     enterThread(socket, serverHost || "", conversationId, summary.thread_id);
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
   }, [socketConnection, conversationId, summaries, serverHost]);
@@ -368,8 +460,9 @@ export function useThreads(
   const openSummary = useCallback((summary: ThreadSummary) => {
     const socket = asSocket(socketConnection);
     if (!socket) return;
-    setOpen({ thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false });
-    openRef.current = { thread: summary, root: null, messages: [], loading: true, hasOlder: false, loadingOlder: false };
+    const opening = pendingOpen(summary);
+    setOpen(opening);
+    openRef.current = opening;
     enterThread(socket, serverHost || "", conversationId, summary.thread_id);
     socket.emit("thread:fetch", { conversationId, threadId: summary.thread_id });
   }, [socketConnection, conversationId, serverHost]);
@@ -378,6 +471,15 @@ export function useThreads(
     setOpenThread(serverHost || "", null);
     setOpen(null);
   }, [serverHost]);
+
+  /** Ask for the open thread again, after the panel drew a refusal. */
+  const retryFetch = useCallback(() => {
+    const socket = asSocket(socketConnection);
+    const cur = openRef.current;
+    if (!socket || !cur) return;
+    setOpen((o) => (o ? { ...o, loading: true, error: null } : o));
+    socket.emit("thread:fetch", { conversationId, threadId: cur.thread.thread_id });
+  }, [socketConnection, conversationId]);
 
   const setTags = useCallback((tagIds: string[]) => {
     const socket = asSocket(socketConnection);
@@ -408,7 +510,6 @@ export function useThreads(
     if (!trimmed && files.length === 0) return;
 
     const nonce = crypto.randomUUID();
-    pendingReply.current = nonce;
 
     const localIds = files.map(() => `local-${crypto.randomUUID()}`);
     const optimistic: ChatMessage = {
@@ -466,15 +567,16 @@ export function useThreads(
           return;
         }
       }
-      socket.emit("chat:send", {
+      const payload = {
         conversationId,
         threadId: cur.thread.thread_id,
         text: trimmed,
         attachments: fileIds,
         replyToMessageId,
-        accessToken,
         nonce,
-      });
+      };
+      retryQueueRef.current.set(nonce, { payload, files, retryCount: 0 });
+      socket.emit("chat:send", { ...payload, accessToken });
     })();
   }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
 
@@ -496,5 +598,5 @@ export function useThreads(
     });
   }, [socketConnection, conversationId]);
 
-  return { summaries, open, startThread, openThread, openSummary, closeThread, sendReply, setTags, setStatus, loadOlder };
+  return { summaries, open, startThread, openThread, openSummary, closeThread, retryFetch, sendReply, setTags, setStatus, loadOlder };
 }

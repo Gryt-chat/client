@@ -8,7 +8,7 @@ import { getUploadsFileUrl, resolveAvatarSrc, useTheme, useThreadMentions, useTh
 import { useSettings } from "@/settings";
 
 import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
-import { draftKey, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
+import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -329,6 +329,19 @@ export const ChatView = memo(({
     const draft = takeReturnedDraft(threadDraftKey);
     if (draft) threadEditorRef.current.restore(draft);
   }, [threadDraft, threadDraftKey]);
+
+  /* Escape and the × both come through here. A half-written reply waits for
+     this thread instead of going with the panel (GRYT-1387). */
+  const closeThread = useCallback(() => {
+    const editor = threadEditorRef.current;
+    const text = editor?.getMarkdown().trim() ?? "";
+    const files = editor?.getFiles() ?? [];
+    if (threadDraftKey && (text || files.length > 0)) {
+      returnDraft(threadDraftKey, { text, files });
+      editor?.clear();
+    }
+    threads.closeThread();
+  }, [threadDraftKey, threads]);
 
   // ── Sender helpers ────────────────────────────────────────────
   const getSenderName = useCallback((msg: ChatMessage): string => {
@@ -783,7 +796,9 @@ export const ChatView = memo(({
               hasOlder={threads.open.hasOlder}
               loadingOlder={threads.open.loadingOlder}
               onLoadOlder={threads.loadOlder}
-              onClose={threads.closeThread}
+              error={threads.open.error}
+              onRetry={threads.retryFetch}
+              onClose={closeThread}
               onSetStatus={threads.setStatus}
               typingIndicator={
                 <TypingIndicator typingUsers={threadTypingUsers} serverHost={serverHost} />

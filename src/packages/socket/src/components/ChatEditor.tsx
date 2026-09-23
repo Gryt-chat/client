@@ -332,7 +332,9 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           return;
         }
         if (e.key === "Escape" && isEditing && onCancel) {
+          // Calling off an edit is the innermost thing Escape can mean here.
           e.preventDefault();
+          e.stopPropagation();
           onCancel();
           return;
         }
