@@ -3,6 +3,8 @@
 // Every app's SFU gets control and metrics ports of its own, and its servers register
 // with it rather than with another app's SFU holding 9092. GRYT-1220.
 
+// The image worker beside them answers on loopback and nowhere else. GRYT-1240.
+
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { createSocket } from "node:dgram";
@@ -76,10 +78,13 @@ function newApp() {
   const os = process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : "linux";
   const sfu = join(dir, "build", "embedded-server", "sfu", `${os}-${process.arch === "arm64" ? "arm64" : "x64"}`);
   const server = join(dir, "build", "embedded-server", "server");
+  const worker = join(dir, "build", "embedded-server", "worker", "dist");
   fs.mkdirSync(sfu, { recursive: true });
   fs.mkdirSync(server, { recursive: true });
+  fs.mkdirSync(worker, { recursive: true });
   fs.writeFileSync(join(sfu, process.platform === "win32" ? "gryt_sfu.exe" : "gryt_sfu"), "");
   fs.writeFileSync(join(server, "bundle.js"), "");
+  fs.writeFileSync(join(worker, "index.js"), "");
   return { getPath: () => join(dir, "userData"), getAppPath: () => dir, isPackaged: false };
 }
 
@@ -126,7 +131,7 @@ function fakeSfu(env) {
 /* The manager as written, with only process creation faked. */
 function loadManager(app, { onSpawn = () => {} } = {}) {
   const config = loadConfigModule(app);
-  const spawned = { sfu: [], server: [] };
+  const spawned = { sfu: [], server: [], worker: [] };
 
   const spawn = (binary, args, opts) => {
     const proc = fakeSfu(opts.env);
@@ -139,7 +144,8 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
     proc.stdout = new EventEmitter();
     proc.stderr = new EventEmitter();
     proc.kill = () => { proc.killed = true; return true; };
-    spawned.server.push(proc);
+    // Both the server and the image worker are forked, and only the entry says which.
+    spawned[entry.includes("worker") ? "worker" : "server"].push(proc);
     return proc;
   };
   // The kill fallback waits three seconds and the start watchdog ten. Neither should hold the check open.
@@ -162,7 +168,7 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
     // The Electron process can carry the SFU's and the server's own variables, and the manager's values have to win.
     {
       ...process,
-      env: { ...process.env, SFU_CONTROL_PORT: "9092", SFU_CONTROL_HOST: "0.0.0.0", SFU_METRICS_PORT: "9091", SFU_METRICS_HOST: "0.0.0.0", METRICS_PORT: "9091" },
+      env: { ...process.env, SFU_CONTROL_PORT: "9092", SFU_CONTROL_HOST: "0.0.0.0", SFU_METRICS_PORT: "9091", SFU_METRICS_HOST: "0.0.0.0", METRICS_PORT: "9091", HEALTH_HOST: "0.0.0.0" },
       resourcesPath: join(scratch, "none"),
     },
     quiet,
@@ -190,6 +196,22 @@ async function serverStarted(spawned, count) {
   for (let i = 0; i < 40 && spawned.server.length < count; i++) await settle(50);
   assert.equal(spawned.server.length, count, "the embedded server was never started");
   return spawned.server[count - 1];
+}
+
+async function workerStarted(spawned, count) {
+  for (let i = 0; i < 40 && spawned.worker.length < count; i++) await settle(50);
+  assert.equal(spawned.worker.length, count, "the image worker was never started");
+  return spawned.worker[count - 1];
+}
+
+/* The worker's health endpoint carries its version and its counters, and only the server beside it reads them. */
+async function healthStaysLocal(spawned, count, server) {
+  const worker = await workerStarted(spawned, count);
+  assert.equal(worker.env.HEALTH_HOST, "127.0.0.1", "the image worker answers other machines, or kept the Electron process's own value");
+  const port = Number(worker.env.HEALTH_PORT);
+  assert.ok(Number.isInteger(port) && port > 0, "the image worker was started without HEALTH_PORT, so it takes 8080 on every address");
+  assert.equal(server.env.IMAGE_WORKER_URL, `http://127.0.0.1:${port}`, "the server dials a health endpoint this worker is not on");
+  return worker;
 }
 
 /* ── the reported case: another app's SFU holds 9091 and 9092 ─────────── */
@@ -227,6 +249,7 @@ for (const heldOn of ["0.0.0.0", "127.0.0.1"]) {
   assert.equal(server.env.SFU_CONTROL_PORT, String(ports.control));
   assert.equal(registersOn(server), sfu.env.SFU_CONTROL_HOST, "the server registers on an address the SFU's control port does not listen on");
   assert.equal(server.env.METRICS_PORT, "0", "the server serves metrics of its own, on every interface, or kept the Electron process's port");
+  await healthStaysLocal(spawned, 1, server);
 
   await stopAll();
   for (const r of release) await r();
@@ -283,6 +306,8 @@ for (const heldOn of ["0.0.0.0", "127.0.0.1"]) {
     const joinedServer = await serverStarted(spawned, 2);
     assert.equal(registersOn(joinedServer), spawned.sfu[0].env.SFU_CONTROL_HOST, "a server joining the running SFU registers somewhere its control port does not listen");
     assert.equal(joinedServer.env.METRICS_PORT, "0", "a second server serves metrics of its own, on the port the first one would have asked for");
+    const joinedWorker = await healthStaysLocal(spawned, 2, joinedServer);
+    assert.notEqual(joinedWorker.env.HEALTH_PORT, spawned.worker[0].env.HEALTH_PORT, "both servers' workers were given the same health port");
     await stopAll();
   }
   await release();
@@ -351,4 +376,4 @@ if (defaultsFree) {
   await sfu.released;
 }
 
-console.log("embedded SFU ports: each app's SFU gets free control and metrics ports, kept while free, both on loopback, and its servers go to it without serving metrics of their own");
+console.log("embedded SFU ports: each app's SFU gets free control and metrics ports, kept while free, both on loopback, its servers go to it without serving metrics of their own, and each image worker answers only its own server on 127.0.0.1");

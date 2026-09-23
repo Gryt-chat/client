@@ -692,6 +692,9 @@ function spawnWorker(
       ...envVars,
       NODE_ENV: "production",
       HEALTH_PORT: String(healthPort),
+      // Only the server beside it reads this endpoint, and it dials 127.0.0.1.
+      // Last, so neither config.env nor the Electron process can widen it.
+      HEALTH_HOST: "127.0.0.1",
     },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
     cwd: getServerDir(id),
