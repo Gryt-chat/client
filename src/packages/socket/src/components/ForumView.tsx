@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useThreadMentions, useThreadUnread } from "@/common";
 import type { ForumTag } from "@/settings/src/types/server";
 
-import { PiChatsFill, PiCheck, PiPlus, PiX } from "../../../../lib/icons";
+import { PiChatsFill, PiCheck, PiLockSimpleFill, PiPlus, PiX } from "../../../../lib/icons";
 import { type ForumFilter, type ForumTopic,useForum } from "../hooks/useForum";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { EmojiText } from "./EmojiText";
@@ -24,6 +24,9 @@ const FILTERS: { key: ForumFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "unanswered", label: "Unanswered" },
   { key: "solved", label: "Solved" },
+  // All leaves closed topics out, so without this one there is no way back to
+  // them (GRYT-1389).
+  { key: "closed", label: "Closed" },
   { key: "mine", label: "Mine" },
 ];
 
@@ -51,6 +54,9 @@ function toSummary(t: ForumTopic): ThreadSummary {
     status: t.status,
     reply_count: t.reply_count,
     last_message_at: t.last_message_at,
+    // The panel gates its controls on this, so it is right from the first
+    // frame rather than only once thread:history lands.
+    created_by: t.creator_server_id,
     tags: t.tags,
   };
 }
@@ -60,6 +66,7 @@ function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: strin
     // A solved topic is answered even with no replies — the author settled it.
     case "unanswered": return t.reply_count === 0 && t.status === "open";
     case "solved": return t.status === "solved";
+    case "closed": return t.status === "closed";
     case "mine": return !!currentUserId && t.creator_server_id === currentUserId;
     default: return t.status !== "closed";
   }
@@ -89,6 +96,7 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
     all: topics.filter((t) => t.status !== "closed").length,
     unanswered: topics.filter((t) => t.reply_count === 0 && t.status === "open").length,
     solved: topics.filter((t) => t.status === "solved").length,
+    closed: topics.filter((t) => t.status === "closed").length,
     mine: topics.filter((t) => !!currentUserId && t.creator_server_id === currentUserId).length,
   }), [topics, currentUserId]);
 
@@ -217,6 +225,14 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
                   tone="success"
                   icon={<PiCheck size={11} />}
                   label="Solved"
+                  className="px-2.5 py-0.5 text-[11px] whitespace-nowrap"
+                />
+              )}
+              {t.status === "closed" && (
+                <Chip
+                  tone="neutral"
+                  icon={<PiLockSimpleFill size={11} />}
+                  label="Closed"
                   className="px-2.5 py-0.5 text-[11px] whitespace-nowrap"
                 />
               )}

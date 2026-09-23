@@ -20,6 +20,10 @@ const ALLOWED: Allowed[] = [
   { text: /^Failed to load resource: net::ERR_FAILED$/, url: /^http:\/\/[^/]+\/info$/ },
   // The failed-upload test refuses the upload on purpose, and Chrome logs the refusal.
   { text: /^Failed to load resource: net::ERR_CONNECTION_REFUSED$/, url: /\/api\/uploads$/ },
+  // The offline thread test cuts the network on purpose. socket.io keeps dialling
+  // while it is out, and Chrome and the app both log every attempt.
+  { text: /^WebSocket connection to 'ws:\/\/[^']+' failed: .*net::ERR_INTERNET_DISCONNECTED$/ },
+  { text: /^\[Socket\] connect_error for [^\s]+: websocket error$/ },
 ];
 
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */

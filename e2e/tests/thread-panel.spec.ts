@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-import { accessTokenOf, withSocket } from "../support/admin";
+import { accessTokenOf, ask, serverUserIdOf, withSocket } from "../support/admin";
 import { composer, messageRow, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
@@ -138,22 +138,17 @@ test("a thread opens at its newest reply", async ({ newMember }) => {
 test("a refused reply is retried once, then gives the text back", async ({ newMember, owner, gryt }) => {
   const alice = await newMember();
 
-  const root = unique("a thread about to be closed");
+  const root = unique("a thread to be refused in");
   await sendMessage(alice.page, root);
   await startThread(alice.page, root);
-  await replyInThread(alice.page, unique("a reply while it is still open"));
+  await replyInThread(alice.page, unique("a reply while she may still post"));
 
-  // Closed to new replies, which the panel does not offer and does not gate on,
-  // so the next reply goes out and the server refuses it.
-  const { conversationId, threadId } = openThreadIds(alice.frames);
+  /* A server mute rather than a closed thread: closing takes the composer away
+     now, and this refusal leaves one to type the refused reply into. */
   const accessToken = await accessTokenOf(owner.page, gryt.server.host);
-  // thread:updated goes to the joined clients, and this socket is not one, so
-  // the confirmation to wait on is the one Alice's page receives.
+  const aliceId = serverUserIdOf(await accessTokenOf(alice.page, gryt.server.host));
   await withSocket(gryt.server.httpBase, async (socket) => {
-    socket.emit("thread:status:set", { conversationId, threadId, status: "closed", accessToken });
-    await expect
-      .poll(() => alice.frames.some((f) => f.includes('"thread:updated"') && f.includes('"status":"closed"')))
-      .toBe(true);
+    await ask(socket, "server:mute", { accessToken, targetServerUserId: aliceId, muted: true }, "server:mute:success");
   });
 
   const refused = unique("this one is refused");
@@ -185,4 +180,112 @@ test("a refused fetch says so where the replies would be", async ({ newMember })
   await expect(panel(alice.page)).toContainText("Too fast");
   await expect(panel(alice.page)).not.toContainText("Loading…");
   await expect(panel(alice.page).getByRole("button", { name: "Try again" })).toBeVisible();
+});
+
+/** Closes the open thread from outside the app: nothing in the UI can. */
+async function closeOpenThread(frames: string[], token: string, httpBase: string): Promise<void> {
+  const { conversationId, threadId } = openThreadIds(frames);
+  await withSocket(httpBase, async (socket) => {
+    socket.emit("thread:status:set", { conversationId, threadId, status: "closed", accessToken: token });
+    await expect
+      .poll(() => frames.some((f) => f.includes('"thread:updated"') && f.includes('"status":"closed"')))
+      .toBe(true);
+  });
+}
+
+test("a closed thread says so instead of drawing a composer", async ({ newMember, owner, gryt }) => {
+  const alice = await newMember();
+
+  const root = unique("a thread about to be closed");
+  await sendMessage(alice.page, root);
+  await startThread(alice.page, root);
+  await replyInThread(alice.page, unique("a reply while it is still open"));
+
+  const accessToken = await accessTokenOf(owner.page, gryt.server.host);
+  await closeOpenThread(alice.frames, accessToken, gryt.server.httpBase);
+
+  await expect(threadComposer(alice.page), "the composer goes with the thread").toBeHidden();
+  await expect(panel(alice.page)).toContainText("This thread is closed, so you can’t reply to it.");
+  await expect(panel(alice.page)).toContainText("Closed");
+
+  // Alice started it, so she is the one who can put it back.
+  await panel(alice.page).getByRole("button", { name: "Reopen" }).click();
+  await expect(threadComposer(alice.page)).toBeVisible();
+});
+
+test("the status control is drawn for the author and a moderator, and nobody else", async ({ newMember, owner }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+
+  const root = unique("a thread only its author can settle");
+  await sendMessage(alice.page, root);
+  await startThread(alice.page, root);
+  await replyInThread(alice.page, unique("a reply so the line shows for everybody"));
+
+  await expect(panel(alice.page).getByRole("button", { name: "Mark solved" }), "hers to settle").toBeVisible();
+
+  await openThread(bob.page, root);
+  await expect(
+    panel(bob.page).getByRole("button", { name: "Mark solved" }),
+    "the server refuses Bob, so he does not get the button",
+  ).toHaveCount(0);
+
+  // The owner holds manage_messages, which is what the server checks.
+  await openThread(owner.page, root);
+  await expect(panel(owner.page).getByRole("button", { name: "Mark solved" })).toBeVisible();
+});
+
+test("deleting a threaded message counts the replies going with it", async ({ newMember }) => {
+  const alice = await newMember();
+
+  const plain = unique("a message with nothing under it");
+  const root = unique("a message with a thread under it");
+  await sendMessage(alice.page, plain);
+  await sendMessage(alice.page, root);
+  await startThread(alice.page, root);
+  await replyInThread(alice.page, unique("the first reply that goes too"));
+  await replyInThread(alice.page, unique("the second reply that goes too"));
+  await alice.page.getByRole("button", { name: "Close thread" }).click();
+
+  const dialog = alice.page.getByRole("alertdialog");
+
+  const plainRow = messageRow(alice.page, plain);
+  await plainRow.hover();
+  await plainRow.getByRole("button", { name: "Delete" }).click();
+  await expect(dialog).toContainText("This deletes the message for everyone.");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+
+  const rootRow = messageRow(alice.page, root);
+  await rootRow.hover();
+  await rootRow.getByRole("button", { name: "Delete" }).click();
+  await expect(dialog, "the server takes the thread with the root").toContainText(
+    "This deletes the message and the 2 replies in its thread.",
+  );
+});
+
+test("starting a thread with no connection says so", async ({ newMember }) => {
+  const alice = await newMember();
+
+  const root = unique("a thread nobody can start right now");
+  await sendMessage(alice.page, root);
+
+  await alice.context.setOffline(true);
+  try {
+    // The click lands before socket.io notices the socket is gone, so it is
+    // worth asking more than once.
+    await expect
+      .poll(
+        async () => {
+          const row = messageRow(alice.page, root);
+          await row.hover();
+          await row.getByRole("button", { name: "Start thread" }).click({ force: true });
+          return alice.page.getByText("Not connected to this server").isVisible();
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    await expect(panel(alice.page), "no panel waiting on a thread:created that never comes").toBeHidden();
+  } finally {
+    await alice.context.setOffline(false);
+  }
 });

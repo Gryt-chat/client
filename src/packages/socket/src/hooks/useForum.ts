@@ -25,12 +25,14 @@ export interface ForumTopic {
   tags: string[];
 }
 
-export type ForumFilter = "all" | "unanswered" | "solved" | "mine";
+export type ForumFilter = "all" | "unanswered" | "solved" | "closed" | "mine";
 
 interface ForumSocket {
   emit: (event: string, data: unknown) => void;
   on: (event: string, cb: (payload: never) => void) => void;
   off: (event: string, cb: (payload: never) => void) => void;
+  /** socket.io sets this. Absent on a stand-in, which is treated as connected. */
+  connected?: boolean;
 }
 
 function asSocket(s: unknown): ForumSocket | null {
@@ -134,6 +136,13 @@ export function useForum(
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
     if (!socket || !accessToken) return;
+    /* A dead socket swallows the emit, so no forum:topic:created and no
+       forum:error ever arrive and `creating` never clears (GRYT-1389). */
+    if (socket.connected === false) {
+      setCreateError("Not connected to this server.");
+      toast.error("Not connected to this server");
+      return;
+    }
     creatingRef.current = true;
     setCreating(true);
     setCreateError(null);

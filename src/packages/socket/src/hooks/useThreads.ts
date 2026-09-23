@@ -22,6 +22,11 @@ export interface ThreadSummary {
   status: "open" | "solved" | "closed";
   reply_count: number;
   last_message_at: string;
+  /* Who started it. The server lets them and a moderator set the status and
+     refuses everyone else, so the control is drawn off this. */
+  created_by?: string;
+  /** Locked to new replies, the way closed is. chat:send refuses both. */
+  locked?: boolean;
   /** Tag ids from the channel's palette. Absent on a plain chat thread. */
   tags?: string[];
 }
@@ -83,6 +88,8 @@ interface ThreadSocket {
   emit: (event: string, data: unknown) => void;
   on: (event: string, cb: (payload: never) => void) => void;
   off: (event: string, cb: (payload: never) => void) => void;
+  /** socket.io sets this. Absent on a stand-in, which is treated as connected. */
+  connected?: boolean;
 }
 
 /**
@@ -453,6 +460,12 @@ export function useThreads(
     const socket = asSocket(socketConnection);
     const accessToken = getServerAccessToken(serverHost || "");
     if (!socket || !accessToken) return;
+    /* A dead socket swallows the emit, and the root stays queued to open a panel
+       that no thread:created ever arrives for. Say so instead (GRYT-1389). */
+    if (socket.connected === false) {
+      toast.error("Not connected to this server");
+      return;
+    }
     // Already threaded — just open it.
     const existing = summaries[message.message_id];
     if (existing) {
