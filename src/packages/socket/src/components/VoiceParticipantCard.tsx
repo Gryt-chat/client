@@ -8,6 +8,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
+import { cameraStreamFor } from "../lib/cameraStream";
 import type { Client } from "../types/clients";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { SpeakingHalo } from "./SpeakingHalo";
@@ -507,9 +508,7 @@ export function VoiceParticipantCard({
 
   const cameraStream = isSelf
     ? localCameraStream
-    : cameraStreamID && videoStreams?.[cameraStreamID]
-      ? videoStreams[cameraStreamID]
-      : null;
+    : cameraStreamFor(client.cameraStreamID, fallbackCameraStreamID, videoStreams);
 
   const shouldShowCameraTile = isSelf
     ? Boolean(localCameraStream)
