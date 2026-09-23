@@ -35,6 +35,7 @@ import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatCircleFill, PiCornersI
 import { useAloneInCall } from "../hooks/useAloneInCall";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
+import { cameraStreamFor, hasLiveVideoTrack } from "../lib/cameraStream";
 import {
   computeGridLayout,
   computeShareLayout,
@@ -241,12 +242,6 @@ function SortableParticipant({
       {children}
     </div>
   );
-}
-
-function hasLiveVideoTrack(stream: MediaStream | undefined | null): boolean {
-  if (!stream) return false;
-
-  return stream.getVideoTracks().some((track) => track.readyState === "live");
 }
 
 export const VoiceView = ({
@@ -942,11 +937,15 @@ export const VoiceView = ({
 
     const fallbackCameraStreamID = fallbackCameraStreamIdByClientId[clientId];
 
-    const streamKey = isScreenTile
+    const currentStream = isScreenTile
       ? client.screenShareVideoStreamID
-      : client.cameraStreamID || fallbackCameraStreamID;
-
-    const currentStream = streamKey ? videoStreams?.[streamKey] : undefined;
+        ? videoStreams?.[client.screenShareVideoStreamID]
+        : undefined
+      : (cameraStreamFor(
+          client.cameraStreamID,
+          fallbackCameraStreamID,
+          videoStreams,
+        ) ?? undefined);
 
     const latestAudioStreamId = isScreenTile
       ? client.screenShareAudioStreamID || undefined
@@ -996,11 +995,11 @@ export const VoiceView = ({
             : null
         : isSelf
           ? localCameraStream
-          : client.cameraStreamID && videoStreams?.[client.cameraStreamID]
-            ? videoStreams[client.cameraStreamID]
-            : fallbackCameraStreamID && videoStreams?.[fallbackCameraStreamID]
-              ? videoStreams[fallbackCameraStreamID]
-              : null;
+          : cameraStreamFor(
+              client.cameraStreamID,
+              fallbackCameraStreamID,
+              videoStreams,
+            );
 
       if (currentStream) {
         updatePopoutStream(itemId, currentStream);

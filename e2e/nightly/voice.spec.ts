@@ -1,10 +1,12 @@
 import {
+  announce,
   announcedStreams,
   expectAudioArriving,
   expectFramesDecoded,
   expectPlaying,
   expectSfuAddress,
   focusTile,
+  framesDecoded,
   type Guest,
   joinVoice,
   playedStream,
@@ -144,4 +146,29 @@ test("GRYT-1329: a camera turned off and on again during a screen share still ge
     await call.cameraOff();
   }
   call.expectAnnouncedPlayed();
+});
+
+/* GRYT-1251: a camera that restarts while starting can leave the announced stream id naming
+   nothing. The tile followed the announcement and sat on "Connecting video…" as frames decoded. */
+test("GRYT-1251: a camera whose announced stream id names nothing still draws the frames that arrived", async ({
+  guest,
+}) => {
+  const alice = await guest();
+  const bob = await guest();
+  await joinVoice(alice);
+  await joinVoice(bob);
+
+  await turnCameraOn(alice);
+  const camera = tileVideo(bob.page, alice.name);
+  await expectPlaying(camera, 1);
+  const stream = await playedStream(camera);
+
+  // The state the race leaves behind, without the race: an id nobody is sending under.
+  await announce(alice, "voice:camera:state", { enabled: true, streamId: "00000000-0000-4000-8000-000000000000" });
+
+  const decoded = await framesDecoded(bob.page);
+  await expectPlaying(camera, 1);
+  expect(await playedStream(camera), `${bob.name} stopped drawing ${stream}`).toBe(stream);
+  await expect(bob.page.getByText(/Connecting video|Video isn't coming through/)).toHaveCount(0);
+  expect(await framesDecoded(bob.page), "the frames stopped").toBeGreaterThan(decoded + 30);
 });

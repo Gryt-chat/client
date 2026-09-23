@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { type BrowserContext, expect, type Locator, type Page } from "@playwright/test";
 
 import type { TestServer } from "./testServer";
 import { connectedPeers, isPrivateAddress, peerStats } from "./webrtc";
@@ -115,6 +115,11 @@ export async function expectAudioArriving(guest: Guest): Promise<void> {
     .toBeGreaterThan(start + 1500);
 }
 
+/** Video frames this page has decoded, summed over its peer connections. */
+export async function framesDecoded(page: Page): Promise<number> {
+  return (await peerStats(page)).videoFramesDecoded;
+}
+
 export async function expectFramesDecoded(guest: Guest, what: string): Promise<void> {
   const start = (await peerStats(guest.page)).videoFramesDecoded;
   await expect
@@ -160,4 +165,33 @@ export async function expectPlaying(video: Locator, forSeconds = 0): Promise<voi
   await expect
     .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime), "the video stopped")
     .toBeGreaterThan(start + forSeconds);
+}
+
+/** Keeps the page's WebSockets, so a test can say something over the real transport. */
+export async function watchSockets(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    const open: WebSocket[] = [];
+    Object.defineProperty(window, "__grytSockets", { value: open });
+    const Native = window.WebSocket;
+    class Watched extends Native {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        super(url, protocols);
+        open.push(this);
+      }
+    }
+    Object.defineProperty(window, "WebSocket", { value: Watched, configurable: true, writable: true });
+  });
+}
+
+/** Sends a socket.io event on the server connection, the way the client's own controls do. */
+export async function announce(guest: Guest, event: string, payload: unknown): Promise<void> {
+  await guest.page.evaluate(
+    ({ event, payload }) => {
+      const sockets = (window as unknown as { __grytSockets?: WebSocket[] }).__grytSockets ?? [];
+      const live = sockets.filter((s) => s.readyState === WebSocket.OPEN && s.url.includes("socket.io"));
+      if (live.length === 0) throw new Error("no open socket.io connection to announce on");
+      live[live.length - 1].send(`42${JSON.stringify([event, payload])}`);
+    },
+    { event, payload },
+  );
 }
