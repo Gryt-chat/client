@@ -1223,12 +1223,82 @@ body {
 .markdown-message {
   font-size: var(--chat-font-size, 16px);
   line-height: 1.5;
+  /* Every gap below is a multiple of this, so the rhythm follows the chat
+     font-size slider rather than staying 8px at 10px text and at 24px text. */
+  --md-unit: var(--chat-font-size, 16px);
+}
+
+.markdown-message :is(.md-p, ul, ol, pre, blockquote, .md-table, .markdown-image-wrap) {
+  margin-block: calc(var(--md-unit) * 0.5);
+}
+
+/* A heading belongs to the block under it, so it gets more room above than
+   below. Without that, nine bold lines and nine sentences read as one wall. */
+.markdown-message :is(h1, h2, h3) {
+  margin-bottom: calc(var(--md-unit) * 0.25);
+  line-height: 1.3;
+}
+
+.markdown-message h1 {
+  margin-top: calc(var(--md-unit) * 1.25);
+  font-size: 1.4em;
+  font-weight: 700;
+}
+
+.markdown-message h2 {
+  margin-top: var(--md-unit);
+  font-size: 1.2em;
+  font-weight: 700;
+}
+
+.markdown-message h3 {
+  margin-top: calc(var(--md-unit) * 0.75);
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.markdown-message hr {
+  margin-block: var(--md-unit);
+  border: none;
+  border-top: 1px solid var(--gryt-neutral-6);
+}
+
+/* The 20px was always there to make room for a marker, but Tailwind's reset
+   takes `list-style` off every list, so nothing was ever drawn in it. */
+.markdown-message :is(ul, ol) {
+  padding-left: 20px;
+}
+
+.markdown-message ul { list-style: disc outside; }
+.markdown-message ul ul { list-style-type: circle; }
+.markdown-message ul ul ul { list-style-type: square; }
+.markdown-message ol { list-style: decimal outside; }
+
+.markdown-message li + li {
+  margin-top: calc(var(--md-unit) * 0.25);
+}
+
+.markdown-message li :is(ul, ol) {
+  margin-block: calc(var(--md-unit) * 0.25) 0;
+}
+
+/* The quote rule and the bullet have to start level with their own text, which
+   a child's margin would otherwise push down and leave the mark hanging. */
+.markdown-message :is(blockquote, li) > :first-child {
+  margin-top: 0;
+}
+
+.markdown-message :is(blockquote, li) > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-message .md-table {
+  overflow-x: auto;
 }
 
 .markdown-image-wrap {
   display: block;
   max-width: min(420px, 100%);
-  margin: 4px 0;
 }
 
 .markdown-image {
@@ -1266,6 +1336,9 @@ body {
   font-size: inherit;
   line-height: inherit;
   white-space: normal;
+  /* Half the chat unit. A card is a summary in a fixed box, so it stays tight
+     while a message in the log gets the room. */
+  --md-unit: 8px;
 }
 
 .gryt-webhook-card .markdown-message.emoji-only .inline-emoji {
@@ -1540,7 +1613,7 @@ body {
 }
 
 /* ── Folded messages ────────────────────────────────────────────────────────
-   A tall message is folded to about twelve lines with a control to open it.
+   A tall message is folded to twenty lines with a control to open it.
    The height, not the character count, is what decides — see CollapsibleText.
 
    The server refuses anything past 4,000 characters, so this is not a defence
