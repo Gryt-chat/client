@@ -353,12 +353,13 @@ export function Settings() {
 
           `max-w` still caps it against small viewports, and the height stays
           inline because it is a fixed frame the panes scroll inside rather than
-          something that should grow with content.
+          something that should grow with content. Capped against the viewport
+          too, so a short window doesn't push the top and bottom off screen.
         */}
         <Dialog.Popup
           data-gryt="settings"
           className="w-[60rem] max-w-[calc(100vw-3rem)]"
-          style={{ height: "700px" }}
+          style={{ height: "min(700px, calc(100vh - 3rem))" }}
         >
         <Dialog.Close style={{ position: "absolute", top: "8px", right: "8px" }}>
           <IconButton data-tour="settings-close">
