@@ -42,6 +42,39 @@ const exitVariants = {
   gone: (instant: boolean) => (instant ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -8 }),
 };
 
+/** A key per row, off the channel rather than the item id, so a row the server
+    re-identifies keeps its node instead of remounting under a new key. */
+function stableKeys(
+  items: SidebarItem[],
+  channelById: Map<string, Channel>,
+  serverHost: string,
+): Map<string, string> {
+  const keys = new Map<string, string>();
+  const seen = new Map<string, number>();
+  for (const item of items) {
+    let base: string;
+    switch (item.kind) {
+      case "channel": {
+        const ch = channelById.get(item.channelId ?? item.id);
+        base = ch ? `${serverHost}:${ch.type}:${ch.name}` : `${serverHost}:ch:${item.id}`;
+        break;
+      }
+      case "separator":
+        base = `${serverHost}:sep:${item.label ?? ""}`;
+        break;
+      case "spacer":
+        base = `${serverHost}:spc:${item.spacerHeight ?? 16}`;
+        break;
+      default:
+        base = `${serverHost}:${item.id}`;
+    }
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    keys.set(item.id, count > 0 ? `${base}#${count}` : base);
+  }
+  return keys;
+}
+
 export const ChannelList = ({
   channels,
   items,
@@ -171,33 +204,6 @@ export const ChannelList = ({
       return next;
     });
   }, [collapseKey]);
-
-  const stableKeyById = useMemo(() => {
-    const keys = new Map<string, string>();
-    const seen = new Map<string, number>();
-    for (const item of effectiveItems) {
-      let base: string;
-      switch (item.kind) {
-        case "channel": {
-          const ch = channelById.get(item.channelId ?? item.id);
-          base = ch ? `${serverHost}:${ch.type}:${ch.name}` : `${serverHost}:ch:${item.id}`;
-          break;
-        }
-        case "separator":
-          base = `${serverHost}:sep:${item.label ?? ""}`;
-          break;
-        case "spacer":
-          base = `${serverHost}:spc:${item.spacerHeight ?? 16}`;
-          break;
-        default:
-          base = `${serverHost}:${item.id}`;
-      }
-      const count = seen.get(base) ?? 0;
-      seen.set(base, count + 1);
-      keys.set(item.id, count > 0 ? `${base}#${count}` : base);
-    }
-    return keys;
-  }, [effectiveItems, channelById, serverHost]);
 
   const renderSeparator = (item: SidebarItem) => (
     <LabelledDivider className="relative" lineClassName="opacity-70">
@@ -686,7 +692,18 @@ export const ChannelList = ({
     return depthById.get(item.id) ?? 0;
   };
 
-  const displayItems = canManage ? localItems : rows.map((r) => r.item);
+  const displayItems = useMemo(
+    () => (canManage ? localItems : rows.map((r) => r.item)),
+    [canManage, localItems, rows],
+  );
+
+  /* Keyed off what is on screen: `localItems` trails the server's items by a
+     render, and keying off the newer list drew the channel twice (GRYT-1331). */
+  const stableKeyById = useMemo(
+    () => stableKeys(displayItems, channelById, serverHost),
+    [displayItems, channelById, serverHost],
+  );
+
 
   /** Outside the reorder group: these are not sidebar items an operator
       arranges, and a channel does not belong among them. */
