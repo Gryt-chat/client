@@ -306,6 +306,7 @@ export const ChatView = memo(({
 
   useEffect(() => {
     if (restoreText && editorRef.current) {
+      editorRef.current.setContent(restoreText);
       editorRef.current.focus();
       clearRestoreText?.();
     }
