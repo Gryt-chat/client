@@ -70,7 +70,7 @@ test("the count survives a channel switch inside the history cache window", asyn
   await sendMessage(alice.page, root);
   await startThread(alice.page, root);
   await replyInThread(alice.page, unique("a reply to come back to"));
-  await alice.page.getByRole("button", { name: "Close thread" }).click();
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
 
   const channels = alice.page.getByRole("navigation", { name: "Channels" });
   await channels.getByRole("button", { name: "Random" }).click();
@@ -105,19 +105,7 @@ async function createTopic(page: Page, title: string, body: string): Promise<voi
   await expect(page.getByRole("button", { name: new RegExp(title) })).toBeVisible();
 }
 
-/** The ids of a topic by title, read off the last forum:topics:list on the wire. */
-function topicIds(frames: string[], title: string): { conversationId: string; threadId: string } {
-  for (const frame of [...frames].reverse()) {
-    if (!frame.includes('"forum:topics:list"') || !frame.includes(title)) continue;
-    const body = JSON.parse(frame.slice(frame.indexOf("["))) as
-      [string, { conversation_id: string; topics: { thread_id: string; title: string | null }[] }];
-    const topic = body[1].topics.find((t) => t.title === title);
-    if (topic) return { conversationId: body[1].conversation_id, threadId: topic.thread_id };
-  }
-  throw new Error(`no forum:topics:list frame holding ${title}`);
-}
-
-test("a closed topic is out of All and under Closed", async ({ newMember, owner, gryt }) => {
+test("the author closes a topic from the panel, and it leaves All for Closed", async ({ newMember, owner, gryt }) => {
   const forum = uniqueName("forum");
   await addForumChannel(owner.page, gryt.server, forum);
 
@@ -126,26 +114,28 @@ test("a closed topic is out of All and under Closed", async ({ newMember, owner,
   const title = unique("a topic that gets closed");
   await createTopic(alice.page, title, "Something that stops being worth replying to.");
 
-  const { conversationId, threadId } = topicIds(alice.frames, title);
-  const accessToken = await accessTokenOf(owner.page, gryt.server.host);
-  await withSocket(gryt.server.httpBase, async (socket) => {
-    socket.emit("thread:status:set", { conversationId, threadId, status: "closed", accessToken });
-    await expect
-      .poll(() => alice.frames.some((f) => f.includes('"thread:updated"') && f.includes('"status":"closed"')))
-      .toBe(true);
-  });
-
   const row = alice.page.getByRole("button", { name: new RegExp(title) });
-  await expect(row, "All leaves closed topics out").toHaveCount(0);
+  await row.click();
+  const panel = alice.page.getByRole("complementary", { name: "Thread" });
+  await expect(panel).toBeVisible();
 
+  // Hers to close: the server lets the author settle their own topic.
+  await panel.getByRole("button", { name: "More for this topic" }).click();
+  await alice.page.getByRole("menuitem", { name: "Close topic" }).click();
+  await expect(panel).toContainText("This thread is closed, so you can’t reply to it.");
+  await expect(panel).toContainText("Closed");
+  await expect(panel.getByRole("button", { name: "More for this topic" })).toHaveCount(0);
+
+  await expect(row, "All leaves closed topics out").toHaveCount(0);
   await alice.page.getByRole("button", { name: /^Closed/ }).click();
   await expect(row, "and Closed is the way back to them").toBeVisible();
   await expect(row).toContainText("Closed");
 
-  await row.click();
-  const panel = alice.page.getByRole("complementary", { name: "Thread" });
-  await expect(panel).toBeVisible();
-  await expect(panel).toContainText("This thread is closed, so you can’t reply to it.");
+  // And back, so closing is not a one-way door.
+  await panel.getByRole("button", { name: "Reopen" }).click();
+  await expect(composer(alice.page, "Reply to thread…")).toBeVisible();
+  await alice.page.getByRole("button", { name: /^All/ }).click();
+  await expect(row).toBeVisible();
 });
 
 test("a topic whose first post you cannot see says so", async ({ newMember, owner, gryt }) => {

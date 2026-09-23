@@ -1,8 +1,8 @@
-import { Button, Divider, IconButton, Tooltip } from "@gryt/ui";
+import { Button, Divider, IconButton, Menu, Tooltip } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 
-import { PiCaretLeftBold, PiChatsFill, PiCheck, PiX } from "../../../../lib/icons";
+import { PiCaretLeftBold, PiChatsFill, PiCheck, PiDotsThreeVerticalBold, PiX } from "../../../../lib/icons";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import type { ChatMessage } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
@@ -182,11 +182,38 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             Mark solved
           </Button>
         ))}
+        {/* Closing was the one status the apps could not set, so the state the
+            panel already drew was reachable by nothing but the API (GRYT-1396). */}
+        {onSetStatus && thread.status !== "closed" && (
+          <Menu.Root>
+            {/* In a menu rather than beside Mark solved: two buttons left the
+                title 33px of a 380px panel, which drew it as "Th…". */}
+            <Tooltip title="More for this topic">
+              <Menu.Trigger
+                render={<IconButton tone="neutral" size="xsmall" aria-label="More for this topic" />}
+              >
+                <PiDotsThreeVerticalBold size={14} />
+              </Menu.Trigger>
+            </Tooltip>
+            <Menu.Portal>
+              <Menu.Positioner>
+                <Menu.Popup>
+                  <Menu.Item
+                    title="Nothing is deleted, and you can open it again."
+                    onClick={() => onSetStatus("closed")}
+                  >
+                    Close topic
+                  </Menu.Item>
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        )}
         {onSetStatus && beside && (
           <Divider orientation="vertical" className="my-1 self-stretch" />
         )}
         {beside && (
-          <IconButton size="xsmall" aria-label="Close thread" onClick={onClose}>
+          <IconButton size="xsmall" aria-label="Close the thread panel" onClick={onClose}>
             <PiX size={16} />
           </IconButton>
         )}
@@ -279,7 +306,8 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           </>
         ) : (
           <p className="m-0 py-1.5 text-center text-xs text-gryt-muted">
-            This thread is closed, so you can&rsquo;t reply to it.
+            This thread is closed, so you can&rsquo;t reply to it. Nothing is
+            deleted, and the author or a moderator can open it again.
           </p>
         )}
       </div>
