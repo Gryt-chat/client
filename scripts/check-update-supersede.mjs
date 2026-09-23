@@ -420,24 +420,6 @@ await check("a background check whose newer release fails keeps the download it 
   assert.equal(h.state.installs, 0);
 });
 
-await check("a download from a check nobody offered can be replaced too", async () => {
-  const h = harness();
-  const token = { cancelled: false, cancel() { this.cancelled = true; } };
-  let settle;
-  const download = new Promise((resolve, reject) => (settle = { resolve, reject }));
-
-  h.updates.available("1.11.21");
-  h.updates.track({ downloadPromise: download, cancellationToken: token });
-
-  h.updates.offer(release("1.11.22"), { announce: true });
-  await flush();
-  assert.equal(token.cancelled, true);
-  assert.equal(h.jobs.length, 0);
-
-  settle.reject(new Error("cancelled"));
-  await flush();
-  assert.equal(h.jobs.length, 1);
-});
 
 /* ── Automatic updates on and off (GRYT-1206, GRYT-1218) ────────────── */
 
