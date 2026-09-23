@@ -13,10 +13,8 @@ import {
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiChatsFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
-import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
-import { DirectMessageList } from "./DirectMessageList";
 import { EmojiText } from "./EmojiText";
 import { LabelledDivider } from "./LabelledDivider";
 import { MarkAsReadItem } from "./MarkAsReadItem";
@@ -101,12 +99,6 @@ export const ChannelList = ({
   adminActions,
   unreadCounts,
   mentionCounts,
-  directConversations,
-  selectedDmId,
-  onSelectDm,
-  onHideDm,
-  onManageGroup,
-  showDirectMessages = true,
 }: {
   channels: Channel[];
   items?: SidebarItem[];
@@ -139,15 +131,6 @@ export const ChannelList = ({
   unreadCounts?: Map<string, number>;
   /** Unseen mentions per conversation id. Absent means none. */
   mentionCounts?: Map<string, number>;
-  directConversations?: DirectConversation[];
-  selectedDmId?: string | null;
-  onSelectDm?: (conversation: DirectConversation) => void;
-  onHideDm?: (conversation: DirectConversation) => void;
-  /** Open the settings for a group. Absent means no group management. */
-  onManageGroup?: (conversation: DirectConversation) => void;
-  /* False on desktop since GRYT-1120: conversations live in their own space,
-     and a member row opens one. Mobile has no rail, so it keeps them. */
-  showDirectMessages?: boolean;
 }) => {
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
@@ -705,34 +688,6 @@ export const ChannelList = ({
   );
 
 
-  /** Outside the reorder group: these are not sidebar items an operator
-      arranges, and a channel does not belong among them. */
-  const directMessages = onSelectDm && showDirectMessages ? (
-    <>
-      <DirectMessageList
-        title="Direct messages"
-        conversations={(directConversations ?? []).filter((c) => c.kind !== "group")}
-        serverHost={serverHost}
-        selectedConversationId={selectedDmId ?? null}
-        unreadCounts={unreadCounts}
-        mentionCounts={mentionCounts}
-        onSelect={onSelectDm}
-        onHide={onHideDm}
-      />
-      <DirectMessageList
-        title="Groups"
-        onManage={onManageGroup}
-        conversations={(directConversations ?? []).filter((c) => c.kind === "group")}
-        serverHost={serverHost}
-        selectedConversationId={selectedDmId ?? null}
-        unreadCounts={unreadCounts}
-        mentionCounts={mentionCounts}
-        onSelect={onSelectDm}
-        onHide={onHideDm}
-      />
-    </>
-  ) : null;
-
   const staticList = (
     <LayoutGroup id={serverHost}>
       <div className="flex flex-col gap-3 items-center w-full">
@@ -770,7 +725,6 @@ export const ChannelList = ({
           }
         >
           {staticList}
-          {directMessages}
           <div style={{ flex: 1 }} />
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
@@ -864,7 +818,6 @@ export const ChannelList = ({
         }
       >
         {draggableList}
-        {directMessages}
         {/* Takes the leftover space, so the empty area below the last channel
             belongs to the trigger. The column is otherwise only as tall as its
             content even when the trigger is not. */}

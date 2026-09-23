@@ -19,13 +19,13 @@ const mobile = read(MOBILE);
 const wide = read(WIDE);
 const view = read(VIEW);
 
-/* Direct messages are not a category in either channel list. Whichever layout keeps
-   them there is the one somebody is looking at when they say it did not change. */
+/* Direct messages are not a category in either channel list — the plumbing that fed
+   ChannelList a DM section was removed with the sidebar's dead copy (GRYT-1382). */
 {
   for (const [file, source] of [[WIDE, wide], [MOBILE, mobile]]) {
     assert.ok(
-      /showDirectMessages=\{false\}/.test(source),
-      `${file} still lists direct messages as a channel category`,
+      !/directConversations=/.test(source),
+      `${file} feeds ChannelList a direct-message category again`,
     );
   }
 }

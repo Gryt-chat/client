@@ -53,7 +53,6 @@ import { ConnectionBanner } from "./ConnectionBanner";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { GroupDialog } from "./GroupDialog";
-import { hideConversationWithUndo } from "./hideConversation";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { MobileServerView } from "./MobileServerView";
@@ -528,19 +527,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     setSelectedDmId((current) => (current === conversationId ? null : current));
   }, [setSelectedDmId]);
 
-  const handleHideDm = useCallback((conversation: { conversation_id: string }) => {
-    const viewingHost = currentlyViewingServer?.host;
-    if (!viewingHost) return;
-    const found = directConversations.find((c) => c.conversation_id === conversation.conversation_id);
-    hideConversationWithUndo(
-      viewingHost,
-      currentServerUserId ?? "",
-      conversation.conversation_id,
-      found ? conversationTitle(found) : "the conversation",
-    );
-    forgetHiddenDm(conversation.conversation_id);
-  }, [currentlyViewingServer, directConversations, forgetHiddenDm, currentServerUserId]);
-
   /* Blocking used to take the conversation off the list on the server. It is
      this device's own now, so the block does the same thing here. GRYT-1379. */
   const blockAndHide = useCallback((targetServerUserId: string) => {
@@ -951,11 +937,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             currentConnectionId={selfClientId}
             selectedChannelId={visibleChannelId}
             onChannelClick={handleChannelClickAndCloseDm}
-            directConversations={directConversations}
             selectedDmId={visibleDmId}
             onSelectDm={handleSelectDm}
-            onHideDm={handleHideDm}
-            onManageGroup={setGroupDialog}
             clientsSpeaking={voiceClientsSpeaking}
             canManage={canManage}
             onEditItem={handleEditItem}
@@ -1053,11 +1036,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               currentConnectionId={selfClientId}
               selectedChannelId={visibleChannelId}
               onChannelClick={handleChannelClickAndCloseDm}
-            directConversations={directConversations}
-            selectedDmId={visibleDmId}
-            onSelectDm={handleSelectDm}
-            onHideDm={handleHideDm}
-            onManageGroup={setGroupDialog}
               clientsSpeaking={voiceClientsSpeaking}
               canManage={canManage}
               onEditItem={handleEditItem}
