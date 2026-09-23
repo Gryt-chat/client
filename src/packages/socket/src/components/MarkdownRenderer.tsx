@@ -193,7 +193,6 @@ function CodeBlockPre({ children }: { children: React.ReactNode }) {
         border: "1px solid var(--gryt-neutral-5)",
         borderRadius: "var(--gryt-radius-md)",
         padding: "10px 12px",
-        margin: "4px 0",
         overflowX: "auto",
         fontSize: "0.85em",
         lineHeight: 1.5,
@@ -228,23 +227,15 @@ function CodeBlockPre({ children }: { children: React.ReactNode }) {
 }
 
 const components: Components = {
-  h1: ({ children }) => (
-    <span style={{ fontSize: "1.4em", fontWeight: 700, display: "block", margin: "4px 0 2px" }}>
-      {children}
-    </span>
-  ),
-  h2: ({ children }) => (
-    <span style={{ fontSize: "1.2em", fontWeight: 700, display: "block", margin: "4px 0 2px" }}>
-      {children}
-    </span>
-  ),
-  h3: ({ children }) => (
-    <span style={{ fontSize: "1.1em", fontWeight: 600, display: "block", margin: "3px 0 1px" }}>
-      {children}
-    </span>
-  ),
+  // Real heading tags, so a screen reader can jump between the parts of a long
+  // post. Size, weight and spacing are in style.css under `.markdown-message`.
+  h1: ({ children }) => <h1>{children}</h1>,
+  h2: ({ children }) => <h2>{children}</h2>,
+  h3: ({ children }) => <h3>{children}</h3>,
+  // A span rather than a <p>: an image or a table renders a <div>, and the HTML
+  // parser closes a <p> the moment one appears inside it.
   p: ({ children }) => (
-    <span style={{ display: "block", margin: "2px 0", lineHeight: 1.5 }}>{children}</span>
+    <span className="md-p" style={{ display: "block", lineHeight: 1.5 }}>{children}</span>
   ),
   span: ({ className, children, ...props }) => {
     const mentionId = (props as Record<string, unknown>)["data-mention-id"];
@@ -307,19 +298,14 @@ const components: Components = {
       style={{
         borderLeft: "3px solid var(--gryt-accent-9)",
         paddingLeft: "12px",
-        margin: "4px 0",
         color: "var(--gryt-neutral-11)",
       }}
     >
       {children}
     </blockquote>
   ),
-  ul: ({ children }) => (
-    <ul style={{ margin: "2px 0", paddingLeft: "20px" }}>{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol style={{ margin: "2px 0", paddingLeft: "20px" }}>{children}</ol>
-  ),
+  ul: ({ children }) => <ul>{children}</ul>,
+  ol: ({ children }) => <ol>{children}</ol>,
   li: ({ children }) => (
     <li style={{ lineHeight: 1.5 }}>{children}</li>
   ),
@@ -379,11 +365,9 @@ const components: Components = {
       </MessageContextMenu>
     );
   },
-  hr: () => (
-    <hr style={{ border: "none", borderTop: "1px solid var(--gryt-neutral-6)", margin: "6px 0" }} />
-  ),
+  hr: () => <hr />,
   table: ({ children }) => (
-    <div style={{ overflowX: "auto", margin: "4px 0" }}>
+    <div className="md-table">
       <table
         style={{
           borderCollapse: "collapse",

@@ -5,14 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * character count: two hundred newlines is half a screen and 400 characters.
  */
 
-/** How tall a message may be before it is folded. About twelve lines. */
-const COLLAPSED_MAX_PX = 320;
+/** How much of a folded message stays visible. */
+const COLLAPSED_MAX_LINES = 20;
 
 /*
- * Overflow this much and it is worth folding. Without it, a message one line past
- * the cap gets a control that reveals one line and a layout that jumps.
+ * And how much has to be behind the fold for the fold to pay for itself. Equal
+ * to the cap, so a message is only folded once folding hides as much as it shows.
  */
-const WORTH_FOLDING_PX = 80;
+const WORTH_FOLDING_LINES = 20;
 
 /** Falls back to this when the computed line-height is `normal`. */
 const ASSUMED_LINE_RATIO = 1.5;
@@ -44,33 +44,39 @@ function Chevron({ up }: { up: boolean }) {
 
 export function CollapsibleText({ children }: { children: React.ReactNode }) {
   const inner = useRef<HTMLDivElement>(null);
-  const [hiddenLines, setHiddenLines] = useState(0);
+  const [fold, setFold] = useState<{ maxPx: number; hiddenLines: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   const measure = useCallback(() => {
     const el = inner.current;
     if (!el) return;
 
-    const full = el.scrollHeight;
-    if (full <= COLLAPSED_MAX_PX + WORTH_FOLDING_PX) {
-      setHiddenLines(0);
-      return;
-    }
-
     /*
-     * How many lines are behind the fold. `lineHeight` comes back as "normal"
-     * when nothing set it, hence the ratio; floored at 1 rather than claiming 0.
+     * The message itself, not the wrapper: the chat font-size slider is set on
+     * `.markdown-message`, and the wrapper would report the surrounding size.
      */
-    const styles = getComputedStyle(el);
+    const text = el.querySelector(".markdown-message") ?? el;
+    const styles = getComputedStyle(text);
+
+    // `lineHeight` comes back as "normal" when nothing set it, hence the ratio.
     const parsed = Number.parseFloat(styles.lineHeight);
     const lineHeight = Number.isFinite(parsed)
       ? parsed
       : Number.parseFloat(styles.fontSize) * ASSUMED_LINE_RATIO;
 
-    setHiddenLines(Math.max(1, Math.floor((full - COLLAPSED_MAX_PX) / lineHeight)));
+    const maxPx = Math.round(lineHeight * COLLAPSED_MAX_LINES);
+    const hiddenPx = el.scrollHeight - maxPx;
+
+    if (hiddenPx < lineHeight * WORTH_FOLDING_LINES) {
+      setFold(null);
+      return;
+    }
+
+    // Floored at 1 rather than claiming 0.
+    setFold({ maxPx, hiddenLines: Math.max(1, Math.floor(hiddenPx / lineHeight)) });
   }, []);
 
-  const folds = hiddenLines > 0;
+  const folds = fold !== null;
 
   /*
    * Measure directly, then observe. ResizeObserver's initial callback did not
@@ -103,7 +109,7 @@ export function CollapsibleText({ children }: { children: React.ReactNode }) {
       <div
         ref={inner}
         className="message-fold-inner"
-        style={expanded ? undefined : { maxHeight: COLLAPSED_MAX_PX, overflow: "hidden" }}
+        style={expanded ? undefined : { maxHeight: fold.maxPx, overflow: "hidden" }}
       >
         {children}
       </div>
@@ -124,8 +130,8 @@ export function CollapsibleText({ children }: { children: React.ReactNode }) {
           "Show less"
         ) : (
           <>
-            Show <span className="message-fold-count">{hiddenLines}</span> more{" "}
-            {hiddenLines === 1 ? "line" : "lines"}
+            Show <span className="message-fold-count">{fold.hiddenLines}</span> more{" "}
+            {fold.hiddenLines === 1 ? "line" : "lines"}
           </>
         )}
         <Chevron up={expanded} />
