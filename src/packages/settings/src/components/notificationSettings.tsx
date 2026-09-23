@@ -72,7 +72,11 @@ export function NotificationSettings() {
         title="Notification level"
         description="Applies to every server. It can only quieten one, never make one louder — a server you have already muted stays muted."
       >
+        {/* max-[369px]: the three toggles are 71px wider than the 300px
+            Electron minimum leaves it. Each one stands alone, with no shared
+            sliding indicator to strand, so wrapping is the simple fix. */}
         <ToggleGroup
+          className="max-[369px]:flex-wrap"
           value={[globalLevel]}
           onValueChange={(next) => {
             // Base UI hands back an array and clears it when the pressed one is
