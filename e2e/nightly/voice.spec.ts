@@ -6,7 +6,6 @@ import {
   expectPlaying,
   expectSfuAddress,
   focusTile,
-  framesDecoded,
   type Guest,
   joinVoice,
   playedStream,
@@ -166,9 +165,8 @@ test("GRYT-1251: a camera whose announced stream id names nothing still draws th
   // The state the race leaves behind, without the race: an id nobody is sending under.
   await announce(alice, "voice:camera:state", { enabled: true, streamId: "00000000-0000-4000-8000-000000000000" });
 
-  const decoded = await framesDecoded(bob.page);
+  await expectFramesDecoded(bob, "the camera after an announcement nobody is sending under");
   await expectPlaying(camera, 1);
   expect(await playedStream(camera), `${bob.name} stopped drawing ${stream}`).toBe(stream);
   await expect(bob.page.getByText(/Connecting video|Video isn't coming through/)).toHaveCount(0);
-  expect(await framesDecoded(bob.page), "the frames stopped").toBeGreaterThan(decoded + 30);
 });

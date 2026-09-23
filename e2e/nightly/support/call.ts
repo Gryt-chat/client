@@ -115,11 +115,6 @@ export async function expectAudioArriving(guest: Guest): Promise<void> {
     .toBeGreaterThan(start + 1500);
 }
 
-/** Video frames this page has decoded, summed over its peer connections. */
-export async function framesDecoded(page: Page): Promise<number> {
-  return (await peerStats(page)).videoFramesDecoded;
-}
-
 export async function expectFramesDecoded(guest: Guest, what: string): Promise<void> {
   const start = (await peerStats(guest.page)).videoFramesDecoded;
   await expect
