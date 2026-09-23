@@ -124,7 +124,7 @@ assert.match(main, /\.\.\.\(updatesComeFromTheAppStore\s*\?\s*\[\]\s*:\s*\[\s*\{
 
 assert.match(
   main.slice(main.indexOf('"set-slim-variant"'), main.indexOf('"get-beta-channel"')),
-  /if \(updatesComeFromTheAppStore\) return;\s*void autoUpdater\.checkForUpdates\(\)/,
+  /if \(updatesComeFromTheAppStore\) return;\s*void pinFeedToNewestCompleteRelease\(\)/,
 );
 
 assert.match(backgroundCheck, /offerRelease\(/);
@@ -186,16 +186,9 @@ assert.match(
   /if \(process\.platform === "darwin"\) \{\s*nativeAutoUpdater\.on\("update-downloaded", \(\) => updates\.staged\(true\)\);\s*nativeAutoUpdater\.on\("error", \(\) => updates\.staged\(false\)\);/,
 );
 
-// Two checks reach electron-updater: the download `updates` decided on, and the variant
-// switch, which hands its download over so it can be replaced too.
-assert.equal(main.match(/\.checkForUpdates\(\)/g)?.length, 2);
-
-assert.equal(main.match(/\.checkForUpdates\(\)\s*\.then\(updates\.track\)/g)?.length, 1);
-
-assert.match(
-  main.slice(main.indexOf('"set-slim-variant"'), main.indexOf('"get-beta-channel"')),
-  /autoUpdater\.checkForUpdates\(\)\.then\(updates\.track\)/,
-);
+// One check reaches electron-updater: the download `updates` decided on. The variant switch
+// used to run its own, unpinned, and on beta that answered "No published versions" (GRYT-1205).
+assert.equal(main.match(/\.checkForUpdates\(\)/g)?.length, 1);
 
 // Announcing is the update-available handler's job: that is the first moment the
 // release is known to be coming. Announcing from the probe promised nothing real.

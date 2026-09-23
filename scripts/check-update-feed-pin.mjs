@@ -326,7 +326,7 @@ await check("the list request keeps the status that says why", () => {
 
 await check("a throw while pinning is a failed lookup, on both paths", () => {
   assert.match(bodyOf("function pinFailed("), /return \{ kind: "lookup-failed" \};/);
-  assert.equal(main.match(/pinFeedToNewestCompleteRelease\(\)\s*\.catch\(pinFailed\)/g)?.length, 2);
+  assert.equal(main.match(/pinFeedToNewestCompleteRelease\(\)\s*\.catch\(pinFailed\)/g)?.length, 3);
 });
 
 await check("a pressed check answers every unpinned result and only offers a pinned release", () => {
@@ -343,6 +343,24 @@ await check("a pressed check answers every unpinned result and only offers a pin
 
   /* Reporting stays out of electron-updater, whose handlers ran before it read autoDownload (GRYT-1218). */
   assert.doesNotMatch(handler, /\.checkForUpdates\(\)|autoDownload|isUserWithinRollout|resumeAutoDownload/);
+});
+
+await check("the Built-in server switch pins before it checks, and says why when it can't", () => {
+  const start = main.indexOf('"set-slim-variant",');
+  assert.notEqual(start, -1, "the set-slim-variant handler is gone");
+  const handler = main.slice(start, main.indexOf('"get-beta-channel"', start));
+
+  const guard = handler.match(/if \(pin\.kind !== "pinned"\) \{([\s\S]*?)\n\s*return;\s*\}\s*(?:\/\*[\s\S]*?\*\/\s*)?offerRelease\(pin\.release, \{ bypassRollout: true, asked: true \}\);/);
+  assert.ok(guard, "an unpinned result has to return before the release is offered");
+
+  const unpinned = guard[1];
+  assert.match(unpinned, /^\s*if \(pin\.kind === "nothing-to-install"\) \{\s*sendToMain\("not-available"/);
+  assert.match(unpinned, /\} else \{\s*sendToMain\("error", \{\s*message: lookupFailedMessage\(pin, Date\.now\(\), \(at\) =>\s*clockTime\(at, app\.getLocale\(\)\)/);
+
+  /* The spoof and the channel come first: the pin reads both, and unpinned the check
+     reached the github provider, which on beta found no release (GRYT-1205). */
+  assert.match(handler, /autoUpdater\.channel = updateChannel\(\);\s*applyVariantSwitchSpoof\(\);[\s\S]*pinFeedToNewestCompleteRelease\(\)/);
+  assert.doesNotMatch(handler, /\.checkForUpdates\(\)|autoDownload|isUserWithinRollout/);
 });
 
 await check("an error from the pinned feed itself still shows", () => {

@@ -2520,10 +2520,29 @@ if (!gotSingleInstanceLock) {
           // The store build is one variant or the other, and no check here can switch it.
           if (updatesComeFromTheAppStore) return;
 
-          void autoUpdater.checkForUpdates().then(updates.track).catch(() => {
-            /* The renderer hears about failures through update-status; a
-               rejection here is the same event twice. */
-          });
+          void pinFeedToNewestCompleteRelease()
+            .catch(pinFailed)
+            .then((pin) => {
+              /* Pinned first, the way Check for updates does it: unpinned, the check
+                 reaches the github provider, which on beta finds no release (GRYT-1205). */
+              if (pin.kind !== "pinned") {
+                if (pin.kind === "nothing-to-install") {
+                  sendToMain("not-available", {
+                    version: app.getVersion(),
+                  });
+                } else {
+                  sendToMain("error", {
+                    message: lookupFailedMessage(pin, Date.now(), (at) =>
+                      clockTime(at, app.getLocale())
+                    ),
+                  });
+                }
+
+                return;
+              }
+
+              offerRelease(pin.release, { bypassRollout: true, asked: true });
+            });
         }
       );
 
