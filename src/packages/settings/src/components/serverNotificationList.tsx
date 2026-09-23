@@ -55,7 +55,7 @@ export function ServerNotificationList() {
         return (
           <div
             key={host}
-            className="flex items-center gap-3 rounded-(--gryt-radius-md) px-2 py-1.5"
+            className="flex flex-wrap items-center gap-3 rounded-(--gryt-radius-md) px-2 py-1.5"
           >
             <Avatar
               size="small"
@@ -78,7 +78,7 @@ export function ServerNotificationList() {
             </div>
             <Select
               size="small"
-              className="w-40 shrink-0"
+              className="w-40 shrink-0 max-[339px]:w-full"
               value={own ?? "default"}
               onValueChange={(value) =>
                 setNotificationLevel(

@@ -329,9 +329,15 @@ export function AudioSettings() {
             setInputMode(v as "voice_activity" | "push_to_talk")
           }
         >
-          <Tabs.List aria-label="Input mode">
-            <Tabs.Tab value="voice_activity">Voice activity</Tabs.Tab>
-            <Tabs.Tab value="push_to_talk">Push to talk</Tabs.Tab>
+          {/* max-[339px]: tighter padding closes the 26px overflow at the
+              300px Electron minimum without wrapping the sliding indicator. */}
+          <Tabs.List aria-label="Input mode" className="max-[339px]:gap-0.5">
+            <Tabs.Tab value="voice_activity" className="max-[339px]:px-2">
+              Voice activity
+            </Tabs.Tab>
+            <Tabs.Tab value="push_to_talk" className="max-[339px]:px-2">
+              Push to talk
+            </Tabs.Tab>
             <Tabs.Indicator />
           </Tabs.List>
         </Tabs>
