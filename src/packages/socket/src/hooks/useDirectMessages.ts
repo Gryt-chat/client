@@ -35,11 +35,6 @@ interface UseDirectMessagesResult {
   /** Open one, or bring the existing one forward. Resolves when the server answers. */
   openDm: (targetServerUserId: string) => void;
   /**
-   * Take a conversation out of your own list, or put it back. Yours alone, and a
-   * message arriving brings it back — this tidies a sidebar, nothing more.
-   */
-  setHidden: (conversationId: string, hidden: boolean) => void;
-  /**
    * Start a group with these people, optionally named. Never converts a
    * one-to-one: what two people said must not become readable by a third.
    */
@@ -89,15 +84,6 @@ export function useDirectMessages({
       });
     };
 
-    /* The server's answer, which is also what another device hears. Dropping the
-       row on the click would leave it on the phone until a refresh. */
-    const onHidden = (payload: { conversation_id?: string; hidden?: boolean }) => {
-      if (!payload?.conversation_id || payload.hidden !== true) return;
-      setConversations((prev) =>
-        prev.filter((c) => c.conversation_id !== payload.conversation_id),
-      );
-    };
-
     /* Left for good, so it goes without waiting for a fresh list. */
     const onLeft = (payload: { conversation_id?: string }) => {
       if (!payload?.conversation_id) return;
@@ -136,7 +122,6 @@ export function useDirectMessages({
     socket.on("dm:list", onList);
     socket.on("dm:opened", onOpened);
     socket.on("chat:new", onMessage);
-    socket.on("dm:hidden", onHidden);
     socket.on("dm:left", onLeft);
     socket.on("dm:error", onError);
     socket.emit("dm:list", { accessToken });
@@ -145,7 +130,6 @@ export function useDirectMessages({
       socket.off("dm:list", onList);
       socket.off("dm:opened", onOpened);
       socket.off("chat:new", onMessage);
-      socket.off("dm:hidden", onHidden);
       socket.off("dm:left", onLeft);
       socket.off("dm:error", onError);
     };
@@ -162,14 +146,6 @@ export function useDirectMessages({
     (targetServerUserId: string) => {
       if (!socket || !accessToken) return;
       socket.emit("dm:open", { accessToken, targetServerUserId });
-    },
-    [socket, accessToken],
-  );
-
-  const setHidden = useCallback(
-    (conversationId: string, hidden: boolean) => {
-      if (!socket || !accessToken) return;
-      socket.emit("dm:setHidden", { accessToken, conversationId, hidden });
     },
     [socket, accessToken],
   );
@@ -213,7 +189,6 @@ export function useDirectMessages({
     directMessages,
     groups,
     openDm,
-    setHidden,
     createGroup,
     updateGroup,
     addToGroup,

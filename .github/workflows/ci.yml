@@ -37,6 +37,9 @@ jobs:
       - run: yarn test:auth-outage
       - run: yarn test:focus-steal
       - run: yarn test:dm-directory
+      # Which conversations this device has hidden, and what brings one back.
+      # Hiding never leaves the device, so nothing else would notice it breaking.
+      - run: yarn test:hidden-conversations
       - run: yarn test:new-message
       - run: yarn test:server-hover-address
       - run: yarn test:ui-scale
