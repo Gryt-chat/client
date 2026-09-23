@@ -174,9 +174,8 @@ test("a refused fetch says so where the replies would be", async ({ newMember })
   await sendMessage(alice.page, root);
   await startThread(alice.page, root);
 
-  /* The fetch limit is 15 in 10 seconds, and the reply line asks again on every
-     press. It is the one refusal a test can provoke without standing in front
-     of the socket. */
+  /* The fetch limit is 15 in 10 seconds and the reply line asks again on every
+     press, which is the one refusal a test can provoke on its own. */
   const line = messageRow(alice.page, root).getByRole("button", { name: /repl(y|ies)/ });
   const retry = panel(alice.page).getByRole("button", { name: "Try again" });
   for (let i = 0; i < 25 && !(await retry.isVisible()); i++) {
