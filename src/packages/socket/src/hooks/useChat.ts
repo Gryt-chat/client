@@ -335,8 +335,6 @@ export function useChat({
       handleChatErrorEvent(error, activeConversationId, cacheKeyFor(activeConversationId), {
         setIsRateLimited,
         setMessageCacheMeta,
-        setChatMessages,
-        setChatText: setRestoreText,
         rateLimitIntervalRef,
         setRateLimitCountdown,
         onRetry: performRetry,
@@ -349,12 +347,17 @@ export function useChat({
 
     return () => {
       currentConnection.off("chat:error", onError);
-      if (rateLimitIntervalRef.current) {
-        clearInterval(rateLimitIntervalRef.current);
-        rateLimitIntervalRef.current = null;
-      }
     };
   }, [currentConnection, activeConversationId, cacheKeyFor, performRetry, markLatestPendingFailed, retryQueueRef]);
+
+  /* The countdown belongs to the rate limit, not to the listener above, whose
+     cleanup ran on the next render and left the composer locked (GRYT-1393). */
+  useEffect(() => () => {
+    if (rateLimitIntervalRef.current) {
+      clearInterval(rateLimitIntervalRef.current);
+      rateLimitIntervalRef.current = null;
+    }
+  }, []);
 
   // Clear rate limiting state and retry queue when switching servers
   useEffect(() => {
