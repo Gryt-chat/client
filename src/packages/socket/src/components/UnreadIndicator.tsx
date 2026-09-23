@@ -8,12 +8,14 @@ export function UnreadIndicator({
   unread,
   mentions = 0,
 }: {
-  /** Unread messages in this conversation. */
+  /** Messages here that arrived on this connection and nobody has read. */
   unread: number;
-  /** Unseen mentions in it, which are a subset of them. */
+  /** Mentions the server is still holding, which a reload keeps and `unread` loses. */
   mentions?: number;
 }) {
-  const count = unread || mentions;
+  /* The larger of the two, not `unread || mentions`: neither contains the other,
+     so three mentions kept over a reload plus one new reply read as 1. */
+  const count = Math.max(unread, mentions);
   if (count <= 0) return null;
 
   const title =

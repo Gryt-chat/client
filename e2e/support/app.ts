@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 
 import { type BrowserContext, expect, type Locator, type Page } from "@playwright/test";
 
+import { accessTokenOf, withSocket } from "./admin";
+import type { GrytServer } from "./server";
+
 export interface Member {
   context: BrowserContext;
   page: Page;
@@ -163,4 +166,32 @@ export function membersPanel(page: Page): Locator {
 /** Unique per call, so tests sharing a server never match each other's messages. Digits only, for the profanity filter. */
 export function unique(label: string): string {
   return `${label} ${Date.now()}${Math.floor(Math.random() * 1000)}`;
+}
+
+/** A channel's row in the sidebar. Not `getByRole` with an exact name: an unread
+    badge sits inside the button and joins its accessible name. */
+export function sidebarChannelRow(page: Page, name: string): Locator {
+  return page
+    .getByRole("navigation", { name: "Channels" })
+    .locator("button")
+    .filter({ has: page.locator(`span.truncate:text-is("${name}")`) });
+}
+
+/** What a sidebar row is counting, as text. Absent when there is nothing waiting. */
+export function unreadBadge(row: Locator): Locator {
+  return row.locator(".gryt-badge");
+}
+
+/** A text channel made with the owner's token, waited for in the owner's sidebar. */
+export async function addChannel(owner: Page, server: GrytServer, name: string): Promise<void> {
+  const accessToken = await accessTokenOf(owner, server.host);
+  await withSocket(server.httpBase, async (socket) => {
+    const refused = new Promise<never>((_, reject) =>
+      socket.once("server:error", (e: { message?: string }) => reject(new Error(`Making #${name} was refused: ${e?.message}`))),
+    );
+    refused.catch(() => undefined);
+    socket.emit("server:channels:upsert", { accessToken, name, type: "text" });
+    // The new channel list goes to members, not to this socket.
+    await Promise.race([expect(sidebarChannelRow(owner, name)).toBeVisible(), refused]);
+  });
 }

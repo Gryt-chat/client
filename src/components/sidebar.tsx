@@ -533,7 +533,8 @@ function ServerItem({
                 {(() => {
                   const unread = serverUnreadCount(host);
                   const mentions = serverMentionCount(host);
-                  const count = unread || mentions;
+                  // The larger of the two, for the reason in `UnreadIndicator`.
+                  const count = Math.max(unread, mentions);
                   if (count <= 0) return null;
                   return (
                     <div className="pointer-events-none absolute -bottom-1 -right-1 z-1">

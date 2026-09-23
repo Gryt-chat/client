@@ -74,6 +74,8 @@ interface MobileServerViewProps {
   adminActions?: AdminActions;
   /** Unread messages per conversation id. Absent means none. */
   unreadCounts?: Map<string, number>;
+  /** Unread thread replies per conversation id. Absent means none. */
+  threadUnreadCounts?: Map<string, number>;
   mentionCounts?: Map<string, number>;
   selectedDmId?: string | null;
   onSelectDm?: (conversation: { conversation_id: string }) => void;
@@ -327,6 +329,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               currentUserRole={props.currentUserRole}
               adminActions={props.adminActions}
               unreadCounts={props.unreadCounts}
+              threadUnreadCounts={props.threadUnreadCounts}
               mentionCounts={props.mentionCounts}
             />
           </div>

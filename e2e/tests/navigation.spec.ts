@@ -1,9 +1,7 @@
 import type { Page } from "@playwright/test";
 
-import { accessTokenOf, withSocket } from "../support/admin";
-import { channelComposer, joinAnotherServer, messageRow, sendMessage, unique } from "../support/app";
+import { addChannel, channelComposer, joinAnotherServer, messageRow, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
-import type { GrytServer } from "../support/server";
 
 interface Kept {
   body: string;
@@ -34,20 +32,6 @@ function channelRow(page: Page, name: string) {
 
 function railButton(page: Page, name: string) {
   return page.locator('[data-gryt="sidebar"]').getByRole("button", { name, exact: true });
-}
-
-/** A text channel made with the owner's token, and waited for in the owner's sidebar. */
-async function addChannel(owner: Page, server: GrytServer, name: string) {
-  const accessToken = await accessTokenOf(owner, server.host);
-  await withSocket(server.httpBase, async (socket) => {
-    const refused = new Promise<never>((_, reject) =>
-      socket.once("server:error", (e: { message?: string }) => reject(new Error(`Making #${name} was refused: ${e?.message}`))),
-    );
-    refused.catch(() => undefined);
-    socket.emit("server:channels:upsert", { accessToken, name, type: "text" });
-    // The new channel list goes to members, not to this socket.
-    await Promise.race([expect(channelRow(owner, name)).toBeVisible(), refused]);
-  });
 }
 
 test("a notification from another server opens its channel, and each server keeps its own", async ({ newMember, freshServer }) => {
