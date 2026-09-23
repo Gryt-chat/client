@@ -197,8 +197,6 @@ interface RetryQueueEntry {
 export interface ChatErrorDeps {
   setIsRateLimited: (v: boolean) => void;
   setMessageCacheMeta: Dispatch<SetStateAction<MessageCacheMeta>>;
-  setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>;
-  setChatText: (text: string) => void;
   rateLimitIntervalRef: MutableRefObject<NodeJS.Timeout | null>;
   setRateLimitCountdown: Dispatch<SetStateAction<number>>;
   onRetry: () => void;
@@ -214,11 +212,14 @@ const NON_RETRYABLE_ERRORS = [
   "You must be connected",
 ];
 
-function getLatestRetryableEntry(queue: Map<string, RetryQueueEntry>): RetryQueueEntry | null {
+/** How long before a refused send goes out again, when the server named no wait. */
+const RETRY_AFTER_MS = 3000;
+
+/* The send a refusal is about. chat:error names no message, so it is the last
+   one queued — whatever its retry count, because a spent entry has to fail. */
+function latestEntry(queue: Map<string, RetryQueueEntry>): RetryQueueEntry | null {
   let latest: RetryQueueEntry | null = null;
-  for (const entry of queue.values()) {
-    if (entry.retryCount < 1) latest = entry;
-  }
+  for (const entry of queue.values()) latest = entry;
   return latest;
 }
 
@@ -234,7 +235,10 @@ export function handleChatErrorEvent(
   activeCacheKey: string,
   deps: ChatErrorDeps,
 ): void {
-  const canRetry = !!getLatestRetryableEntry(deps.retryQueueRef.current);
+  const entry = latestEntry(deps.retryQueueRef.current);
+  /* One automatic retry, and if that is refused too the row fails and the text
+     goes back in the composer. The thread panel does the same (GRYT-1387). */
+  const canRetry = !!entry && entry.retryCount < 1 && !isNonRetryableError(error);
 
   if (typeof error === 'object' && error.error === 'rate_limited') {
     deps.setIsRateLimited(true);
@@ -255,19 +259,6 @@ export function handleChatErrorEvent(
       // ignore
     }
 
-    if (!canRetry) {
-      deps.setChatMessages((prev) => {
-        const pendingMessages = prev.filter(msg => msg.pending);
-        if (pendingMessages.length > 0) {
-          const latestPending = pendingMessages[pendingMessages.length - 1];
-          if (latestPending.text) {
-            deps.setChatText(latestPending.text);
-          }
-        }
-        return prev.filter(msg => !msg.pending);
-      });
-    }
-
     handleRateLimitError(error, "Chat");
 
     if (deps.rateLimitIntervalRef.current) {
@@ -285,7 +276,6 @@ export function handleChatErrorEvent(
               deps.rateLimitIntervalRef.current = null;
             }
             deps.setIsRateLimited(false);
-            if (canRetry) deps.onRetry();
             return 0;
           }
           return prev - 1;
@@ -293,25 +283,33 @@ export function handleChatErrorEvent(
       }, 1000);
     };
 
-    if (error.retryAfterMs && error.retryAfterMs > 0) {
-      startCountdown(Math.ceil(error.retryAfterMs / 1000));
-    } else {
-      startCountdown(5);
-    }
-  } else if (!isNonRetryableError(error) && canRetry) {
-    handleRateLimitError(error, "Chat");
-    const entry = getLatestRetryableEntry(deps.retryQueueRef.current);
-    if (entry) {
-      entry.timeoutId = setTimeout(() => {
-        deps.onRetry();
-      }, 3000);
-    }
-  } else {
-    handleRateLimitError(error, "Chat");
-    if (canRetry) {
-      deps.onFail();
-    }
+    const waitMs = error.retryAfterMs && error.retryAfterMs > 0 ? error.retryAfterMs : 0;
+    startCountdown(waitMs > 0 ? Math.ceil(waitMs / 1000) : 5);
+
+    /* On the entry rather than on the countdown above, which is cleared by any
+       re-render — so the one retry never went out at all (GRYT-1393). */
+    settle(entry, canRetry, deps, waitMs || RETRY_AFTER_MS);
+    return;
   }
+
+  handleRateLimitError(error, "Chat");
+  settle(entry, canRetry, deps, RETRY_AFTER_MS);
+}
+
+/** Send it again, or give up on it: the two ends of a refusal. */
+function settle(
+  entry: RetryQueueEntry | null,
+  canRetry: boolean,
+  deps: ChatErrorDeps,
+  waitMs: number,
+): void {
+  // A refusal with nothing queued is a fetch's, not a send's.
+  if (!entry) return;
+  if (!canRetry) {
+    deps.onFail();
+    return;
+  }
+  entry.timeoutId = setTimeout(() => deps.onRetry(), waitMs);
 }
 
 // ── Fetch decision ──────────────────────────────────────────────────

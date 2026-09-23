@@ -1,4 +1,4 @@
-import { accessTokenOf, ask, withSocket } from "../support/admin";
+import { accessTokenOf, ask, serverUserIdOf, withSocket } from "../support/admin";
 import { channelComposer, messageRow, pasteText, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
@@ -104,6 +104,56 @@ test("a message whose upload fails comes back to the composer, and its row says 
   await expect(messageRow(alice.page, text)).toContainText("pasted-text.txt");
   await expect(box).toHaveText("");
   await expect(files).toHaveCount(0);
+});
+
+test("a message the server keeps refusing fails instead of sitting pending", async ({ newMember, owner, gryt }) => {
+  const alice = await newMember();
+  const token = await accessTokenOf(owner.page, gryt.server.host);
+  const muted = serverUserIdOf(await accessTokenOf(alice.page, gryt.server.host));
+
+  /* A mute refuses every send and leaves the composer open, which is the two
+     refusals a hard rate limit produces without the thirty-second wait. */
+  await withSocket(gryt.server.httpBase, (socket) =>
+    ask(socket, "server:mute", { accessToken: token, targetServerUserId: muted, muted: true }, "server:mute:success"),
+  );
+
+  const text = unique("refused twice over");
+  const box = channelComposer(alice.page);
+  await box.click();
+  await alice.page.keyboard.insertText(text);
+  await box.press("Enter");
+
+  // One automatic retry, and then the row says so rather than staying pending.
+  await expect(alice.page.locator("[data-message-id]").filter({ hasText: text })).toContainText("Failed to send");
+  await expect(box).toHaveText(text);
+});
+
+test("a send past the rate limit goes out when the wait is over", async ({ owner }) => {
+  test.setTimeout(150_000);
+  const page = owner.page;
+  const box = channelComposer(page);
+
+  // Until the limiter refuses one, which swaps the placeholder for the wait.
+  const texts: string[] = [];
+  for (let i = 0; i < 25 && (await box.isVisible().catch(() => false)); i++) {
+    const text = unique(`too fast ${i}`);
+    try {
+      await box.click({ timeout: 2000 });
+      await page.keyboard.insertText(text);
+      await box.press("Enter", { timeout: 2000 });
+      texts.push(text);
+    } catch {
+      break;
+    }
+  }
+  const refused = texts[texts.length - 1];
+  const waiting = page.locator('[role="textbox"][aria-placeholder^="Please wait"]');
+  await expect(waiting, "eleven sends in a row should trip the limiter").toBeVisible();
+
+  /* The countdown used to be cleared by the next render, so it sat at thirty,
+     the composer never came back and the refused message never left. */
+  await expect(waiting).toHaveCount(0, { timeout: 60_000 });
+  await expect(messageRow(page, refused)).toBeVisible({ timeout: 30_000 });
 });
 
 test("editing a message changes it for everyone", async ({ newMember }) => {
