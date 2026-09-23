@@ -95,6 +95,9 @@ function useSocketsHook() {
   // a real link and the toast can stay plain text.
   const [refusalHelpUrl, setRefusalHelpUrl] = useState<Record<string, string>>({});
   const wasEverConnectedRef = useRef<Record<string, boolean>>({});
+  /* Hosts whose socket has used up its attempts. socket.io keeps `active` true
+     afterwards, so `reconnect_failed` is the only word that it has stopped. */
+  const gaveUpRef = useRef<Set<string>>(new Set());
   const serverDetailsListRef = useRef(serverDetailsList);
   const socketsRef = useRef<Sockets>({});
 
@@ -394,6 +397,7 @@ function useSocketsHook() {
         /* Reachable now that the attempts are capped. It never fired before, so
            the rail sat on "reconnecting" for a server that was never coming back. */
         socket.io.on("reconnect_failed", () => {
+          gaveUpRef.current.add(host);
           setServerConnectionStatus(prev => ({ ...prev, [host]: 'disconnected' }));
           showReconnectGaveUpToast(toastId, serverName);
         });
@@ -673,12 +677,19 @@ function useSocketsHook() {
 
     /* A socket that ran out of attempts stays down until something asks it to
        try again. Coming back to the app, or the network returning, both count. */
+    const gaveUp = gaveUpRef.current;
     const retryGaveUp = () => {
       Object.entries(sockets).forEach(([host, socket]) => {
-        if (!socket || socket.connected || socket.active) return;
+        if (!socket || socket.connected) return;
+        /* A socket stays `active` after its attempts run out, so that flag cannot
+           tell one that gave up from one still trying. GRYT-1254. */
+        if (!gaveUp.has(host)) return;
         // A server that failed to prove itself was put down on purpose, and
         // serverAuth turns reconnection off to keep it there.
         if (socket.io.opts.reconnection === false) return;
+        /* Cleared before the attempt: socket.io fires `reconnect_failed` again
+           if this round runs out too, and until then the socket is trying. */
+        gaveUp.delete(host);
         setServerConnectionStatus((prev) => ({ ...prev, [host]: "connecting" }));
         socket.connect();
       });

@@ -72,14 +72,29 @@ function constant(text, name, where) {
 }
 
 /* Who gets asked to try again when the app comes back or the network returns.
-   Reconnecting a socket that was put down on purpose undoes the refusal. */
+   socket.io leaves `active` true after `reconnect_failed`. GRYT-1254. */
 {
   const body = bodyOf(hook, "const retryGaveUp = ", HOOK);
-  const run = (entries) => {
+  assert.ok(
+    !/socket\.active/.test(body),
+    "retryGaveUp reads socket.active again, which is true for a socket that gave up as well as one still trying",
+  );
+  assert.ok(
+    hook.includes("gaveUpRef.current.add(host)"),
+    "nothing records the host when socket.io gives up, so retryGaveUp has no way to know",
+  );
+  assert.ok(
+    bodyOf(hook, 'socket.io.on("reconnect_failed"', HOOK).includes("gaveUpRef.current.add(host)"),
+    "the host is recorded somewhere other than the reconnect_failed handler",
+  );
+
+  const run = (entries, gaveUpHosts) => {
     const reconnected = [];
     const marked = [];
+    const gaveUp = new Set(gaveUpHosts);
     new Function(
       "sockets",
+      "gaveUp",
       "setServerConnectionStatus",
       `return (() => ${body})();`,
     )(
@@ -94,18 +109,24 @@ function constant(text, name, where) {
           },
         ]),
       ),
+      gaveUp,
       (fn) => marked.push(fn({})),
     );
-    return { reconnected, marked };
+    return { reconnected, marked, gaveUp };
   };
 
-  const { reconnected, marked } = run([
-    ["gaveup.example", { connected: false, active: false }],
-    ["connected.example", { connected: true, active: true }],
-    ["stilltrying.example", { connected: false, active: true }],
-    ["refused.example", { connected: false, active: false, reconnection: false }],
-    ["gone.example", null],
-  ]);
+  /* Every socket here is `active`, the way socket.io leaves them: the one that
+     gave up, the one still working through its attempts, and the connected one. */
+  const { reconnected, marked, gaveUp } = run(
+    [
+      ["gaveup.example", { connected: false, active: true }],
+      ["connected.example", { connected: true, active: true }],
+      ["stilltrying.example", { connected: false, active: true }],
+      ["refused.example", { connected: false, active: true, reconnection: false }],
+      ["gone.example", null],
+    ],
+    ["gaveup.example", "connected.example", "refused.example"],
+  );
 
   assert.deepEqual(
     reconnected,
@@ -118,6 +139,14 @@ function constant(text, name, where) {
     "the rail is not told the server is being tried again",
   );
   assert.equal(marked[0]["gaveup.example"], "connecting");
+  assert.ok(
+    !gaveUp.has("gaveup.example"),
+    "the host stays marked as given up while it is trying again, so the next focus reconnects it on top",
+  );
+
+  // Nothing marked means nothing to retry, however many sockets are down.
+  const quiet = run([["stilltrying.example", { connected: false, active: true }]], []);
+  assert.deepEqual(quiet.reconnected, [], "a socket nobody said had given up was reconnected anyway");
 }
 
-console.log("reconnect limit: ok, capped, dismissable, and a refused server stays down");
+console.log("reconnect limit: ok, capped, dismissable, and only a socket that gave up is retried");
