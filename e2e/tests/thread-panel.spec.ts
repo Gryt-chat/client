@@ -6,6 +6,11 @@ import { expect, test } from "../support/fixtures";
 
 /** The panel itself: what closes it, what Escape means inside it, where it opens. */
 
+/** Wide enough for the panel to sit beside the conversation; `hasRoomForThreadBeside` says 1164. */
+const BESIDE = 1280;
+/** Under it, so the panel takes the chat pane. The Electron minimum is 300. */
+const TAKEOVER = 700;
+
 function panel(page: Page): Locator {
   return page.getByRole("complementary", { name: "Thread" });
 }
@@ -288,4 +293,80 @@ test("starting a thread with no connection says so", async ({ newMember }) => {
   } finally {
     await alice.context.setOffline(false);
   }
+});
+
+test("the panel and the reply in it survive a resize in both directions", async ({ newMember }) => {
+  const alice = await newMember();
+  const { page } = alice;
+
+  const root = unique("a thread open while the window moves");
+  await sendMessage(page, root);
+  await startThread(page, root);
+
+  const draft = unique("half written when the window moved");
+  await threadComposer(page).click();
+  await page.keyboard.insertText(draft);
+  await expect(threadComposer(page)).toHaveText(draft);
+
+  // Beside the conversation: the row behind it is reachable, which it was not
+  // when the panel was drawn over the pane at every width (GRYT-1390).
+  await expect(panel(page)).toHaveAttribute("data-beside", "yes");
+  // The first of the two is the channel's; the panel draws the root a second time.
+  await expect(messageRow(page, root).first()).toBeVisible();
+
+  // Down past the breakpoint, and down again past the one where the desktop
+  // layout hands over to the phone one. Both used to take the panel with them.
+  for (const width of [TAKEOVER, 390, 300]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(panel(page)).toBeVisible();
+    await expect(panel(page)).toHaveAttribute("data-beside", "no");
+    await expect(page.getByRole("button", { name: "Back to the conversation" })).toBeVisible();
+    await expect(threadComposer(page)).toHaveText(draft);
+  }
+
+  for (const width of [TAKEOVER, BESIDE]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(panel(page)).toBeVisible();
+    await expect(threadComposer(page)).toHaveText(draft);
+  }
+  await expect(panel(page)).toHaveAttribute("data-beside", "yes");
+
+  // The reply is still the one that was typed, not a copy of it.
+  await expect(threadComposer(page)).toHaveText(draft);
+  await replyInThread(page, `${draft} and then sent`);
+});
+
+test("a message row beside the panel takes a click where the panel used to be", async ({ newMember }) => {
+  const alice = await newMember();
+  const { page } = alice;
+  await page.setViewportSize({ width: BESIDE, height: 800 });
+
+  const root = unique("a row to click at its centre");
+  await sendMessage(page, root);
+  await startThread(page, root);
+  await expect(panel(page)).toHaveAttribute("data-beside", "yes");
+
+  const row = messageRow(page, root).first();
+  await row.scrollIntoViewIfNeeded();
+  const hit = await page.evaluate((text) => {
+    const aside = document.querySelector('aside[aria-label="Thread"]');
+    const rows = Array.from(document.querySelectorAll("[data-message-id]")) as HTMLElement[];
+    const target = rows.find((r) => r.textContent?.includes(text) && !aside?.contains(r));
+    const scroller = document.querySelector(".chat-scroll-container");
+    if (!target || !scroller) return "no row";
+    // Clamped to the part of the row the scroller is actually showing.
+    const box = target.getBoundingClientRect();
+    const view = scroller.getBoundingClientRect();
+    const top = Math.max(box.top, view.top);
+    const bottom = Math.min(box.bottom, view.bottom);
+    const at = document.elementFromPoint(box.left + box.width / 2, (top + bottom) / 2);
+    if (!at) return "nothing";
+    if (aside?.contains(at)) return "panel";
+    return at.closest("[data-message-id]") === target ? "row" : "something else";
+  }, root);
+  expect(hit, "the centre of the row belongs to the row, not the panel").toBe("row");
+
+  // And the actions on it are reachable, which is what the overlap cost.
+  await row.hover();
+  await expect(row.getByRole("button", { name: "Open thread" })).toBeVisible();
 });
