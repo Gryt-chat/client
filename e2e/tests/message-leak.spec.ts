@@ -5,10 +5,8 @@ import { channelComposer, composer, messageRow, sendMessage, unique } from "../s
 import { expect, test, uniqueName } from "../support/fixtures";
 
 /**
- * A socket that never joined the server, or a member who joined but can't see a
- * given channel, should never be sent that channel's activity: not the message
- * itself, not a reaction, not an edit, a delete or a thread reply (GRYT-1245,
- * fixed in server#192 / server 1.10.15).
+ * Neither an unjoined socket nor a member gated out of a channel should be
+ * sent its activity (GRYT-1245, fixed in server#192 / server 1.10.15).
  */
 
 test("a raw socket that never joined gets none of a public channel's message events", async ({ newMember, gryt }) => {
@@ -64,9 +62,8 @@ test("a raw socket that never joined gets none of a public channel's message eve
     await confirm.getByRole("button", { name: "Delete" }).click();
     await expect(messageRow(alice.page, after)).toHaveCount(0);
 
-    // Every step above waited for the owning member's own page to confirm the
-    // server had processed it. Anything the server was going to send the raw
-    // socket would have arrived well before this check runs.
+    // Every step above waited for the member's own page to confirm the server
+    // had processed it, so anything the raw socket was going to get would have arrived by now.
     expect(seen, "an unjoined socket received server events it was never sent to").toEqual([]);
   } finally {
     raw.disconnect();
@@ -101,8 +98,9 @@ test("a member who joined but can't see a gated channel gets nothing from it", a
     }, "the template should be saved before the channel is put on it").toBe(true);
 
     socket.emit("server:channels:upsert", { accessToken, channelId, name: channelName, type: "text", description: null });
-    // The channel has to exist before it can be scoped, or the server has nothing to put it on.
-    await expect(owner.page.getByRole("button", { name: channelName, exact: true })).toBeVisible();
+    // Still unscoped here, so the owner can click in before it's gated for anyone else.
+    await owner.page.getByRole("button", { name: channelName, exact: true }).click();
+    await expect(channelComposer(owner.page, channelName)).toBeVisible();
 
     socket.emit("server:channels:scope:set", { accessToken, channelId, templateId });
     // The scope has to be committed before the member below joins, or they
@@ -118,9 +116,7 @@ test("a member who joined but can't see a gated channel gets nothing from it", a
 
   // Joined after the channel was already gated, so it's never in what they're sent.
   const member = await newMember();
-  const ownersChannel = owner.page.getByRole("button", { name: channelName, exact: true });
   await expect(member.page.getByText(channelName, { exact: true })).toBeHidden();
-  await ownersChannel.click();
 
   const text = unique("a message the gated member should never see");
   await sendMessage(owner.page, text, channelName);
