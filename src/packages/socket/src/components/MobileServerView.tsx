@@ -7,7 +7,6 @@ import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/t
 
 import { PiChatsFill, PiList, PiUsersFill } from "../../../../lib/icons";
 import { useNewMessageOpen } from "../hooks/newMessageDialog";
-import type { DirectConversation } from "../hooks/useDirectMessages";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useOpenDmSpace } from "../hooks/useOpenDmSpace";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
@@ -76,12 +75,8 @@ interface MobileServerViewProps {
   /** Unread messages per conversation id. Absent means none. */
   unreadCounts?: Map<string, number>;
   mentionCounts?: Map<string, number>;
-  directConversations?: DirectConversation[];
   selectedDmId?: string | null;
   onSelectDm?: (conversation: { conversation_id: string }) => void;
-  onHideDm?: (conversation: DirectConversation) => void;
-  /** Open the settings for a group. Absent means no group management. */
-  onManageGroup?: (conversation: DirectConversation) => void;
 
   // ChatView
   chatMessages: ChatMessage[];
@@ -333,12 +328,6 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               adminActions={props.adminActions}
               unreadCounts={props.unreadCounts}
               mentionCounts={props.mentionCounts}
-              directConversations={props.directConversations}
-              selectedDmId={props.selectedDmId}
-              onSelectDm={props.onSelectDm}
-              onHideDm={props.onHideDm}
-              onManageGroup={props.onManageGroup}
-              showDirectMessages={false}
             />
           </div>
         </div>

@@ -4,7 +4,6 @@ import { RefObject } from "react";
 
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import type { DirectConversation } from "../hooks/useDirectMessages";
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -68,12 +67,6 @@ interface ServerSidebarProps {
   /** Unread messages per conversation id. Absent means none. */
   unreadCounts?: Map<string, number>;
   mentionCounts?: Map<string, number>;
-  directConversations?: DirectConversation[];
-  selectedDmId?: string | null;
-  onSelectDm?: (conversation: DirectConversation) => void;
-  onHideDm?: (conversation: DirectConversation) => void;
-  /** Open the settings for a group. Absent means no group management. */
-  onManageGroup?: (conversation: DirectConversation) => void;
 }
 
 export const ServerSidebar = ({
@@ -88,7 +81,6 @@ export const ServerSidebar = ({
   onChannelClick, clientsSpeaking, streamSources,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, orderResetKey, onAddItem,
   onDisconnectUser, currentUserRole, adminActions, unreadCounts, mentionCounts,
-  directConversations, selectedDmId, onSelectDm, onHideDm, onManageGroup,
 }: ServerSidebarProps) => (
   <div
     role="navigation"
@@ -172,9 +164,6 @@ export const ServerSidebar = ({
               padding: "2px 6px",
             }}>
               <ChannelList
-                /* The rail has a button for them, and clicking a member opens
-                   one, so the sidebar stops carrying a copy (GRYT-1120). */
-                showDirectMessages={false}
                 channels={channels}
                 items={sidebarItems}
                 serverHost={serverHost}
@@ -201,11 +190,6 @@ export const ServerSidebar = ({
                 adminActions={adminActions}
                 unreadCounts={unreadCounts}
                 mentionCounts={mentionCounts}
-                directConversations={directConversations}
-                selectedDmId={selectedDmId}
-                onSelectDm={onSelectDm}
-                onHideDm={onHideDm}
-                onManageGroup={onManageGroup}
               />
             </div>
           </div>
