@@ -244,12 +244,6 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
     return "looking";
   }
 
-  /** A check nobody offered: its download lands in the slot, so a newer release can replace it. */
-  function track(result: UpdateCheck): UpdateCheck {
-    if (!slot) occupy(Promise.resolve(result), downloading);
-    return result;
-  }
-
   function available(version: string) {
     if (!downloading) downloading = { version, announce: false, installWhenReady: false };
     downloading.version = version;
@@ -324,7 +318,6 @@ export function createPendingUpdate(deps: PendingUpdateDeps) {
     reported: () => lastReported,
     offer,
     requestInstall,
-    track,
     available,
     downloaded: downloadedEvent,
     notAvailable,
