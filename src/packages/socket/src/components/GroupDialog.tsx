@@ -157,17 +157,15 @@ export const GroupDialog = ({
 }) => {
   const [name, setName] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  /* `undefined` means "unchanged"; `null` means "go back to the drawn one".
-     Two different answers, and a single string cannot carry both. */
-  const [iconFileId, setIconFileId] = useState<string | null | undefined>(undefined);
+  const [iconFileId, setIconFileId] = useState<string | null>(null);
 
   /* Reset every time it opens rather than on mount. The dialog outlives one
-     use of it, so a name typed and cancelled would still be there next time. */
+     use of it, so a previous group's fields would still be there next time. */
   useEffect(() => {
     if (!open) return;
     setName(existing?.name ?? "");
     setPicked(existing ? existing.members.map((m) => m.server_user_id) : []);
-    setIconFileId(undefined);
+    setIconFileId(existing?.icon_file_id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing?.conversation_id]);
 
@@ -187,30 +185,26 @@ export const GroupDialog = ({
 
   if (!existing) return null;
 
+  // Adding is one-way once picked: there is no Save to cancel out of, so a
+  // click here goes straight to the server (GRYT-1350).
   const toggle = (serverUserId: string) => {
-    if (alreadyIn.has(serverUserId)) return;
-    setPicked((prev) =>
-      prev.includes(serverUserId)
-        ? prev.filter((id) => id !== serverUserId)
-        : [...prev, serverUserId],
-    );
+    if (alreadyIn.has(serverUserId) || picked.includes(serverUserId)) return;
+    setPicked((prev) => [...prev, serverUserId]);
+    onAdd(existing.conversation_id, serverUserId);
   };
 
-  /** What the preview shows: just-uploaded, cleared, or whatever is stored. */
-  const shownIcon = iconFileId === undefined ? (existing.icon_file_id ?? null) : iconFileId;
-
-  const submit = () => {
-    const trimmed = name.trim();
-    const changes: { name?: string | null; iconFileId?: string | null } = {};
-    if ((existing.name ?? "") !== trimmed) changes.name = trimmed || null;
-    if (iconFileId !== undefined) changes.iconFileId = iconFileId;
-    if (Object.keys(changes).length > 0) onUpdate(existing.conversation_id, changes);
-    if (canAdd) {
-      for (const id of picked) {
-        if (!alreadyIn.has(id)) onAdd(existing.conversation_id, id);
-      }
+  const commitIcon = (fileId: string | null) => {
+    setIconFileId(fileId);
+    if (fileId !== (existing.icon_file_id ?? null)) {
+      onUpdate(existing.conversation_id, { iconFileId: fileId });
     }
-    onOpenChange(false);
+  };
+
+  const commitName = () => {
+    const trimmed = name.trim();
+    if ((existing.name ?? "") !== trimmed) {
+      onUpdate(existing.conversation_id, { name: trimmed || null });
+    }
   };
 
   return (
@@ -229,10 +223,11 @@ export const GroupDialog = ({
             <GroupFaceFields
               serverHost={serverHost}
               seed={name.trim() || conversationTitle(existing)}
-              icon={shownIcon}
-              onIcon={setIconFileId}
+              icon={iconFileId}
+              onIcon={commitIcon}
               name={name}
               onName={setName}
+              onNameDone={commitName}
               placeholder={conversationTitle(existing)}
               autoFocus
             />
@@ -250,7 +245,7 @@ export const GroupDialog = ({
                       >
                         <Checkbox
                           checked={inAlready || picked.includes(member.serverUserId)}
-                          disabled={inAlready}
+                          disabled={inAlready || picked.includes(member.serverUserId)}
                           onCheckedChange={() => toggle(member.serverUserId)}
                         />
                         <Avatar
@@ -288,12 +283,7 @@ export const GroupDialog = ({
             >
               Leave group
             </Button>
-            <div className="flex flex-wrap gap-2">
-              <Button tone="ghost" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={submit}>Save</Button>
-            </div>
+            <Button onClick={() => onOpenChange(false)}>Done</Button>
           </Dialog.Footer>
         </Dialog.Popup>
       </Dialog.Portal>
