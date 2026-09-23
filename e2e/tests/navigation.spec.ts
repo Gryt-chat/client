@@ -96,3 +96,20 @@ test("a notification from another server opens its channel, and each server keep
     await expect(channelComposer(viewer.page, "bravo-notes")).toBeVisible();
   });
 });
+
+/* A rail of icon buttons reads as a row of "button" without these. A tooltip
+   does not name a control, so the name has to be on the button. GRYT-1247. */
+test("every button in the rail has a name", async ({ owner }) => {
+  const rail = owner.page.locator('[data-gryt="sidebar"]');
+  await expect(railButton(owner.page, "Direct messages")).toBeVisible();
+
+  const named = await rail.locator("button").evaluateAll((buttons) =>
+    buttons.map((b) => b.getAttribute("aria-label") ?? (b.textContent ?? "").trim()),
+  );
+  expect(named, `a button in the rail has no name: ${JSON.stringify(named)}`).not.toContain("");
+
+  await expect(railButton(owner.page, "Add new server")).toBeVisible();
+  await expect(railButton(owner.page, "Settings and account")).toBeVisible();
+  // The server's icon says which server, off its name in the rail.
+  await expect(railButton(owner.page, "Gryt E2E")).toBeVisible();
+});

@@ -188,6 +188,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         <Tooltip title="Add new server" side="right">
           <IconButton tone="neutral" size="xsmall"
             data-tour="add-server"
+            // The tooltip is not a name, so without this it reads as "button".
+            aria-label="Add new server"
             onClick={() => setShowAddServer(true)}
           >
             <PiPlus size={16} />
@@ -261,7 +263,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               button inside it is a button inside a button — invalid HTML that
               React warns about and browsers resolve however they like. render
               merges the two into one element. */}
-          <Menu.Trigger render={<IconButton size="xsmall" data-tour="profile" />}>
+          <Menu.Trigger
+            render={<IconButton size="xsmall" data-tour="profile" aria-label="Settings and account" />}
+          >
             <Avatar
               fallback={displayNickname[0]}
               src={displayAvatarUrl || undefined}
