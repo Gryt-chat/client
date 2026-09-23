@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, clearSignedOut, getOwnServerUserId, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getOwnServerUserId, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
@@ -240,6 +240,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   } = useAdminActions({ currentConnection, currentlyViewingServer, accessToken, memberLists });
 
   const { getUnreadCounts } = useUnreadTracker();
+  const { getConversationThreadUnreadCounts } = useThreadUnread();
   const { conversationMentionCount, getMentionCounts } = useMentionTracker();
   const { conversationThreadMentionCount } = useThreadMentions();
   /* Separate from the effect above, which does not fire for a mention landing in
@@ -756,6 +757,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   const host = currentlyViewingServer.host;
   const unreadCounts = getUnreadCounts(host);
+  const threadUnreadCounts = getConversationThreadUnreadCounts(host);
   const mentionCounts = getMentionCounts(host);
   const isServerUnreachable = currentConnectionStatus === "disconnected" || currentConnectionStatus === "reconnecting";
   const isVoiceOnThisServer = isConnected && currentServerConnected === host;
@@ -951,6 +953,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             currentUserRole={currentUserRole}
             adminActions={currentAdminActions}
             unreadCounts={unreadCounts}
+            threadUnreadCounts={threadUnreadCounts}
             mentionCounts={mentionCounts}
             chatMessages={visibleChatMessages}
             sealing={activeDm ? sealing : undefined}
@@ -1048,6 +1051,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               currentUserRole={currentUserRole}
               adminActions={currentAdminActions}
               unreadCounts={unreadCounts}
+              threadUnreadCounts={threadUnreadCounts}
               mentionCounts={mentionCounts}
               streamSources={voiceStreamSources}
             />

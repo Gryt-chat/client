@@ -66,6 +66,8 @@ interface ServerSidebarProps {
   adminActions: AdminActions | undefined;
   /** Unread messages per conversation id. Absent means none. */
   unreadCounts?: Map<string, number>;
+  /** Unread thread replies per conversation id. Absent means none. */
+  threadUnreadCounts?: Map<string, number>;
   mentionCounts?: Map<string, number>;
 }
 
@@ -80,7 +82,7 @@ export const ServerSidebar = ({
   isConnecting, currentConnectionId, selectedChannelId,
   onChannelClick, clientsSpeaking, streamSources,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, orderResetKey, onAddItem,
-  onDisconnectUser, currentUserRole, adminActions, unreadCounts, mentionCounts,
+  onDisconnectUser, currentUserRole, adminActions, unreadCounts, threadUnreadCounts, mentionCounts,
 }: ServerSidebarProps) => (
   <div
     role="navigation"
@@ -189,6 +191,7 @@ export const ServerSidebar = ({
                 currentUserRole={currentUserRole}
                 adminActions={adminActions}
                 unreadCounts={unreadCounts}
+                threadUnreadCounts={threadUnreadCounts}
                 mentionCounts={mentionCounts}
               />
             </div>

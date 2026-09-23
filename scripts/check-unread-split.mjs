@@ -31,11 +31,13 @@ function bodyOf(signature) {
 
 /* The two hooks, run with useMemo and useCallback doing the plain thing. What is
    worth checking is the arithmetic, not that React caches it. */
-function run(signature, { directory, unread }) {
+function run(signature, { directory, unread, threads = {} }) {
   const counts = new Map(Object.entries(unread).map(([h, m]) => [h, new Map(Object.entries(m))]));
+  const inThreads = new Map(Object.entries(threads).map(([h, m]) => [h, new Map(Object.entries(m))]));
   return new Function(
     "useDirectory",
     "useUnreadTracker",
+    "useThreadUnread",
     "useMemo",
     "useCallback",
     `return (() => ${bodyOf(signature)})();`,
@@ -44,6 +46,9 @@ function run(signature, { directory, unread }) {
     () => ({
       getUnreadCounts: (host) => counts.get(host) ?? new Map(),
       channelUnreadCount: (host, id) => counts.get(host)?.get(id) ?? 0,
+    }),
+    () => ({
+      getConversationThreadUnreadCounts: (host) => inThreads.get(host) ?? new Map(),
     }),
     (factory) => factory(),
     (fn) => fn,
@@ -107,6 +112,26 @@ const entry = (host, id) => ({ host, conversation: { conversation_id: id } });
 {
   const serverUnread = run("export function useServerChannelUnread()", { directory: [], unread: {} });
   assert.equal(serverUnread("nowhere.example"), 0);
+}
+
+/* A thread's replies are never on its channel's timeline, so without them the
+   icon says nothing about a thread nobody has read. GRYT-1388. */
+{
+  const directory = [entry("a.example", "dm-1")];
+  const unread = { "a.example": { general: 1, "dm-1": 3 } };
+  const threads = { "a.example": { general: 2, "dm-1": 4 } };
+  const serverUnread = run("export function useServerChannelUnread()", { directory, unread, threads });
+
+  assert.equal(serverUnread("a.example"), 3, "the server icon is not counting replies in a channel's threads");
+}
+
+// A thread hanging off a direct conversation stays on the rail's own button.
+{
+  const directory = [entry("a.example", "dm-1")];
+  const threads = { "a.example": { "dm-1": 4 } };
+  const serverUnread = run("export function useServerChannelUnread()", { directory, unread: {}, threads });
+
+  assert.equal(serverUnread("a.example"), 0, "a direct conversation's thread marked the server icon");
 }
 
 /* And the rail actually reads the split count. The arithmetic above is worth

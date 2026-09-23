@@ -98,6 +98,7 @@ export const ChannelList = ({
   currentUserRole,
   adminActions,
   unreadCounts,
+  threadUnreadCounts,
   mentionCounts,
 }: {
   channels: Channel[];
@@ -129,6 +130,8 @@ export const ChannelList = ({
   adminActions?: AdminActions;
   /** Unread messages per conversation id. Absent, or missing, means none. */
   unreadCounts?: Map<string, number>;
+  /** Unread thread replies per conversation id, which the timeline never shows. */
+  threadUnreadCounts?: Map<string, number>;
   /** Unseen mentions per conversation id. Absent means none. */
   mentionCounts?: Map<string, number>;
 }) => {
@@ -270,10 +273,11 @@ export const ChannelList = ({
     const channelId = item.channelId ?? item.id;
     const channel = channelById.get(channelId);
     const hasIndicators = channel?.type === "voice" && (channel?.eSportsMode || channel?.requirePushToTalk || channel?.disableRnnoise || channel?.maxBitrate);
+    /* The threads count even in the open channel: their replies were never on
+       its timeline, so standing here is not reading them (GRYT-1388). */
     const unread =
-      channel && channel.id !== selectedChannelId
-        ? unreadCounts?.get(channel.id) ?? 0
-        : 0;
+      (channel && channel.id !== selectedChannelId ? unreadCounts?.get(channel.id) ?? 0 : 0) +
+      (channel ? threadUnreadCounts?.get(channel.id) ?? 0 : 0);
     // Shown even for the open channel: a mention is cleared by reading rather
     // than by having it open, so one still counted has not been cleared.
     const mentions = channel ? mentionCounts?.get(channel.id) ?? 0 : 0;
@@ -467,12 +471,13 @@ export const ChannelList = ({
       const channelId = item.channelId ?? item.id;
       if (channelId === selectedChannelId) entry.holdsSelected = true;
       if (channelId !== selectedChannelId) entry.unread += unreadCounts?.get(channelId) ?? 0;
+      entry.unread += threadUnreadCounts?.get(channelId) ?? 0;
       entry.mentions += mentionCounts?.get(channelId) ?? 0;
 
       rollup.set(parent, entry);
     }
     return rollup;
-  }, [effectiveItems, selectedChannelId, unreadCounts, mentionCounts]);
+  }, [effectiveItems, selectedChannelId, unreadCounts, threadUnreadCounts, mentionCounts]);
 
   const renderItem = (item: SidebarItem) => {
     if (item.kind === "separator") return renderSeparator(item);

@@ -142,5 +142,24 @@ export function useThreadUnread() {
     [map],
   );
 
-  return { threadUnreadCount, conversationThreadUnreadCount, serverThreadUnreadCount, getThreadUnreadCounts };
+  /** The same totals keyed by channel, for the rows that draw one badge per
+      channel and have no thread to look up (GRYT-1388). */
+  const getConversationThreadUnreadCounts = useCallback(
+    (host: string): Map<string, number> => {
+      const totals = new Map<string, number>();
+      for (const entry of map.get(host)?.values() ?? []) {
+        totals.set(entry.conversationId, (totals.get(entry.conversationId) ?? 0) + entry.count);
+      }
+      return totals;
+    },
+    [map],
+  );
+
+  return {
+    threadUnreadCount,
+    conversationThreadUnreadCount,
+    serverThreadUnreadCount,
+    getThreadUnreadCounts,
+    getConversationThreadUnreadCounts,
+  };
 }

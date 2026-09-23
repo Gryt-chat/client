@@ -148,6 +148,16 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       the conversation id blanked again, so this is re-applied to each. */
   let callMemberships: CallMemberships = {};
 
+  /* Asked once per connection rather than once per socket: a reload, a reconnect
+     and a rejoin are each a moment the list has gone stale (GRYT-1388). */
+  let askedForMentions = false;
+  socket.on("disconnect", () => { askedForMentions = false; });
+
+  function askForMentions() {
+    askedForMentions = true;
+    socket.emit("mentions:list");
+  }
+
   const { nickname, userIdRef, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
   const { setServers, setNewServerInfo, setServerDetailsList, setFailedServerDetails } = ctx;
   const { setClients, setMemberLists, setMemberKeyStates, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
@@ -266,6 +276,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
     setServerDetailsList((old) => ({ ...old, [host]: data }));
 
+    /* A reload never gets `server:joined`, so this was the only event left that
+       says the session is back and the member is known (GRYT-1388). */
+    if (!askedForMentions) askForMentions();
+
     // Not awaited: a key that never arrives means no encrypted messages rather
     // than a connection that failed.
     if (firstTimeOnThisSocket(socket, DM_KEY)) void publishDmKey(socket, host);
@@ -343,7 +357,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     socket.emit("members:fetch");
     // Every join, not just the first: being away is when this accumulates, and it
     // is how a mention read on a phone stops showing here.
-    socket.emit("mentions:list");
+    askForMentions();
 
     // Read when the event fires, not at registration: the socket exists before
     // `useUserId` resolves, so a captured value was usually null.

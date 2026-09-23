@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { useUnreadTracker } from "@/common";
+import { useThreadUnread, useUnreadTracker } from "@/common";
 
 import { useDirectory } from "./dmDirectory";
 
@@ -9,6 +9,7 @@ import { useDirectory } from "./dmDirectory";
 export function useServerChannelUnread(): (host: string) => number {
   const directory = useDirectory();
   const { getUnreadCounts } = useUnreadTracker();
+  const { getConversationThreadUnreadCounts } = useThreadUnread();
 
   const directIds = useMemo(() => {
     const byHost = new Map<string, Set<string>>();
@@ -26,13 +27,17 @@ export function useServerChannelUnread(): (host: string) => number {
     (host: string): number => {
       const direct = directIds.get(host);
       let total = 0;
-      for (const [id, count] of getUnreadCounts(host)) {
-        if (direct?.has(id)) continue;
-        total += count;
+      /* A thread reply never reaches the channel's own count, so without this
+         the rail says nothing about a thread nobody has read (GRYT-1388). */
+      for (const counts of [getUnreadCounts(host), getConversationThreadUnreadCounts(host)]) {
+        for (const [id, count] of counts) {
+          if (direct?.has(id)) continue;
+          total += count;
+        }
       }
       return total;
     },
-    [directIds, getUnreadCounts],
+    [directIds, getUnreadCounts, getConversationThreadUnreadCounts],
   );
 }
 
