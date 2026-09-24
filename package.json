@@ -52,6 +52,7 @@
     "test:chat-retry": "node --disable-warning=ExperimentalWarning scripts/check-chat-retry.mjs",
     "test:member-card-state": "node scripts/check-member-card-state.mjs",
     "test:sidebar-tree": "node scripts/check-sidebar-tree.mjs",
+    "test:hide-muted": "node --disable-warning=ExperimentalWarning scripts/check-hide-muted.mjs",
     "test:settings-index": "node scripts/check-settings-index.mjs",
     "test:notification-prefs": "node scripts/check-notification-prefs.mjs",
     "test:notification-navigation": "node scripts/check-notification-navigation.mjs",

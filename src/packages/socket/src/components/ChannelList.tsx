@@ -2,13 +2,19 @@ import { Button, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import {
+  getHideMuted,
+  getStoredSnapshot,
   getUploadsFileUrl,
+  hiddenMutedRows,
+  HideMutedChannelsItem,
   NotificationLevelMenu,
   type NotificationScope,
   resolveAvatarSrc,
+  setHideMuted,
+  subscribeToPrefs,
 } from "@/common";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
@@ -27,6 +33,7 @@ import {
   orderChanged,
   regroupFolder,
   resolveDropParent,
+  restoreHiddenRows,
 } from "./sidebarTree";
 import { UnreadIndicator } from "./UnreadIndicator";
 
@@ -161,6 +168,31 @@ export const ChannelList = ({
   const channelById = useMemo(
     () => new Map(channels.map((c) => [c.id, c])),
     [channels],
+  );
+
+  const prefs = useSyncExternalStore(subscribeToPrefs, getStoredSnapshot, getStoredSnapshot);
+  const hideMuted = useSyncExternalStore(
+    subscribeToPrefs,
+    () => getHideMuted(serverHost),
+    () => getHideMuted(serverHost),
+  );
+
+  /* Never hidden: the channel on screen, a call you are in, and one naming you.
+     Each is somewhere you are or are being asked to be. */
+  const keepKey = [
+    selectedChannelId ?? "",
+    currentServerConnected === serverHost ? currentChannelId : "",
+    ...[...(mentionCounts ?? [])].filter(([, count]) => count > 0).map(([id]) => id).sort(),
+  ].join("\n");
+  const hiding = useMemo(() => {
+    if (!hideMuted) return null;
+    const keep = new Set(keepKey.split("\n").filter(Boolean));
+    return hiddenMutedRows(prefs.servers, serverHost, effectiveItems, channels, keep);
+  }, [hideMuted, keepKey, prefs, serverHost, effectiveItems, channels]);
+
+  const shownItems = useMemo(
+    () => (hiding ? effectiveItems.filter((i) => !hiding.rows.has(i.id)) : effectiveItems),
+    [hiding, effectiveItems],
   );
 
   /* Local, because it is a view preference: an operator collapsing a folder
@@ -462,7 +494,7 @@ export const ChannelList = ({
       Without the roll-up, collapsing one quietly mutes everything inside. */
   const folderRollup = useMemo(() => {
     const rollup = new Map<string, { children: number; unread: number; mentions: number; holdsSelected: boolean }>();
-    for (const item of effectiveItems) {
+    for (const item of shownItems) {
       const parent = item.parentItemId;
       if (!parent) continue;
       const entry = rollup.get(parent) ?? { children: 0, unread: 0, mentions: 0, holdsSelected: false };
@@ -477,7 +509,7 @@ export const ChannelList = ({
       rollup.set(parent, entry);
     }
     return rollup;
-  }, [effectiveItems, selectedChannelId, unreadCounts, threadUnreadCounts, mentionCounts]);
+  }, [shownItems, selectedChannelId, unreadCounts, threadUnreadCounts, mentionCounts]);
 
   const renderItem = (item: SidebarItem) => {
     if (item.kind === "separator") return renderSeparator(item);
@@ -609,8 +641,8 @@ export const ChannelList = ({
   /** Drawn order: top level in position order, each folder followed by its own.
       A member gets no empty folder; an editor keeps one, to have somewhere to drag into. */
   const rows = useMemo(
-    () => flattenSidebar(effectiveItems, collapsed, { hideEmptyFolders: !canManage }),
-    [effectiveItems, collapsed, canManage],
+    () => flattenSidebar(shownItems, collapsed, { hideEmptyFolders: !canManage }),
+    [shownItems, collapsed, canManage],
   );
 
   const [localItems, setLocalItems] = useState(() => rows.map((r) => r.item));
@@ -664,8 +696,11 @@ export const ChannelList = ({
     setLocalItems(order);
 
     if (!orderChanged(rows, order.map((i) => i.id), item.id, parent)) return;
-    onReorder?.(buildReorderPayload(order, effectiveItems, item.id, parent), { itemId: item.id, parentItemId: parent });
-  }, [localItems, draggedGroup, effectiveItems, rows, onReorder]);
+    const full = hiding
+      ? restoreHiddenRows(order, flattenSidebar(effectiveItems, collapsed).map((r) => r.item), hiding.rows, item.id)
+      : order;
+    onReorder?.(buildReorderPayload(full, effectiveItems, item.id, parent), { itemId: item.id, parentItemId: parent });
+  }, [localItems, draggedGroup, effectiveItems, rows, onReorder, hiding, collapsed]);
 
   const depthById = useMemo(() => {
     const map = new Map<string, 0 | 1>();
@@ -692,6 +727,28 @@ export const ChannelList = ({
     [displayItems, channelById, serverHost],
   );
 
+
+  /* Styled like the "Hidden" row over conversations. Pressing it shows them all
+     again, since turning the switch off is the only thing it could mean. */
+  const hiddenCount = hiding?.channels ?? 0;
+  const hiddenLine = hiddenCount > 0 ? (
+    <button
+      type="button"
+      onClick={() => setHideMuted(serverHost, false)}
+      title="Show muted channels"
+      aria-label={`Show ${hiddenCount} hidden muted ${hiddenCount === 1 ? "channel" : "channels"}`}
+      className={[
+        "mt-3 flex w-full items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 text-left",
+        "text-xs font-semibold tracking-wide transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light",
+        "text-gryt-muted hover:text-gryt-text active:text-gryt-text",
+      ].join(" ")}
+    >
+      <span className="shrink-0">Hidden</span>
+      <span aria-hidden="true" className="h-px min-w-2 flex-1 bg-gryt-border" />
+      <span aria-hidden="true" className="shrink-0 tabular-nums opacity-70">{hiddenCount}</span>
+    </button>
+  ) : null;
 
   const staticList = (
     <LayoutGroup id={serverHost}>
@@ -730,6 +787,7 @@ export const ChannelList = ({
           }
         >
           {staticList}
+          {hiddenLine}
           <div style={{ flex: 1 }} />
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
@@ -741,6 +799,7 @@ export const ChannelList = ({
                 </ContextMenu.GroupLabel>
               </ContextMenu.Group>
               {notificationSubmenu({ kind: "server" })}
+              <HideMutedChannelsItem host={serverHost} />
             </ContextMenu.Popup>
           </ContextMenu.Positioner>
         </ContextMenu.Portal>
@@ -823,6 +882,7 @@ export const ChannelList = ({
         }
       >
         {draggableList}
+        {hiddenLine}
         {/* Takes the leftover space, so the empty area below the last channel
             belongs to the trigger. The column is otherwise only as tall as its
             content even when the trigger is not. */}
@@ -837,6 +897,7 @@ export const ChannelList = ({
           </ContextMenu.GroupLabel>
         </ContextMenu.Group>
         {notificationSubmenu({ kind: "server" })}
+        <HideMutedChannelsItem host={serverHost} />
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => onAddItem?.("channel:text")}>
           Add channel

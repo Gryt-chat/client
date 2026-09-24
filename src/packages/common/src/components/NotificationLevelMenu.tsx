@@ -3,12 +3,14 @@ import { useSyncExternalStore } from "react";
 
 import {
   getGlobalLevel,
+  getHideMuted,
   getOwnLevel,
   getPlacement,
   getStoredSnapshot,
   globalOverrules,
   type NotificationLevel,
   resolveInheritedLevel,
+  setHideMuted,
   setNotificationLevel,
   subscribeToPrefs,
 } from "../hooks/notificationPrefs";
@@ -133,5 +135,20 @@ export function NotificationLevelMenu({
         </ContextMenu.Positioner>
       </ContextMenu.Portal>
     </ContextMenu.SubmenuRoot>
+  );
+}
+
+/** The server menu's switch for leaving muted channels out of its sidebar. Both
+    server menus show it, and it is the same setting in each. */
+export function HideMutedChannelsItem({ host }: { host: string }) {
+  const on = useSyncExternalStore(
+    subscribeToPrefs,
+    () => getHideMuted(host),
+    () => getHideMuted(host),
+  );
+  return (
+    <ContextMenu.CheckboxItem checked={on} onCheckedChange={(next) => setHideMuted(host, next)}>
+      Hide muted channels
+    </ContextMenu.CheckboxItem>
   );
 }

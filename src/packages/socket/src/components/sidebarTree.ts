@@ -148,6 +148,46 @@ export function buildReorderPayload(
   return entries;
 }
 
+/**
+ * `order` with rows the sidebar left out put back, each after the sibling it
+ * followed in `before` (or first in its folder), so a drag never drops one.
+ */
+export function restoreHiddenRows(
+  order: SidebarItem[],
+  before: SidebarItem[],
+  hidden: ReadonlySet<string>,
+  movedId: string,
+): SidebarItem[] {
+  const folders = folderIds(before);
+  const startOf = (parent: string | null) => `start:${parent ?? ""}`;
+  const anchored = new Map<string, SidebarItem[]>();
+  const lastShown = new Map<string | null, string>();
+
+  for (const item of before) {
+    const parent = effectiveParent(item, folders);
+    if (hidden.has(item.id)) {
+      const key = lastShown.get(parent) ?? startOf(parent);
+      anchored.set(key, [...(anchored.get(key) ?? []), item]);
+    } else if (item.id !== movedId) {
+      // The moved row is no anchor: what followed it stays where it was.
+      lastShown.set(parent, item.id);
+    }
+  }
+
+  const out: SidebarItem[] = [];
+  const place = (item: SidebarItem) => {
+    out.push(item);
+    if (item.kind === "folder") placeAfter(startOf(item.id));
+    placeAfter(item.id);
+  };
+  const placeAfter = (key: string) => {
+    for (const item of anchored.get(key) ?? []) place(item);
+  };
+  placeAfter(startOf(null));
+  for (const item of order) place(item);
+  return out;
+}
+
 /** The rows drawn under a folder: what goes with it when it is dragged. None while it is collapsed. */
 export function folderChildrenInRows(rows: SidebarRow[], folderId: string): SidebarItem[] {
   const at = rows.findIndex((r) => r.item.id === folderId && r.item.kind === "folder");
