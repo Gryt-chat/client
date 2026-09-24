@@ -1,5 +1,5 @@
 import { Button, Spinner, VideoPlayer } from "@gryt/ui";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 import { PiWarningCircle } from "../../../../lib/icons";
 import type { SealedVideo } from "../hooks/useSealedVideo";
@@ -9,12 +9,26 @@ function mediaLabel(fileName?: string | null, size?: number | null): string | nu
   return fileName ? `${fileName}${size != null ? ` · ${formatFileSize(size)}` : ""}` : null;
 }
 
+/** The stored size as a CSS ratio, clamped: a sealed file's size is the sender's word for it. */
+function videoRatio(width?: number | null, height?: number | null): string | undefined {
+  if (!width || !height || width <= 0 || height <= 0) return undefined;
+  return Math.min(4, Math.max(1 / 4, width / height)).toFixed(4);
+}
+
+/** The player takes this shape before any of the video loads, so pressing play moves nothing (GRYT-1309). */
+function sizedBy(width?: number | null, height?: number | null) {
+  const ratio = videoRatio(width, height);
+  return ratio ? { "data-sized": "", style: { "--chat-video-ratio": ratio } as CSSProperties } : {};
+}
+
 export const ChatMediaPlayer = ({
   src,
   type,
   poster,
   fileName,
   size,
+  width,
+  height,
   volume,
   onVolumeChange,
   onError,
@@ -25,6 +39,9 @@ export const ChatMediaPlayer = ({
   poster?: string;
   fileName?: string | null;
   size?: number | null;
+  /** The video's display size as stored with the attachment, when there is one. */
+  width?: number | null;
+  height?: number | null;
   volume: number;
   onVolumeChange: (v: number) => void;
   /** The load failed. The owner may hand back a new `src`. */
@@ -39,6 +56,8 @@ export const ChatMediaPlayer = ({
         src={src}
         poster={poster}
         label={label}
+        width={width}
+        height={height}
         volume={volume}
         onVolumeChange={onVolumeChange}
         onError={onError}
@@ -56,6 +75,8 @@ function ChatVideo({
   src,
   poster,
   label,
+  width,
+  height,
   volume,
   onVolumeChange,
   onError,
@@ -64,13 +85,15 @@ function ChatVideo({
   src: string;
   poster?: string;
   label: string | null;
+  width?: number | null;
+  height?: number | null;
   volume: number;
   onVolumeChange: (v: number) => void;
   onError?: () => void;
   onPosterError?: () => void;
 }) {
   return (
-    <div className="chat-video-player">
+    <div className="chat-video-player" {...sizedBy(width, height)}>
       <VideoPlayer
         src={src}
         poster={poster}
@@ -92,6 +115,8 @@ export function ChatSealedVideo({
   video,
   fileName,
   size,
+  width,
+  height,
   volume,
   onVolumeChange,
 }: {
@@ -99,6 +124,9 @@ export function ChatSealedVideo({
   video: SealedVideo;
   fileName?: string | null;
   size?: number | null;
+  /** From inside the sealed message: measured by the sender's app, never seen by the server. */
+  width?: number | null;
+  height?: number | null;
   volume: number;
   onVolumeChange: (v: number) => void;
 }) {
@@ -120,7 +148,12 @@ export function ChatSealedVideo({
   }, [src]);
 
   return (
-    <div ref={box} className="chat-video-player relative" data-sealed={src ? undefined : phase}>
+    <div
+      ref={box}
+      className="chat-video-player relative"
+      data-sealed={src ? undefined : phase}
+      {...sizedBy(width, height)}
+    >
       <div inert={!src}>
         <VideoPlayer
           src={src ?? ""}

@@ -58,6 +58,8 @@ export function MessageAttachment({
         open={meta.open_sealed}
         fileName={fileName}
         size={meta.size}
+        width={meta.width}
+        height={meta.height}
         messageActions={messageActions}
         volume={chatMediaVolume}
         onVolumeChange={setChatMediaVolume}
@@ -74,6 +76,8 @@ export function MessageAttachment({
           poster={isVideo && meta?.has_thumbnail ? thumbUrl : undefined}
           fileName={meta?.original_name}
           size={meta?.size}
+          width={meta?.width}
+          height={meta?.height}
           volume={chatMediaVolume}
           onVolumeChange={setChatMediaVolume}
           onError={local ? undefined : refreshUrl}
@@ -99,6 +103,8 @@ function SealedVideoAttachment({
   open,
   fileName,
   size,
+  width,
+  height,
   messageActions,
   volume,
   onVolumeChange,
@@ -106,6 +112,8 @@ function SealedVideoAttachment({
   open: () => Promise<Blob>;
   fileName?: string | null;
   size?: number | null;
+  width?: number | null;
+  height?: number | null;
   messageActions: MessageActions;
   volume: number;
   onVolumeChange: (v: number) => void;
@@ -117,6 +125,8 @@ function SealedVideoAttachment({
         video={video}
         fileName={fileName}
         size={size}
+        width={width}
+        height={height}
         volume={volume}
         onVolumeChange={onVolumeChange}
       />
