@@ -6,6 +6,7 @@ import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/comm
 import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
 import { type ChatErrorPayload, isMutedError, isNonRetryableError } from "./chatEventHandlers";
+import { mergeMessages } from "./mergeMessages";
 import { forgetOpenThread, recallOpenThread, rememberOpenThread } from "./openThreadMemory";
 import { draftKey, returnDraft } from "./returnedDrafts";
 import { uploadChatFile } from "./uploadChatFile";
@@ -247,30 +248,15 @@ export function useThreads(
         // Merged like thread:updated: history carries the thread, but not the
         // tags the forum index already knew about.
         const thread = { ...o?.thread, ...p.thread } as ThreadSummary;
-
-        /* A page fetched with `before` goes in front of what is held; the first
-           page replaces it. Without that, scrolling back threw away the newer. */
-        if (p.before && o) {
-          const known = new Set(o.messages.map((m) => m.message_id));
-          const older = items.filter((m) => !known.has(m.message_id));
-          return {
-            ...o,
-            thread,
-            // The root rides on the first page only, so an older page must not
-            // blank the topic sitting above the divider.
-            root: o.root,
-            messages: [...older, ...o.messages],
-            loading: false,
-            loadingOlder: false,
-            hasOlder: p.hasMore ?? false,
-            error: null,
-          };
-        }
-
+        /* Either page is merged into what is held. A reply that landed while the
+           first page was on its way isn't in it, and replacing dropped it (GRYT-1241). */
+        const held = o?.thread.thread_id === p.thread.thread_id ? o.messages : [];
         return {
           thread,
-          root: p.root,
-          messages: items,
+          // The root rides on the first page only, so an older page must not
+          // blank the topic sitting above the divider.
+          root: p.before && o ? o.root : p.root,
+          messages: mergeMessages(held, items),
           loading: false,
           loadingOlder: false,
           hasOlder: p.hasMore ?? false,

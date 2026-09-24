@@ -1,7 +1,7 @@
-import type { Locator, Page } from "@playwright/test";
+import type { BrowserContext, Locator, Page, WebSocketRoute } from "@playwright/test";
 
 import { accessTokenOf, setProfanityMode } from "../support/admin";
-import { composer, messageRow, sendMessage, unique } from "../support/app";
+import { composer, CONFIRMED_ROW, type Member, messageRow, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 /** The panel itself: what closes it, what Escape means inside it, where it opens. */
@@ -361,4 +361,98 @@ test("a message row beside the panel takes a click where the panel used to be", 
   // And the actions on it are reachable, which is what the overlap cost.
   await row.hover();
   await expect(row.getByRole("button", { name: "Open thread" })).toBeVisible();
+});
+
+/** One socket.io event held back in a page's socket until `release`, so a race runs in the order a test picks. */
+interface HeldEvent {
+  holding: boolean;
+  held: number;
+  /** Every frame the server sent the page, held or not. */
+  received: string[];
+  release: () => void;
+}
+
+async function holdEvent(context: BrowserContext, event: string, direction: "to the page" | "to the server"): Promise<HeldEvent> {
+  const frames: { to: WebSocketRoute; message: string | Buffer }[] = [];
+  const state: HeldEvent = {
+    holding: false,
+    held: 0,
+    received: [],
+    release: () => {
+      state.holding = false;
+      for (const { to, message } of frames.splice(0)) to.send(message);
+      state.held = 0;
+    },
+  };
+  const matches = (message: string | Buffer) => state.holding && message.toString().includes(`["${event}",`);
+  await context.routeWebSocket(
+    (url) => url.pathname.startsWith("/socket.io/"),
+    (page) => {
+      const server = page.connectToServer();
+      server.onMessage((message) => {
+        state.received.push(message.toString());
+        if (direction === "to the page" && matches(message)) {
+          frames.push({ to: page, message });
+          state.held = frames.length;
+        } else page.send(message);
+      });
+      page.onMessage((message) => {
+        if (direction === "to the server" && matches(message)) {
+          frames.push({ to: server, message });
+          state.held = frames.length;
+        } else server.send(message);
+      });
+    },
+  );
+  return state;
+}
+
+/**
+ * Alice opens a thread with `event` held, bob replies, and the event goes once alice has his reply.
+ * Returns the rows in her panel for the reply that was already there and for bob's.
+ */
+async function replyWhileTheThreadLoads(alice: Member, bob: Member, event: string, direction: "to the page" | "to the server") {
+  const root = unique("a thread opened mid-reply");
+  const early = unique("a reply already on the server");
+  const late = unique("a reply sent while the thread loaded");
+  await sendMessage(alice.page, root);
+  await startThread(alice.page, root);
+  await replyInThread(alice.page, early);
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
+
+  const socket = await holdEvent(alice.context, event, direction);
+  // A route only catches sockets opened after it.
+  await alice.page.reload();
+  await expect(messageRow(alice.page, root)).toBeVisible();
+
+  socket.holding = true;
+  await openThread(alice.page, root);
+  await expect.poll(() => socket.held).toBe(1);
+
+  await openThread(bob.page, root);
+  await replyInThread(bob.page, late);
+  await expect.poll(() => socket.received.some((frame) => frame.includes('["chat:new",') && frame.includes(late))).toBe(true);
+  socket.release();
+
+  const rows = panel(alice.page).locator(CONFIRMED_ROW);
+  // Only the page brings this one, so it being drawn means the page went in.
+  await expect(rows.filter({ hasText: early })).toHaveCount(1);
+  return { page: socket.received, late, lateRows: rows.filter({ hasText: late }) };
+}
+
+test("a reply that lands while a thread's first page is on its way stays", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+  // The server read the page before bob replied, so only chat:new carries his reply.
+  const { lateRows } = await replyWhileTheThreadLoads(alice, bob, "thread:history", "to the page");
+  await expect(lateRows, "the first page threw away a reply that came in while it loaded").toHaveCount(1);
+});
+
+test("a reply in both chat:new and the first page is drawn once", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+  // Held on the way out instead, so the server reads the page after bob replied.
+  const { page, late, lateRows } = await replyWhileTheThreadLoads(alice, bob, "thread:fetch", "to the server");
+  expect(page.some((frame) => frame.includes('["thread:history",') && frame.includes(late))).toBe(true);
+  await expect(lateRows).toHaveCount(1);
 });
