@@ -17,6 +17,7 @@ import { openSealedAttachment } from "../utils/sealedAttachments";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import {
   ChatErrorPayload,
+  type ChatErrorRef,
   handleChatErrorEvent,
   handleHistoryPayload,
   handleMessageDeleted,
@@ -328,7 +329,7 @@ export function useChat({
   useEffect(() => {
     if (!currentConnection) return;
 
-    const onError = (error: ChatErrorPayload) => {
+    const onError = (error: ChatErrorPayload, ref?: ChatErrorRef) => {
       // The key comes out of the in-flight set only on `chat:history`, which a
       // failed fetch never produces — so left behind, the guard is permanent.
       inFlightFetchRef.current.delete(cacheKeyFor(activeConversationId));
@@ -342,7 +343,7 @@ export function useChat({
         onRetry: performRetry,
         onFail: markLatestPendingFailed,
         retryQueueRef,
-      });
+      }, ref);
     };
 
     currentConnection.on("chat:error", onError);

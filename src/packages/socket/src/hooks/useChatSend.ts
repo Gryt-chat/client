@@ -68,8 +68,8 @@ interface UseChatSendReturn {
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage: (messageId: string, conversationId: string, newText: string) => void;
   retryQueueRef: MutableRefObject<Map<string, RetryEntry>>;
-  performRetry: () => void;
-  markLatestPendingFailed: () => void;
+  performRetry: (pendingId?: string) => void;
+  markLatestPendingFailed: (pendingId?: string) => void;
   /**
    * Set when a send was held back because the conversation would go out in the
    * clear, and carries who is blocking it. Null the rest of the time.
@@ -109,17 +109,19 @@ export function useChatSend({
    * A ref because `markLatestPendingFailed` is declared below this and
    * `performRetry` needs it (GRYT-765).
    */
-  const markLatestPendingFailedRef = useRef<() => void>(() => {});
+  const markLatestPendingFailedRef = useRef<(pendingId?: string) => void>(() => {});
 
-  const performRetry = useCallback(() => {
+  /** The named send, or with none the last one not yet retried. */
+  const performRetry = useCallback((pendingId?: string) => {
     const queue = retryQueueRef.current;
     let target: { pendingId: string; entry: RetryEntry } | null = null;
-    for (const [pendingId, entry] of queue) {
-      if (entry.retryCount < 1) {
-        target = { pendingId, entry };
+    for (const [id, entry] of queue) {
+      if (entry.retryCount < 1 && (!pendingId || id === pendingId)) {
+        target = { pendingId: id, entry };
       }
     }
     if (!target || !currentConnection) return;
+    const retried = target.pendingId;
 
     target.entry.retryCount++;
     const freshToken = getServerAccessToken(currentlyViewingServer?.host || "");
@@ -144,21 +146,22 @@ export function useChatSend({
       .then((sealed) => {
         if (sealed) payload.sealed = sealed;
         else if (sealDecisionRef.current?.kind === "seal") {
-          markLatestPendingFailedRef.current();
+          markLatestPendingFailedRef.current(retried);
           return;
         } else payload.text = text;
         currentConnection.emit("chat:send", payload);
       })
       .catch(() => {
-        markLatestPendingFailedRef.current();
+        markLatestPendingFailedRef.current(retried);
       });
   }, [currentConnection, currentlyViewingServer?.host, seal]);
 
-  const markLatestPendingFailed = useCallback(() => {
+  /** The named send, or with none the last one queued. */
+  const markLatestPendingFailed = useCallback((pendingId?: string) => {
     const queue = retryQueueRef.current;
     let latestPendingId: string | null = null;
-    for (const [pendingId] of queue) {
-      latestPendingId = pendingId;
+    for (const [id] of queue) {
+      if (!pendingId || id === pendingId) latestPendingId = id;
     }
     if (!latestPendingId) return;
 

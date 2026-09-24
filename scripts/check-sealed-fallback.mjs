@@ -26,7 +26,7 @@ for (const [i, body] of emits.entries()) {
   );
   assert.match(
     body,
-    /markLatestPendingFailed(Ref\.current)?\(\);\s*\n\s*return;/,
+    /markLatestPendingFailed(Ref\.current)?\(\w*\);\s*\n\s*return;/,
     `send path ${i + 1} does not stop when a sealable conversation failed to seal`,
   );
 }

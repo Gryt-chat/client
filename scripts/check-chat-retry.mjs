@@ -123,6 +123,50 @@ const mutedForever = refuse({ error: "muted", expiresAt: null, message: "You are
 assert.deepEqual(mutedForever.muted, [null], "a mute with no end reads as no expiry rather than as no mute");
 assert.equal(mutedForever.failed, 1, "and still fails the row");
 
+// ── A burst, where each refusal names its send (GRYT-1410) ──────────
+
+/* Four sends refused at once. Without a name, every refusal landed on the last
+   row queued, and the three before it stayed pending until a reload. */
+function burst(retryCount, refs) {
+  const { handle, timeouts } = load();
+  const queue = new Map(
+    ["a", "b", "c", "d"].map((id) => [`pending-${id}`, { nonce: `nonce-${id}`, retryCount }]),
+  );
+  const calls = { retried: [], failed: [] };
+  const deps = {
+    setIsRateLimited: () => {},
+    setMessageCacheMeta: () => {},
+    rateLimitIntervalRef: { current: null },
+    setRateLimitCountdown: () => {},
+    onRetry: (id) => calls.retried.push(id),
+    onFail: (id) => calls.failed.push(id),
+    retryQueueRef: { current: queue },
+  };
+  for (const ref of refs) handle(RATE_LIMITED, "conversation-1", "key-1", deps, ref);
+  for (const t of timeouts) t.fn();
+  return calls;
+}
+
+const named = ["a", "b", "c", "d"].map((id) => ({ nonce: `nonce-${id}` }));
+const firstBurst = burst(0, named);
+assert.deepEqual(firstBurst.retried, ["pending-a", "pending-b", "pending-c", "pending-d"], "each refused send should be retried, and only once");
+assert.deepEqual(firstBurst.failed, [], "a first refusal fails nothing");
+
+const secondBurst = burst(1, named);
+assert.deepEqual(secondBurst.failed, ["pending-a", "pending-b", "pending-c", "pending-d"], "a second refusal fails the row it names, so none is left pending");
+assert.deepEqual(secondBurst.retried, [], "and sends nothing again");
+
+// A reply in a thread shares chat:error but not this queue, so its refusal is left to the panel.
+const elsewhere = burst(1, [{ nonce: "nonce-thread-reply" }]);
+assert.deepEqual(elsewhere, { retried: [], failed: [] }, "a nonce this queue does not hold should settle nothing here");
+
+/* A server from before GRYT-1410 names nothing. Then it is the last row, and the
+   send hook is handed no id so it picks the row the way it always did. */
+const unnamed = burst(1, [undefined, undefined]);
+assert.deepEqual(unnamed.failed, [undefined, undefined], "an older server's refusal still fails a row, chosen as before");
+const unnamedFirst = burst(0, [undefined]);
+assert.deepEqual(unnamedFirst.retried, [undefined], "and still earns the one retry");
+
 // ── The mute the composer draws ─────────────────────────────────────
 
 const STORE = "src/packages/socket/src/hooks/textMute.ts";
@@ -188,4 +232,4 @@ assert.ok(!/\d{4}/.test(store.muteLiftsAt(today)), "a mute lifting today is name
 const later = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
 assert.ok(store.muteLiftsAt(later).includes(","), "one lifting another day carries the date too");
 
-console.log("chat retry: a refused send is tried once and then fails, and a mute is not retried at all");
+console.log("chat retry: a refused send is tried once and then fails, a burst settles every row it names, and a mute is not retried at all");
