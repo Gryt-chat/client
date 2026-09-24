@@ -112,9 +112,8 @@ test("a message the server keeps refusing fails instead of sitting pending", asy
   const alice = await newMember();
   const token = await accessTokenOf(owner.page, gryt.server.host);
 
-  /* A blocked word is refused every time and leaves the composer open, which is
-     the two refusals a hard rate limit gives without the thirty-second wait. A
-     mute used to stand in for it, and now locks the box instead (GRYT-1400). */
+  /* A blocked word is refused every time and leaves the composer open. A mute
+     used to stand in for it, and locks the box now instead (GRYT-1400). */
   await setProfanityMode(gryt.server.httpBase, token, "block");
 
   try {
