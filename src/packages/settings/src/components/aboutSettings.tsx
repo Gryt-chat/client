@@ -78,6 +78,8 @@ function UpdateControls() {
         return `v${status.version} is ready to install`;
       case "not-available":
         return "Gryt is up to date";
+      case "store-managed":
+        return status.message ?? "The Microsoft Store keeps this version up to date.";
       case "pending":
         return `v${status.version} will finish installing when you quit Gryt`;
       case "installing":
@@ -201,7 +203,9 @@ function UpdateControls() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               {isReady && <PiClockClockwiseFill size={16} color="var(--gryt-success-9)" />}
-              {status?.status === "not-available" && <PiCheckCircleFill size={16} color="var(--gryt-success-9)" />}
+              {(status?.status === "not-available" || status?.status === "store-managed") && (
+                <PiCheckCircleFill size={16} color="var(--gryt-success-9)" />
+              )}
               {status?.status === "error" && <PiXCircleFill size={16} color="var(--gryt-danger-9)" />}
               <span color={statusColor}>{statusText}</span>
             </div>

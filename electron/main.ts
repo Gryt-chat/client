@@ -534,6 +534,9 @@ const updatesComeFromAStore = updatesAreManagedByWindows || updatesComeFromTheAp
 /** For the log, which is where somebody looks when a check did nothing. */
 const STORE_PACKAGE = updatesComeFromTheAppStore ? "the Mac App Store" : "the MSIX package";
 
+/** For the panel, which needs a name a person recognizes rather than a package format. */
+const STORE_NAME = updatesComeFromTheAppStore ? "the Mac App Store" : "the Microsoft Store";
+
 autoUpdater.logger = {
   info: (m: unknown) => startupLog(`Update: ${String(m)}`),
   warn: (m: unknown) => startupLog(`Update WARN: ${String(m)}`),
@@ -1089,6 +1092,10 @@ function checkForUpdatesInBackground(
      a check reporting nothing is the same shape as a broken one. */
   if (updatesComeFromAStore) {
     startupLog(`Update: skipped (${reason}) — installed from ${STORE_PACKAGE}`);
+    /* A press, so the panel gets an answer instead of sitting on "Checking...". */
+    if (force) {
+      sendToMain("store-managed", { message: `${STORE_NAME} keeps this version up to date.` });
+    }
     return;
   }
 
@@ -1153,6 +1160,9 @@ function offerRelease(
 ): void {
   if (updatesComeFromAStore) {
     startupLog(`Update: not downloading — installed from ${STORE_PACKAGE}`);
+    if (options.asked) {
+      sendToMain("store-managed", { message: `${STORE_NAME} keeps this version up to date.` });
+    }
     return;
   }
 
@@ -3836,9 +3846,9 @@ if (!gotSingleInstanceLock) {
                 return;
               }
 
-              /* Past the rollout slice, since somebody asked. With automatic updates off
-                 it's only reported, and a download answers through its own events. */
-              offerRelease(pin.release, { bypassRollout: true });
+              /* Past the rollout slice, since somebody asked. `asked` stays false off
+                 Windows, so this press still respects Automatic updates elsewhere. */
+              offerRelease(pin.release, { bypassRollout: true, asked: updatesAreManagedByWindows });
             });
         }
       );
