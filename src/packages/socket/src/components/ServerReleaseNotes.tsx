@@ -113,6 +113,7 @@ export function ServerReleaseNotes({
       capped={picked.capped}
       onClose={onClose}
       ahead={{ running, latest, empty }}
+      changelogHref="https://gryt.chat/changelog?surface=server"
     >
       <UpdateSteps hostedHere={!!hostedServerAt(host, hosted)} />
     </WhatsNewDialog>
