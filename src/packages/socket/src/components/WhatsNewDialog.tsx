@@ -320,6 +320,7 @@ export function WhatsNewDialog({
   onClose,
   ahead,
   children,
+  changelogHref,
 }: {
   releases: WhatsNewRelease[];
   since: string | null;
@@ -328,6 +329,9 @@ export function WhatsNewDialog({
   /** With it, what a server gets once it updates instead, and `children` says how. */
   ahead?: WhatsNewAhead;
   children?: ReactNode;
+  /** Where "Full changelog" goes when there's more than one release. The app's own
+      notes leave this at the site's default tab; a server's point at its own. */
+  changelogHref?: string;
 }) {
   const [newest] = releases;
   /* A server's are always a list with versions, and only app releases have a page. */
@@ -398,7 +402,7 @@ export function WhatsNewDialog({
           <div className="whats-new-foot">
             <a
               className="gryt-link whats-new-link"
-              href={several ? "https://gryt.chat/changelog" : `https://gryt.chat/changelog/${newest.version}`}
+              href={several ? changelogHref ?? "https://gryt.chat/changelog" : `https://gryt.chat/changelog/${newest.version}`}
               target="_blank"
               rel="noreferrer"
             >
