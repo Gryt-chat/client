@@ -1,16 +1,18 @@
 import { Avatar, Badge, ContextMenu, IconButton, Menu, PreviewCard, Tooltip } from "@gryt/ui";
 import { SFUConnectionState } from "@gryt/voice";
 import { Reorder } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import toast from "react-hot-toast";
 
 import {
   GeneratedServerIcon,
+  getStoredSnapshot,
   HideMutedChannelsItem,
   normalizeHost,
   NotificationLevelMenu,
   resolveAvatarSrc,
   serverIconSrc,
+  subscribeToPrefs,
   SuppressEveryoneItem,
   useAccount,
   useMentionTracker,
@@ -109,7 +111,9 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   /* Channels only. A direct message belongs to the rail's own button, and
      counting it here as well marked two badges for one message. */
   const serverUnreadCount = useServerChannelUnread();
-  const { serverMentionCount } = useMentionTracker();
+  /* The rail's own total leaves a muted conversation out; "mark as read"
+     still needs the raw one (GRYT-1465). */
+  const { visibleServerMentionCount: serverMentionCount } = useMentionTracker();
 
   const currentHost = currentlyViewingServer?.host;
   const activeProfile = currentHost ? serverProfiles[currentHost] : undefined;
@@ -389,6 +393,9 @@ function ServerItem({
   embeddedStatus,
   onManageServer,
 }: ServerItemProps) {
+  /* Otherwise muting a channel does not move this badge until something else
+     re-renders the rail. Read fresh each render; the value itself is unused (GRYT-1465). */
+  useSyncExternalStore(subscribeToPrefs, getStoredSnapshot, getStoredSnapshot);
   const { canClaim, claim } = useIdentityClaim();
   const openInvite = useOpenInviteLink(host);
   const [doctorOpen, setDoctorOpen] = useState(false);

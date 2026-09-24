@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { useThreadUnread, useUnreadTracker } from "@/common";
+import { isChannelMuted, useThreadUnread, useUnreadTracker } from "@/common";
 
 import { useDirectory } from "./dmDirectory";
 
@@ -32,6 +32,8 @@ export function useServerChannelUnread(): (host: string) => number {
       for (const counts of [getUnreadCounts(host), getConversationThreadUnreadCounts(host)]) {
         for (const [id, count] of counts) {
           if (direct?.has(id)) continue;
+          // Muted, on the channel itself or inherited: silent in the rail too (GRYT-1465).
+          if (isChannelMuted(host, id)) continue;
           total += count;
         }
       }

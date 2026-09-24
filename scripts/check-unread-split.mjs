@@ -29,15 +29,16 @@ function bodyOf(signature) {
   throw new Error(`unbalanced braces after "${signature}" in ${SOURCE}`);
 }
 
-/* The two hooks, run with useMemo and useCallback doing the plain thing. What is
-   worth checking is the arithmetic, not that React caches it. */
-function run(signature, { directory, unread, threads = {} }) {
+/* The two hooks, run with useMemo and useCallback doing the plain thing. `muted`
+   is "host:id" strings, empty unless a case is checking GRYT-1465. */
+function run(signature, { directory, unread, threads = {}, muted = new Set() }) {
   const counts = new Map(Object.entries(unread).map(([h, m]) => [h, new Map(Object.entries(m))]));
   const inThreads = new Map(Object.entries(threads).map(([h, m]) => [h, new Map(Object.entries(m))]));
   return new Function(
     "useDirectory",
     "useUnreadTracker",
     "useThreadUnread",
+    "isChannelMuted",
     "useMemo",
     "useCallback",
     `return (() => ${bodyOf(signature)})();`,
@@ -50,6 +51,7 @@ function run(signature, { directory, unread, threads = {} }) {
     () => ({
       getConversationThreadUnreadCounts: (host) => inThreads.get(host) ?? new Map(),
     }),
+    (host, id) => muted.has(`${host}:${id}`),
     (factory) => factory(),
     (fn) => fn,
   );
@@ -132,6 +134,33 @@ const entry = (host, id) => ({ host, conversation: { conversation_id: id } });
   const serverUnread = run("export function useServerChannelUnread()", { directory, unread: {}, threads });
 
   assert.equal(serverUnread("a.example"), 0, "a direct conversation's thread marked the server icon");
+}
+
+/* A muted channel is left out of the icon's count too, the same as it is left
+   out of shouldNotifyForMessage's decision to announce (GRYT-1465). */
+{
+  const directory = [entry("a.example", "dm-1")];
+  const unread = { "a.example": { general: 1, random: 2, "dm-1": 3 } };
+  const serverUnread = run("export function useServerChannelUnread()", {
+    directory,
+    unread,
+    muted: new Set(["a.example:general"]),
+  });
+
+  assert.equal(serverUnread("a.example"), 2, "a muted channel is still adding to the icon");
+}
+
+// Muting the direct message's host does not touch it: it was never in this count.
+{
+  const directory = [entry("a.example", "dm-1")];
+  const unread = { "a.example": { general: 1, "dm-1": 3 } };
+  const serverUnread = run("export function useServerChannelUnread()", {
+    directory,
+    unread,
+    muted: new Set(["a.example:dm-1"]),
+  });
+
+  assert.equal(serverUnread("a.example"), 1, "muting the direct conversation moved the channel count");
 }
 
 /* And the rail actually reads the split count. The arithmetic above is worth

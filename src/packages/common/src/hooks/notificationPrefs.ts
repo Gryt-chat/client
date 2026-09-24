@@ -390,6 +390,32 @@ export function getOwnLevel(
   return bag?.[scope.id] ?? null;
 }
 
+// ── Whether a channel shows anything ────────────────────────────────────────
+//
+// "Nothing" means silent everywhere, not just unannounced: no badge, no bold,
+// no count. Read markers still move underneath; only what is drawn goes quiet.
+
+/** Whether this conversation is muted: level "Nothing", set on it or inherited.
+    Not the global ceiling, which quietens everything for a different reason. */
+export function isChannelMuted(host: string, channelId: string): boolean {
+  return resolveLevel(stored.servers, host, getPlacement(host, channelId)) === "none";
+}
+
+/** `counts`, with a muted conversation's entry left out. The map is returned
+    unchanged when nothing needed removing. */
+export function visibleCounts(
+  host: string,
+  counts: Map<string, number>,
+): Map<string, number> {
+  let out = counts;
+  for (const id of counts.keys()) {
+    if (!isChannelMuted(host, id)) continue;
+    if (out === counts) out = new Map(counts);
+    out.delete(id);
+  }
+  return out;
+}
+
 // ── Hiding muted channels ───────────────────────────────────────────────────
 //
 // Per server and per device, like a collapsed folder. Kept beside the levels it

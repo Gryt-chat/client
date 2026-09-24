@@ -1,5 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
+import { isChannelMuted } from "./notificationPrefs.ts";
+
 /**
  * How many times somebody has been named in a conversation and not read it.
  * Unread means something happened here; a mention means it happened *to you*.
@@ -103,5 +105,23 @@ export function useMentionTracker() {
     [map],
   );
 
-  return { serverMentionCount, conversationMentionCount, getMentionCounts };
+  /* The rail's own total. `serverMentionCount` stays as it is for "mark as
+     read", which still needs to know about a muted mention (GRYT-1465). */
+  const visibleServerMentionCount = useCallback(
+    (host: string): number => {
+      let total = 0;
+      for (const [id, n] of map.get(host) ?? []) {
+        if (!isChannelMuted(host, id)) total += n;
+      }
+      return total;
+    },
+    [map],
+  );
+
+  return {
+    serverMentionCount,
+    conversationMentionCount,
+    getMentionCounts,
+    visibleServerMentionCount,
+  };
 }
