@@ -1,6 +1,5 @@
+import { createTermsGate, TERMS_STORAGE_KEY } from "@gryt/core";
 import { useSyncExternalStore } from "react";
-
-import { createTermsGate, TERMS_STORAGE_KEY } from "./termsAgreement";
 
 /* Looked up on every call rather than bound once: in Electron, globalStorage patches
    setItem after this module loads, and that patch is what keeps the answer. */
