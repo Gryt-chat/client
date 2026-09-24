@@ -1,6 +1,6 @@
 import { Menu, Tooltip } from "@gryt/ui";
 import { type ScreenShareQuality, useScreenShare } from "@gryt/voice";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
@@ -22,7 +22,7 @@ interface ScreenShareControlProps {
 /** Off, it opens the picker. Live, it opens a menu, so a stray click can't end the share. */
 export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top" }: ScreenShareControlProps) {
   const {
-    screenShareActive, screenVideoStream, nativeScreenCaptureAvailable, nativeEncodedCodec,
+    screenShareActive, nativeScreenCaptureAvailable, nativeEncodedCodec,
     startScreenShare, stopScreenShare,
   } = useScreenShare();
   const {
@@ -36,15 +36,6 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
   } = useSettings();
   const [picker, setPicker] = useState<"start" | "switch" | null>(null);
   const [isStarting, setIsStarting] = useState(false);
-
-  /* voice 0.5.12 marks the share stopped when a re-pick fails but leaves the old capture
-     running. Only that failure leaves a live track with the share off, so release it here. */
-  useEffect(() => {
-    if (screenShareActive || !screenVideoStream) return;
-    if (!screenVideoStream.getVideoTracks().some((t) => t.readyState === "live")) return;
-    stopScreenShare();
-    toast("Couldn't switch, so your screen share stopped.", { id: "screen-share-switch-failed" });
-  }, [screenShareActive, screenVideoStream, stopScreenShare]);
 
   const start = useCallback(
     async ({ sourceId, withAudio }: { sourceId?: string; withAudio: boolean }, mode: "start" | "switch") => {
