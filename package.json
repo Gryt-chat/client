@@ -50,6 +50,7 @@
     "test:security-notice": "node --disable-warning=ExperimentalWarning scripts/check-security-notice.mjs",
     "test:chat-scroll-anchor": "node scripts/check-chat-scroll-anchor.mjs",
     "test:chat-retry": "node --disable-warning=ExperimentalWarning scripts/check-chat-retry.mjs",
+    "test:send-queue": "node --disable-warning=ExperimentalWarning scripts/check-send-queue.mjs",
     "test:member-card-state": "node scripts/check-member-card-state.mjs",
     "test:sidebar-tree": "node scripts/check-sidebar-tree.mjs",
     "test:hide-muted": "node --disable-warning=ExperimentalWarning scripts/check-hide-muted.mjs",

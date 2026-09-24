@@ -9,6 +9,7 @@ import { type ChatErrorPayload, type ChatErrorRef, isMutedError, isNonRetryableE
 import { mergeMessages } from "./mergeMessages";
 import { forgetOpenThread, recallOpenThread, rememberOpenThread } from "./openThreadMemory";
 import { draftKey, returnDraft } from "./returnedDrafts";
+import { type EmitResult, type QueueSocket, SendQueue } from "./sendQueue";
 import { uploadChatFile } from "./uploadChatFile";
 
 /**
@@ -66,6 +67,8 @@ interface ThreadRetryEntry {
   files: File[];
   retryCount: number;
   timeoutId?: ReturnType<typeof setTimeout>;
+  /** The thread's composer, fixed when it was sent, for the text to go back to. */
+  returnTo: string;
 }
 
 /** The same wait useChatSend gives a channel message. */
@@ -93,12 +96,8 @@ function errorText(e: ChatErrorPayload): string {
 
 // The slice of a socket.io client this hook touches, so nothing has to be typed
 // `any`. serverView hands ChatView the socket as `unknown`.
-interface ThreadSocket {
+interface ThreadSocket extends QueueSocket {
   emit: (event: string, data: unknown) => void;
-  on: (event: string, cb: (payload: never) => void) => void;
-  off: (event: string, cb: (payload: never) => void) => void;
-  /** socket.io sets this. Absent on a stand-in, which is treated as connected. */
-  connected?: boolean;
 }
 
 /**
@@ -192,10 +191,62 @@ export function useThreads(
     setSummaries({});
   }, [serverHost]);
 
+  const queueRef = useRef<SendQueue | null>(null);
+
+  /* The row stops looking sent, and the text lands back in the thread's composer the
+     way a channel's does. Keyed by where it was sent, since the panel may have moved on. */
+  const failReply = useCallback((nonce: string) => {
+    const entry = retryQueueRef.current.get(nonce);
+    if (entry?.timeoutId) clearTimeout(entry.timeoutId);
+    retryQueueRef.current.delete(nonce);
+    queueRef.current?.settle(nonce);
+    setOpen((o) =>
+      o
+        ? { ...o, messages: o.messages.map((m) => (m.nonce === nonce ? { ...m, pending: false, waiting: false, failed: true } : m)) }
+        : o,
+    );
+    if (!entry) return;
+    returnDraft(entry.returnTo, { text: entry.payload.text, files: entry.files });
+  }, []);
+
+  /* One queue per socket, which outlives a channel switch: a reply waiting on the
+     server still goes out, or fails back into its thread's composer. */
+  useEffect(() => {
+    const socket = asSocket(socketConnection);
+    if (!socket) return;
+    const replies = retryQueueRef.current;
+    const queue = new SendQueue(socket, {
+      emit: async (nonce): Promise<EmitResult> => {
+        const entry = replies.get(nonce);
+        if (!entry) return "failed";
+        if (socket.connected === false) return "offline";
+        const token = getServerAccessToken(serverHost || "");
+        if (!token) return "failed";
+        socket.emit("chat:send", { ...entry.payload, accessToken: token });
+        return "sent";
+      },
+      onGiveUp: failReply,
+      onWaiting: (nonce, waiting) =>
+        setOpen((o) =>
+          o && o.messages.some((m) => m.nonce === nonce && m.pending && !!m.waiting !== waiting)
+            ? { ...o, messages: o.messages.map((m) => (m.nonce === nonce ? { ...m, waiting } : m)) }
+            : o,
+        ),
+    });
+    queueRef.current = queue;
+    return () => {
+      queueRef.current = null;
+      queue.dispose();
+      for (const entry of replies.values()) {
+        if (entry.timeoutId) clearTimeout(entry.timeoutId);
+      }
+      replies.clear();
+    };
+  }, [socketConnection, serverHost, failReply]);
+
   useEffect(() => {
     const socket = asSocket(socketConnection);
     if (!socket || !conversationId) return;
-    const retryQueue = retryQueueRef.current;
 
     const fetchThread = (thread: ThreadSummary) => {
       const opening = pendingOpen(thread);
@@ -293,14 +344,16 @@ export function useThreads(
     // A thread reply arrives as an ordinary chat:new carrying a thread_id. It is
     // already filtered out of the main list; here it lands in the open panel.
     const onChatNew = (msg: ChatMessage) => {
-      if (!msg.thread_id || deletedIdsRef.current.has(msg.message_id)) return;
-      const cur = openRef.current;
-      if (!cur || cur.thread.thread_id !== msg.thread_id) return;
+      if (!msg.thread_id) return;
+      // Before the open-thread check: a reply confirmed after the panel moved on is still done.
       if (msg.nonce) {
         const done = retryQueueRef.current.get(msg.nonce);
         if (done?.timeoutId) clearTimeout(done.timeoutId);
         retryQueueRef.current.delete(msg.nonce);
       }
+      if (deletedIdsRef.current.has(msg.message_id)) return;
+      const cur = openRef.current;
+      if (!cur || cur.thread.thread_id !== msg.thread_id) return;
       setOpen((o) => {
         if (!o) return o;
         const withoutPending = o.messages.filter(
@@ -382,24 +435,6 @@ export function useThreads(
       });
     };
 
-    /* The row stops looking sent, and the text lands back in the composer the
-       way a channel's does rather than only existing on a row nobody can act on. */
-    const failReply = (nonce: string) => {
-      const entry = retryQueueRef.current.get(nonce);
-      if (entry?.timeoutId) clearTimeout(entry.timeoutId);
-      retryQueueRef.current.delete(nonce);
-      setOpen((o) =>
-        o
-          ? { ...o, messages: o.messages.map((m) => (m.nonce === nonce ? { ...m, pending: false, failed: true } : m)) }
-          : o,
-      );
-      if (!entry) return;
-      returnDraft(draftKey(serverHost || "", conversationId, entry.payload.threadId), {
-        text: entry.payload.text,
-        files: entry.files,
-      });
-    };
-
     /* A refused fetch is drawn where the replies would be. Toasted only when
        there is no panel to draw it in, or nothing was on its way. */
     const onError = (e: ChatErrorPayload) => {
@@ -420,11 +455,10 @@ export function useThreads(
 
       if (!isNonRetryableError(e) && entry.retryCount < 1) {
         const wait = typeof e === "object" && e?.retryAfterMs && e.retryAfterMs > 0 ? e.retryAfterMs : RETRY_AFTER_MS;
+        const nonce = entry.payload.nonce;
         entry.retryCount++;
-        entry.timeoutId = setTimeout(() => {
-          const token = getServerAccessToken(serverHost || "");
-          if (token) socket.emit("chat:send", { ...entry.payload, accessToken: token });
-        }, wait);
+        queueRef.current?.hold(nonce);
+        entry.timeoutId = setTimeout(() => queueRef.current?.resend(nonce), wait);
         return;
       }
 
@@ -463,13 +497,8 @@ export function useThreads(
       socket.off("chat:edited", onEdited as (p: never) => void);
       socket.off("chat:deleted", onMessageDeleted as (p: never) => void);
       socket.off("chat:merge_user", onMergeUser as (p: never) => void);
-      // A retry scheduled against this socket would fire after it is gone.
-      for (const entry of retryQueue.values()) {
-        if (entry.timeoutId) clearTimeout(entry.timeoutId);
-      }
-      retryQueue.clear();
     };
-  }, [socketConnection, conversationId, serverHost]);
+  }, [socketConnection, conversationId, serverHost, failReply]);
 
   const startThread = useCallback((message: ChatMessage) => {
     const socket = asSocket(socketConnection);
@@ -625,10 +654,11 @@ export function useThreads(
         replyToMessageId,
         nonce,
       };
-      retryQueueRef.current.set(nonce, { payload, files, retryCount: 0 });
-      socket.emit("chat:send", { ...payload, accessToken });
+      retryQueueRef.current.set(nonce, { payload, files, retryCount: 0, returnTo: draftKey(serverHost || "", conversationId, cur.thread.thread_id) });
+      if (queueRef.current) queueRef.current.add(nonce);
+      else failReply(nonce);
     })();
-  }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname]);
+  }, [socketConnection, conversationId, serverHost, currentUserId, currentUserNickname, failReply]);
 
   /**
    * Ask for the page before the oldest reply held. A no-op while one is in flight

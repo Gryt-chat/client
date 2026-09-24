@@ -24,6 +24,8 @@ const ALLOWED: Allowed[] = [
   // while it is out, and Chrome and the app both log every attempt.
   { text: /^WebSocket connection to 'ws:\/\/[^']+' failed: .*net::ERR_INTERNET_DISCONNECTED$/ },
   { text: /^\[Socket\] connect_error for [^\s]+: websocket error$/ },
+  // The restart test kills the server on purpose, and every redial while it is down fails.
+  { text: /^WebSocket connection to 'ws:\/\/[^']+' failed: Connection closed before receiving a handshake response$/ },
 ];
 
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */
