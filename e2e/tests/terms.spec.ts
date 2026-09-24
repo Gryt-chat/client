@@ -1,4 +1,4 @@
-import { TERMS_STORAGE_KEY, TERMS_VERSION } from "../../src/lib/termsAgreement";
+import { TERMS_STORAGE_KEY, TERMS_VERSION } from "@gryt/core";
 import { channelComposer, messageRow, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 

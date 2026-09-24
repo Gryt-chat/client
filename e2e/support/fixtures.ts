@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { type BrowserContext, type BrowserContextOptions, expect, test as base } from "@playwright/test";
 
-import { agreementAt, TERMS_STORAGE_KEY } from "../../src/lib/termsAgreement";
+import { agreementAt, TERMS_STORAGE_KEY } from "@gryt/core";
 import { channelComposer, joinServer, type Member, membersPanel, nicknameOf, recordFrames } from "./app";
 import { routeExternal } from "./external";
 import { ProblemLog } from "./problems";

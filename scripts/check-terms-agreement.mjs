@@ -1,56 +1,26 @@
 /* eslint-env node */
 
 // Nothing is posted before this device agrees to the terms, and agreeing posts once.
-// The e2e suite covers the composer; this covers storage failing and answering late. GRYT-1275.
+// The module moved to @gryt/core (GRYT-1278); this still covers the app's own usage of it.
 
 import assert from "node:assert/strict";
-import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const {
   TERMS_URL,
   GUIDELINES_URL,
   TERMS_VERSION,
   TERMS_STORAGE_KEY,
   agreementAt,
-  coversTerms,
   createTermsGate,
-  parseAgreement,
-} = await import(pathToFileURL(join(root, "src/lib/termsAgreement.ts")).href);
+} = await import("@gryt/core");
 
 // ── what is asked about ─────────────────────────────────────────────
 
+// Fixed literals, not patterns: either one changing here would be the bug, not the fix.
 assert.equal(TERMS_URL, "https://gryt.chat/terms");
 assert.equal(GUIDELINES_URL, "https://gryt.chat/community-guidelines");
-assert.match(TERMS_VERSION, /^\d{4}-\d{2}-\d{2}$/, "the version is the pages' Last updated date");
+assert.equal(TERMS_VERSION, "2026-09-03", "the version must not move by itself, or everyone gets asked again");
 assert.equal(TERMS_STORAGE_KEY, "gryt.termsAgreement", "renaming the key asks everybody again");
-
-// ── reading what storage held ───────────────────────────────────────
-
-for (const [raw, why] of [
-  [null, "nothing stored"],
-  ["", "an empty string"],
-  ["{not json", "a broken write"],
-  ["42", "a number"],
-  ['"2026-09-03"', "a bare version"],
-  ["[]", "an array"],
-  ['{"agreedAt":"2026-09-16T10:00:00.000Z"}', "no version"],
-  ['{"version":"latest","agreedAt":"2026-09-16T10:00:00.000Z"}', "a version that is not a date"],
-  ['{"version":"2026-09-03"}', "no time"],
-]) {
-  assert.equal(parseAgreement(raw), null, `${why} reads as an agreement`);
-}
-
-assert.deepEqual(
-  parseAgreement('{"version":"2026-09-03","agreedAt":"2026-09-16T10:00:00.000Z","extra":true}'),
-  { version: "2026-09-03", agreedAt: "2026-09-16T10:00:00.000Z" },
-);
-
-assert.equal(coversTerms(null), false);
-assert.equal(coversTerms({ version: TERMS_VERSION, agreedAt: "x" }), true);
-assert.equal(coversTerms({ version: "2026-09-02", agreedAt: "x" }, "2026-09-03"), false, "older terms cover newer ones");
-assert.equal(coversTerms({ version: "2026-10-01", agreedAt: "x" }, "2026-09-03"), true, "a downgrade asks again");
 
 assert.deepEqual(agreementAt(new Date("2026-09-16T10:00:00.000Z"), "2026-09-03"), {
   version: "2026-09-03",

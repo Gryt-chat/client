@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 
-import { GUIDELINES_URL, TERMS_URL } from "../lib/termsAgreement";
+import { GUIDELINES_URL, TERMS_URL } from "@gryt/core";
 import { termsGate, useAskingToAgree } from "../lib/termsGate";
 
 /** Asked before the first message leaves this device. The phone app asks with the same words. */
