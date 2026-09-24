@@ -30,6 +30,7 @@
     "test:lan-server-memory": "node scripts/check-lan-server-memory.mjs",
     "test:lan-discovery": "node --disable-warning=ExperimentalWarning scripts/check-lan-discovery.mjs",
     "test:voice-presence": "node scripts/check-voice-presence.mjs",
+    "test:voice-server-removed": "node scripts/check-voice-server-removed.mjs",
     "test:reconnect-limit": "node scripts/check-reconnect-limit.mjs",
     "test:reconnect-grace": "node --disable-warning=ExperimentalWarning scripts/check-reconnect-grace.mjs",
     "test:token-refresh-schedule": "node scripts/check-token-refresh-schedule.mjs",
