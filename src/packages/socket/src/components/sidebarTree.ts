@@ -148,6 +148,76 @@ export function buildReorderPayload(
   return entries;
 }
 
+/**
+ * `order` with rows the sidebar left out put back, each after the sibling it
+ * followed in `before` (or first in its folder), so a drag never drops one.
+ */
+export function restoreHiddenRows(
+  order: SidebarItem[],
+  before: SidebarItem[],
+  hidden: ReadonlySet<string>,
+  movedId: string,
+): SidebarItem[] {
+  const folders = folderIds(before);
+  const startOf = (parent: string | null) => `start:${parent ?? ""}`;
+  const anchored = new Map<string, SidebarItem[]>();
+  const lastShown = new Map<string | null, string>();
+
+  for (const item of before) {
+    const parent = effectiveParent(item, folders);
+    if (hidden.has(item.id)) {
+      const key = lastShown.get(parent) ?? startOf(parent);
+      anchored.set(key, [...(anchored.get(key) ?? []), item]);
+    } else if (item.id !== movedId) {
+      // The moved row is no anchor: what followed it stays where it was.
+      lastShown.set(parent, item.id);
+    }
+  }
+
+  const out: SidebarItem[] = [];
+  const place = (item: SidebarItem) => {
+    out.push(item);
+    if (item.kind === "folder") placeAfter(startOf(item.id));
+    placeAfter(item.id);
+  };
+  const placeAfter = (key: string) => {
+    for (const item of anchored.get(key) ?? []) place(item);
+  };
+  placeAfter(startOf(null));
+  for (const item of order) place(item);
+  return out;
+}
+
+/**
+ * The drawn order after Move up or Move down, swapping with the next drawn sibling
+ * so hidden rows are stepped over. Null when there is none that way.
+ */
+export function moveAmongDrawn(
+  rows: SidebarRow[],
+  itemId: string,
+  direction: "up" | "down",
+): SidebarItem[] | null {
+  const blocks: { item: SidebarItem; children: SidebarItem[] }[] = [];
+  for (const row of rows) {
+    if (row.depth === 0 || blocks.length === 0) blocks.push({ item: row.item, children: [] });
+    else blocks[blocks.length - 1].children.push(row.item);
+  }
+
+  const step = direction === "up" ? -1 : 1;
+  const swap = <T>(list: T[], at: number): boolean => {
+    const to = at + step;
+    if (at < 0 || to < 0 || to >= list.length) return false;
+    [list[at], list[to]] = [list[to], list[at]];
+    return true;
+  };
+
+  const top = blocks.findIndex((b) => b.item.id === itemId);
+  const moved = top >= 0
+    ? swap(blocks, top)
+    : blocks.some((b) => swap(b.children, b.children.findIndex((c) => c.id === itemId)));
+  return moved ? blocks.flatMap((b) => [b.item, ...b.children]) : null;
+}
+
 /** The rows drawn under a folder: what goes with it when it is dragged. None while it is collapsed. */
 export function folderChildrenInRows(rows: SidebarRow[], folderId: string): SidebarItem[] {
   const at = rows.findIndex((r) => r.item.id === folderId && r.item.kind === "folder");

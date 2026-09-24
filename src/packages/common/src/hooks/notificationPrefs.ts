@@ -381,3 +381,99 @@ export function getOwnLevel(
   const bag = scope.kind === "folder" ? entry.folders : entry.channels;
   return bag?.[scope.id] ?? null;
 }
+
+// ── Hiding muted channels ───────────────────────────────────────────────────
+//
+// Per server and per device, like a collapsed folder. Kept beside the levels it
+// reads, and announced through the same listeners so both menus stay in step.
+
+const HIDE_MUTED_PREFIX = "gryt_sidebar_hide_muted:";
+const hideMuted = new Map<string, boolean>();
+
+/** Whether this server's sidebar leaves muted channels out. Off until chosen. */
+export function getHideMuted(host: string): boolean {
+  const known = hideMuted.get(host);
+  if (known !== undefined) return known;
+  let on = false;
+  try {
+    on = localStorage.getItem(HIDE_MUTED_PREFIX + host) === "1";
+  } catch {
+    // Unreadable is off, which shows every channel.
+  }
+  hideMuted.set(host, on);
+  return on;
+}
+
+export function setHideMuted(host: string, on: boolean) {
+  if (getHideMuted(host) === on) return;
+  hideMuted.set(host, on);
+  try {
+    if (on) localStorage.setItem(HIDE_MUTED_PREFIX + host, "1");
+    else localStorage.removeItem(HIDE_MUTED_PREFIX + host);
+  } catch {
+    // Holds for this session; next launch shows everything again.
+  }
+  emit();
+}
+
+/** One sidebar row, as much of it as the rule reads. */
+export interface SidebarRowRef {
+  id: string;
+  kind?: string;
+  channelId?: string | null;
+  parentItemId?: string | null;
+}
+
+/** What the sidebar leaves out, and how many channels that is. */
+export interface HiddenMutedRows {
+  /** Item ids: the channels, and any folder left with none of its own. */
+  rows: Set<string>;
+  channels: number;
+}
+
+/**
+ * Which rows go while muted channels are hidden. Muted is "nothing" and only that;
+ * `keep` holds channel ids drawn regardless, like the one open or one naming you.
+ */
+export function hiddenMutedRows(
+  prefs: NotificationPrefs,
+  host: string,
+  items: SidebarRowRef[],
+  channels: { id: string; defaultNotificationLevel?: NotificationLevel | null }[],
+  keep: ReadonlySet<string>,
+): HiddenMutedRows {
+  const folders = new Set(items.filter((i) => i.kind === "folder").map((i) => i.id));
+  const defaults = new Map(channels.map((c) => [c.id, c.defaultNotificationLevel ?? null]));
+  const rows = new Set<string>();
+  const shownIn = new Map<string, number>();
+  const hiddenIn = new Map<string, number>();
+  let count = 0;
+
+  for (const item of items) {
+    if (item.kind !== "channel") continue;
+    const channelId = item.channelId ?? item.id;
+    // A parent that is not a real folder is the top level, as the sidebar draws it.
+    const parent = item.parentItemId && folders.has(item.parentItemId) ? item.parentItemId : null;
+    const preset = defaults.get(channelId);
+    const level = resolveLevel(prefs, host, {
+      channelId,
+      parentItemId: parent,
+      defaultLevel: isLevel(preset) ? preset : null,
+    });
+    const hide = level === "none" && !keep.has(channelId);
+    if (hide) {
+      rows.add(item.id);
+      count += 1;
+    }
+    if (parent) {
+      const bag = hide ? hiddenIn : shownIn;
+      bag.set(parent, (bag.get(parent) ?? 0) + 1);
+    }
+  }
+
+  // Only a folder that had channels and lost them all. An empty one is not muted.
+  for (const folder of hiddenIn.keys()) {
+    if (!shownIn.has(folder)) rows.add(folder);
+  }
+  return { rows, channels: count };
+}

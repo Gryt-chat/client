@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 
 import {
   GeneratedServerIcon,
+  HideMutedChannelsItem,
   normalizeHost,
   NotificationLevelMenu,
   resolveAvatarSrc,
@@ -570,10 +571,8 @@ function ServerItem({
 
               What Gryt has no equivalent for is absent rather than greyed —
               boosting, insights, events, threads, privacy settings, per-server
-              profiles and raid tools. "Hide muted channels" is absent for a
-              different reason: it is a real idea Gryt could have and does not
-              yet, so there is nothing to wire a row to. "Mark as read" was in
-              that sentence too until GRYT-1030 built it.
+              profiles and raid tools. "Hide muted channels" and "Mark as read"
+              were in that list too, until GRYT-1034 and GRYT-1030 built them.
 
               Three rows went the other way. Edit, Share and "Add to new group"
               were `<ContextMenu.Item>` with no `onClick` \u2014 they have never done
@@ -593,6 +592,7 @@ function ServerItem({
             {/* The same three levels the channel list offers per channel and
                 per folder, at the scope above them. Device-local, like those. */}
             <NotificationLevelMenu host={host} scope={{ kind: "server" }} />
+            <HideMutedChannelsItem host={host} />
             <MarkAsReadItem host={host} scope={{ kind: "server" }} />
             <ContextMenu.Separator />
 

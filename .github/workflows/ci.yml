@@ -90,6 +90,7 @@ jobs:
       # it. The open hover card has to survive that.
       - run: yarn test:member-card-state
       - run: yarn test:sidebar-tree
+      - run: yarn test:hide-muted
       - run: yarn test:settings-index
       - run: yarn test:notification-prefs
       - run: yarn test:notification-navigation
