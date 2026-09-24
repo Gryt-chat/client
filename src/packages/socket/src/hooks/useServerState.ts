@@ -8,7 +8,10 @@ import { getServerAccessToken } from "@/common";
 import { sliderToOutputGain } from "@/lib/audioVolume";
 import { useSettings } from "@/settings";
 
+import { byRosterClientId, type ByServerUser, heldKey } from "../lib/heldVoicePresence";
+import type { Clients } from "../types/clients";
 import { type ChannelSelection, NO_CHANNEL, selectChannel } from "../utils/channelSelection";
+import { useHeldVoicePresence } from "./useHeldVoicePresence";
 import { useServerManagement } from "./useServerManagement";
 import { VOICE_SIDEBAR_WIDTH } from "./useServerViewLayout";
 import { useSockets } from "./useSockets";
@@ -43,8 +46,15 @@ type ServerFailure = {
   message?: string;
 };
 
+const NO_CLIENTS: Clients = {};
+
 type UseServerStateResult = {
+  /** Keyed like `heldClients`, so a ring follows a member across a server restart. */
   clientsSpeaking: Record<string, boolean>;
+  /** The viewed server's roster with voice presence held over a socket reconnect. */
+  heldClients: Clients;
+  /** Which entry in `heldClients` is you. */
+  selfClientId: string | undefined;
   voiceWidth: string;
   setVoiceWidth: Dispatch<SetStateAction<string>>;
   selectedChannelId: string | null;
@@ -104,6 +114,7 @@ export function useServerState(): UseServerStateResult {
     connect,
     currentServerConnected,
     streamSources,
+    videoStreams,
     currentChannelConnected,
     isConnected,
     isConnecting,
@@ -116,8 +127,8 @@ export function useServerState(): UseServerStateResult {
     isAFKRef.current = isAFK;
   }, [isAFK]);
 
-  const [clientsSpeaking, setClientsSpeaking] = useState<
-    Record<string, boolean>
+  const [speakingByMember, setSpeakingByMember] = useState<
+    ByServerUser<boolean>
   >({});
   const serverLoadingTimerRef = useRef<
     Record<string, ReturnType<typeof setTimeout>>
@@ -299,8 +310,23 @@ export function useServerState(): UseServerStateResult {
     }
   }, [micID, pendingChannelId]);
 
-  const clientsSpeakingRef = useRef(clientsSpeaking);
-  clientsSpeakingRef.current = clientsSpeaking;
+  const heldHost = currentlyViewingServer?.host ?? "";
+  const { clients: heldClients, selfClientId } = useHeldVoicePresence({
+    host: heldHost,
+    clients: clients[heldHost] ?? NO_CLIENTS,
+    socketId: currentConnection?.id,
+    selfInVoice: isConnected && currentServerConnected === heldHost,
+    videoStreams,
+    streamSources,
+  });
+
+  const speakingByMemberRef = useRef(speakingByMember);
+  speakingByMemberRef.current = speakingByMember;
+  // Looked up through the roster on every render, so a socket id change can't miss a poll.
+  const clientsSpeaking = useMemo(
+    () => byRosterClientId(speakingByMember, heldClients),
+    [speakingByMember, heldClients],
+  );
 
   useEffect(() => {
     const pollRate = eSportsModeEnabled ? 50 : 100;
@@ -313,15 +339,15 @@ export function useServerState(): UseServerStateResult {
         return;
       }
 
-      const prev = clientsSpeakingRef.current;
+      const prev = speakingByMemberRef.current;
       const next: Record<string, boolean> = {};
       let changed = false;
 
-      Object.keys(clients[currentlyViewingServer.host]).forEach((clientID) => {
-        const client = clients[currentlyViewingServer.host][clientID];
+      // The held roster still has a member's streamID while the restarted server doesn't.
+      Object.entries(heldClients).forEach(([clientID, client]) => {
         let speaking = false;
 
-        if (clientID === currentConnection.id) {
+        if (clientID === selfClientId) {
           if (inputMode === "push_to_talk") {
             speaking = isPttActive.current;
           } else if (isTransmitting !== null) {
@@ -340,11 +366,12 @@ export function useServerState(): UseServerStateResult {
           speaking = isSpeaking(streamSources[client.streamID].analyser, 0.1);
         }
 
-        next[clientID] = speaking;
-        if (prev[clientID] !== speaking) changed = true;
+        const key = heldKey(clientID, client);
+        next[key] = speaking;
+        if (prev[key] !== speaking) changed = true;
       });
 
-      if (changed) setClientsSpeaking(next);
+      if (changed) setSpeakingByMember(next);
     }, pollRate);
 
     return () => clearInterval(interval);
@@ -352,7 +379,8 @@ export function useServerState(): UseServerStateResult {
     microphoneBuffer.finalAnalyser,
     isTransmitting,
     streamSources,
-    clients,
+    heldClients,
+    selfClientId,
     currentlyViewingServer,
     currentConnection,
     currentServerConnected,
@@ -500,6 +528,8 @@ export function useServerState(): UseServerStateResult {
 
   return {
     clientsSpeaking,
+    heldClients,
+    selfClientId,
     voiceWidth,
     setVoiceWidth,
     selectedChannelId,
