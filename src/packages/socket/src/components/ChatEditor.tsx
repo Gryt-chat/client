@@ -12,6 +12,8 @@ import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, P
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
+import { channelHref } from "../../../lib/mentionTokens";
+import { parseEditSegments } from "../utils/chatEditorMentions";
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
 import { EmojiPicker } from "./EmojiPicker";
@@ -102,7 +104,7 @@ function serializeContentEditable(el: HTMLElement): string {
         result += `[${elem.dataset.mentionName || elem.textContent || ""}](role:${elem.dataset.roleId})`;
       } else if (elem.dataset.channelId) {
         // Never the name: a reader who can't see the channel must not get it.
-        result += `[#channel](channel:${elem.dataset.channelId})`;
+        result += `[#channel](${channelHref(elem.dataset.channelId, elem.dataset.channelHost || null)})`;
       } else if (elem.dataset.mentionId) {
         const id = elem.dataset.mentionId;
         const name = elem.dataset.mentionName || elem.textContent || "";
@@ -272,6 +274,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     onTypingRef.current = onTyping;
     const onStopTypingRef = useRef(onStopTyping);
     onStopTypingRef.current = onStopTyping;
+    const channelListRef = useRef(channelList);
+    channelListRef.current = channelList;
 
     const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
     const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -529,7 +533,22 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const setContent = useCallback((text: string) => {
       const el = editorRef.current;
       if (!el) return;
-      el.textContent = text;
+      el.textContent = "";
+      const channelName = (id: string) =>
+        channelListRef.current?.find((c) => c.channelId === id)?.nickname ?? null;
+      for (const segment of parseEditSegments(text, channelName)) {
+        if ("text" in segment) {
+          if (segment.text) el.appendChild(document.createTextNode(segment.text));
+          continue;
+        }
+        const pill = document.createElement("span");
+        pill.className = "chat-editor-mention";
+        for (const [key, value] of Object.entries(segment.pill.dataset)) pill.dataset[key] = value;
+        pill.textContent = segment.pill.text;
+        pill.contentEditable = "false";
+        pill.draggable = false;
+        el.appendChild(pill);
+      }
       autoResize(el);
       setLength(text.trim().length);
       requestAnimationFrame(() => {
