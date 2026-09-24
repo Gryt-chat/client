@@ -12,6 +12,12 @@ import { ConfirmDialog } from "./ConfirmDialog";
 
 type ProfanityMode = "off" | "flag" | "censor" | "block";
 
+/** Mirrors the server's. Anything else reads as `normal`, as it does there. */
+type SpamSensitivity = "low" | "normal" | "high";
+function normalizeSpamSensitivity(v: unknown): SpamSensitivity {
+  return v === "low" || v === "high" ? v : "normal";
+}
+
 /** Mirrors the server's `JoinPolicy`. `approval` exists there as room to grow. */
 type JoinPolicy = "invite" | "request" | "open";
 
@@ -40,6 +46,8 @@ type ServerSettingsPayload = {
   lanOpen?: boolean;
   joinPolicy?: JoinPolicy;
   discoverable?: boolean;
+  spamFilter?: boolean;
+  spamSensitivity?: SpamSensitivity;
 };
 
 export type ServerOverviewInitialSettings = {
@@ -92,6 +100,8 @@ export function ServerOverviewTab({
   const [lanOpen, setLanOpen] = useState(false);
   const [joinPolicy, setJoinPolicy] = useState<JoinPolicy>("invite");
   const [discoverable, setDiscoverable] = useState(true);
+  const [spamFilter, setSpamFilter] = useState(true);
+  const [spamSensitivity, setSpamSensitivity] = useState<SpamSensitivity>("normal");
 
   const [autosaving, setAutosaving] = useState(false);
   const pendingSaveCountRef = useRef(0);
@@ -107,6 +117,8 @@ export function ServerOverviewTab({
     lanOpen: boolean;
     joinPolicy: JoinPolicy;
     discoverable: boolean;
+    spamFilter: boolean;
+    spamSensitivity: SpamSensitivity;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -162,6 +174,8 @@ export function ServerOverviewTab({
       setLanOpen(!!payload.lanOpen);
       setJoinPolicy(normalizeJoinPolicy(payload.joinPolicy));
       setDiscoverable(payload.discoverable !== false);
+      setSpamFilter(payload.spamFilter !== false);
+      setSpamSensitivity(normalizeSpamSensitivity(payload.spamSensitivity));
 
       if (!wasSaving) {
         setDisplayName(payload.displayName || "");
@@ -188,6 +202,8 @@ export function ServerOverviewTab({
         lanOpen: !!payload.lanOpen,
         joinPolicy: normalizeJoinPolicy(payload.joinPolicy),
         discoverable: payload.discoverable !== false,
+        spamFilter: payload.spamFilter !== false,
+        spamSensitivity: normalizeSpamSensitivity(payload.spamSensitivity),
       };
     };
 
@@ -247,6 +263,8 @@ export function ServerOverviewTab({
     lanOpen: boolean;
     joinPolicy: JoinPolicy;
     discoverable: boolean;
+    spamFilter: boolean;
+    spamSensitivity: SpamSensitivity;
   }>): boolean => {
     if (!host || !socket || !socket.connected) {
       toast.error("Not connected to the server.");
@@ -650,6 +668,48 @@ export function ServerOverviewTab({
             </div>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">
+          Spam filter
+        </span>
+        <span className="text-xs" style={{ lineHeight: 1.4 }}>
+          Times out anyone who floods chat: the same message over and over, bursts
+          of links or mentions, or DMs to lots of people at once. It never touches
+          the owner, moderators or approved bots. Every timeout goes in the audit
+          log, and repeat offenders get longer ones each time: a minute, then ten,
+          then an hour, then a day.
+        </span>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={spamFilter}
+            onCheckedChange={(v) => {
+              setSpamFilter(v);
+              if (!saveIfChanged({ spamFilter: v })) setSpamFilter(!v);
+            }}
+            disabled={!canEdit}
+          />
+          <span className="text-sm">Time out spammers automatically</span>
+        </div>
+        {spamFilter && (
+          <Select
+            className="max-w-80"
+            value={spamSensitivity}
+            onValueChange={(v) => {
+              const next = normalizeSpamSensitivity(String(v));
+              const previous = spamSensitivity;
+              setSpamSensitivity(next);
+              if (!saveIfChanged({ spamSensitivity: next })) setSpamSensitivity(previous);
+            }}
+            disabled={!canEdit}
+            options={[
+              { label: "Low: only obvious floods", value: "low" },
+              { label: "Normal", value: "normal" },
+              { label: "High: trips sooner, can catch real people", value: "high" },
+            ]}
+          />
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
