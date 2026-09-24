@@ -1205,6 +1205,19 @@ body {
   aspect-ratio: auto 16 / 9;
 }
 
+/* The size stored with the attachment. Every stage of the player takes it, so the box
+   is the video's shape from first paint and pressing play moves nothing (GRYT-1309). */
+.chat-video-player[data-sized] .gryt-video-player:not([data-fullscreen]) > video,
+.chat-video-player[data-sized] .gryt-video-player > img,
+.chat-video-player[data-sized] .gryt-video-player > .aspect-video {
+  aspect-ratio: var(--chat-video-ratio);
+}
+
+/* The placeholder shown when there is no poster, capped like the video it stands in for. */
+.chat-video-player[data-sized] .gryt-video-player > .aspect-video {
+  max-height: 480px;
+}
+
 .chat-media-filename {
   display: block;
   font-size: 12px;
@@ -1464,7 +1477,8 @@ body {
   }
 
   .chat-video-player .gryt-video-player:not([data-fullscreen]) > video,
-  .chat-video-player .gryt-video-player > img {
+  .chat-video-player .gryt-video-player > img,
+  .chat-video-player[data-sized] .gryt-video-player > .aspect-video {
     max-height: 620px;
   }
 

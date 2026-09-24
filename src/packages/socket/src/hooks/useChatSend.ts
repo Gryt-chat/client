@@ -7,7 +7,7 @@ import type { SealDecision, SealedAttachmentKey } from "@/common";
 import { getServerAccessToken, getServerRefreshToken } from "@/common";
 
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
-import { getImageDimensions } from "../utils/imageUtils";
+import { getMediaDimensions } from "../utils/imageUtils";
 import { shouldRefreshToken } from "../utils/tokenManager";
 import { draftKey, returnDraft } from "./returnedDrafts";
 import { uploadChatFile } from "./uploadChatFile";
@@ -314,7 +314,7 @@ export function useChatSend({
       let localEnriched: AttachmentMeta[] | null = null;
 
       if (files.length > 0) {
-        const dims = await Promise.all(files.map((f) => getImageDimensions(f)));
+        const dims = await Promise.all(files.map((f) => getMediaDimensions(f)));
         localAttachmentIds = files.map(() => `local-${uuidv4()}`);
         localEnriched = files.map((f, i) => ({
           file_id: localAttachmentIds![i],

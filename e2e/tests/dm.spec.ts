@@ -273,6 +273,30 @@ test("an encrypted DM's files save and copy as the files that were sent, with no
   expect(fileFetches.length, "Save As downloaded a video that was already decrypted for play").toBe(fetchesAfterPlay);
 });
 
+test("an encrypted DM's video has its own shape before it is decrypted, and keeps it when it plays", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+
+  await openDmFromMembers(bob, alice);
+  await expect(bob.page.getByText(ENCRYPTED)).toBeVisible();
+  await attachAndSend(bob.page, [fixture("clip.webm")], composer(bob.page, `Message ${alice.name}`));
+
+  const page = alice.page;
+  await openDmFromList(page, bob.name);
+  const player = page.locator(`${CONFIRMED_ROW} .chat-video-player`).filter({ hasText: "clip.webm" });
+  const frame = player.locator(".gryt-video-player");
+  await expect(frame).toBeVisible();
+
+  // clip.webm is 160x120. The size came inside the sealed message; the server never saw it.
+  const before = (await frame.boundingBox())!;
+  expect(before.width / before.height).toBeCloseTo(4 / 3, 2);
+
+  await player.locator(':scope > button[aria-label="Play video"]').click();
+  await expect(player.locator("video")).toHaveJSProperty("videoWidth", 160);
+  const after = (await frame.boundingBox())!;
+  expect({ width: after.width, height: after.height }).toEqual({ width: before.width, height: before.height });
+});
+
 /** A member whose app never publishes a message key, so a DM with them can't be encrypted. */
 function neverPublishKey() {
   const send = WebSocket.prototype.send;

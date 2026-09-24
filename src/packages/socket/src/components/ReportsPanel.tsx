@@ -594,6 +594,8 @@ function ReportAttachment({
         poster={meta?.has_thumbnail ? thumbUrl : undefined}
         fileName={meta?.original_name}
         size={meta?.size}
+        width={meta?.width}
+        height={meta?.height}
         volume={chatMediaVolume}
         onVolumeChange={setChatMediaVolume}
         onError={refreshUrl}
