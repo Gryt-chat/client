@@ -97,11 +97,13 @@ test("What's new after an update puts the line first, security in a red block, t
     const box = (el: Element) => el.getBoundingClientRect();
     const pad = card.querySelector(".whats-new-pad")!;
     const block = card.querySelector(".whats-new-security")!;
-    const row = card.querySelector(".whats-new-body > ul .whats-new-change")!;
+    const row = card.querySelector(".whats-new-group:not(.whats-new-security) .whats-new-change")!;
     return {
       sideways: pad.scrollWidth - pad.clientWidth,
       body: Math.round(box(card.querySelector(".whats-new-body")!).width),
-      headings: [...card.querySelectorAll(".whats-new-body > .whats-new-area")].map((h) => Math.round(box(h).width)),
+      headings: [...card.querySelectorAll(".whats-new-group:not(.whats-new-security) > .whats-new-area")].map((h) =>
+        Math.round(box(h).width),
+      ),
       lineAbove: box(card.querySelector(".whats-new-line")!).bottom <= box(block).top,
       blockInside: box(block).left >= box(pad).left && box(block).right <= box(pad).right,
       pillAbove: box(row.querySelector(".whats-new-kind")!).bottom <= box(row.querySelector("p")!).top,
@@ -165,4 +167,72 @@ test("What's new across several releases groups each one on its own", async ({ n
   ]);
   await expect(releases.nth(1).getByRole("heading", { level: 4 })).toHaveCount(0);
   await expect(releases.nth(1).locator(".whats-new-kind")).toHaveText(["New", "Fixed"]);
+});
+
+
+test("The area heading stays at the top of the list while you are reading that area", async ({ newMember }) => {
+  const { page } = await newMember();
+  const areas = ["voice", "chat", "servers", "settings"];
+  await serveChangelog(page, (feed) => ({
+    ...feed,
+    app: [
+      {
+        ...feed.app[0],
+        changes: areas.flatMap((area) =>
+          Array.from({ length: 4 }, (_, i) => ({
+            kind: "fixed",
+            area,
+            text: `A ${area} fix, number ${i + 1}, written long enough to take a line of the card on its own.`,
+          })),
+        ),
+      },
+      ...feed.app.slice(1),
+    ],
+  }));
+  await updateFrom1100(page);
+
+  const dialog = page.getByRole("dialog", { name: "Here’s what’s new in Gryt Chat" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("heading", { level: 3 })).toHaveText([
+    "Voice & video",
+    "Chat",
+    "Servers & invites",
+    "Settings & app",
+  ]);
+
+  // Each area has a mark of its own beside its name, and no two areas share one.
+  const marks = await dialog.locator(".whats-new-area svg").evaluateAll((svgs) => svgs.map((svg) => svg.innerHTML));
+  expect(marks).toHaveLength(4);
+  expect(new Set(marks).size).toBe(4);
+
+  const scrolled = await dialog.evaluate((card) => {
+    const pad = card.querySelector(".whats-new-pad")!;
+    const top = () => pad.getBoundingClientRect().top;
+    const headings = [...card.querySelectorAll(".whats-new-area")];
+    const held = () => headings.filter((h) => Math.abs(h.getBoundingClientRect().top - top()) < 1).map((h) => h.textContent);
+
+    /* Stopped halfway down each area: the one heading held at the top of the list
+       is that area's, whichever rows happen to be on screen. */
+    const inside: [string | null, (string | null)[]][] = [];
+    for (const group of card.querySelectorAll(".whats-new-group:not(.whats-new-security)")) {
+      const box = () => group.getBoundingClientRect();
+      pad.scrollTop += box().top - top() + box().height / 2;
+      if (box().top - top() >= 0 || box().bottom - top() <= 40) continue;
+      inside.push([group.querySelector(".whats-new-area")!.textContent, held()]);
+    }
+
+    // And nowhere on the way down does a heading come down over the one below it.
+    const over: number[] = [];
+    for (let y = 0; y <= pad.scrollHeight - pad.clientHeight; y += 4) {
+      pad.scrollTop = y;
+      const boxes = headings.map((h) => h.getBoundingClientRect()).filter((r) => r.bottom > top() && r.top < top() + pad.clientHeight);
+      if (boxes.some((r, i) => i > 0 && r.top < boxes[i - 1].bottom - 0.5)) over.push(y);
+    }
+    return { inside, over, scrolls: pad.scrollHeight > pad.clientHeight };
+  });
+
+  expect(scrolled.scrolls).toBe(true);
+  expect(scrolled.inside.length).toBeGreaterThan(1);
+  for (const [area, heldThere] of scrolled.inside) expect(heldThere, area ?? "").toEqual([area]);
+  expect(scrolled.over).toEqual([]);
 });

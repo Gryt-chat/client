@@ -39,7 +39,9 @@ import {
   CornersIn,
   CornersOut,
   Desktop,
+  DeviceMobile,
   DotsSixVertical,
+  DotsThreeCircle,
   DotsThreeVertical,
   DownloadSimple,
   Envelope,
@@ -178,7 +180,9 @@ export const PiCopySimpleBold: Icon = weighted(CopySimple, "bold", "PiCopySimple
 export const PiCornersInFill: Icon = weighted(CornersIn, "fill", "PiCornersInFill");
 export const PiCornersOutFill: Icon = weighted(CornersOut, "fill", "PiCornersOutFill");
 export const PiDesktopFill: Icon = weighted(Desktop, "fill", "PiDesktopFill");
+export const PiDeviceMobileFill: Icon = weighted(DeviceMobile, "fill", "PiDeviceMobileFill");
 export const PiDotsSixVerticalFill: Icon = weighted(DotsSixVertical, "fill", "PiDotsSixVerticalFill");
+export const PiDotsThreeCircleFill: Icon = weighted(DotsThreeCircle, "fill", "PiDotsThreeCircleFill");
 export const PiDotsThreeVerticalBold: Icon = weighted(DotsThreeVertical, "bold", "PiDotsThreeVerticalBold");
 export const PiDownloadSimpleFill: Icon = weighted(DownloadSimple, "fill", "PiDownloadSimpleFill");
 export const PiEnvelopeFill: Icon = weighted(Envelope, "fill", "PiEnvelopeFill");

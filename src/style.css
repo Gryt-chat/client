@@ -1730,13 +1730,16 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1.25rem 1.375rem 0.25rem;
+  padding: 0 1.375rem 0.25rem;
 }
 
+/* The greeting carries the top padding rather than the scroll area. A sticky heading stops
+   below a scroll area's own padding, so the rows would show above it on their way out. */
 .whats-new-head {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  padding-top: 1.25rem;
 }
 
 .whats-new-mark {
@@ -1815,19 +1818,45 @@ body {
 }
 
 .whats-new-body > *,
-.whats-new-security > * {
+.whats-new-group > * {
   grid-column: 1 / -1;
 }
 
 .whats-new-body > .whats-new-changes,
-.whats-new-security > .whats-new-changes {
+.whats-new-group > .whats-new-changes {
   grid-template-columns: subgrid;
   margin: 0.75rem 0 0;
 }
 
-.whats-new-area {
+/* An area, and the security block: the heading and the rows share one grid row. A sticky
+   box travels inside its own grid area, and a row holding nothing but the heading is
+   exactly as tall as it is, which leaves it nowhere to go (GRYT-1402). */
+.whats-new-group {
+  /* Where the heading is pinned, and the room the rows leave for it. One value for
+     both, because the pinned heading lies over its rows rather than above them. */
+  --whats-new-area-height: 1.5rem;
+  display: grid;
   grid-column: 1 / -1;
-  margin: 1.125rem 0 0.4375rem;
+  grid-template-columns: subgrid;
+  margin-top: 1.125rem;
+}
+
+.whats-new-group > .whats-new-area,
+.whats-new-group > .whats-new-changes {
+  grid-row: 1;
+}
+
+.whats-new-group > .whats-new-changes {
+  margin: 0;
+  padding-top: var(--whats-new-area-height);
+}
+
+.whats-new-area {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 0.4375rem;
+  margin: 0;
   font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1.3;
@@ -1836,8 +1865,28 @@ body {
   color: var(--gryt-muted);
 }
 
-.whats-new-area + .whats-new-changes {
-  margin-top: 0;
+/* Pinned at the top of the list for as long as its own rows are on screen, and pushed
+   off by the next area's. The card's own colour, so the rows pass behind it. */
+.whats-new-group > .whats-new-area {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  align-self: start;
+  height: var(--whats-new-area-height);
+  background: var(--gryt-surface);
+}
+
+.whats-new-area-icon {
+  flex: none;
+  color: var(--gryt-accent-11);
+}
+
+/* Clipped rather than wrapped: the rows keep one line's worth of room clear, and an area
+   name this build has never seen is whatever the site called it. */
+.whats-new-area-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* The app's error red as a tint rather than a fill. The negative margin and matching
@@ -1852,9 +1901,15 @@ body {
   box-shadow: inset 0 0 0 1px var(--gryt-danger-6);
 }
 
+/* The block's own tint rather than the card's, for the same reason: its rows scroll
+   behind its heading too, and they do it on red. */
 .whats-new-security > .whats-new-area {
-  margin-top: 0;
   color: var(--gryt-danger-11);
+  background: var(--gryt-danger-2);
+}
+
+.whats-new-security .whats-new-area-icon {
+  color: inherit;
 }
 
 .whats-new-security .whats-new-change {
