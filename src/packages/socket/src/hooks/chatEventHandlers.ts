@@ -192,6 +192,7 @@ export function handleMessageDeleted(
 // ── chat:error ──────────────────────────────────────────────────────
 
 interface RetryQueueEntry {
+  nonce?: string;
   retryCount: number;
   timeoutId?: ReturnType<typeof setTimeout>;
 }
@@ -203,8 +204,9 @@ export interface ChatErrorDeps {
   setMessageCacheMeta: Dispatch<SetStateAction<MessageCacheMeta>>;
   rateLimitIntervalRef: MutableRefObject<NodeJS.Timeout | null>;
   setRateLimitCountdown: Dispatch<SetStateAction<number>>;
-  onRetry: () => void;
-  onFail: () => void;
+  /** Given the pending id when the server named the send, and nothing when it did not. */
+  onRetry: (pendingId?: string) => void;
+  onFail: (pendingId?: string) => void;
   retryQueueRef: MutableRefObject<Map<string, RetryQueueEntry>>;
 }
 
@@ -219,12 +221,23 @@ const NON_RETRYABLE_ERRORS = [
 /** How long before a refused send goes out again, when the server named no wait. */
 const RETRY_AFTER_MS = 3000;
 
-/* The send a refusal is about. chat:error names no message, so it is the last
-   one queued — whatever its retry count, because a spent entry has to fail. */
-function latestEntry(queue: Map<string, RetryQueueEntry>): RetryQueueEntry | null {
+/** What a server from GRYT-1410 on sends after the payload: the refused send's nonce. */
+export interface ChatErrorRef {
+  nonce?: string;
+}
+
+type Refused = { entry: RetryQueueEntry; pendingId?: string };
+
+/* The send a refusal is about. A nonce names it, and one not queued here is a
+   thread reply's or already settled. Without one it is the last queued. */
+function refusedEntry(queue: Map<string, RetryQueueEntry>, ref?: ChatErrorRef): Refused | null {
+  const nonce = ref && typeof ref === "object" && typeof ref.nonce === "string" ? ref.nonce : null;
   let latest: RetryQueueEntry | null = null;
-  for (const entry of queue.values()) latest = entry;
-  return latest;
+  for (const [pendingId, entry] of queue) {
+    if (nonce && entry.nonce === nonce) return { entry, pendingId };
+    latest = entry;
+  }
+  return !nonce && latest ? { entry: latest } : null;
 }
 
 /** A mute is refused for as long as it lasts, so sending it again is noise. */
@@ -244,17 +257,18 @@ export function handleChatErrorEvent(
   activeConversationId: string,
   activeCacheKey: string,
   deps: ChatErrorDeps,
+  ref?: ChatErrorRef,
 ): void {
-  const entry = latestEntry(deps.retryQueueRef.current);
+  const refused = refusedEntry(deps.retryQueueRef.current, ref);
   /* One automatic retry, and if that is refused too the row fails and the text
      goes back in the composer. The thread panel does the same (GRYT-1387). */
-  const canRetry = !!entry && entry.retryCount < 1 && !isNonRetryableError(error);
+  const canRetry = !!refused && refused.entry.retryCount < 1 && !isNonRetryableError(error);
 
   /* Before the toast below, which would draw "Chat error: muted" over a
      composer already saying it in words. */
   if (isMutedError(error)) {
     deps.onMuted?.(typeof error === "object" && typeof error.expiresAt === "string" ? error.expiresAt : null);
-    settle(entry, false, deps, RETRY_AFTER_MS);
+    settle(refused, false, deps, RETRY_AFTER_MS);
     return;
   }
 
@@ -306,28 +320,28 @@ export function handleChatErrorEvent(
 
     /* On the entry rather than on the countdown above, which is cleared by any
        re-render — so the one retry never went out at all (GRYT-1393). */
-    settle(entry, canRetry, deps, waitMs || RETRY_AFTER_MS);
+    settle(refused, canRetry, deps, waitMs || RETRY_AFTER_MS);
     return;
   }
 
   handleRateLimitError(error, "Chat");
-  settle(entry, canRetry, deps, RETRY_AFTER_MS);
+  settle(refused, canRetry, deps, RETRY_AFTER_MS);
 }
 
 /** Send it again, or give up on it: the two ends of a refusal. */
 function settle(
-  entry: RetryQueueEntry | null,
+  refused: Refused | null,
   canRetry: boolean,
   deps: ChatErrorDeps,
   waitMs: number,
 ): void {
   // A refusal with nothing queued is a fetch's, not a send's.
-  if (!entry) return;
+  if (!refused) return;
   if (!canRetry) {
-    deps.onFail();
+    deps.onFail(refused.pendingId);
     return;
   }
-  entry.timeoutId = setTimeout(() => deps.onRetry(), waitMs);
+  refused.entry.timeoutId = setTimeout(() => deps.onRetry(refused.pendingId), waitMs);
 }
 
 // ── Fetch decision ──────────────────────────────────────────────────
