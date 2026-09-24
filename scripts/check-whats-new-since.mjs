@@ -171,7 +171,7 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
   );
   assert.match(dialog, /What&rsquo;s new since \{since\}/, `${DIALOG} does not say it covers several releases`);
   assert.match(dialog, /Here&rsquo;s what&rsquo;s new in Gryt Chat/, `${DIALOG} lost the single-release greeting`);
-  assert.match(dialog, /several \? "https:\/\/gryt\.chat\/changelog" :/, `${DIALOG} does not link several releases to the full changelog`);
+  assert.match(dialog, /several \? changelogHref \?\? "https:\/\/gryt\.chat\/changelog" :/, `${DIALOG} does not link several releases to the full changelog`);
   assert.equal((dialog.match(/<Dialog\.Close/g) ?? []).length, 1, `${DIALOG} should have exactly one way to close`);
 }
 
