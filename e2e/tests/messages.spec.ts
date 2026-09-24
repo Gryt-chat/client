@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { accessTokenOf, ask, serverUserIdOf, withSocket } from "../support/admin";
+import { accessTokenOf, ask, serverUserIdOf, setProfanityMode, withSocket } from "../support/admin";
 import { channelComposer, messageRow, pasteText, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
@@ -111,23 +111,25 @@ test("a message whose upload fails comes back to the composer, and its row says 
 test("a message the server keeps refusing fails instead of sitting pending", async ({ newMember, owner, gryt }) => {
   const alice = await newMember();
   const token = await accessTokenOf(owner.page, gryt.server.host);
-  const muted = serverUserIdOf(await accessTokenOf(alice.page, gryt.server.host));
 
-  /* A mute refuses every send and leaves the composer open, which is the two
-     refusals a hard rate limit produces without the thirty-second wait. */
-  await withSocket(gryt.server.httpBase, (socket) =>
-    ask(socket, "server:mute", { accessToken: token, targetServerUserId: muted, muted: true }, "server:mute:success"),
-  );
+  /* A blocked word is refused every time and leaves the composer open, which is
+     the two refusals a hard rate limit gives without the thirty-second wait. A
+     mute used to stand in for it, and now locks the box instead (GRYT-1400). */
+  await setProfanityMode(gryt.server.httpBase, token, "block");
 
-  const text = unique("refused twice over");
-  const box = channelComposer(alice.page);
-  await box.click();
-  await alice.page.keyboard.insertText(text);
-  await box.press("Enter");
+  try {
+    const text = `${unique("refused twice over")} shit`;
+    const box = channelComposer(alice.page);
+    await box.click();
+    await alice.page.keyboard.insertText(text);
+    await box.press("Enter");
 
-  // One automatic retry, and then the row says so rather than staying pending.
-  await expect(alice.page.locator("[data-message-id]").filter({ hasText: text })).toContainText("Failed to send");
-  await expect(box).toHaveText(text);
+    // One automatic retry, and then the row says so rather than staying pending.
+    await expect(alice.page.locator("[data-message-id]").filter({ hasText: text })).toContainText("Failed to send", { timeout: 30_000 });
+    await expect(box).toHaveText(text);
+  } finally {
+    await setProfanityMode(gryt.server.httpBase, token, "censor");
+  }
 });
 
 test("a send past the rate limit goes out when the wait is over", async ({ owner }) => {
