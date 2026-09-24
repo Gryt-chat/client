@@ -1,11 +1,13 @@
 import { Button, Chip, type ChipProps, Dialog } from "@gryt/ui";
 import type { Icon } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
 
 import { LogoIcon } from "@/common";
 
 import {
   PiBellFill,
   PiChatCircleFill,
+  PiCloudArrowDownFill,
   PiDeviceMobileFill,
   PiDotsThreeCircleFill,
   PiGearFill,
@@ -20,6 +22,14 @@ export interface WhatsNewChange {
   /** The part of Gryt it touches. Releases before 1.11.0, and older sites, have none. */
   area?: string;
   text: string;
+}
+
+/** Set when the releases are ones a server has not updated to yet (GRYT-1413). */
+export interface WhatsNewAhead {
+  running: string;
+  latest: string;
+  /** Said in place of the list while there is none: still loading, or no lines yet. */
+  empty?: string;
 }
 
 export interface WhatsNewRelease {
@@ -231,6 +241,75 @@ function ReleaseBody({
 }
 
 /**
+ * A server's releases it does not run yet. Said up top, and again as the list's own
+ * heading, so the list never reads as what the server already has.
+ */
+function AheadBody({
+  ahead,
+  releases,
+  capped,
+}: {
+  ahead: WhatsNewAhead;
+  releases: WhatsNewRelease[];
+  capped: boolean;
+}) {
+  const count = releases.length;
+
+  return (
+    <>
+      <div className="whats-new-head">
+        <span className="whats-new-mark">
+          <LogoIcon size={26} />
+        </span>
+        <span>
+          <Dialog.Title className="whats-new-greet">This server runs {ahead.running}</Dialog.Title>
+          <p className="whats-new-meta">
+            {count === 0
+              ? `The newest is ${ahead.latest}`
+              : capped
+                ? `The newest ${count} releases, up to ${ahead.latest}`
+                : `${count} newer ${count === 1 ? "release" : "releases"}, up to ${ahead.latest}`}
+          </p>
+        </span>
+      </div>
+
+      {count === 0 ? (
+        <p className="whats-new-plain">{ahead.empty}</p>
+      ) : (
+        <>
+          <p className="whats-new-lead">
+            None of this is on the server yet. Updating to {ahead.latest} adds all of it.
+          </p>
+          <div className="whats-new-ahead" data-whats-new-ahead>
+            <h3 className="whats-new-area">
+              <PiCloudArrowDownFill className="whats-new-area-icon" size={15} />
+              <span className="whats-new-area-name">Not on this server yet</span>
+            </h3>
+            <ReleaseList releases={releases} />
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/** The releases one after another, each under its version and date. */
+function ReleaseList({ releases }: { releases: WhatsNewRelease[] }) {
+  return (
+    <div className="whats-new-releases">
+      {releases.map((release) => (
+        <section key={release.version} className="whats-new-release">
+          <h3 className="whats-new-version">
+            {release.version} · {readableDate(release.date)}
+          </h3>
+          <ReleaseBody line={release.line} changes={release.changes} heading="h4" />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
  * What changed since somebody last opened Gryt, newest release first. The third
  * dialog this app draws, and the only one with a shape ConfirmDialog cannot carry.
  */
@@ -239,14 +318,20 @@ export function WhatsNewDialog({
   since,
   capped,
   onClose,
+  ahead,
+  children,
 }: {
   releases: WhatsNewRelease[];
   since: string | null;
   capped: boolean;
   onClose: () => void;
+  /** With it, what a server gets once it updates instead, and `children` says how. */
+  ahead?: WhatsNewAhead;
+  children?: ReactNode;
 }) {
   const [newest] = releases;
-  const several = releases.length > 1;
+  /* A server's are always a list with versions, and only app releases have a page. */
+  const several = releases.length > 1 || !!ahead;
 
   return (
     <Dialog.Root
@@ -274,42 +359,40 @@ export function WhatsNewDialog({
           }}
         >
           <div className="whats-new-pad">
-            <div className="whats-new-head">
-              <span className="whats-new-mark">
-                <LogoIcon size={26} />
-              </span>
-              <span>
-                <Dialog.Title className="whats-new-greet">
-                  {several && since ? (
-                    <>What&rsquo;s new since {since}</>
-                  ) : (
-                    <>Here&rsquo;s what&rsquo;s new in Gryt Chat</>
-                  )}
-                </Dialog.Title>
-                <p className="whats-new-meta">
-                  {!several
-                    ? `${newest.version} · ${readableDate(newest.date)}`
-                    : capped
-                      ? `The ${releases.length} newest releases`
-                      : `${releases.length} releases`}
-                </p>
-              </span>
-            </div>
-
-            {several ? (
-              <div className="whats-new-releases">
-                {releases.map((release) => (
-                  <section key={release.version} className="whats-new-release">
-                    <h3 className="whats-new-version">
-                      {release.version} · {readableDate(release.date)}
-                    </h3>
-                    <ReleaseBody line={release.line} changes={release.changes} heading="h4" />
-                  </section>
-                ))}
-              </div>
+            {ahead ? (
+              <AheadBody ahead={ahead} releases={releases} capped={capped} />
             ) : (
-              <ReleaseBody line={newest.line} changes={newest.changes} />
+              <>
+                <div className="whats-new-head">
+                  <span className="whats-new-mark">
+                    <LogoIcon size={26} />
+                  </span>
+                  <span>
+                    <Dialog.Title className="whats-new-greet">
+                      {several && since ? (
+                        <>What&rsquo;s new since {since}</>
+                      ) : (
+                        <>Here&rsquo;s what&rsquo;s new in Gryt Chat</>
+                      )}
+                    </Dialog.Title>
+                    <p className="whats-new-meta">
+                      {!several
+                        ? `${newest.version} · ${readableDate(newest.date)}`
+                        : capped
+                          ? `The ${releases.length} newest releases`
+                          : `${releases.length} releases`}
+                    </p>
+                  </span>
+                </div>
+
+                {several ? (
+                  <ReleaseList releases={releases} />
+                ) : (
+                  <ReleaseBody line={newest.line} changes={newest.changes} />
+                )}
+              </>
             )}
+            {children}
           </div>
 
           <div className="whats-new-foot">

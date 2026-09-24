@@ -86,3 +86,24 @@ export function releasesToShow(
     capped: between.length > MAX_RELEASES,
   };
 }
+
+/** The releases a server has not updated to yet, and whether more matched than fit. */
+export interface ReleasesAhead {
+  /** Newest first. Empty when the site has no line for any of them yet. */
+  releases: Release[];
+  capped: boolean;
+}
+
+/**
+ * The lines after the version a server runs, up to the newest it could move to.
+ * Beta lines only for a server on the beta channel, as for the app.
+ */
+export function releasesAhead(list: Release[], running: string, latest: string, beta: boolean): ReleasesAhead {
+  const ahead = list
+    .filter((r) => beta || r.channel !== "beta")
+    .filter((r) => compareVersions(r.version, running) > 0 && compareVersions(r.version, latest) <= 0)
+    .filter((r, i, all) => all.findIndex((o) => o.version === r.version) === i)
+    .sort((a, b) => compareVersions(b.version, a.version));
+
+  return { releases: ahead.slice(0, MAX_RELEASES), capped: ahead.length > MAX_RELEASES };
+}

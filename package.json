@@ -46,6 +46,7 @@
     "test:whats-new": "node --disable-warning=ExperimentalWarning scripts/check-whats-new.mjs",
     "test:whats-new-since": "node scripts/check-whats-new-since.mjs",
     "test:whats-new-reachable": "node scripts/check-whats-new-reachable.mjs",
+    "test:server-release-notes": "node --disable-warning=ExperimentalWarning scripts/check-server-release-notes.mjs",
     "test:security-notice": "node --disable-warning=ExperimentalWarning scripts/check-security-notice.mjs",
     "test:chat-scroll-anchor": "node scripts/check-chat-scroll-anchor.mjs",
     "test:chat-retry": "node --disable-warning=ExperimentalWarning scripts/check-chat-retry.mjs",
