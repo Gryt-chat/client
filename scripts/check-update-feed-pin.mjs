@@ -334,7 +334,7 @@ await check("a pressed check answers every unpinned result and only offers a pin
   assert.notEqual(start, -1, "the check-for-updates handler is gone");
   const handler = main.slice(start, main.indexOf('"download-update"', start));
 
-  const guard = handler.match(/if \(pin\.kind !== "pinned"\) \{([\s\S]*?)\n\s*return;\s*\}\s*(?:\/\*[\s\S]*?\*\/\s*)?offerRelease\(pin\.release, \{ bypassRollout: true \}\);/);
+  const guard = handler.match(/if \(pin\.kind !== "pinned"\) \{([\s\S]*?)\n\s*return;\s*\}\s*(?:\/\*[\s\S]*?\*\/\s*)?offerRelease\(pin\.release, \{ bypassRollout: true, asked: updatesAreManagedByWindows \}\);/);
   assert.ok(guard, "an unpinned result has to return before the release is offered");
 
   const unpinned = guard[1];

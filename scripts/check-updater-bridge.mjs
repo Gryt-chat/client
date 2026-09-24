@@ -119,6 +119,17 @@ for (const name of ["checkForUpdatesInBackground", "offerRelease"]) {
   assert.match(bodyOf(name), /\{\s*(\/\*[\s\S]*?\*\/\s*)?if \(updatesComeFromAStore\) \{/, `${name} no longer stops first in a store build`);
 }
 
+// A press on a store build still gets an answer: the panel is not left on "Checking...".
+assert.match(
+  bodyOf("checkForUpdatesInBackground"),
+  /if \(updatesComeFromAStore\) \{[\s\S]*?if \(force\) \{\s*sendToMain\("store-managed"/,
+);
+
+assert.match(
+  bodyOf("offerRelease"),
+  /if \(updatesComeFromAStore\) \{[\s\S]*?if \(options\.asked\) \{\s*sendToMain\("store-managed"/,
+);
+
 // The Mac App Store build hides the tray's check and skips the variant switch's own check.
 assert.match(main, /\.\.\.\(updatesComeFromTheAppStore\s*\?\s*\[\]\s*:\s*\[\s*\{\s*label: "Check for Updates",/);
 

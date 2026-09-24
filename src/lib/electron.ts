@@ -25,6 +25,9 @@ export interface UpdateStatus {
     // A check somebody pressed found nothing. Only ever sent for a forced
     // check, because it is an answer to a question rather than news.
     | "up-to-date"
+    // A press on a Store build (MSIX, the Mac App Store): the Store checks and
+    // installs on its own, so there is nothing here to look for or download.
+    | "store-managed"
     // The main process is handing this version to the installer, and the
     // window goes with it.
     | "installing"

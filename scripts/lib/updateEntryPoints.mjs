@@ -17,7 +17,7 @@ export const CHECKS = {
   "Check for Updates in Settings": {
     from: '"check-for-updates",',
     to: '"download-update"',
-    call: "offerRelease(pin.release, { bypassRollout: true })",
+    call: "offerRelease(pin.release, { bypassRollout: true, asked: updatesAreManagedByWindows })",
     options: { bypassRollout: true },
   },
 };
