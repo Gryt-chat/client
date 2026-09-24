@@ -2,7 +2,7 @@ import { IconButton, Tooltip } from "@gryt/ui";
 import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, SFUConnectionState, useCamera, useScreenShare } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
@@ -11,16 +11,18 @@ import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { getElectronAPI } from "../../../../lib/electron";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiScreencastFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { roleSender, senderStreamId } from "../utils/senderStreamIds";
-import { CameraPreviewModal } from "./CameraPreviewModal";
+import { liftScreenCapture, qualityBox, setSizeCeiling, supportsDownTo } from "../utils/streamQuality";
+import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
+import { CameraControl } from "./CameraControl";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
-import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
+import { ScreenShareControl } from "./ScreenShareControl";
 
 interface ControlsProps {
   onDisconnect?: () => void;
@@ -64,7 +66,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   } = useSFU();
   const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
-  const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeScreenCaptureAvailable, nativeEncodedCodec, subscribeEncodedFrames, startScreenShare, stopScreenShare } = useScreenShare();
+  const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeEncodedCodec, subscribeEncodedFrames, stopScreenShare } = useScreenShare();
   const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
   const { supported: canPickAudioSources } = useScreenAudioSources();
   const [showAudioSourcesModal, setShowAudioSourcesModal] = useState(false);
@@ -73,17 +75,12 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
     isServerMuted, isServerDeafened,
-    screenShareQuality, setScreenShareQuality,
-    screenShareFps, setScreenShareFps,
-    experimentalScreenShare,
-    screenShareGamingMode, setScreenShareGamingMode,
-    screenShareCodec, setScreenShareCodec,
-    screenShareMaxBitrate, setScreenShareMaxBitrate,
-    screenShareScalabilityMode, setScreenShareScalabilityMode,
-    cameraID, setCameraID, cameraQuality, setCameraQuality,
-    cameraFps, setCameraFps,
-    cameraMirrored, setCameraMirrored,
-    cameraFlipped, setCameraFlipped,
+    screenShareQuality,
+    screenShareFps,
+    screenShareGamingMode,
+    screenShareCodec,
+    screenShareMaxBitrate,
+    screenShareScalabilityMode,
     cameraCodec,
   } = useSettings();
 
@@ -101,13 +98,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
   getPeerConnectionRef.current = getPeerConnection;
   const getScreenVideoSenderRef = useRef(getScreenVideoSender);
   getScreenVideoSenderRef.current = getScreenVideoSender;
-  const [showCameraModal, setShowCameraModal] = useState(false);
-  const [showScreenShareModal, setShowScreenShareModal] = useState(false);
-  const [isStartingScreenShare, setIsStartingScreenShare] = useState(false);
   const { canIn } = useServerPermissions(currentServerConnected || "");
-  // The room's answer. One already on keeps its button, so it can be turned off.
-  const showCamera = cameraEnabled || canIn(currentChannelConnected, "share_video");
-  const showScreenShare = screenShareActive || isStartingScreenShare || canIn(currentChannelConnected, "share_screen");
+  // One setParameters at a time: a second read before the first write lands is refused.
+  const screenParamsChain = useRef<Promise<void>>(Promise.resolve());
 
   // Sync camera stream to WebRTC peer connection
   useEffect(() => {
@@ -183,25 +176,35 @@ export function Controls({ onDisconnect }: ControlsProps) {
          * matches only on the first share, so the cap stays too small (GRYT-13). */
         const screenSender = getScreenVideoSenderRef.current?.() ?? null;
         if (screenSender) {
-          const params = screenSender.getParameters();
-          params.degradationPreference = screenShareGamingMode
-            ? "maintain-framerate"
-            : "maintain-resolution";
-          if (params.encodings && params.encodings.length > 0) {
-            const effectiveBitrate = bitrate ?? 50_000_000;
-            params.encodings[0].priority = "high";
-            params.encodings[0].maxBitrate = effectiveBitrate;
-            params.encodings[0].maxFramerate = screenShareFps;
-            const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
-            if (!isH264 && screenShareScalabilityMode !== "L1T1") {
-              params.encodings[0].scalabilityMode = screenShareScalabilityMode;
+          const quality = screenShareQuality;
+          const fps = screenShareFps;
+          const apply = async () => {
+            await liftScreenCapture(videoTrack, quality, fps);
+            const hasDownTo = await supportsDownTo(screenSender);
+            const params = screenSender.getParameters();
+            params.degradationPreference = screenShareGamingMode
+              ? "maintain-framerate"
+              : "maintain-resolution";
+            if (params.encodings && params.encodings.length > 0) {
+              const effectiveBitrate = bitrate ?? 50_000_000;
+              params.encodings[0].priority = "high";
+              params.encodings[0].maxBitrate = effectiveBitrate;
+              params.encodings[0].maxFramerate = fps;
+              setSizeCeiling(params.encodings[0], qualityBox(quality), videoTrack, hasDownTo);
+              const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
+              if (!isH264 && screenShareScalabilityMode !== "L1T1") {
+                params.encodings[0].scalabilityMode = screenShareScalabilityMode;
+              }
             }
-          }
-          const enc = params.encodings[0];
-          voiceLog.info("SCREEN", `setParameters: priority=${enc?.priority ?? "default"} maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
-          screenSender.setParameters(params).catch((err: unknown) => {
-            voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
-          });
+            const enc = params.encodings[0];
+            voiceLog.info("SCREEN", `setParameters: priority=${enc?.priority ?? "default"} maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} ceiling=${quality} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
+            await screenSender.setParameters(params);
+          };
+          screenParamsChain.current = screenParamsChain.current
+            .then(apply)
+            .catch((err: unknown) => {
+              voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
+            });
         } else {
           // Worth a line rather than nothing: this is the state the bug sat in
           // silently, and it is still reachable if the engine has no sender yet.
@@ -399,38 +402,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
     });
   }, []);
 
-  const handleCameraClick = useCallback(() => {
-    if (cameraEnabled) {
-      setCameraEnabled(false);
-    } else {
-      setShowCameraModal(true);
-    }
-  }, [cameraEnabled, setCameraEnabled]);
-
-  const handleScreenShareClick = useCallback(() => {
-    if (screenShareActive) {
-      stopScreenShare();
-    } else if (!isStartingScreenShare) {
-      setShowScreenShareModal(true);
-    }
-  }, [screenShareActive, isStartingScreenShare, stopScreenShare]);
-
-  const handleStartScreenShare = useCallback(
-    async ({ sourceId, withAudio }: { sourceId?: string; withAudio: boolean }) => {
-      const toastId = "screen-share-starting";
-      setIsStartingScreenShare(true);
-      toast.loading("Starting screen share…", { id: toastId });
-
-      try {
-        await startScreenShare(withAudio, sourceId);
-      } finally {
-        setIsStartingScreenShare(false);
-        toast.dismiss(toastId);
-      }
-    },
-    [startScreenShare],
-  );
-
   function handleMute() {
     if (isServerMuted) {
       toast("You are server muted by an admin.", { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
@@ -457,7 +428,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   return (
     <>
       {isBrowserSupported && (
-        <div className="flex items-center justify-center gap-4">
+        // Seven 32px controls at gap-4 are 320px, wider than the 300px window Electron allows.
+        <div className="flex flex-wrap items-center justify-center gap-2 min-[400px]:gap-4">
           {/*
             Every control here is icon-only, so the tooltip text is also the
             accessible name — without aria-label a screen reader announced five
@@ -470,33 +442,26 @@ export function Controls({ onDisconnect }: ControlsProps) {
             you hovered previously.
           */}
           <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
-            <IconButton tone="neutral" size="xsmall"
+            <CallControlButton
+              state={isServerMuted ? "blocked" : isMuted ? "off" : "idle"}
               aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
               onClick={handleMute}
-              style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
             >
               {(isMuted || isServerMuted) ? <PiMicrophoneSlashFill size={16} /> : <PiMicrophoneFill size={16} />}
-            </IconButton>
+            </CallControlButton>
           </MaybeTooltip>
 
           <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
-            <IconButton tone="neutral" size="xsmall"
+            <CallControlButton
+              state={isServerDeafened ? "blocked" : isDeafened ? "off" : "idle"}
               aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
               onClick={handleDeafen}
-              style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
             >
               {(isDeafened || isServerDeafened) ? <PiSpeakerSlashFill size={16} /> : <PiSpeakerHighFill size={16} />}
-            </IconButton>
+            </CallControlButton>
           </MaybeTooltip>
 
-          {showCamera && (
-            <IconButton tone="neutral" size="xsmall"
-              aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
-              onClick={handleCameraClick}
-            >
-              {cameraEnabled ? <PiVideoCameraFill size={16} /> : <PiVideoCameraSlashFill size={16} />}
-            </IconButton>
-          )}
+          <CameraControl allowed={canIn(currentChannelConnected, "share_video")} />
 
           {/* Only while the camera is on, because that is the only time it can
               do anything, and next to the camera button because that is what
@@ -514,34 +479,19 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          {showScreenShare && (
-            <MaybeTooltip content={isStartingScreenShare ? "Starting screen share…" : null}>
-              <IconButton tone="neutral" size="xsmall"
-                aria-label={
-                  screenShareActive
-                    ? "Stop sharing your screen"
-                    : isStartingScreenShare
-                      ? "Starting screen share"
-                      : "Share your screen"
-                }
-                disabled={isStartingScreenShare}
-                onClick={handleScreenShareClick}
-              >
-                {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
-              </IconButton>
-            </MaybeTooltip>
-          )}
+          <ScreenShareControl allowed={canIn(currentChannelConnected, "share_screen")} />
 
           {/* Next to the share button because that is what it acts on, and
               only while a share is actually carrying audio. */}
           {canMuteScreenAudio && (
             <Tooltip title={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}>
-              <IconButton tone="neutral" size="xsmall"
+              <CallControlButton
+                state={screenAudioMuted ? "off" : "idle"}
                 aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
                 onClick={() => setScreenAudioMuted(!screenAudioMuted)}
               >
                 {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={16} /> : <PiSpeakerSimpleHighFill size={16} />}
-              </IconButton>
+              </CallControlButton>
             </Tooltip>
           )}
 
@@ -558,51 +508,15 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          <IconButton tone="danger" size="xsmall" aria-label="Leave voice channel" onClick={handleDisconnect}>
+          <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS} aria-label="Leave voice channel" onClick={handleDisconnect}>
             <PiPhoneDisconnectFill size={16} />
           </IconButton>
         </div>
       )}
 
-      <CameraPreviewModal
-        open={showCameraModal}
-        onOpenChange={setShowCameraModal}
-        cameraID={cameraID}
-        onCameraIDChange={setCameraID}
-        quality={cameraQuality}
-        onQualityChange={setCameraQuality}
-        fps={cameraFps}
-        onFpsChange={setCameraFps}
-        mirrored={cameraMirrored}
-        onMirroredChange={setCameraMirrored}
-        flipped={cameraFlipped}
-        onFlippedChange={setCameraFlipped}
-        onStart={() => setCameraEnabled(true)}
-      />
-
       <ScreenAudioSourcesModal
         open={showAudioSourcesModal}
         onOpenChange={setShowAudioSourcesModal}
-      />
-
-      <ScreenSharePickerModal
-        open={showScreenShareModal}
-        onOpenChange={setShowScreenShareModal}
-        quality={screenShareQuality as ScreenShareQuality}
-        onQualityChange={setScreenShareQuality}
-        fps={screenShareFps}
-        onFpsChange={setScreenShareFps}
-        experimentalScreenShare={experimentalScreenShare}
-        gamingMode={screenShareGamingMode}
-        onGamingModeChange={setScreenShareGamingMode}
-        codec={screenShareCodec}
-        onCodecChange={setScreenShareCodec}
-        maxBitrate={screenShareMaxBitrate}
-        onMaxBitrateChange={setScreenShareMaxBitrate}
-        scalabilityMode={screenShareScalabilityMode}
-        onScalabilityModeChange={setScreenShareScalabilityMode}
-        nativeScreenCaptureAvailable={nativeScreenCaptureAvailable}
-        onStart={handleStartScreenShare}
       />
     </>
   );

@@ -1,19 +1,18 @@
 import { IconButton } from "@gryt/ui";
-import { type ScreenShareQuality, useCamera, useScreenShare } from "@gryt/voice";
-import { useSFU } from "@gryt/voice";
+import { useCamera, useScreenShare, useSFU } from "@gryt/voice";
 import { AnimatePresence, motion, Variants } from "motion/react";
-import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useVoicePresence } from "../adapters/useVoicePresence";
-import { CameraPreviewModal } from "./CameraPreviewModal";
-import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
+import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
+import { CameraControl } from "./CameraControl";
+import { ScreenShareControl } from "./ScreenShareControl";
 
 const buttonAnimations: Variants = {
   hidden: { opacity: 0, x: -15, transition: { duration: 0.1 } },
@@ -51,39 +50,13 @@ export function MiniControls({
   const { disconnect, currentServerConnected, currentChannelConnected } = useSFU();
   const voice = useVoicePresence();
 
-  const { cameraEnabled, setCameraEnabled } = useCamera();
-  const { screenShareActive, nativeScreenCaptureAvailable, startScreenShare, stopScreenShare } = useScreenShare();
   const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
-  const {
-    screenShareQuality, setScreenShareQuality,
-    screenShareFps, setScreenShareFps,
-    experimentalScreenShare,
-    screenShareGamingMode, setScreenShareGamingMode,
-    screenShareCodec, setScreenShareCodec,
-    screenShareMaxBitrate, setScreenShareMaxBitrate,
-    screenShareScalabilityMode, setScreenShareScalabilityMode,
-    cameraID, setCameraID, cameraQuality, setCameraQuality,
-    cameraFps, setCameraFps,
-    cameraMirrored, setCameraMirrored,
-    cameraFlipped, setCameraFlipped,
-  } = useSettings();
-
+  const { cameraEnabled } = useCamera();
+  const { screenShareActive } = useScreenShare();
   const { canIn } = useServerPermissions(currentServerConnected || "");
   // The room's answer. One already on keeps its button, so it can be turned off.
   const showCamera = cameraEnabled || canIn(currentChannelConnected, "share_video");
   const showScreenShare = screenShareActive || canIn(currentChannelConnected, "share_screen");
-  const [showCameraModal, setShowCameraModal] = useState(false);
-  const [showScreenShareModal, setShowScreenShareModal] = useState(false);
-
-  const handleCameraClick = useCallback(() => {
-    if (cameraEnabled) setCameraEnabled(false);
-    else setShowCameraModal(true);
-  }, [cameraEnabled, setCameraEnabled]);
-
-  const handleScreenShareClick = useCallback(() => {
-    if (screenShareActive) stopScreenShare();
-    else setShowScreenShareModal(true);
-  }, [screenShareActive, stopScreenShare]);
 
   const isColumn = direction === "column";
   const iconSize = isColumn ? 14 : 12;
@@ -117,8 +90,9 @@ export function MiniControls({
             }}
           >
             <motion.div variants={buttonAnimations}>
-              <IconButton tone="neutral" size="xsmall"
-                style={isServerMuted ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+              <CallControlButton
+                state={isServerMuted ? "blocked" : isMuted ? "off" : "idle"}
+                aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
                 onClick={() => {
                   if (isServerMuted) {
                     toast("You are server muted by an admin.", { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
@@ -128,12 +102,13 @@ export function MiniControls({
                 }}
               >
                 {(isMuted || isServerMuted) ? <PiMicrophoneSlashFill size={iconSize} /> : <PiMicrophoneFill size={iconSize} />}
-              </IconButton>
+              </CallControlButton>
             </motion.div>
 
             <motion.div variants={buttonAnimations}>
-              <IconButton tone="neutral" size="xsmall"
-                style={isServerDeafened ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+              <CallControlButton
+                state={isServerDeafened ? "blocked" : isDeafened ? "off" : "idle"}
+                aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
                 onClick={() => {
                   if (isServerDeafened) {
                     toast("You are server deafened by an admin.", { icon: <PiSpeakerSlashFill size={18} />, id: "server-deafened" });
@@ -147,42 +122,36 @@ export function MiniControls({
                 ) : (
                   <PiSpeakerHighFill size={iconSize} />
                 )}
-              </IconButton>
+              </CallControlButton>
             </motion.div>
 
             {showCamera && (
               <motion.div variants={buttonAnimations}>
-                <IconButton tone="neutral" size="xsmall"
-                  onClick={handleCameraClick}
-                >
-                  {cameraEnabled ? <PiVideoCameraFill size={iconSize} /> : <PiVideoCameraSlashFill size={iconSize} />}
-                </IconButton>
+                <CameraControl iconSize={iconSize} side={isColumn ? "right" : "top"} />
               </motion.div>
             )}
 
             {showScreenShare && (
               <motion.div variants={buttonAnimations}>
-                <IconButton tone="neutral" size="xsmall"
-                  onClick={handleScreenShareClick}
-                >
-                  {screenShareActive ? <PiMonitorArrowUpFill size={iconSize} /> : <PiScreencastFill size={iconSize} />}
-                </IconButton>
+                <ScreenShareControl iconSize={iconSize} side={isColumn ? "right" : "top"} />
               </motion.div>
             )}
 
             {canMuteScreenAudio && (
               <motion.div variants={buttonAnimations}>
-                <IconButton tone="neutral" size="xsmall"
+                <CallControlButton
+                  state={screenAudioMuted ? "off" : "idle"}
                   aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
                   onClick={() => setScreenAudioMuted(!screenAudioMuted)}
                 >
                   {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={iconSize} /> : <PiSpeakerSimpleHighFill size={iconSize} />}
-                </IconButton>
+                </CallControlButton>
               </motion.div>
             )}
 
             <motion.div variants={buttonAnimations}>
-              <IconButton tone="danger" size="xsmall"
+              <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS}
+                aria-label="Leave voice channel"
                 onClick={() => {
                   // Local capture is stopped inside disconnect(). GRYT-305.
                   void disconnect();
@@ -195,41 +164,6 @@ export function MiniControls({
         )}
     </AnimatePresence>
 
-      <CameraPreviewModal
-        open={showCameraModal}
-        onOpenChange={setShowCameraModal}
-        cameraID={cameraID}
-        onCameraIDChange={setCameraID}
-        quality={cameraQuality}
-        onQualityChange={setCameraQuality}
-        fps={cameraFps}
-        onFpsChange={setCameraFps}
-        mirrored={cameraMirrored}
-        onMirroredChange={setCameraMirrored}
-        flipped={cameraFlipped}
-        onFlippedChange={setCameraFlipped}
-        onStart={() => setCameraEnabled(true)}
-      />
-
-      <ScreenSharePickerModal
-        open={showScreenShareModal}
-        onOpenChange={setShowScreenShareModal}
-        quality={screenShareQuality as ScreenShareQuality}
-        onQualityChange={setScreenShareQuality}
-        fps={screenShareFps}
-        onFpsChange={setScreenShareFps}
-        experimentalScreenShare={experimentalScreenShare}
-        gamingMode={screenShareGamingMode}
-        onGamingModeChange={setScreenShareGamingMode}
-        codec={screenShareCodec}
-        onCodecChange={setScreenShareCodec}
-        maxBitrate={screenShareMaxBitrate}
-        onMaxBitrateChange={setScreenShareMaxBitrate}
-        scalabilityMode={screenShareScalabilityMode}
-        onScalabilityModeChange={setScreenShareScalabilityMode}
-        nativeScreenCaptureAvailable={nativeScreenCaptureAvailable}
-        onStart={({ sourceId, withAudio }) => startScreenShare(withAudio, sourceId)}
-      />
     </>
   );
 }

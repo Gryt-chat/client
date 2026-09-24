@@ -26,6 +26,8 @@ interface ScreenSharePickerModalProps {
   scalabilityMode: ScalabilityMode;
   onScalabilityModeChange: (mode: ScalabilityMode) => void;
   nativeScreenCaptureAvailable?: boolean;
+  /** Switch picks a new source for a share that is already running, on the same stream. */
+  mode?: "start" | "switch";
   onStart: (opts: { sourceId?: string; withAudio: boolean }) => void;
 }
 
@@ -112,8 +114,10 @@ export function ScreenSharePickerModal({
   maxBitrate, onMaxBitrateChange,
   scalabilityMode, onScalabilityModeChange,
   nativeScreenCaptureAvailable = false,
+  mode = "start",
   onStart,
 }: ScreenSharePickerModalProps) {
+  const switching = mode === "switch";
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("screens");
@@ -222,13 +226,7 @@ export function ScreenSharePickerModal({
     onOpenChange(false);
   };
 
-  if (!inElectron) {
-    if (open) {
-      onStart({ withAudio: includeAudio });
-      onOpenChange(false);
-    }
-    return null;
-  }
+  if (!inElectron) return null;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -239,7 +237,7 @@ export function ScreenSharePickerModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <PiScreencastFill size={16} />
-              <Dialog.Title>Share your screen</Dialog.Title>
+              <Dialog.Title>{switching ? "Share something else" : "Share your screen"}</Dialog.Title>
             </div>
             <Dialog.Close>
               <IconButton tone="ghost" size="xsmall" onClick={() => onOpenChange(false)}>
@@ -392,7 +390,8 @@ export function ScreenSharePickerModal({
             <span className="text-xs text-gryt-muted">{audioScopeHint(currentPlatform(), selected)}</span>
           )}
 
-          <div className="flex flex-col gap-3">
+          {/* Codec and SVC layers are fixed once the share's sender exists, so a switch can't change them. */}
+          {!switching && <div className="flex flex-col gap-3">
             <Button tone="ghost" size="xsmall"
               onClick={() => setShowAdvanced(v => !v)}
               style={{ alignSelf: "flex-start", cursor: "pointer" }}
@@ -456,7 +455,7 @@ export function ScreenSharePickerModal({
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
           {fps > 60 && nativeScreenCaptureAvailable && (
             <div className="flex items-center gap-2 px-3 py-1" style={{
@@ -506,7 +505,7 @@ export function ScreenSharePickerModal({
               Cancel
             </Button>
             <Button size="small" onClick={handleShare} disabled={inElectron && !selected}>
-              Share
+              {switching ? "Switch" : "Share"}
             </Button>
           </div>
         </div>
