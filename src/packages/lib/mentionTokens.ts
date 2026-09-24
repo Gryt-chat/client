@@ -46,6 +46,37 @@ export function channelHref(id: string, host: string | null = null): string {
   return host ? `channel:${host}/${id}` : `channel:${id}`;
 }
 
+/** A `[label](href)` in the text that `mentionTarget` recognises. */
+export interface MentionLinkMatch {
+  /** Where the whole `[label](href)` starts in the original text. */
+  index: number;
+  /** Its length, so a caller can step past it without re-matching. */
+  length: number;
+  label: string;
+  target: MentionTarget;
+}
+
+/** Every mention link in `text`, in order, skipping ones inside a code span.
+    The one scan an editor needs to rebuild a message's mentions. */
+export function findMentionLinks(text: string): MentionLinkMatch[] {
+  const literal: [number, number][] = [];
+  for (const m of text.matchAll(LITERAL)) {
+    const start = m.index ?? 0;
+    literal.push([start, start + m[0].length]);
+  }
+  const inLiteral = (i: number) => literal.some(([start, end]) => i >= start && i < end);
+
+  const matches: MentionLinkMatch[] = [];
+  for (const m of text.matchAll(LINK)) {
+    const index = m.index ?? 0;
+    if (inLiteral(index)) continue;
+    const target = mentionTarget(m[2]);
+    if (!target) continue;
+    matches.push({ index, length: m[0].length, label: m[1], target });
+  }
+  return matches;
+}
+
 export interface MentionViewer {
   roleIds?: readonly string[];
   /** The per-server "Suppress @everyone and @here" setting. */
