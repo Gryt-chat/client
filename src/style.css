@@ -1996,6 +1996,83 @@ body {
   font-size: 0.84rem;
 }
 
+/* ── A server's release notes, from its version chip (GRYT-1413) ────────────
+   The same dialog, listing releases the server doesn't run yet, then how to update. */
+
+.server-version-chip {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.server-version-chip:focus-visible {
+  outline: 2px solid var(--gryt-accent-8);
+  outline-offset: 1px;
+}
+
+.whats-new-lead {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.52;
+}
+
+.whats-new-ahead {
+  margin-top: 1.25rem;
+}
+
+/* How to update: set off from the notes by a rule, one route per item. */
+.whats-new-update {
+  margin-top: 1.5rem;
+  padding: 1.125rem 0 0.75rem;
+  border-top: 1px solid var(--gryt-border);
+}
+
+.whats-new-update > .whats-new-line {
+  margin-top: 0.625rem;
+}
+
+.whats-new-routes {
+  display: grid;
+  gap: 1rem;
+  margin: 0.875rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.whats-new-routes h4 {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.whats-new-routes p {
+  margin: 0.25rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--gryt-muted);
+}
+
+.whats-new-update code {
+  font-family: var(--code-font-family);
+  font-size: 0.8rem;
+}
+
+/* Selected whole on a click, since the only thing anybody does with it is copy it. */
+.whats-new-command {
+  display: block;
+  margin-top: 0.4375rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--gryt-radius-md);
+  background: var(--gryt-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--gryt-border);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 /* ── Every link in running text (GRYT-1093) ─────────────────────────────────
    Underlined at rest, tinted, solid on hover. Underlining only on hover leaves
    a link that reads as coloured text, and on a touch screen never resolves.

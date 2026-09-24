@@ -20,6 +20,7 @@ import {
   ServerOverviewTab,
 } from "./ServerOverviewTab";
 import { ServerPermissionTemplatesTab } from "./ServerPermissionTemplatesTab";
+import { ServerReleaseNotes } from "./ServerReleaseNotes";
 import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
@@ -49,6 +50,7 @@ export function ServerSettingsModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [host, setHost] = useState<string>("");
   const [tab, setTab] = useState<string>("overview");
+  const [notesOpen, setNotesOpen] = useState(false);
   const [initialOverviewSettings, setInitialOverviewSettings] = useState<ServerOverviewInitialSettings | undefined>(undefined);
 
   const socket = useMemo(() => (host ? sockets[host] : undefined), [sockets, host]);
@@ -86,6 +88,7 @@ export function ServerSettingsModal() {
   function handleDialogChange(open: boolean) {
     setIsOpen(open);
     if (!open) {
+      setNotesOpen(false);
       setHost("");
       setTab("overview");
       setInitialOverviewSettings(undefined);
@@ -286,9 +289,17 @@ export function ServerSettingsModal() {
           </span>
           {versionLoading && <Spinner size={16} />}
           {versionStatus?.server.updateAvailable && (
-            <Chip tone="warning">
-              v{versionStatus.server.latest}
-            </Chip>
+            <button
+              type="button"
+              className="server-version-chip"
+              data-server-release-notes
+              aria-label={`What's in server ${versionStatus.server.latest}`}
+              onClick={() => setNotesOpen(true)}
+            >
+              <Chip tone="warning">
+                v{versionStatus.server.latest}
+              </Chip>
+            </button>
           )}
         </div>
       )}
@@ -324,6 +335,7 @@ export function ServerSettingsModal() {
       )}
     </>
   );
+  const serverUpdate = versionStatus?.server.updateAvailable ? versionStatus.server : null;
   const hasVersionLines = Boolean(serverInfo?.version || versionStatus?.sfu || versionStatus?.worker);
 
   return (
@@ -424,6 +436,16 @@ export function ServerSettingsModal() {
             )
           )}
         </div>
+        {/* Inside the popup, so it opens as a dialog nested in this one. */}
+        {notesOpen && serverUpdate && (
+          <ServerReleaseNotes
+            host={host}
+            running={serverUpdate.current}
+            latest={serverUpdate.latest}
+            beta={serverUpdate.channel === "beta"}
+            onClose={() => setNotesOpen(false)}
+          />
+        )}
       </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
