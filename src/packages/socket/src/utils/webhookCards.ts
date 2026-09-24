@@ -1,5 +1,6 @@
 import type { WebhookCardData } from "@gryt/ui";
 
+import { massMentionHits, type MentionViewer } from "../../../lib/mentionTokens.ts";
 import type { StoredWebhookCard } from "../components/chatUtils";
 
 type MessageText = {
@@ -12,10 +13,18 @@ export function drawsMessageText(message: MessageText): boolean {
   return message.text_fallback !== true;
 }
 
-/** Whether this message names the viewer. Only `text` can, and a fallback line never does. */
-export function mentionsViewer(message: MessageText, viewerId: string | undefined): boolean {
+/** Whether this message names the viewer. Only `text` can, and a fallback line never does.
+    `mass` is passed in a channel, where @everyone, @here and roles can ping. */
+export function mentionsViewer(
+  message: MessageText & { sender_server_id?: string | null },
+  viewerId: string | undefined,
+  mass?: MentionViewer,
+): boolean {
   if (!viewerId || !message.text || message.text_fallback === true) return false;
-  return message.text.includes(`mention:${viewerId}`);
+  if (message.text.includes(`mention:${viewerId}`)) return true;
+  const sender = message.sender_server_id;
+  const person = !!sender && sender !== "system" && !sender.startsWith("webhook:");
+  return !!mass && person && massMentionHits(message.text, mass);
 }
 
 /** Icons draw at 16px, so they can load a thumbnail. The pictures a person can open cannot. */

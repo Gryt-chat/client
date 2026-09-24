@@ -1,4 +1,5 @@
 import { openForConversation, ownDmKeyPair } from "@/common";
+import { channelNamesFor } from "@/lib/channelDirectory";
 import { notificationBody } from "@/lib/desktopNotification";
 
 /** What a notification carries, whether or not the message was sealed. */
@@ -17,10 +18,11 @@ export async function sealedNotificationBody(
   msg: NotifiableMessage,
   where: { host: string; memberId?: string },
 ): Promise<string> {
+  const names = where.host ? channelNamesFor(where.host) : undefined;
   // The message's own conversation, not the one on screen: a DM notifies while
   // you are reading a channel, and the wrong id derives the wrong key.
   if (!msg.sealed || !msg.conversation_id || !where.host || !where.memberId) {
-    return notificationBody(msg);
+    return notificationBody(msg, names);
   }
 
   try {
@@ -30,11 +32,11 @@ export async function sealedNotificationBody(
       memberId: where.memberId,
       recipientKeys: await ownDmKeyPair(where.host),
     });
-    if (opened) return notificationBody({ ...msg, text: opened.text, sealed: null });
+    if (opened) return notificationBody({ ...msg, text: opened.text, sealed: null }, names);
   } catch {
     // No key for us, or one that will not open. Either way the envelope wording
     // stands; a notification is not the place to say which.
   }
 
-  return notificationBody(msg);
+  return notificationBody(msg, names);
 }

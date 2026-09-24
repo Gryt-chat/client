@@ -2,6 +2,8 @@ import type { PhrasingContent, Root, Text } from "mdast";
 import type { Plugin } from "unified";
 import { CONTINUE, visit } from "unist-util-visit";
 
+import { mentionTarget } from "@/lib/mentionTokens";
+
 export type MentionableMember = {
   nickname: string;
   serverUserId: string;
@@ -73,17 +75,21 @@ export function createRemarkMention(members: MentionableMember[]): Plugin<[], Ro
   return () => (tree: Root) => {
     visit(tree, "link", (node: { type: string; url: string; children: PhrasingContent[] }, index, parent) => {
       if (!parent || index == null) return;
-      if (!node.url.startsWith("mention:")) return;
-      const id = node.url.slice("mention:".length);
+      const target = mentionTarget(node.url);
+      if (!target) return;
       const textChild = node.children[0];
       const label = textChild && "value" in textChild ? (textChild as Text).value : "";
+      const at = label.startsWith("@") ? label : `@${label}`;
+      const hProperties =
+        target.kind === "channel"
+          ? { "data-channel-id": target.id, "data-channel-host": target.host ?? "", className: "chat-channel" }
+          : target.kind === "role"
+            ? { "data-role-id": target.id, "data-mention-id": "", className: "chat-mention" }
+            : { "data-mention-id": target.kind === "user" ? target.id : target.kind, className: "chat-mention" };
       const mentionNode = {
         type: "mention",
-        data: {
-          hName: "span",
-          hProperties: { "data-mention-id": id, className: "chat-mention" },
-        },
-        children: [{ type: "text", value: label.startsWith("@") ? label : `@${label}` } as Text],
+        data: { hName: "span", hProperties },
+        children: [{ type: "text", value: target.kind === "channel" ? "#channel" : at } as Text],
       } as unknown as PhrasingContent;
       (parent.children as PhrasingContent[]).splice(index, 1, mentionNode);
       return [CONTINUE, index] as const;

@@ -89,6 +89,8 @@ export type serverDetails = {
      * in `roles` and anything gating on one reads `permissions`.
      */
     role?: string;
+    /** Every role this member holds. Absent on an older server, which sent only `role`. */
+    role_ids?: string[];
     /**
      * What this client may do here, as the server sees it. Advisory — all of it is
      * enforced server-side, and this only stops the UI offering a refusal.
@@ -107,6 +109,8 @@ export type serverDetails = {
       rank: number;
       permissions: string[];
       isSystem: boolean;
+      /** Anyone can mention this role. Absent on an older server. */
+      mentionable?: boolean;
     }[];
     max_members?: number;
     voice_enabled?: boolean;

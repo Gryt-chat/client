@@ -2,8 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface MentionMember {
   nickname: string;
+  /** Unique within the list. For anything but a member it is only a key. */
   serverUserId: string;
   avatarUrl?: string | null;
+  /** Absent is a member. */
+  kind?: "member" | "everyone" | "here" | "role" | "channel";
+  roleId?: string;
+  channelId?: string;
+  color?: string | null;
+  /** A second line saying what picking it does. */
+  hint?: string;
 }
 
 interface MentionAutocompleteProps {
@@ -12,6 +20,14 @@ interface MentionAutocompleteProps {
   members: MentionMember[];
   onSelect: (member: MentionMember) => void;
   onClose: () => void;
+  /** Shown over the list before anything is typed. */
+  title?: string;
+}
+
+function glyph(member: MentionMember): string {
+  if (member.kind === "channel") return "#";
+  if (member.kind === "everyone" || member.kind === "here" || member.kind === "role") return "@";
+  return member.nickname[0]?.toUpperCase() ?? "";
 }
 
 function filterMembers(members: MentionMember[], query: string): MentionMember[] {
@@ -33,7 +49,7 @@ function filterMembers(members: MentionMember[], query: string): MentionMember[]
   return [...prefixMatches, ...substringMatches].slice(0, 15);
 }
 
-export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose }: MentionAutocompleteProps) => {
+export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose, title = "Members" }: MentionAutocompleteProps) => {
   const [results, setResults] = useState<MentionMember[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,9 +101,9 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
   }, [selectedIndex]);
 
   const header = useMemo(() => {
-    if (!query) return "Members";
+    if (!query) return title;
     return null;
-  }, [query]);
+  }, [query, title]);
 
   if (!visible || results.length === 0) return null;
 
@@ -156,8 +172,8 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
               justifyContent: "center",
               flexShrink: 0,
               overflow: "hidden",
-              background: "var(--gryt-accent-5)",
-              color: "var(--gryt-accent-11)",
+              background: member.kind === "role" && member.color ? member.color : "var(--gryt-accent-5)",
+              color: member.kind === "role" && member.color ? "var(--gryt-neutral-1)" : "var(--gryt-accent-11)",
               fontSize: "12px",
               fontWeight: 600,
             }}
@@ -169,12 +185,15 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
                 style={{ width: "24px", height: "24px", objectFit: "cover" }}
               />
             ) : (
-              member.nickname[0]?.toUpperCase()
+              glyph(member)
             )}
           </span>
           <span style={{ color: "var(--gryt-neutral-12)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {member.nickname}
+            {member.kind && member.kind !== "member" && member.kind !== "channel" ? `@${member.nickname}` : member.nickname}
           </span>
+          {member.hint && (
+            <span style={{ color: "var(--gryt-neutral-9)", fontSize: "12px", flexShrink: 0 }}>{member.hint}</span>
+          )}
         </div>
       ))}
     </div>

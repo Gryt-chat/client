@@ -67,6 +67,8 @@ interface ChatEditorProps {
   onStopTyping?: () => void;
   isEditing?: boolean;
   memberList?: MentionMember[];
+  /** Channels a `#` offers. Only ones this member can see. */
+  channelList?: MentionMember[];
   serverHost?: string;
 }
 
@@ -96,6 +98,11 @@ function serializeContentEditable(el: HTMLElement): string {
       const elem = node as HTMLElement;
       if (elem.tagName === "IMG" && elem.dataset.emojiName) {
         result += `:${elem.dataset.emojiName}:`;
+      } else if (elem.dataset.roleId) {
+        result += `[${elem.dataset.mentionName || elem.textContent || ""}](role:${elem.dataset.roleId})`;
+      } else if (elem.dataset.channelId) {
+        // Never the name: a reader who can't see the channel must not get it.
+        result += `[#channel](channel:${elem.dataset.channelId})`;
       } else if (elem.dataset.mentionId) {
         const id = elem.dataset.mentionId;
         const name = elem.dataset.mentionName || elem.textContent || "";
@@ -129,7 +136,9 @@ function getEmojiQueryAtCursor(): string | null {
   return emojiQueryAt(node.textContent || "", range.startOffset)?.name ?? null;
 }
 
-function getMentionQueryAtCursor(): string | null {
+const QUERY = { "@": /(^|[\s])@([a-zA-Z0-9_ ]*)$/, "#": /(^|[\s])#([a-zA-Z0-9_-]*)$/ } as const;
+
+function getQueryAtCursor(trigger: "@" | "#"): string | null {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
 
@@ -141,7 +150,7 @@ function getMentionQueryAtCursor(): string | null {
   const offset = range.startOffset;
   const before = text.slice(0, offset);
 
-  const match = before.match(/(^|[\s])@([a-zA-Z0-9_ ]*)$/);
+  const match = before.match(QUERY[trigger]);
   if (!match) return null;
 
   const afterCursor = text.slice(offset);
@@ -150,7 +159,29 @@ function getMentionQueryAtCursor(): string | null {
   return match[2];
 }
 
-function replaceMentionQueryAtCursor(member: MentionMember): void {
+/** The pill a pick turns into, or plain text for @everyone and @here. */
+function mentionNode(member: MentionMember): Node {
+  if (member.kind === "everyone" || member.kind === "here") return document.createTextNode(`@${member.kind}`);
+  const pill = document.createElement("span");
+  pill.className = "chat-editor-mention";
+  if (member.kind === "channel" && member.channelId) {
+    pill.dataset.channelId = member.channelId;
+    pill.textContent = `#${member.nickname}`;
+  } else if (member.kind === "role" && member.roleId) {
+    pill.dataset.roleId = member.roleId;
+    pill.dataset.mentionName = `@${member.nickname}`;
+    pill.textContent = `@${member.nickname}`;
+  } else {
+    pill.dataset.mentionId = member.serverUserId;
+    pill.dataset.mentionName = `@${member.nickname}`;
+    pill.textContent = `@${member.nickname}`;
+  }
+  pill.contentEditable = "false";
+  pill.draggable = false;
+  return pill;
+}
+
+function replaceQueryAtCursor(trigger: "@" | "#", member: MentionMember): void {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return;
 
@@ -162,7 +193,7 @@ function replaceMentionQueryAtCursor(member: MentionMember): void {
   const offset = range.startOffset;
   const before = text.slice(0, offset);
 
-  const match = before.match(/(^|[\s])@([a-zA-Z0-9_ ]*)$/);
+  const match = before.match(QUERY[trigger]);
   if (!match) return;
 
   const atStart = offset - match[0].length + match[1].length;
@@ -172,17 +203,9 @@ function replaceMentionQueryAtCursor(member: MentionMember): void {
   replaceRange.setEnd(node, offset);
   replaceRange.deleteContents();
 
-  const mention = document.createElement("span");
-  mention.className = "chat-editor-mention";
-  mention.dataset.mentionId = member.serverUserId;
-  mention.dataset.mentionName = `@${member.nickname}`;
-  mention.textContent = `@${member.nickname}`;
-  mention.contentEditable = "false";
-  mention.draggable = false;
-
   const trailing = document.createTextNode(" ");
   replaceRange.insertNode(trailing);
-  replaceRange.insertNode(mention);
+  replaceRange.insertNode(mentionNode(member));
 
   sel.removeAllRanges();
   const newRange = document.createRange();
@@ -236,7 +259,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, serverHost }, ref) => {
+  ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -256,9 +279,17 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [showMentionAutocomplete, setShowMentionAutocomplete] = useState(false);
+    const [channelQuery, setChannelQuery] = useState<string | null>(null);
 
     const updateAutocompleteQueries = useCallback(() => {
-      const mq = getMentionQueryAtCursor();
+      const cq = getQueryAtCursor("#");
+      setChannelQuery(cq);
+      if (cq !== null) {
+        setShowMentionAutocomplete(false);
+        setShowAutocomplete(false);
+        return;
+      }
+      const mq = getQueryAtCursor("@");
       if (mq !== null) {
         setMentionQuery(mq);
         setShowMentionAutocomplete(true);
@@ -299,6 +330,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         setEmojiQuery(null);
         setShowMentionAutocomplete(false);
         setMentionQuery(null);
+        setChannelQuery(null);
         onStopTypingRef.current?.();
       });
     }, []);
@@ -436,8 +468,14 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       setEmojiQuery(null);
     }, []);
 
+    const handleChannelSelect = useCallback((channel: MentionMember) => {
+      replaceQueryAtCursor("#", channel);
+      setChannelQuery(null);
+      if (editorRef.current) autoResize(editorRef.current);
+    }, []);
+
     const handleMentionSelect = useCallback((member: MentionMember) => {
-      replaceMentionQueryAtCursor(member);
+      replaceQueryAtCursor("@", member);
       setShowMentionAutocomplete(false);
       setMentionQuery(null);
       if (editorRef.current) autoResize(editorRef.current);
@@ -618,6 +656,14 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           members={memberList || []}
           onSelect={handleMentionSelect}
           onClose={handleMentionAutocompleteClose}
+        />
+        <MentionAutocomplete
+          query={channelQuery || ""}
+          visible={channelQuery !== null}
+          members={channelList || []}
+          onSelect={handleChannelSelect}
+          onClose={() => setChannelQuery(null)}
+          title="Channels"
         />
         <div className="chat-editor-input-row">
           {allowFiles !== false && (

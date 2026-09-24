@@ -58,6 +58,7 @@
     "test:notification-navigation": "node scripts/check-notification-navigation.mjs",
     "test:message-notification": "node scripts/check-message-notification.mjs",
     "test:notification-text": "node scripts/check-notification-text.mjs",
+    "test:mention-tokens": "node --disable-warning=ExperimentalWarning scripts/check-mention-tokens.mjs",
     "test:hotkeys": "node scripts/check-hotkeys.mjs",
     "test:screen-audio": "node scripts/check-screen-audio.mjs",
     "test:audio-mixer": "node scripts/check-audio-mixer.mjs",

@@ -35,6 +35,8 @@ type RoleDefinition = {
   autoGrantAfterMessages: number | null;
   /** Whether an invite may be bound to this role. Off until somebody ticks it. */
   grantableByInvite: boolean;
+  /** Anyone can mention it. Absent on an older server, which has no such setting. */
+  mentionable?: boolean;
   memberCount: number;
 };
 
@@ -283,6 +285,7 @@ export function ServerRoleEditorTab({
       draft.color !== selected.color ||
       draft.rank !== selected.rank ||
       draft.grantableByInvite !== selected.grantableByInvite ||
+      draft.mentionable !== selected.mentionable ||
       draft.autoGrantAfterDays !== selected.autoGrantAfterDays ||
       draft.autoGrantAfterMessages !== selected.autoGrantAfterMessages
     );
@@ -343,6 +346,7 @@ export function ServerRoleEditorTab({
       autoGrantAfterDays: role.autoGrantAfterDays,
       autoGrantAfterMessages: role.autoGrantAfterMessages,
       grantableByInvite: role.grantableByInvite,
+      ...(role.mentionable === undefined ? {} : { mentionable: role.mentionable }),
     });
   };
 
@@ -418,6 +422,7 @@ export function ServerRoleEditorTab({
       isSystem: false,
       autoGrantAfterDays: null,
       grantableByInvite: false,
+      mentionable: false,
       autoGrantAfterMessages: null,
       memberCount: 0,
     });
@@ -607,6 +612,26 @@ export function ServerRoleEditorTab({
                 />
               </div>
 
+
+              {draft.mentionable !== undefined && (
+                <div className="flex flex-col gap-1">
+                  <label className="flex items-center gap-3 text-sm font-bold">
+                    <Checkbox
+                      checked={draft.mentionable}
+                      onCheckedChange={(checked) => {
+                        setDraft({ ...draft, mentionable: checked });
+                        commitSettings({ mentionable: checked });
+                      }}
+                    />
+                    Anyone can mention this role
+                  </label>
+                  <span className="text-xs text-gryt-muted">
+                    Anyone who can post in a channel can ping @{draft.name || "this role"} there. When
+                    it&rsquo;s off, only people with Mention everyone can, and anyone else&rsquo;s
+                    mention goes out as plain text.
+                  </span>
+                </div>
+              )}
 
               {!draft.isSystem && (
                 <div className="flex flex-col gap-2">

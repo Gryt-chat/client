@@ -35,7 +35,7 @@ export const PERMISSIONS_BEFORE_CATALOGUE: readonly string[] = [
   "view_audit_log",
 ];
 
-/** The thirteen a channel or folder can allow or deny, and so the ones a
+/** The fourteen a channel or folder can allow or deny, and so the ones a
     channel's `myPermissions` answers for. Everything else is server-wide. */
 export const CHANNEL_PERMISSIONS: readonly string[] = [
   "read_messages",
@@ -46,6 +46,7 @@ export const CHANNEL_PERMISSIONS: readonly string[] = [
   "add_reactions",
   "report_messages",
   "use_link_previews",
+  "mention_everyone",
   "manage_messages",
   "join_voice",
   "speak",
@@ -96,6 +97,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: "create_groups", label: "Create groups", description: "Start a group conversation, or add somebody to one. Talking in one they're already in only needs Send direct messages." },
       { id: "report_messages", label: "Report messages", description: "Put a message in front of the moderators." },
       { id: "use_link_previews", label: "See link previews", description: "Have links in the channel unfurled. Off means plain links." },
+      { id: "mention_everyone", label: "Mention everyone", description: "Ping @everyone, @here and any role. Without it, those go out as plain text and ping nobody. A role set so anyone can mention it still works." },
     ],
   },
   {
@@ -188,4 +190,10 @@ export function groupPermissions(available: string[]): PermissionGroup[] {
   }
 
   return groups;
+}
+
+/** Every role this member holds. An older server sends only the top one. */
+export function heldRoleIds(info: { role?: string; role_ids?: string[] } | undefined): string[] {
+  if (Array.isArray(info?.role_ids)) return info.role_ids;
+  return info?.role ? [info.role] : [];
 }

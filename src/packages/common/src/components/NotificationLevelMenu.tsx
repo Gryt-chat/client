@@ -7,11 +7,13 @@ import {
   getOwnLevel,
   getPlacement,
   getStoredSnapshot,
+  getSuppressEveryone,
   globalOverrules,
   type NotificationLevel,
   resolveInheritedLevel,
   setHideMuted,
   setNotificationLevel,
+  setSuppressEveryone,
   subscribeToPrefs,
 } from "../hooks/notificationPrefs";
 
@@ -149,6 +151,20 @@ export function HideMutedChannelsItem({ host }: { host: string }) {
   return (
     <ContextMenu.CheckboxItem checked={on} onCheckedChange={(next) => setHideMuted(host, next)}>
       Hide muted channels
+    </ContextMenu.CheckboxItem>
+  );
+}
+
+/** Per server and per device. Role mentions and being named still get through. */
+export function SuppressEveryoneItem({ host }: { host: string }) {
+  const on = useSyncExternalStore(
+    subscribeToPrefs,
+    () => getSuppressEveryone(host),
+    () => getSuppressEveryone(host),
+  );
+  return (
+    <ContextMenu.CheckboxItem checked={on} onCheckedChange={(next) => setSuppressEveryone(host, next)}>
+      Suppress @everyone and @here
     </ContextMenu.CheckboxItem>
   );
 }

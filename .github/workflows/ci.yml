@@ -98,6 +98,7 @@ jobs:
       # screen and the ones behind it. The two handlers used to disagree about focus and mentions.
       - run: yarn test:message-notification
       - run: yarn test:notification-text
+      - run: yarn test:mention-tokens
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio
       - run: yarn test:audio-mixer

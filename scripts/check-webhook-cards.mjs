@@ -126,7 +126,7 @@ assert.equal(
 
 const viewSource = read(VIEW);
 assert.doesNotMatch(viewSource, /mention:\$\{/, `${VIEW} decides a mention without mentionsViewer`);
-assert.ok((viewSource.match(/isMentioned=\{mentionsViewer\(m, currentUserId\)\}/g) ?? []).length >= 1);
+assert.ok((viewSource.match(/isMentioned=\{mentionsViewer\(m, currentUserId(, massViewer)?\)\}/g) ?? []).length >= 1);
 
 // Only the row and the card component read `cards`. Anything else is a way for a card to ping.
 function files(dir) {

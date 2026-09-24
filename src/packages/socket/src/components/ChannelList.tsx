@@ -3,6 +3,7 @@ import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import toast from "react-hot-toast";
 
 import {
   getHideMuted,
@@ -15,7 +16,9 @@ import {
   resolveAvatarSrc,
   setHideMuted,
   subscribeToPrefs,
+  SuppressEveryoneItem,
 } from "@/common";
+import { channelHref } from "@/lib/mentionTokens";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiChatsFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
@@ -593,6 +596,21 @@ export const ChannelList = ({
             />
           ) : null}
 
+          {/* Carries the server, so it links from any server the reader is also in. */}
+          {item.kind === "channel" ? (
+            <ContextMenu.Item
+              onClick={() => {
+                const link = `[#channel](${channelHref(item.channelId ?? item.id, serverHost)})`;
+                void navigator.clipboard?.writeText(link).then(
+                  () => toast.success("Channel mention copied. Paste it into any message."),
+                  () => toast.error("Couldn't copy to the clipboard."),
+                );
+              }}
+            >
+              Copy channel mention
+            </ContextMenu.Item>
+          ) : null}
+
           {canManage ? (
             <>
               {notifiable ? <ContextMenu.Separator /> : null}
@@ -813,6 +831,7 @@ export const ChannelList = ({
               </ContextMenu.Group>
               {notificationSubmenu({ kind: "server" })}
               <HideMutedChannelsItem host={serverHost} />
+              <SuppressEveryoneItem host={serverHost} />
             </ContextMenu.Popup>
           </ContextMenu.Positioner>
         </ContextMenu.Portal>
@@ -911,6 +930,7 @@ export const ChannelList = ({
         </ContextMenu.Group>
         {notificationSubmenu({ kind: "server" })}
         <HideMutedChannelsItem host={serverHost} />
+        <SuppressEveryoneItem host={serverHost} />
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => onAddItem?.("channel:text")}>
           Add channel
