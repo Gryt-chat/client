@@ -18,11 +18,19 @@ export interface ForumTopic {
   participant_count: number;
   created_at: string;
   last_message_at: string;
-  creator_server_id: string;
+  created_by: string;
   creator_nickname: string | null;
   creator_avatar_file_id: string | null;
   preview: string | null;
   tags: string[];
+}
+
+/* A server older than 1.10.22 sends only creator_server_id, so fall back to it
+   or its authors lose Mine and Mark solved. */
+type WireTopic = Omit<ForumTopic, "created_by"> & { created_by?: string; creator_server_id?: string };
+
+function fromWire(t: WireTopic): ForumTopic {
+  return { ...t, created_by: t.created_by ?? t.creator_server_id ?? "" };
 }
 
 export type ForumFilter = "all" | "unanswered" | "solved" | "closed" | "mine";
@@ -81,9 +89,9 @@ export function useForum(
       debounce.current = setTimeout(refetch, 250);
     };
 
-    const onList = (p: { conversation_id: string; topics: ForumTopic[] }) => {
+    const onList = (p: { conversation_id: string; topics: WireTopic[] }) => {
       if (!alive || p.conversation_id !== conversationId) return;
-      setTopics(p.topics ?? []);
+      setTopics((p.topics ?? []).map(fromWire));
       setLoading(false);
     };
     const onThreadEvent = (p: { conversation_id?: string }) => {
