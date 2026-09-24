@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
+import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiScreencastFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill, PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
@@ -47,7 +48,7 @@ export function MiniControls({
     currentlyViewingServer,
   } = useServerManagement();
 
-  const { disconnect } = useSFU();
+  const { disconnect, currentServerConnected, currentChannelConnected } = useSFU();
   const voice = useVoicePresence();
 
   const { cameraEnabled, setCameraEnabled } = useCamera();
@@ -67,6 +68,10 @@ export function MiniControls({
     cameraFlipped, setCameraFlipped,
   } = useSettings();
 
+  const { canIn } = useServerPermissions(currentServerConnected || "");
+  // The room's answer. One already on keeps its button, so it can be turned off.
+  const showCamera = cameraEnabled || canIn(currentChannelConnected, "share_video");
+  const showScreenShare = screenShareActive || canIn(currentChannelConnected, "share_screen");
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
 
@@ -145,21 +150,25 @@ export function MiniControls({
               </IconButton>
             </motion.div>
 
-            <motion.div variants={buttonAnimations}>
-              <IconButton tone="neutral" size="xsmall"
-                onClick={handleCameraClick}
-              >
-                {cameraEnabled ? <PiVideoCameraFill size={iconSize} /> : <PiVideoCameraSlashFill size={iconSize} />}
-              </IconButton>
-            </motion.div>
+            {showCamera && (
+              <motion.div variants={buttonAnimations}>
+                <IconButton tone="neutral" size="xsmall"
+                  onClick={handleCameraClick}
+                >
+                  {cameraEnabled ? <PiVideoCameraFill size={iconSize} /> : <PiVideoCameraSlashFill size={iconSize} />}
+                </IconButton>
+              </motion.div>
+            )}
 
-            <motion.div variants={buttonAnimations}>
-              <IconButton tone="neutral" size="xsmall"
-                onClick={handleScreenShareClick}
-              >
-                {screenShareActive ? <PiMonitorArrowUpFill size={iconSize} /> : <PiScreencastFill size={iconSize} />}
-              </IconButton>
-            </motion.div>
+            {showScreenShare && (
+              <motion.div variants={buttonAnimations}>
+                <IconButton tone="neutral" size="xsmall"
+                  onClick={handleScreenShareClick}
+                >
+                  {screenShareActive ? <PiMonitorArrowUpFill size={iconSize} /> : <PiScreencastFill size={iconSize} />}
+                </IconButton>
+              </motion.div>
+            )}
 
             {canMuteScreenAudio && (
               <motion.div variants={buttonAnimations}>

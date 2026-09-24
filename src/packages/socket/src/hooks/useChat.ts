@@ -56,8 +56,6 @@ interface UseChatReturn {
   chatMessages: ChatMessage[];
   sealing: SealDecision;
   canSend: boolean;
-  /** Whether the open channel allows posting at all, before anything else. */
-  canSendHere: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage: (messageId: string, conversationId: string, newText: string) => void;
   isLoadingMessages: boolean;
@@ -662,7 +660,6 @@ export function useChat({
         that does not draw this sends in the clear without saying so. */
     sealing: sealing.decision,
     canSend,
-    canSendHere,
     sendChat,
     editMessage,
     isLoadingMessages,

@@ -305,7 +305,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   );
 
   const {
-    chatMessages, sealing, canSend, canSendHere, sendChat, editMessage, isLoadingMessages,
+    chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
@@ -839,7 +839,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         sealing={activeDm ? sealing : undefined}
         memberNames={memberNames}
         canSend={canSend}
-        canSendHere={canSendHere}
         sendChat={sendChat}
         editMessage={editMessage}
         currentUserId={currentServerUserId}
@@ -864,7 +863,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         isVoiceChannelTextChat={isVoiceChannelTextChat}
         restoreText={restoreText}
         clearRestoreText={clearRestoreText}
-        canDeleteAny={viewerPermissions.can("manage_messages")}
+        canDeleteAny={viewerPermissions.canIn(activeConversationId, "manage_messages")}
         maxFileSize={serverDetails.server_info?.upload_max_bytes}
         onLoadOlder={fetchOlderMessages}
         isLoadingOlder={isLoadingOlder}
@@ -959,7 +958,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             sealing={activeDm ? sealing : undefined}
             memberNames={memberNames}
             canSend={canSend}
-            canSendHere={canSendHere}
             sendChat={sendChat}
             editMessage={editMessage}
             currentUserId={currentServerUserId}
@@ -981,7 +979,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             isLoadingMessages={isLoadingMessages}
             restoreText={restoreText}
             clearRestoreText={clearRestoreText}
-            canDeleteAny={viewerPermissions.can("manage_messages")}
+            canDeleteAny={viewerPermissions.canIn(activeConversationId, "manage_messages")}
             maxFileSize={serverDetails.server_info?.upload_max_bytes}
             onLoadOlder={fetchOlderMessages}
             isLoadingOlder={isLoadingOlder}

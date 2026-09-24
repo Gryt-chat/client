@@ -18,6 +18,8 @@ interface ForumViewProps {
   currentUserId?: string;
   forumTags: ForumTag[];
   onOpenTopic: (summary: ThreadSummary) => void;
+  /** Said in place of New topic, for somebody who may not post here. */
+  readOnlyLine?: string;
 }
 
 const FILTERS: { key: ForumFilter; label: string }[] = [
@@ -72,7 +74,7 @@ function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: strin
   }
 }
 
-export function ForumView({ socketConnection, conversationId, serverHost, currentUserId, forumTags, onOpenTopic }: ForumViewProps) {
+export function ForumView({ socketConnection, conversationId, serverHost, currentUserId, forumTags, onOpenTopic, readOnlyLine }: ForumViewProps) {
   const { topics, loading, creating, createError, createdToken, clearCreateError, createTopic } = useForum(socketConnection, conversationId, serverHost);
   const [filter, setFilter] = useState<ForumFilter>("all");
   const { threadUnreadCount } = useThreadUnread();
@@ -143,13 +145,17 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
           ))}
         </ToggleGroup>
         <span className="flex-1" />
-        <Button
-          size="small"
-          startIcon={<PiPlus size={14} />}
-          onClick={() => { setNewTags(new Set()); setComposing(true); }}
-        >
-          New topic
-        </Button>
+        {readOnlyLine ? (
+          <span className="text-sm text-gryt-muted">{readOnlyLine}</span>
+        ) : (
+          <Button
+            size="small"
+            startIcon={<PiPlus size={14} />}
+            onClick={() => { setNewTags(new Set()); setComposing(true); }}
+          >
+            New topic
+          </Button>
+        )}
       </div>
 
       {forumTags.length > 0 && (

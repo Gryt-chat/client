@@ -40,7 +40,7 @@ export function useChatActions({
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [pendingDeleteMessage, setPendingDeleteMessage] = useState<ChatMessage | null>(null);
 
-  const { can } = useServerPermissions(serverHost || "");
+  const { canIn } = useServerPermissions(serverHost || "");
 
   const handleReaction = useCallback((reactionSrc: string, message: ChatMessage) => {
     if (!socketConnection || !currentUserId) return;
@@ -48,7 +48,7 @@ export function useChatActions({
     if (!accessToken) return;
     // Refused here as well as by the server. The picker is left in place: it is
     // reached from three menus, and one that says why beats three that vanish.
-    if (!can("add_reactions")) {
+    if (!canIn(message.conversation_id, "add_reactions")) {
       toast.error("You do not have permission to react here.");
       return;
     }
@@ -59,7 +59,7 @@ export function useChatActions({
       reactionSrc,
       accessToken,
     });
-  }, [socketConnection, currentUserId, serverHost, can]);
+  }, [socketConnection, currentUserId, serverHost, canIn]);
 
   const handleReply = useCallback((message: ChatMessage) => {
     setReplyingTo(message);
