@@ -99,7 +99,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace } = useServerManagement();
   const directory = useDirectory();
-  const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
+  const { connect, disconnect: disconnectVoice, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
   const { login } = useAccount();
   /** Servers this app hosts, for Manage server. Empty in a browser. */
@@ -611,6 +611,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         console.error("Could not start the call:", error);
         toast.error(error instanceof Error ? error.message : "Could not start the call");
         cancelCall(conversationId);
+        // Or the engine retries a room it was refused five times, then blames the network.
+        disconnectVoice().catch(() => {});
       });
     };
 
@@ -641,7 +643,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, disconnectVoice, setShowVoiceView, handleVoiceDisconnect]);
 
   /* Memoized like the actions: ChatView is memo'd, and a fresh element every render undoes it. */
   const dmHeaderDetail = useMemo(() => {
