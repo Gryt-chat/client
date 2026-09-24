@@ -5,7 +5,7 @@ import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/comm
 
 import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
-import { type ChatErrorPayload, isMutedError, isNonRetryableError } from "./chatEventHandlers";
+import { type ChatErrorPayload, type ChatErrorRef, isMutedError, isNonRetryableError } from "./chatEventHandlers";
 import { mergeMessages } from "./mergeMessages";
 import { forgetOpenThread, recallOpenThread, rememberOpenThread } from "./openThreadMemory";
 import { draftKey, returnDraft } from "./returnedDrafts";
@@ -77,6 +77,13 @@ function latestPending(queue: Map<string, ThreadRetryEntry>): ThreadRetryEntry |
   let latest: ThreadRetryEntry | null = null;
   for (const entry of queue.values()) latest = entry;
   return latest;
+}
+
+/* The reply a refusal is about. A nonce names it (GRYT-1410), and one not held here
+   is a channel send's or already settled. A server without it gets the newest. */
+function refusedReply(queue: Map<string, ThreadRetryEntry>, ref?: ChatErrorRef): ThreadRetryEntry | null {
+  const nonce = ref && typeof ref === "object" && typeof ref.nonce === "string" ? ref.nonce : null;
+  return nonce ? queue.get(nonce) ?? null : latestPending(queue);
 }
 
 function errorText(e: ChatErrorPayload): string {
@@ -158,6 +165,9 @@ export function useThreads(
   /* Replies waiting on the server, keyed by nonce. The channel keeps the same
      queue in useChatSend; a refusal retries once and then gives the text back. */
   const retryQueueRef = useRef<Map<string, ThreadRetryEntry>>(new Map());
+  /* Reply ids chat:deleted took out, as the channel keeps them (GRYT-1217), so a
+     page the server read before the delete can't put one back. */
+  const deletedIdsRef = useRef<Set<string>>(new Set());
 
   /* The panel belongs to one channel, so it closes on a switch — but not when
      this hook is mounted again on the same one, which a resize does (GRYT-1390). */
@@ -256,7 +266,7 @@ export function useThreads(
           // The root rides on the first page only, so an older page must not
           // blank the topic sitting above the divider.
           root: p.before && o ? o.root : p.root,
-          messages: mergeMessages(held, items),
+          messages: mergeMessages(held, items, deletedIdsRef.current),
           loading: false,
           loadingOlder: false,
           hasOlder: p.hasMore ?? false,
@@ -283,7 +293,7 @@ export function useThreads(
     // A thread reply arrives as an ordinary chat:new carrying a thread_id. It is
     // already filtered out of the main list; here it lands in the open panel.
     const onChatNew = (msg: ChatMessage) => {
-      if (!msg.thread_id) return;
+      if (!msg.thread_id || deletedIdsRef.current.has(msg.message_id)) return;
       const cur = openRef.current;
       if (!cur || cur.thread.thread_id !== msg.thread_id) return;
       if (msg.nonce) {
@@ -348,6 +358,8 @@ export function useThreads(
     const onMessageDeleted = (payload: { conversation_id: string; message_id: string }) => {
       const id = payload?.message_id;
       if (!id) return;
+      // Before the guards: the page it has to be kept out of may not be here yet.
+      deletedIdsRef.current.add(id);
       const cur = openRef.current;
       if (!cur) return;
       if (cur.root?.message_id === id) {
@@ -402,8 +414,8 @@ export function useThreads(
 
     /* A refused reply follows the channel: one automatic retry, and if that
        goes too the row is marked failed and the text goes back in the box. */
-    const onChatError = (e: ChatErrorPayload) => {
-      const entry = latestPending(retryQueueRef.current);
+    const onChatError = (e: ChatErrorPayload, ref?: ChatErrorRef) => {
+      const entry = refusedReply(retryQueueRef.current, ref);
       if (!entry) return;
 
       if (!isNonRetryableError(e) && entry.retryCount < 1) {

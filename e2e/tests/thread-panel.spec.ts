@@ -456,3 +456,108 @@ test("a reply in both chat:new and the first page is drawn once", async ({ newMe
   expect(page.some((frame) => frame.includes('["thread:history",') && frame.includes(late))).toBe(true);
   await expect(lateRows).toHaveCount(1);
 });
+
+/** Distinct rows in the panel carrying `label`, split by what became of each. */
+async function replyOutcomes(page: Page, label: string, frames: string[]) {
+  const landedIds = new Set(
+    frames
+      .filter((frame) => frame.includes('["chat:new",') && frame.includes(label))
+      .map((frame) => /"message_id":"([^"]+)"/.exec(frame)?.[1])
+      .filter((id): id is string => !!id),
+  );
+  const rows = await panel(page)
+    .locator("[data-message-id]")
+    .filter({ hasText: label })
+    .evaluateAll((els) =>
+      [...new Map(els.map((el) => [el.getAttribute("data-message-id"), el.textContent ?? ""])).entries()],
+    );
+  let landed = 0;
+  let failed = 0;
+  for (const [id, text] of rows) {
+    if (id && landedIds.has(id)) landed++;
+    else if (text.includes("Failed to send")) failed++;
+  }
+  return { landed, failed, pending: rows.length - landed - failed };
+}
+
+test("a burst of refused replies settles every row, not only the newest", async ({ newMember }) => {
+  // The retries wait out the limit, and their refusals come back after that.
+  test.setTimeout(120_000);
+  const alice = await newMember();
+
+  const root = unique("a thread to reply to too fast");
+  await sendMessage(alice.page, root);
+  await startThread(alice.page, root);
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
+
+  // Held and let go together, so the server reads all of them in one tick.
+  const sends = await holdEvent(alice.context, "chat:send", "to the server");
+  await alice.page.reload();
+  await openThread(alice.page, root);
+
+  /* The send limit is 20 in 10 seconds. Past it, each refusal has to find its
+     own row; settling the newest left the rest pending until a reload (GRYT-1420). */
+  const burst = unique("a reply in the burst");
+  const count = 24;
+  sends.holding = true;
+  const box = threadComposer(alice.page);
+  await box.click();
+  for (let i = 0; i < count; i++) {
+    await alice.page.keyboard.insertText(`${burst} #${i}`);
+    await box.press("Enter");
+    await expect(box).toHaveText("");
+  }
+  await expect.poll(() => sends.held).toBe(count);
+  sends.release();
+
+  const refusals = () => sends.received.filter((frame) => frame.includes('["chat:error",')).length;
+  await expect.poll(refusals, "the burst went past the limit").toBeGreaterThan(0);
+  await expect
+    .poll(() => replyOutcomes(alice.page, burst, sends.received), { timeout: 60_000 })
+    .toMatchObject({ pending: 0 });
+  const settled = await replyOutcomes(alice.page, burst, sends.received);
+  expect(settled.landed + settled.failed).toBe(count);
+  expect(settled.failed, "some of the burst was refused for good").toBeGreaterThan(0);
+});
+
+test("a reply deleted while the thread's first page is on its way stays deleted", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+
+  const root = unique("a thread with a reply about to go");
+  const kept = unique("a reply that stays");
+  const doomed = unique("a reply deleted mid-load");
+  await sendMessage(alice.page, root);
+  await startThread(alice.page, root);
+  await replyInThread(alice.page, kept);
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
+
+  const socket = await holdEvent(alice.context, "thread:history", "to the page");
+  // A route only catches sockets opened after it.
+  await alice.page.reload();
+  await expect(messageRow(alice.page, root)).toBeVisible();
+
+  // Bob's row keeps its nonce as an id until it lands, so the id comes off the wire.
+  await openThread(bob.page, root);
+  await replyInThread(bob.page, doomed);
+  const landed = () => socket.received.find((frame) => frame.includes('["chat:new",') && frame.includes(doomed));
+  await expect.poll(landed).toBeTruthy();
+  const doomedId = /"message_id":"([^"]+)"/.exec(landed() ?? "")?.[1];
+  expect(doomedId).toBeTruthy();
+
+  // The server reads the page now, with bob's reply still in it.
+  socket.holding = true;
+  await openThread(alice.page, root);
+  await expect.poll(() => socket.held).toBe(1);
+
+  await deleteMessage(bob.page, doomed);
+  await expect
+    .poll(() => socket.received.some((frame) => frame.includes('["chat:deleted",') && frame.includes(`"${doomedId}"`)))
+    .toBe(true);
+  socket.release();
+  expect(socket.received.some((frame) => frame.includes('["thread:history",') && frame.includes(doomed))).toBe(true);
+
+  const rows = panel(alice.page).locator(CONFIRMED_ROW);
+  await expect(rows.filter({ hasText: kept }), "the page went in").toHaveCount(1);
+  await expect(rows.filter({ hasText: doomed }), "the page read before the delete put it back").toHaveCount(0);
+});
