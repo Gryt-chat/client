@@ -52,6 +52,7 @@ import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { firstTimeOnThisSocket } from "../utils/publishedOnce";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
+import { noteServerMute } from "./textMute";
 import { setServerJoinPolicy } from "./useServerJoinPolicy";
 
 const TOKEN_HEAL_COOLDOWN_MS = 10_000;
@@ -659,6 +660,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     };
     if (myEntry) {
       setIsServerMuted(!!myEntry.isServerMuted);
+      // How a member already muted before this session learns they are (GRYT-1400).
+      noteServerMute(host, !!myEntry.isServerMuted);
       setIsServerDeafened(!!myEntry.isServerDeafened);
       if (myEntry.serverUserId) {
         myServerUserIdByHost.set(host, myEntry.serverUserId);

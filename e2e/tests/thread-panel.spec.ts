@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-import { accessTokenOf, ask, serverUserIdOf, withSocket } from "../support/admin";
+import { accessTokenOf, setProfanityMode } from "../support/admin";
 import { composer, messageRow, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
@@ -145,23 +145,24 @@ test("a refused reply is retried once, then gives the text back", async ({ newMe
   await startThread(alice.page, root);
   await replyInThread(alice.page, unique("a reply while she may still post"));
 
-  /* A server mute rather than a closed thread: closing takes the composer away
-     now, and this refusal leaves one to type the refused reply into. */
+  /* A blocked word rather than a closed thread or a mute: closing takes the
+     composer away, a mute locks it (GRYT-1400), and this leaves one to type in. */
   const accessToken = await accessTokenOf(owner.page, gryt.server.host);
-  const aliceId = serverUserIdOf(await accessTokenOf(alice.page, gryt.server.host));
-  await withSocket(gryt.server.httpBase, async (socket) => {
-    await ask(socket, "server:mute", { accessToken, targetServerUserId: aliceId, muted: true }, "server:mute:success");
-  });
+  await setProfanityMode(gryt.server.httpBase, accessToken, "block");
 
-  const refused = unique("this one is refused");
-  const box = threadComposer(alice.page);
-  await box.click();
-  await alice.page.keyboard.insertText(refused);
-  await box.press("Enter");
+  try {
+    const refused = `${unique("this one is refused")} shit`;
+    const box = threadComposer(alice.page);
+    await box.click();
+    await alice.page.keyboard.insertText(refused);
+    await box.press("Enter");
 
-  const row = panel(alice.page).locator("[data-message-id]").filter({ hasText: refused });
-  await expect(row).toContainText("Failed to send", { timeout: 30_000 });
-  await expect(box, "the text is back in the box to send somewhere else").toHaveText(refused);
+    const row = panel(alice.page).locator("[data-message-id]").filter({ hasText: refused });
+    await expect(row).toContainText("Failed to send", { timeout: 30_000 });
+    await expect(box, "the text is back in the box to send somewhere else").toHaveText(refused);
+  } finally {
+    await setProfanityMode(gryt.server.httpBase, accessToken, "censor");
+  }
 });
 
 test("a refused fetch says so where the replies would be", async ({ newMember }) => {

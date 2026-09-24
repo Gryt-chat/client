@@ -62,6 +62,16 @@ export function ask<T>(
   });
 }
 
+/**
+ * The server's profanity mode. `block` refuses a message outright and leaves the
+ * composer open, which is the refusal a test can repeat without a long wait.
+ */
+export async function setProfanityMode(httpBase: string, token: string, mode: "off" | "flag" | "censor" | "block"): Promise<void> {
+  await withSocket(httpBase, (socket) =>
+    ask(socket, "server:settings:update", { accessToken: token, profanityMode: mode }, "server:settings"),
+  );
+}
+
 /** An invite made by whoever `token` belongs to, optionally handing out a role. */
 export async function createInvite(
   httpBase: string,

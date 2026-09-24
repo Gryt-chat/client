@@ -33,6 +33,7 @@ import { challengeHostMatches } from "../utils/challengeHost";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import { idleRecovery, planRecovery, type RecoveryState } from "../utils/sessionRecovery";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
+import { parseMuteExpiry, setTextMute } from "./textMute";
 
 type Sockets = { [host: string]: Socket };
 
@@ -223,8 +224,10 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       moderationResult("server:mute:success", (p) => (p.muted ? "Server muted." : "Server mute removed."));
       moderationResult("server:deafen:success", (p) => (p.deafened ? "Server deafened." : "Server deafen removed."));
 
-      socket.on("server:muted", (data: { muted: boolean }) => {
+      socket.on("server:muted", (data: { muted: boolean; expiresAt?: string | null }) => {
         setIsServerMuted(data.muted);
+        // The mute covers text too, so the composer needs it the moment it lands.
+        setTextMute(host, data.muted ? { until: parseMuteExpiry(data.expiresAt) } : null);
         toast(data.muted ? "You have been server muted by an admin." : "Your server mute has been removed.", {
           icon: createElement(data.muted ? PiMicrophoneSlashFill : PiMicrophoneFill, { size: 18 }),
         });

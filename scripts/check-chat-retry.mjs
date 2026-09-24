@@ -51,8 +51,9 @@ function refuse(error, retryCount) {
   const { handle, timeouts, intervals } = load();
   const entry = retryCount === null ? null : { retryCount };
   const queue = new Map(entry ? [["pending-1", entry]] : []);
-  const calls = { retried: 0, failed: 0, rateLimited: [], countdown: 0 };
+  const calls = { retried: 0, failed: 0, rateLimited: [], countdown: 0, muted: [] };
   handle(error, "conversation-1", "key-1", {
+    onMuted: (expiresAt) => calls.muted.push(expiresAt),
     setIsRateLimited: (v) => calls.rateLimited.push(v),
     setMessageCacheMeta: () => {},
     rateLimitIntervalRef: { current: null },
@@ -109,4 +110,82 @@ assert.equal(countdown.count, 0, "the countdown should reach zero");
 assert.equal(countdown.calls.rateLimited.at(-1), false, "and unlock the composer");
 assert.equal(countdown.calls.retried, retriedBefore, "without sending anything of its own");
 
-console.log("chat retry: a refused send is tried once and then fails");
+/* A mute lasts minutes or hours, so the retry would only be refused again and
+   the composer says so in words instead. GRYT-1400. */
+const MUTED = { error: "muted", expiresAt: "2026-09-24T14:30:00.000Z", message: "You are muted on this server until 2026-09-24T14:30:00.000Z." };
+const muted = refuse(MUTED, 0);
+assert.equal(muted.retried, 0, "a muted send should not be tried again");
+assert.equal(muted.failed, 1, "it should fail the row at once");
+assert.deepEqual(muted.muted, ["2026-09-24T14:30:00.000Z"], "and hand the composer the expiry the server named");
+assert.deepEqual(muted.rateLimited, [], "a mute is not a rate limit, so the countdown stays out of it");
+
+const mutedForever = refuse({ error: "muted", expiresAt: null, message: "You are muted on this server." }, 0);
+assert.deepEqual(mutedForever.muted, [null], "a mute with no end reads as no expiry rather than as no mute");
+assert.equal(mutedForever.failed, 1, "and still fails the row");
+
+// ── The mute the composer draws ─────────────────────────────────────
+
+const STORE = "src/packages/socket/src/hooks/textMute.ts";
+const storeSource = stripTypeScriptTypes(readFileSync(join(root, STORE), "utf8"));
+const storeFrom = storeSource.indexOf("const mutes = new Map");
+const storeTo = storeSource.indexOf("function subscribe");
+assert.ok(storeFrom !== -1 && storeTo > storeFrom, `${STORE} no longer has a store to check.`);
+const hooksFrom = storeSource.indexOf("export function muteLiftsAt");
+assert.ok(hooksFrom > storeTo, `${STORE} no longer exports muteLiftsAt.`);
+const storeSlice = (storeSource.slice(storeFrom, storeTo) + storeSource.slice(hooksFrom))
+  .replaceAll("export function", "function")
+  .replaceAll("export const", "const");
+
+/** The store with its timers in hand, so a lapsing mute can be driven. */
+function loadStore() {
+  const pending = [];
+  const make = new Function(
+    "setTimeout",
+    "clearTimeout",
+    `${storeSlice}\nreturn { setTextMute, noteServerMute, textMuteFor, resetTextMutes, muteLiftsAt, parseMuteExpiry };`,
+  );
+  const api = make(
+    (fn, ms) => {
+      pending.push({ fn, ms });
+      return pending.length;
+    },
+    () => {},
+  );
+  return { ...api, pending };
+}
+
+const store = loadStore();
+const HOST = "chat.example:5001";
+
+store.setTextMute(HOST, { until: new Date(Date.now() + 60_000) });
+assert.ok(store.textMuteFor(HOST), "a mute the server just pushed should be in force");
+assert.equal(store.textMuteFor("other.example:5001"), null, "and only on the server that sent it");
+
+store.setTextMute(HOST, { until: new Date(Date.now() - 1000) });
+assert.equal(store.textMuteFor(HOST), null, "a mute whose end has passed is over");
+
+/* The member list caches the flag per socket, so it still reads muted after one
+   lapses. Believing it would lock the composer again with nothing to lift it. */
+store.noteServerMute(HOST, true);
+assert.equal(store.textMuteFor(HOST), null, "a stale member list should not restart a mute that has ended");
+
+store.setTextMute(HOST, null);
+store.noteServerMute(HOST, true);
+const fromList = store.textMuteFor(HOST);
+assert.ok(fromList, "a member list is how somebody muted before this session finds out");
+assert.equal(fromList.until, null, "and it carries no end, because the list does not send one");
+
+store.noteServerMute(HOST, false);
+assert.equal(store.textMuteFor(HOST), null, "an unmute clears it");
+
+assert.equal(store.parseMuteExpiry("not a date"), null, "junk from the wire is no expiry");
+assert.equal(store.parseMuteExpiry(null), null, "and neither is a missing one");
+assert.ok(store.parseMuteExpiry("2026-09-24T14:30:00.000Z") instanceof Date, "an ISO timestamp is");
+
+const today = new Date();
+today.setHours(14, 30, 0, 0);
+assert.ok(!/\d{4}/.test(store.muteLiftsAt(today)), "a mute lifting today is named by the time alone");
+const later = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+assert.ok(store.muteLiftsAt(later).includes(","), "one lifting another day carries the date too");
+
+console.log("chat retry: a refused send is tried once and then fails, and a mute is not retried at all");
