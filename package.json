@@ -55,6 +55,7 @@
     "test:hide-muted": "node --disable-warning=ExperimentalWarning scripts/check-hide-muted.mjs",
     "test:settings-index": "node scripts/check-settings-index.mjs",
     "test:notification-prefs": "node scripts/check-notification-prefs.mjs",
+    "test:muted-silence": "node scripts/check-muted-silence.mjs",
     "test:notification-navigation": "node scripts/check-notification-navigation.mjs",
     "test:message-notification": "node scripts/check-message-notification.mjs",
     "test:notification-text": "node scripts/check-notification-text.mjs",

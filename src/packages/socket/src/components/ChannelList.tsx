@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 
 import {
   getHideMuted,
+  getPlacement,
   getStoredSnapshot,
   getUploadsFileUrl,
   hiddenMutedRows,
@@ -14,6 +15,7 @@ import {
   NotificationLevelMenu,
   type NotificationScope,
   resolveAvatarSrc,
+  resolveLevel,
   setHideMuted,
   subscribeToPrefs,
   SuppressEveryoneItem,
@@ -310,14 +312,19 @@ export const ChannelList = ({
     const channelId = item.channelId ?? item.id;
     const channel = channelById.get(channelId);
     const hasIndicators = channel?.type === "voice" && (channel?.eSportsMode || channel?.requirePushToTalk || channel?.disableRnnoise || channel?.maxBitrate);
+    // A muted channel draws none of this — no badge, no bold — even though the
+    // counts underneath keep moving (GRYT-1465).
+    const muted = channel
+      ? resolveLevel(prefs.servers, serverHost, getPlacement(serverHost, channel.id)) === "none"
+      : false;
     /* The threads count even in the open channel: their replies were never on
        its timeline, so standing here is not reading them (GRYT-1388). */
-    const unread =
+    const unread = muted ? 0 :
       (channel && channel.id !== selectedChannelId ? unreadCounts?.get(channel.id) ?? 0 : 0) +
       (channel ? threadUnreadCounts?.get(channel.id) ?? 0 : 0);
     // Shown even for the open channel: a mention is cleared by reading rather
     // than by having it open, so one still counted has not been cleared.
-    const mentions = channel ? mentionCounts?.get(channel.id) ?? 0 : 0;
+    const mentions = muted ? 0 : (channel ? mentionCounts?.get(channel.id) ?? 0 : 0);
     /* Visible and not enterable has always been expressible; the row never said
        so, and the refusal arrived from the media stack after the press. */
     const locked = channel?.type === "voice" && channel.canJoin === false;
@@ -507,14 +514,17 @@ export const ChannelList = ({
 
       const channelId = item.channelId ?? item.id;
       if (channelId === selectedChannelId) entry.holdsSelected = true;
-      if (channelId !== selectedChannelId) entry.unread += unreadCounts?.get(channelId) ?? 0;
-      entry.unread += threadUnreadCounts?.get(channelId) ?? 0;
-      entry.mentions += mentionCounts?.get(channelId) ?? 0;
+      // A muted channel wears none of the folder's rolled-up state either.
+      if (resolveLevel(prefs.servers, serverHost, getPlacement(serverHost, channelId)) !== "none") {
+        if (channelId !== selectedChannelId) entry.unread += unreadCounts?.get(channelId) ?? 0;
+        entry.unread += threadUnreadCounts?.get(channelId) ?? 0;
+        entry.mentions += mentionCounts?.get(channelId) ?? 0;
+      }
 
       rollup.set(parent, entry);
     }
     return rollup;
-  }, [shownItems, selectedChannelId, unreadCounts, threadUnreadCounts, mentionCounts]);
+  }, [shownItems, selectedChannelId, unreadCounts, threadUnreadCounts, mentionCounts, prefs, serverHost]);
 
   const renderItem = (item: SidebarItem) => {
     if (item.kind === "separator") return renderSeparator(item);
