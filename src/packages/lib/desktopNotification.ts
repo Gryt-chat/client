@@ -83,9 +83,8 @@ function mentionToPlainText(_match: string, label: string): string {
 }
 
 /**
- * The message text a notification or preview can show: mentions resolve to
- * the name in their label, and markdown syntax is gone rather than literal.
- * Custom emoji shortcodes (`:name:`) are already plain text and pass through.
+ * The message text a notification can show: mentions resolve to a name, and
+ * markdown syntax is gone. Custom emoji shortcodes already read fine as-is.
  */
 export function toPlainNotificationText(raw: string): string {
   let text = raw;
