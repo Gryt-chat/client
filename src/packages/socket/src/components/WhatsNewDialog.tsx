@@ -1,7 +1,19 @@
 import { Button, Chip, type ChipProps, Dialog } from "@gryt/ui";
-import { Fragment } from "react";
+import type { Icon } from "@phosphor-icons/react";
 
 import { LogoIcon } from "@/common";
+
+import {
+  PiBellFill,
+  PiChatCircleFill,
+  PiDeviceMobileFill,
+  PiDotsThreeCircleFill,
+  PiGearFill,
+  PiHardDrivesFill,
+  PiHouseFill,
+  PiMicrophoneFill,
+  PiShieldCheckFill,
+} from "../../../../lib/icons";
 
 export interface WhatsNewChange {
   kind: string;
@@ -64,13 +76,38 @@ const AREAS = new Map([
   ["self-hosting", "Self-hosting"],
 ]);
 
+/**
+ * A mark per area, from what the app already draws: the settings rail's own icons, and
+ * the house the Add Server screen offers to run a server on this machine with.
+ */
+const AREA_ICONS = new Map<string, Icon>([
+  ["voice", PiMicrophoneFill],
+  ["chat", PiChatCircleFill],
+  ["notifications", PiBellFill],
+  ["servers", PiHardDrivesFill],
+  ["settings", PiGearFill],
+  ["phone", PiDeviceMobileFill],
+  ["self-hosting", PiHouseFill],
+]);
+
+/** For Other, and for an area the site has added since this build. */
+const OTHER_ICON = PiDotsThreeCircleFill;
+
+interface AreaGroup {
+  /** The site's id for the area. Empty for the changes that carry none. */
+  area: string;
+  label: string;
+  icon: Icon;
+  changes: WhatsNewChange[];
+}
+
 const areaOf = (change: WhatsNewChange) => (typeof change.area === "string" ? change.area : "");
 
 /**
  * The changes under their area's heading, in AREAS order. An area this build doesn't
  * know keeps its own name, and a change with no area goes last, under Other.
  */
-function grouped(changes: WhatsNewChange[]): [string, WhatsNewChange[]][] {
+function grouped(changes: WhatsNewChange[]): AreaGroup[] {
   const present = new Set(changes.map(areaOf));
   const order = [
     ...[...AREAS.keys()].filter((area) => present.has(area)),
@@ -78,7 +115,12 @@ function grouped(changes: WhatsNewChange[]): [string, WhatsNewChange[]][] {
     ...(present.has("") ? [""] : []),
   ];
 
-  return order.map((area) => [AREAS.get(area) ?? (area || "Other"), changes.filter((c) => areaOf(c) === area)]);
+  return order.map((area) => ({
+    area,
+    label: AREAS.get(area) ?? (area || "Other"),
+    icon: AREA_ICONS.get(area) ?? OTHER_ICON,
+    changes: changes.filter((c) => areaOf(c) === area),
+  }));
 }
 
 /**
@@ -111,6 +153,34 @@ function ChangeRows({ changes }: { changes: WhatsNewChange[] }) {
 }
 
 /**
+ * One area: its heading, then its rows. The two share a grid row, which is the box the
+ * heading stays pinned inside while that area is what you are reading (GRYT-1402).
+ */
+function AreaBlock({
+  changes,
+  className,
+  heading: Heading,
+  icon: AreaIcon,
+  label,
+}: {
+  changes: WhatsNewChange[];
+  className?: string;
+  heading: "h3" | "h4";
+  icon: Icon;
+  label: string;
+}) {
+  return (
+    <div className={className ? `whats-new-group ${className}` : "whats-new-group"}>
+      <Heading className="whats-new-area">
+        <AreaIcon className="whats-new-area-icon" size={15} />
+        <span className="whats-new-area-name">{label}</span>
+      </Heading>
+      <ChangeRows changes={changes} />
+    </div>
+  );
+}
+
+/**
  * One release: its line, then its security fixes in a block of their own, then the
  * rest under a heading per area. Changes that all share an area get no heading.
  */
@@ -135,19 +205,25 @@ function ReleaseBody({
     <div className="whats-new-body">
       <p className="whats-new-line">{line}</p>
       {security.length > 0 && (
-        <div className="whats-new-security">
-          <Heading className="whats-new-area">Security</Heading>
-          <ChangeRows changes={security} />
-        </div>
+        <AreaBlock
+          changes={security}
+          className="whats-new-security"
+          heading={Heading}
+          icon={PiShieldCheckFill}
+          label="Security"
+        />
       )}
       {areas.length === 1 ? (
-        <ChangeRows changes={areas[0][1]} />
+        <ChangeRows changes={areas[0].changes} />
       ) : (
-        areas.map(([area, inArea]) => (
-          <Fragment key={area}>
-            <Heading className="whats-new-area">{area}</Heading>
-            <ChangeRows changes={inArea} />
-          </Fragment>
+        areas.map((group) => (
+          <AreaBlock
+            key={group.area}
+            changes={group.changes}
+            heading={Heading}
+            icon={group.icon}
+            label={group.label}
+          />
         ))
       )}
     </div>

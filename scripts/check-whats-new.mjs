@@ -338,6 +338,21 @@ const STUBS = {
   `),
   "@/common": moduleUrl("export const LogoIcon = () => null;"),
 };
+
+/* The icons the dialog names, stubbed one for one so each heading's mark shows up in
+   the markup. Read off the import, so an icon added to the dialog is stubbed too. */
+const iconImport = dialog.match(/import \{([^}]+)\} from "(\.\.\/)+lib\/icons";/);
+assert.ok(iconImport, `${DIALOG} no longer takes its icons from the app's own set`);
+const iconNames = iconImport[1].split(",").map((name) => name.trim()).filter(Boolean);
+const iconSet = readFileSync(join(root, "src/lib/icons.tsx"), "utf8");
+for (const name of iconNames) {
+  assert.match(iconSet, new RegExp(`export const ${name}: Icon =`), `${name} is not an icon src/lib/icons.tsx exports`);
+}
+STUBS[iconImport[0].match(/"([^"]+)"/)[1]] = moduleUrl(`
+  import { createElement as h } from ${JSON.stringify(import.meta.resolve("react"))};
+  const mark = (name) => ({ className, size }) => h("i", { className, "data-icon": name, "data-size": size });
+  ${iconNames.map((name) => `export const ${name} = mark(${JSON.stringify(name)});`).join("\n  ")}
+`);
 const compiled = ts
   .transpileModule(dialog, {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -442,7 +457,7 @@ const SEVERAL_FIXES = {
   const line = html.indexOf('<p class="whats-new-line">Six things.</p>');
   assert.ok(line >= 0, "a release with changes no longer draws its one-sentence line");
   assert.ok(
-    line < html.indexOf('class="whats-new-security"') && line < html.indexOf("<li"),
+    line < html.indexOf("whats-new-security") && line < html.indexOf("<li"),
     "the line is drawn below the security block or the changes, rather than above both",
   );
   assert.doesNotMatch(html, /whats-new-plain/, "a release with changes drew its line as the fallback for one without");
@@ -502,7 +517,7 @@ assert.deepEqual(
 );
 
 /** Each group's heading and its changes' text, for comparing. */
-const byArea = (changes) => grouped(changes).map(([heading, list]) => [heading, list.map((x) => x.text)]);
+const byArea = (changes) => grouped(changes).map(({ label, changes: list }) => [label, list.map((x) => x.text)]);
 
 // AREAS order however the release was written, as written inside an area, and no area last.
 assert.deepEqual(
@@ -539,7 +554,7 @@ assert.deepEqual(
  */
 function drawn(html) {
   const parts =
-    /<p class="whats-new-line">([^<]*)<\/p>|<div class="whats-new-security">([\s\S]*?<\/ul>)<\/div>|<(h[34]) class="whats-new-area">([^<]*)<\/h[34]>|<li\b[^>]*>([\s\S]*?)<\/li>/g;
+    /<p class="whats-new-line">([^<]*)<\/p>|<div class="whats-new-group whats-new-security">([\s\S]*?<\/ul>)<\/div>|<(h[34]) class="whats-new-area">(?:<i[^>]*><\/i>)?<span class="whats-new-area-name">([^<]*)<\/span><\/h[34]>|<li\b[^>]*>([\s\S]*?)<\/li>/g;
   const plain = (text) => text.replace(/&amp;/g, "&");
   return [...html.matchAll(parts)].flatMap(([, line, security, level, heading, row]) => {
     if (line !== undefined) return [`line: ${plain(line)}`];
@@ -659,6 +674,45 @@ for (const changes of [
   assert.match(old, /whats-new-plain/, "a release from before 1.10 lost its one sentence in a range");
 }
 
+/* ── a mark per area, and a heading that stays put (GRYT-1402) ───────────── */
+
+/** Each heading drawn, as `name: icon`, the security block's included. */
+function marks(html) {
+  const heading = /<h[34] class="whats-new-area"><i[^>]*data-icon="([^"]*)"[^>]*><\/i><span class="whats-new-area-name">([^<]*)<\/span>/g;
+  return [...html.matchAll(heading)].map(([, icon, name]) => `${name.replace(/&amp;/g, "&")}: ${icon}`);
+}
+
+// One change in every area, plus one the site added later and one with no area at all.
+{
+  const changes = [
+    ...[...AREAS.keys()].map((area) => at(area, "fixed", `in ${area}`)),
+    at("bots", "new", "a webhook"),
+    at("chat", "security", "Messages stay in the channel"),
+    c("fixed", "Something nobody filed"),
+  ];
+  const html = renderToStaticMarkup(createElement(ReleaseBody, { line: "Everywhere.", changes }));
+  assert.deepEqual(
+    marks(html),
+    [
+      "Security: PiShieldCheckFill",
+      "Voice & video: PiMicrophoneFill",
+      "Chat: PiChatCircleFill",
+      "Notifications: PiBellFill",
+      "Servers & invites: PiHardDrivesFill",
+      "Settings & app: PiGearFill",
+      "Phone: PiDeviceMobileFill",
+      "Self-hosting: PiHouseFill",
+      "bots: PiDotsThreeCircleFill",
+      "Other: PiDotsThreeCircleFill",
+    ],
+    "an area is drawn without its own mark, or with one that belongs to another area",
+  );
+
+  // Two areas sharing a mark makes the mark decoration rather than a way to tell them apart.
+  const named = marks(html).filter((mark) => !mark.startsWith("bots: ") && !mark.startsWith("Other: "));
+  assert.equal(new Set(named.map((mark) => mark.split(": ")[1])).size, named.length, "two named areas are drawn with the same mark");
+}
+
 // The line, the security block and the areas share the release's pill column, and stack together on a narrow card.
 {
   const style = readFileSync(join(root, "src/style.css"), "utf8");
@@ -668,7 +722,7 @@ for (const changes of [
     return style.slice(found, style.indexOf("}", found));
   };
   assert.match(rule(".whats-new-body"), /grid-template-columns:\s*max-content minmax\(0, 1fr\)/, "a release doesn't have one pill column");
-  assert.match(style, /\n\.whats-new-body > \.whats-new-changes,\n\.whats-new-security > \.whats-new-changes \{\s*grid-template-columns: subgrid;/, "an area or the security block sizes its own pill column");
+  assert.match(style, /\n\.whats-new-body > \.whats-new-changes,\n\.whats-new-group > \.whats-new-changes \{\s*grid-template-columns: subgrid;/, "an area or the security block sizes its own pill column");
   assert.match(rule(".whats-new-security"), /grid-template-columns:\s*subgrid/, "the security block sizes its own pill column");
   assert.match(style, /\.whats-new-release > \.whats-new-body \{\s*display: grid;[^}]*subgrid/, "a release sizes its own pill column in a range");
   assert.match(
@@ -687,6 +741,31 @@ for (const changes of [
   const margin = inline(block.match(/\n\s*margin: ([^;]+);/)[1]);
   const padding = inline(block.match(/\n\s*padding: ([^;]+);/)[1]);
   assert.equal(margin, `-${padding}`, "the security block's side margin doesn't cancel its padding, so its pills leave the column");
+
+  /* A sticky box may only move inside its own grid area, so the heading and the rows
+     have to sit in one grid row for the heading to have anywhere to travel. */
+  const group = rule(".whats-new-group");
+  assert.match(group, /grid-template-columns: subgrid/, "an area sizes its own pill column");
+  const height = group.match(/(--whats-new-area-[a-z-]+):/)?.[1];
+  assert.ok(height, "the area heading's height is no longer a variable the rows can read");
+  assert.match(
+    style,
+    /\n\.whats-new-group > \.whats-new-area,\n\.whats-new-group > \.whats-new-changes \{\s*grid-row: 1;/,
+    "the heading and its rows are in separate grid rows, so the heading has no room to stay pinned in",
+  );
+
+  const pinned = rule(".whats-new-group > .whats-new-area");
+  assert.match(pinned, /position: sticky/, "the area heading doesn't stay put while you are inside its area");
+  assert.match(pinned, /top: 0/, "the pinned area heading isn't held at the top of the list");
+  assert.match(pinned, /align-self: start/, "the heading stretches down its area, so its background covers the rows");
+  assert.match(pinned, new RegExp(`height: var\\(${height}\\)`), "the pinned heading is not the height its rows keep clear");
+  assert.match(pinned, /background: var\(--gryt-surface\)/, "the rows show through the heading they scroll behind");
+  /* Its own rule rather than rule(), which finds the shared one above it first. */
+  const room = style.match(/\n\.whats-new-group > \.whats-new-changes \{[^}]*padding-top: var\((--whats-new-area-[a-z-]+)\)/);
+  assert.ok(room, "the rows don't leave the pinned heading its own room, so the first one starts underneath it");
+  assert.equal(room[1], height, "the rows keep clear of a different measurement than the heading is drawn at");
+  assert.match(rule(".whats-new-security > .whats-new-area"), /background: var\(--gryt-danger-2\)/, "the security rows show through their own heading");
+  assert.match(rule(".whats-new-area-icon"), /color: var\(--gryt-accent-11\)/, "an area's mark isn't in the accent colour");
 }
 
 /* `new Date("2026-09-08")` is UTC midnight, so west of Greenwich a release is
@@ -788,5 +867,6 @@ console.log(
   "what's new: ok, waits for the store, once per version, quiet on a fresh " +
     "install and with no line; revalidates and retries " +
     `${RETRY_DELAYS_MS.length} times; a pill on every change, unknown kinds kept, the line on top, ` +
-    "security in a red block of its own, a heading per area only when there are two, dates local",
+    "security in a red block of its own, a heading per area only when there are two, " +
+    "each with its own mark and pinned to the top of its own rows, dates local",
 );
