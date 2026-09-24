@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
+import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import { cameraStreamFor } from "../lib/cameraStream";
 import type { Client } from "../types/clients";
@@ -75,6 +76,7 @@ export function VideoCard({
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [isStalled, setIsStalled] = useState(false);
+  useDrawnVideoSize(ref, stream, objectFit);
 
   // A tile with no stream said "Connecting video…" forever, which reads as slow
   // rather than broken when the media never arrives at all.

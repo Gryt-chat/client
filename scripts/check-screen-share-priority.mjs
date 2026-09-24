@@ -1,7 +1,7 @@
 /* eslint-env node */
 
 // When camera and desktop video compete, keep desktop high priority and let
-// the webcam give up resolution first.
+// the webcam give up resolution first. The engine writes them; controls.tsx hands it these.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -25,12 +25,12 @@ const screen = controls.slice(
 
 assert.match(
   camera,
-  /params\.encodings\[0\]\.priority = screenShareActive \? "low" : "medium"/,
+  /priority: screenShareActive \? "low" : "medium"/,
   "camera does not yield bandwidth while screen sharing",
 );
 assert.match(
   camera,
-  /params\.degradationPreference = "maintain-framerate"/,
+  /degradationPreference: "maintain-framerate"/,
   "camera no longer sacrifices resolution before frame rate",
 );
 assert.match(
@@ -41,12 +41,12 @@ assert.match(
 
 assert.match(
   screen,
-  /params\.encodings\[0\]\.priority = "high"/,
+  /priority: "high"/,
   "screen share is not the high-priority video sender",
 );
 assert.match(
   screen,
-  /screenShareGamingMode\s*\? "maintain-framerate"\s*: "maintain-resolution"/,
+  /degradationPreference: screenShareGamingMode\s*\? "maintain-framerate"\s*: "maintain-resolution"/,
   "desktop sharing does not preserve resolution outside gaming mode",
 );
 

@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 
 import { ServerErrorToast, serverIconSrc } from "@/common";
 import { useServerManagement, useSockets } from "@/socket";
+import { setDrawnVideoReporter } from "@/socket/src/lib/drawnVideoSize";
 
 import { useVoiceSounds } from "./useVoiceSounds";
 
@@ -18,10 +19,17 @@ export function useVoiceLifecycle() {
     currentServerConnected,
     currentChannelConnected,
     disconnect,
+    videoStreams,
+    reportVideoDemand,
   } = useSFU();
   const { servers, currentlyViewingServer } = useServerManagement();
   const { serverDetailsList } = useSockets();
   const { playConnect } = useVoiceSounds();
+
+  // How big we draw everybody's video goes to the SFU, so nobody sends more than is watched.
+  useEffect(() => {
+    setDrawnVideoReporter(reportVideoDemand ?? null, Object.keys(videoStreams));
+  }, [reportVideoDemand, videoStreams]);
 
   // The connect sound. The engine used to play it partway through the flow; it
   // now plays when the call is actually up.

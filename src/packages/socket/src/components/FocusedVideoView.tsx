@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
 
 import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 
 const HIDE_DELAY_MS = 2500;
 
@@ -55,6 +56,7 @@ export function FocusedVideoView({
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
+  useDrawnVideoSize(ref, stream, objectFit);
 
   useEffect(() => {
     const onChange = () => {
