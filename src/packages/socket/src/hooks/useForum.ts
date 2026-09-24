@@ -18,7 +18,7 @@ export interface ForumTopic {
   participant_count: number;
   created_at: string;
   last_message_at: string;
-  creator_server_id: string;
+  created_by: string;
   creator_nickname: string | null;
   creator_avatar_file_id: string | null;
   preview: string | null;

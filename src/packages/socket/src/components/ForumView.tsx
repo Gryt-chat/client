@@ -56,7 +56,7 @@ function toSummary(t: ForumTopic): ThreadSummary {
     last_message_at: t.last_message_at,
     // The panel gates its controls on this, so it is right from the first
     // frame rather than only once thread:history lands.
-    created_by: t.creator_server_id,
+    created_by: t.created_by,
     tags: t.tags,
   };
 }
@@ -67,7 +67,7 @@ function matchesFilter(t: ForumTopic, filter: ForumFilter, currentUserId?: strin
     case "unanswered": return t.reply_count === 0 && t.status === "open";
     case "solved": return t.status === "solved";
     case "closed": return t.status === "closed";
-    case "mine": return !!currentUserId && t.creator_server_id === currentUserId;
+    case "mine": return !!currentUserId && t.created_by === currentUserId;
     default: return t.status !== "closed";
   }
 }
@@ -97,7 +97,7 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
     unanswered: topics.filter((t) => t.reply_count === 0 && t.status === "open").length,
     solved: topics.filter((t) => t.status === "solved").length,
     closed: topics.filter((t) => t.status === "closed").length,
-    mine: topics.filter((t) => !!currentUserId && t.creator_server_id === currentUserId).length,
+    mine: topics.filter((t) => !!currentUserId && t.created_by === currentUserId).length,
   }), [topics, currentUserId]);
 
   // Mirrors the server's cap so an over-long post is caught before a round trip.
