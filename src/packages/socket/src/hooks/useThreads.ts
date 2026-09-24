@@ -5,7 +5,7 @@ import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/comm
 
 import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
-import { type ChatErrorPayload, isNonRetryableError } from "./chatEventHandlers";
+import { type ChatErrorPayload, isMutedError, isNonRetryableError } from "./chatEventHandlers";
 import { forgetOpenThread, recallOpenThread, rememberOpenThread } from "./openThreadMemory";
 import { draftKey, returnDraft } from "./returnedDrafts";
 import { uploadChatFile } from "./uploadChatFile";
@@ -431,7 +431,8 @@ export function useThreads(
       }
 
       failReply(entry.payload.nonce);
-      toast.error(errorText(e));
+      // The composer draws the mute, and the server's own wording carries a raw ISO date.
+      if (!isMutedError(e)) toast.error(errorText(e));
     };
 
     /* The panel was open before the window was resized and this hook was mounted

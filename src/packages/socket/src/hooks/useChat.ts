@@ -26,6 +26,7 @@ import {
   type HistoryPayload,
   shouldFetchHistory,
 } from "./chatEventHandlers";
+import { parseMuteExpiry, setTextMute } from "./textMute";
 import { useChatSend } from "./useChatSend";
 import { useConversationSealing } from "./useConversationSealing";
 
@@ -333,6 +334,7 @@ export function useChat({
       inFlightFetchRef.current.delete(cacheKeyFor(activeConversationId));
 
       handleChatErrorEvent(error, activeConversationId, cacheKeyFor(activeConversationId), {
+        onMuted: (expiresAt) => setTextMute(serverHost, { until: parseMuteExpiry(expiresAt) }),
         setIsRateLimited,
         setMessageCacheMeta,
         rateLimitIntervalRef,
@@ -348,7 +350,7 @@ export function useChat({
     return () => {
       currentConnection.off("chat:error", onError);
     };
-  }, [currentConnection, activeConversationId, cacheKeyFor, performRetry, markLatestPendingFailed, retryQueueRef]);
+  }, [currentConnection, activeConversationId, cacheKeyFor, performRetry, markLatestPendingFailed, retryQueueRef, serverHost]);
 
   /* The countdown belongs to the rate limit, not to the listener above, whose
      cleanup ran on the next render and left the composer locked (GRYT-1393). */

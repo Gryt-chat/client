@@ -7,8 +7,9 @@ import type { SealDecision } from "@/common";
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme, useThreadMentions, useThreadUnread } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
+import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -550,9 +551,18 @@ export const ChatView = memo(({
     ],
   );
 
+  /* A mute is the server's, not the channel's, so it covers the thread panel
+     and every other conversation on the same host (GRYT-1400). */
+  const textMute = useTextMute(serverHost);
+  const muteLine = textMute
+    ? textMute.until
+      ? `You’re muted on this server until ${muteLiftsAt(textMute.until)}.`
+      : "You’re muted on this server."
+    : null;
+
   // Both have to say yes: the role has to allow posting at all, and this
   // channel has to be one of the ones it allows it in.
-  const maySend = mayHere("send_messages") && canSendHere !== false;
+  const maySend = mayHere("send_messages") && canSendHere !== false && !textMute;
   const mayRead = mayHere("read_messages");
 
   const renderThreadComposer = useCallback(
@@ -787,6 +797,19 @@ export const ChatView = memo(({
                   .join(", ")}
                 .
               </span>
+            </div>
+          )}
+
+          {/* Above the composer rather than a toast: it has to still be on screen
+              when somebody comes back to a box that stopped taking input. */}
+          {muteLine && (
+            <div
+              aria-live="polite"
+              className="mb-1.5 flex items-start gap-1.5 px-1 text-xs leading-snug"
+              style={{ color: "var(--gryt-neutral-11)" }}
+            >
+              <PiProhibitFill aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
+              <span>{muteLine}</span>
             </div>
           )}
 

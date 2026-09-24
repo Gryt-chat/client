@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test";
+
 import { accessTokenOf, ask, serverUserIdOf, withSocket } from "../support/admin";
 import { channelComposer, messageRow, pasteText, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
@@ -209,4 +211,64 @@ test("history is still there after a reload", async ({ newMember }) => {
   await alice.page.reload();
   await expect(channelComposer(alice.page)).toBeVisible();
   await expect(messageRow(alice.page, text)).toBeVisible();
+});
+
+
+/** The box itself, which a mute renames, so one locator covers before and after. */
+function editorBox(page: Page) {
+  return page.locator(".chat-editor-textarea").first();
+}
+
+async function setMute(
+  server: { host: string; httpBase: string },
+  ownerToken: string,
+  targetServerUserId: string,
+  muted: boolean,
+  expiresInMinutes?: number,
+) {
+  await withSocket(server.httpBase, (socket) =>
+    ask(socket, "server:mute", { accessToken: ownerToken, targetServerUserId, muted, expiresInMinutes: expiresInMinutes ?? null }, "server:mute:success"),
+  );
+}
+
+test("a mute reaches the composer while somebody is typing, and keeps what they wrote", async ({ owner, newMember, gryt }) => {
+  const alice = await newMember();
+  const ownerToken = await accessTokenOf(owner.page, gryt.server.host);
+  const aliceId = serverUserIdOf(await accessTokenOf(alice.page, gryt.server.host));
+
+  const box = editorBox(alice.page);
+  await box.click();
+  await alice.page.keyboard.insertText("half a thought");
+  await expect(box).toHaveText("half a thought");
+
+  await setMute(gryt.server, ownerToken, aliceId, true, 60);
+
+  await expect(alice.page.getByText(/You\u2019re muted on this server until /)).toBeVisible();
+  await expect(box).toHaveText("half a thought");
+  await expect(box).toHaveAttribute("contenteditable", "false");
+
+  await setMute(gryt.server, ownerToken, aliceId, false);
+
+  await expect(alice.page.getByText(/You\u2019re muted on this server/)).toHaveCount(0);
+  await expect(box).toHaveAttribute("contenteditable", "true");
+  await expect(box).toHaveText("half a thought");
+});
+
+test("a mute with no end is drawn, and survives a reload with only the member list to go on", async ({ owner, newMember, gryt }) => {
+  const alice = await newMember();
+  const ownerToken = await accessTokenOf(owner.page, gryt.server.host);
+  const aliceId = serverUserIdOf(await accessTokenOf(alice.page, gryt.server.host));
+
+  // Muted with no end, which is the case the server sends no expiresAt for.
+  await setMute(gryt.server, ownerToken, aliceId, true);
+  await expect(alice.page.getByText("You\u2019re muted on this server.")).toBeVisible();
+
+  /* The mute is drawn off a push here. A reload has only the member list to go
+     on, and that is the other way somebody finds out. */
+  await alice.page.reload();
+  await expect(alice.page.getByText("You\u2019re muted on this server.")).toBeVisible();
+  await expect(editorBox(alice.page)).toHaveAttribute("contenteditable", "false");
+
+  await setMute(gryt.server, ownerToken, aliceId, false);
+  await expect(alice.page.getByText("You\u2019re muted on this server.")).toHaveCount(0);
 });

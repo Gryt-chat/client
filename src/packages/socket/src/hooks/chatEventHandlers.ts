@@ -14,6 +14,8 @@ export type ChatErrorPayload = string | {
   error: string;
   message?: string;
   retryAfterMs?: number;
+  /** When a mute lifts, or null for one the server put no end on. */
+  expiresAt?: string | null;
   currentScore?: number;
   maxScore?: number;
 };
@@ -195,6 +197,8 @@ interface RetryQueueEntry {
 }
 
 export interface ChatErrorDeps {
+  /** The server refused this send because the sender is muted, and said until when. */
+  onMuted?: (expiresAt: string | null) => void;
   setIsRateLimited: (v: boolean) => void;
   setMessageCacheMeta: Dispatch<SetStateAction<MessageCacheMeta>>;
   rateLimitIntervalRef: MutableRefObject<NodeJS.Timeout | null>;
@@ -223,8 +227,14 @@ function latestEntry(queue: Map<string, RetryQueueEntry>): RetryQueueEntry | nul
   return latest;
 }
 
+/** A mute is refused for as long as it lasts, so sending it again is noise. */
+export function isMutedError(error: ChatErrorPayload): boolean {
+  return typeof error === "object" && error.error === "muted";
+}
+
 /** Exported for the thread panel, which queues its replies the same way. */
 export function isNonRetryableError(error: ChatErrorPayload): boolean {
+  if (isMutedError(error)) return true;
   const msg = typeof error === "string" ? error : error.message || error.error || "";
   return NON_RETRYABLE_ERRORS.some((e) => msg.includes(e));
 }
@@ -239,6 +249,14 @@ export function handleChatErrorEvent(
   /* One automatic retry, and if that is refused too the row fails and the text
      goes back in the composer. The thread panel does the same (GRYT-1387). */
   const canRetry = !!entry && entry.retryCount < 1 && !isNonRetryableError(error);
+
+  /* Before the toast below, which would draw "Chat error: muted" over a
+     composer already saying it in words. */
+  if (isMutedError(error)) {
+    deps.onMuted?.(typeof error === "object" && typeof error.expiresAt === "string" ? error.expiresAt : null);
+    settle(entry, false, deps, RETRY_AFTER_MS);
+    return;
+  }
 
   if (typeof error === 'object' && error.error === 'rate_limited') {
     deps.setIsRateLimited(true);
