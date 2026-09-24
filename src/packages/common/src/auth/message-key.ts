@@ -6,17 +6,23 @@
 import { guestScopeRisk } from "./guest-history.ts";
 import { getIdentityWords, restoreIdentityFromWords } from "./identity-keys";
 import { generateSeed, seedToWords } from "./identity-seed";
-import { openSeed, type SealedVault,sealSeed } from "./identity-vault.ts";
+import { openSeed, type SealedVault, type SealedVaultV2, sealSeed } from "./identity-vault.ts";
+import { readSealedVault, writeSealedVault } from "./message-vault-account.ts";
+import { type UpgradeOutcome,upgradeSealedVault } from "./message-vault-upgrade.ts";
 
-export { describePasswordProblem, MIN_MESSAGE_PASSWORD } from "./message-password.ts";
+export { describePasswordProblem, generateVaultPassword, MIN_VAULT_PASSWORD } from "./message-password.ts";
+export { formatRecoveryKey, generateRecoveryKey } from "@gryt/crypto/recovery-key";
 
-/** Seal this device's identity under a secret, ready to be stored. */
+/**
+ * Seal this device's identity under a password, and a recovery key if one was taken.
+ * Always version 2, so a new or changed password never sees PBKDF2.
+ */
 export async function sealCurrentIdentity(
-  secret: string,
-  kind: "phrase" | "password",
-): Promise<SealedVault> {
+  password: string,
+  recoveryKey?: Uint8Array,
+): Promise<SealedVaultV2> {
   const words = await getIdentityWords();
-  return sealSeed(new TextEncoder().encode(words), secret, kind);
+  return sealSeed(new TextEncoder().encode(words), { password, secretKind: "password", recoveryKey });
 }
 
 /**
@@ -26,9 +32,18 @@ export async function sealCurrentIdentity(
 export async function adoptSealedIdentity(
   vault: SealedVault,
   secret: string,
-): Promise<void> {
+): Promise<UpgradeOutcome | "failed"> {
   const words = new TextDecoder().decode(await openSeed(vault, secret));
   await restoreIdentityFromWords(words);
+
+  // The secret is in hand, which is the only time an old bundle can be re-sealed.
+  // Best effort: adopting has already worked, and the old bundle still opens.
+  try {
+    return await upgradeSealedVault(vault, secret, { read: readSealedVault, write: writeSealedVault });
+  } catch (e) {
+    console.warn("[MessageKey] Could not upgrade the sealed bundle:", e);
+    return "failed";
+  }
 }
 
 /**
@@ -49,8 +64,11 @@ export function guestIdentitiesAtRisk(): { count: number; certain: boolean } {
  * Start again with a new identity, sealed under a new secret, for somebody who has
  * forgotten their password. Everything sealed under the old seed stays sealed.
  */
-export async function resetMessageIdentity(secret: string): Promise<SealedVault> {
+export async function resetMessageIdentity(
+  password: string,
+  recoveryKey?: Uint8Array,
+): Promise<SealedVaultV2> {
   const words = seedToWords(generateSeed());
   await restoreIdentityFromWords(words);
-  return sealSeed(new TextEncoder().encode(words), secret, "password");
+  return sealSeed(new TextEncoder().encode(words), { password, secretKind: "password", recoveryKey });
 }
