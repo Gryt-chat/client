@@ -17,7 +17,7 @@ globalThis.localStorage = {
 const { getHideMuted, hiddenMutedRows, setHideMuted, subscribeToPrefs } = await import(
   "../src/packages/common/src/hooks/notificationPrefs.ts"
 );
-const { buildReorderPayload, flattenSidebar, restoreHiddenRows } = await import(
+const { buildReorderPayload, flattenSidebar, moveAmongDrawn, restoreHiddenRows } = await import(
   "../src/packages/socket/src/components/sidebarTree.ts"
 );
 
@@ -197,6 +197,54 @@ assert.deepEqual(
     ids(restoreHiddenRows(pick(first, ["b", "a"]), allFirst, new Set(["H", "h1"]), "b")),
     ["H", "h1", "b", "a"],
   );
+}
+
+// ── Move up and Move down with rows hidden ──────────────────────────────────
+
+{
+  /* Top level: a, h1(hidden), b, h2(hidden), [F: f1, g(hidden), f2]. */
+  const items = [
+    channel("a", 10),
+    channel("h1", 20),
+    channel("b", 30),
+    channel("h2", 40),
+    folder("F", 50),
+    channel("f1", 10, "F"),
+    channel("g", 20, "F"),
+    channel("f2", 30, "F"),
+  ];
+  const hiddenIds = new Set(["h1", "h2", "g"]);
+  const all = flattenSidebar(items).map((r) => r.item);
+  const drawn = flattenSidebar(items.filter((i) => !hiddenIds.has(i.id)));
+  const move = (id, direction) => {
+    const order = moveAmongDrawn(drawn, id, direction);
+    return order && siblings(restoreHiddenRows(order, all, hiddenIds, id));
+  };
+
+  // b up steps over h1 to swap with a. h1 stays right after a, h2 where it was.
+  assert.deepEqual(move("b", "up"), { "": ["b", "a", "h1", "h2", "F"], F: ["f1", "g", "f2"] });
+
+  // a down swaps with b, the next row drawn, rather than with hidden h1. The
+  // hidden rows keep their places among the rows that did not move.
+  assert.deepEqual(move("a", "down"), { "": ["h1", "b", "h2", "a", "F"], F: ["f1", "g", "f2"] });
+
+  // A folder moves as a block, over h2, with its hidden child still inside.
+  assert.deepEqual(move("F", "up"), { "": ["a", "h1", "F", "b", "h2"], F: ["f1", "g", "f2"] });
+
+  // Inside a folder, f2 up steps over g to swap with f1.
+  assert.deepEqual(move("f2", "up"), { "": ["a", "h1", "b", "h2", "F"], F: ["f2", "f1", "g"] });
+
+  // Nothing drawn that way: no move, which is also what greys the menu item out.
+  assert.equal(moveAmongDrawn(drawn, "a", "up"), null);
+  assert.equal(moveAmongDrawn(drawn, "F", "down"), null);
+  assert.equal(moveAmongDrawn(drawn, "f1", "up"), null);
+  assert.equal(moveAmongDrawn(drawn, "f2", "down"), null);
+
+  // The payload names every row, each in the folder it was in.
+  const order = restoreHiddenRows(moveAmongDrawn(drawn, "b", "up"), all, hiddenIds, "b");
+  const payload = buildReorderPayload(order, items, "b", null);
+  assert.deepEqual(payload.map((e) => e.itemId).sort(), ids(items).sort());
+  assert.equal(payload.find((e) => e.itemId === "g").parentItemId, "F");
 }
 
 console.log("hide-muted: ok");

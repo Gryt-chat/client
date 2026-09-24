@@ -30,6 +30,8 @@ import {
   type ChannelPlacement,
   flattenSidebar,
   folderChildrenInRows,
+  folderOf,
+  moveAmongDrawn,
   orderChanged,
   regroupFolder,
   resolveDropParent,
@@ -543,8 +545,8 @@ export const ChannelList = ({
     const notifiable = item.kind === "channel" || item.kind === "folder";
     if (!canManage && !notifiable) return content;
 
-    const isFirst = index === 0;
-    const isLast = index === effectiveItems.length - 1;
+    const isFirst = hiding ? !moveAmongDrawn(rows, item.id, "up") : index === 0;
+    const isLast = hiding ? !moveAmongDrawn(rows, item.id, "down") : index === effectiveItems.length - 1;
     const label = item.kind === "channel"
       ? (channelById.get(item.channelId ?? item.id)?.name || "channel")
       : item.kind === "folder" ? item.label || "Folder" : item.kind;
@@ -619,10 +621,10 @@ export const ChannelList = ({
                 Add folder
               </ContextMenu.Item>
               <ContextMenu.Separator />
-              <ContextMenu.Item disabled={isFirst} onClick={() => onMoveItem?.(item, "up")}>
+              <ContextMenu.Item disabled={isFirst} onClick={() => moveItem(item, "up")}>
                 Move up
               </ContextMenu.Item>
-              <ContextMenu.Item disabled={isLast} onClick={() => onMoveItem?.(item, "down")}>
+              <ContextMenu.Item disabled={isLast} onClick={() => moveItem(item, "down")}>
                 Move down
               </ContextMenu.Item>
               <ContextMenu.Separator />
@@ -701,6 +703,17 @@ export const ChannelList = ({
       : order;
     onReorder?.(buildReorderPayload(full, effectiveItems, item.id, parent), { itemId: item.id, parentItemId: parent });
   }, [localItems, draggedGroup, effectiveItems, rows, onReorder, hiding, collapsed]);
+
+  /* While rows are hidden, a move steps past them to the next row drawn, and the
+     hidden ones go back where they were, as after a drag. */
+  const moveItem = (item: SidebarItem, direction: "up" | "down") => {
+    if (!hiding) { onMoveItem?.(item, direction); return; }
+    const order = moveAmongDrawn(rows, item.id, direction);
+    if (!order) return;
+    const parent = folderOf(effectiveItems, item.id);
+    const full = restoreHiddenRows(order, flattenSidebar(effectiveItems, collapsed).map((r) => r.item), hiding.rows, item.id);
+    onReorder?.(buildReorderPayload(full, effectiveItems, item.id, parent), { itemId: item.id, parentItemId: parent });
+  };
 
   const depthById = useMemo(() => {
     const map = new Map<string, 0 | 1>();
