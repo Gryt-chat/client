@@ -5,13 +5,14 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getServerAccessToken, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
+import { heldRoleIds } from "../lib/permissions";
 import { mergeSenders } from "../utils/mergeSender";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { sealedNotificationBody } from "../utils/sealedNotification";
@@ -418,7 +419,12 @@ export function useChat({
         myId: currentUserId,
         viewingThisServer: true,
         windowFocused: document.hasFocus(),
-        mentionsMe: mentionsMember(msg, { serverUserId: currentUserId, nickname }),
+        mentionsMe: mentionsMember(msg, {
+          serverUserId: currentUserId,
+          nickname,
+          roleIds: heldRoleIds(serverDetailsListRef.current[serverHost]?.server_info),
+          suppressEveryone: getSuppressEveryone(serverHost),
+        }),
       });
       if (!notify) return;
 

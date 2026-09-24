@@ -5,6 +5,7 @@ import { PiX } from "../../../../lib/icons";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import type { ChatMessage } from "./chatUtils";
 import { getReplyPreview } from "./chatViewHelpers";
+import type { MentionMember } from "./MentionAutocomplete";
 
 interface ChatEditorBarProps {
   replyingTo: ChatMessage | null;
@@ -14,7 +15,8 @@ interface ChatEditorBarProps {
   disabled: boolean;
   allowFiles?: boolean;
   maxFileSize?: number | null;
-  memberList: { nickname: string; serverUserId: string; avatarUrl: string | null }[];
+  memberList: MentionMember[];
+  channelList?: MentionMember[];
   getSenderName: (msg: ChatMessage) => string;
   onCancelReply: () => void;
   onCancelEditing: () => void;
@@ -34,6 +36,7 @@ export function ChatEditorBar({
   allowFiles,
   maxFileSize,
   memberList,
+  channelList,
   getSenderName,
   onCancelReply,
   onCancelEditing,
@@ -109,6 +112,7 @@ export function ChatEditorBar({
         onStopTyping={onStopTyping}
         isEditing={!!editingMessage}
         memberList={memberList}
+        channelList={channelList}
         serverHost={serverHost}
       />
     </>

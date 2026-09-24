@@ -6,6 +6,7 @@ import type { MemberKeyState } from "@/common";
 import {
   answerChallenge,
   getServerRefreshToken,
+  getSuppressEveryone,
   isSessionExpired,
   isSignedOut,
   markChannelUnread,
@@ -28,6 +29,7 @@ import {
 
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { MemberInfo } from "../components/MemberSidebar";
+import { heldRoleIds } from "../lib/permissions";
 import { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
 import { sealedNotificationBody } from "../utils/sealedNotification";
@@ -464,7 +466,12 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           myId,
           viewingThisServer: false,
           windowFocused: document.hasFocus(),
-          mentionsMe: mentionsMember(msg, { serverUserId: myId, nickname }),
+          mentionsMe: mentionsMember(msg, {
+          serverUserId: myId,
+          nickname,
+          roleIds: heldRoleIds(serverDetailsListRef.current[host]?.server_info),
+          suppressEveryone: getSuppressEveryone(host),
+        }),
         });
         if (!notify) return;
 

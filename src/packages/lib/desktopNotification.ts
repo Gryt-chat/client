@@ -3,6 +3,8 @@
  * and the browser uses the web API. Both silent: the app plays its own sound.
  */
 
+import { type ChannelName, plainMentionTokens } from "./mentionTokens.ts";
+
 /** How much of a message goes in the body before it is cut. */
 const MAX_BODY = 140;
 
@@ -86,8 +88,8 @@ function mentionToPlainText(_match: string, label: string): string {
  * The message text a notification can show: mentions resolve to a name, and
  * markdown syntax is gone. Custom emoji shortcodes already read fine as-is.
  */
-export function toPlainNotificationText(raw: string): string {
-  let text = raw;
+export function toPlainNotificationText(raw: string, channelName: ChannelName = () => null): string {
+  let text = plainMentionTokens(raw, channelName);
 
   // Mentions before generic links: both are `[...](...)`, and a mention must
   // not be read as a link whose "url" happens to be an id.
@@ -117,12 +119,15 @@ export function toPlainNotificationText(raw: string): string {
  * An unopened envelope says nothing about itself: the ciphertext is right
  * there in `sealed`.
  */
-export function notificationBody(msg: {
-  text?: string | null;
-  sealed?: string | null;
-  attachments?: string[] | null;
-}): string {
-  const text = msg.text?.trim() ? toPlainNotificationText(msg.text.trim()) : "";
+export function notificationBody(
+  msg: {
+    text?: string | null;
+    sealed?: string | null;
+    attachments?: string[] | null;
+  },
+  channelName?: ChannelName,
+): string {
+  const text = msg.text?.trim() ? toPlainNotificationText(msg.text.trim(), channelName) : "";
   if (text) return text.length > MAX_BODY ? `${text.slice(0, MAX_BODY - 1)}…` : text;
   if (msg.sealed) return "Sent an encrypted message";
   if (msg.attachments && msg.attachments.length > 0) {

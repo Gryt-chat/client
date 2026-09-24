@@ -11,6 +11,7 @@ import {
   NotificationLevelMenu,
   resolveAvatarSrc,
   serverIconSrc,
+  SuppressEveryoneItem,
   useAccount,
   useMentionTracker,
 } from "@/common";
@@ -593,6 +594,7 @@ function ServerItem({
                 per folder, at the scope above them. Device-local, like those. */}
             <NotificationLevelMenu host={host} scope={{ kind: "server" }} />
             <HideMutedChannelsItem host={host} />
+            <SuppressEveryoneItem host={host} />
             <MarkAsReadItem host={host} scope={{ kind: "server" }} />
             <ContextMenu.Separator />
 

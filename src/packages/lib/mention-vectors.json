@@ -1,0 +1,60 @@
+{
+  "about": "GRYT-1455. The same file in server, client and mobile. targets, hits and plain are the clients' mentionTokens.ts; canonical is the server's mentionSyntax.ts.",
+  "targets": [
+    { "href": "mention:everyone", "target": { "kind": "everyone" } },
+    { "href": "mention:here", "target": { "kind": "here" } },
+    { "href": "mention:user_7c48", "target": { "kind": "user", "id": "user_7c48" } },
+    { "href": "mention:", "target": null },
+    { "href": "role:mods", "target": { "kind": "role", "id": "mods" } },
+    { "href": "role:Mods", "target": null },
+    { "href": "channel:chan_ab12", "target": { "kind": "channel", "id": "chan_ab12", "host": null } },
+    { "href": "channel:gryt.example.com/chan_ab12", "target": { "kind": "channel", "id": "chan_ab12", "host": "gryt.example.com" } },
+    { "href": "channel:localhost:5003/general", "target": { "kind": "channel", "id": "general", "host": "localhost:5003" } },
+    { "href": "channel:a/b/c", "target": null },
+    { "href": "channel:", "target": null },
+    { "href": "https://example.com", "target": null }
+  ],
+  "hits": [
+    { "text": "[@everyone](mention:everyone) standup in 5", "viewer": {}, "hit": true },
+    { "text": "[@everyone](mention:everyone) standup in 5", "viewer": { "suppressEveryone": true }, "hit": false },
+    { "text": "[@here](mention:here) anyone?", "viewer": {}, "hit": true },
+    { "text": "[@here](mention:here) anyone?", "viewer": { "suppressEveryone": true }, "hit": false },
+    { "text": "[@Mods](role:mods) look at this", "viewer": { "roleIds": ["mods"] }, "hit": true },
+    { "text": "[@Mods](role:mods) look at this", "viewer": { "roleIds": ["member"] }, "hit": false },
+    { "text": "[@Mods](role:mods) look at this", "viewer": { "roleIds": ["mods"], "suppressEveryone": true }, "hit": true },
+    { "text": "@everyone went out as plain text", "viewer": {}, "hit": false },
+    { "text": "`[@everyone](mention:everyone)` is how it is stored", "viewer": {}, "hit": false },
+    { "text": "[@Ada](mention:user_1) hi", "viewer": { "roleIds": ["member"] }, "hit": false }
+  ],
+  "plain": [
+    { "text": "[@everyone](mention:everyone) standup in 5", "channels": {}, "plain": "@everyone standup in 5" },
+    { "text": "[@here](mention:here) anyone?", "channels": {}, "plain": "@here anyone?" },
+    { "text": "[@Mods](role:mods) look", "channels": {}, "plain": "@Mods look" },
+    { "text": "[](role:mods) look", "channels": {}, "plain": "@role look" },
+    { "text": "see [#channel](channel:chan_a)", "channels": { "chan_a": "general" }, "plain": "see #general" },
+    { "text": "see [#channel](channel:chan_b)", "channels": { "chan_a": "general" }, "plain": "see #private-channel" },
+    { "text": "see [#channel](channel:other.host/chan_a)", "channels": { "other.host/chan_a": "lobby" }, "plain": "see #lobby" },
+    { "text": "see [#channel](channel:other.host/chan_a)", "channels": { "chan_a": "general" }, "plain": "see #private-channel" },
+    { "text": "[@Ada](mention:user_1) and [a link](https://example.com)", "channels": {}, "plain": "[@Ada](mention:user_1) and [a link](https://example.com)" }
+  ],
+  "canonical": [
+    { "text": "@everyone standup in 5", "rights": { "everyone": true }, "stored": "[@everyone](mention:everyone) standup in 5", "everyone": true, "here": false, "roleIds": [] },
+    { "text": "@everyone standup in 5", "rights": { "everyone": false }, "stored": "@everyone standup in 5", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "[@everyone](mention:everyone) hi", "rights": { "everyone": false }, "stored": "@everyone hi", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "@here anyone?", "rights": { "everyone": true }, "stored": "[@here](mention:here) anyone?", "everyone": false, "here": true, "roleIds": [] },
+    { "text": "[@Mods](role:mods) hi", "rights": { "everyone": false, "roles": { "mods": { "name": "Mods", "mentionable": false } } }, "stored": "@Mods hi", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "[@Mods](role:mods) hi", "rights": { "everyone": false, "roles": { "mods": { "name": "Mods", "mentionable": true } } }, "stored": "[@Mods](role:mods) hi", "everyone": false, "here": false, "roleIds": ["mods"] },
+    { "text": "[@Old name](role:mods) hi", "rights": { "everyone": true, "roles": { "mods": { "name": "Mods", "mentionable": false } } }, "stored": "[@Mods](role:mods) hi", "everyone": false, "here": false, "roleIds": ["mods"] },
+    { "text": "@mods hi", "rights": { "everyone": false, "roles": { "mods": { "name": "Mods", "mentionable": true } } }, "stored": "[@Mods](role:mods) hi", "everyone": false, "here": false, "roleIds": ["mods"] },
+    { "text": "@Mods hi", "rights": { "everyone": false, "roles": { "mods": { "name": "Mods", "mentionable": false } } }, "stored": "@Mods hi", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "[@Gone](role:gone) hi", "rights": { "everyone": true }, "stored": "@Gone hi", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "hi `@everyone` and\n```\n@here\n```", "rights": { "everyone": true }, "stored": "hi `@everyone` and\n```\n@here\n```", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "go to #general now", "rights": { "everyone": false, "channels": [{ "id": "chan_a", "name": "general" }] }, "stored": "go to [#channel](channel:chan_a) now", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "#general-chat is quieter", "rights": { "everyone": false, "channels": [{ "id": "chan_a", "name": "general" }, { "id": "chan_b", "name": "general-chat" }] }, "stored": "[#channel](channel:chan_b) is quieter", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "see [#secret-plans](channel:chan_z)", "rights": { "everyone": false }, "stored": "see [#channel](channel:chan_z)", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "see [#lobby](channel:gryt.example.com/chan_z)", "rights": { "everyone": false }, "stored": "see [#channel](channel:gryt.example.com/chan_z)", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "https://example.com/#general", "rights": { "everyone": false, "channels": [{ "id": "chan_a", "name": "general" }] }, "stored": "https://example.com/#general", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "mail a@everyone.com or @everyoneelse", "rights": { "everyone": true }, "stored": "mail a@everyone.com or @everyoneelse", "everyone": false, "here": false, "roleIds": [] },
+    { "text": "[@Ada](mention:user_1) and @everyone", "rights": { "everyone": true }, "stored": "[@Ada](mention:user_1) and [@everyone](mention:everyone)", "everyone": true, "here": false, "roleIds": [] }
+  ]
+}

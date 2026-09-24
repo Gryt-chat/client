@@ -1,3 +1,5 @@
+import { massMentionHits } from "../../../lib/mentionTokens.ts";
+
 /**
  * How loud each server, folder and channel is, on this device. **Local, and never
  * sent anywhere**; most-specific-wins, under a global level that can only quieten.
@@ -327,11 +329,17 @@ function isPersonSender(sender: string | null | undefined): boolean {
  */
 export function mentionsMember(
   msg: { text?: string | null; sender_server_id?: string | null },
-  me: { serverUserId?: string | null; nickname?: string | null },
+  me: {
+    serverUserId?: string | null;
+    nickname?: string | null;
+    roleIds?: readonly string[];
+    suppressEveryone?: boolean;
+  },
 ): boolean {
   const text = msg.text;
   if (!text || !text.includes("@") || !isPersonSender(msg.sender_server_id)) return false;
   if (me.serverUserId && text.includes(`(mention:${me.serverUserId})`)) return true;
+  if (massMentionHits(text, me)) return true;
 
   const nickname = me.nickname?.trim().toLowerCase();
   if (!nickname) return false;
@@ -412,6 +420,39 @@ export function setHideMuted(host: string, on: boolean) {
     else localStorage.removeItem(HIDE_MUTED_PREFIX + host);
   } catch {
     // Holds for this session; next launch shows everything again.
+  }
+  emit();
+}
+
+// ── Suppressing @everyone and @here ─────────────────────────────────────────
+//
+// Per server and per device, like hiding muted channels. Role mentions and
+// being named still come through.
+
+const SUPPRESS_EVERYONE_PREFIX = "gryt_suppress_everyone:";
+const suppressEveryone = new Map<string, boolean>();
+
+export function getSuppressEveryone(host: string): boolean {
+  const known = suppressEveryone.get(host);
+  if (known !== undefined) return known;
+  let on = false;
+  try {
+    on = localStorage.getItem(SUPPRESS_EVERYONE_PREFIX + host) === "1";
+  } catch {
+    // Unreadable is off, which lets @everyone through.
+  }
+  suppressEveryone.set(host, on);
+  return on;
+}
+
+export function setSuppressEveryone(host: string, on: boolean) {
+  if (getSuppressEveryone(host) === on) return;
+  suppressEveryone.set(host, on);
+  try {
+    if (on) localStorage.setItem(SUPPRESS_EVERYONE_PREFIX + host, "1");
+    else localStorage.removeItem(SUPPRESS_EVERYONE_PREFIX + host);
+  } catch {
+    // Holds for this session.
   }
   emit();
 }

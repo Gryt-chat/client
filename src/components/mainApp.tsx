@@ -1,6 +1,7 @@
 import { Button } from "@gryt/ui";
 import { useEffect } from "react";
 
+import { OPEN_CHANNEL_EVENT } from "@/lib/channelDirectory";
 import {
   NOTIFICATION_CHANNEL_OPEN_EVENT,
   onDesktopNotificationOpen,
@@ -33,7 +34,7 @@ export function MainApp() {
   const dmSpaceOpen = useDmSpaceOpen();
 
   useEffect(() => {
-    return onDesktopNotificationOpen(({ host, channelId }) => {
+    const open = ({ host, channelId }: { host: string; channelId: string }) => {
       if (!servers[host]) return;
 
       setLastSelectedChannelForServer(host, channelId);
@@ -44,7 +45,18 @@ export function MainApp() {
           detail: { host, channelId },
         }),
       );
-    });
+    };
+    // A #channel link in a message goes the same way a notification click does.
+    const onLink = (event: Event) => {
+      const detail = (event as CustomEvent<{ host?: string; channelId?: string }>).detail;
+      if (detail?.host && detail.channelId) open({ host: detail.host, channelId: detail.channelId });
+    };
+    window.addEventListener(OPEN_CHANNEL_EVENT, onLink);
+    const stop = onDesktopNotificationOpen(open);
+    return () => {
+      window.removeEventListener(OPEN_CHANNEL_EVENT, onLink);
+      stop();
+    };
   }, [servers, setLastSelectedChannelForServer, switchToServer]);
 
   /* What a bug report calls "where you were". Recorded here rather than in the

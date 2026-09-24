@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { canInChannel, PERMISSIONS_BEFORE_CATALOGUE } from "../lib/permissions";
+import { canInChannel, heldRoleIds, PERMISSIONS_BEFORE_CATALOGUE } from "../lib/permissions";
 import { useSockets } from "./useSockets";
 
 export type ServerRoleSummary = {
@@ -10,6 +10,7 @@ export type ServerRoleSummary = {
   rank: number;
   permissions: string[];
   isSystem: boolean;
+  mentionable?: boolean;
 };
 
 /** The hook's `can` below, for any server and outside a component: the direct
@@ -67,6 +68,11 @@ export function useServerPermissions(host: string) {
           the server-wide answer. */
       canIn: (conversationId: string | null | undefined, permission: string) =>
         canInChannel(conversationId ? channelById.get(conversationId) : undefined, can, permission),
+      /** Whether this server has the permission at all, so a feature an older
+          server lacks is not offered. */
+      knows: (permission: string) => serverKnows.has(permission),
+      /** Every role this member holds, for telling a role mention aimed at them. */
+      roleIds: heldRoleIds({ role: info?.role, role_ids: info?.role_ids }),
       /** False unless the server actually said so. For "is this a guest". */
       has: (permission: string) => permissions.has(permission),
       known,
@@ -76,5 +82,5 @@ export function useServerPermissions(host: string) {
       role: roles.find((r) => r.id === info?.role),
       isOwner: Boolean(info?.is_owner),
     };
-  }, [known, permissions, serverKnows, channelById, roles, info?.role, info?.is_owner]);
+  }, [known, permissions, serverKnows, channelById, roles, info?.role, info?.role_ids, info?.is_owner]);
 }

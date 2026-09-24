@@ -1,10 +1,10 @@
 import {  } from "@gryt/ui";
 import { AnimatePresence } from "motion/react";
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
-import { getUploadsFileUrl, resolveAvatarSrc, useTheme, useThreadMentions, useThreadUnread } from "@/common";
+import { getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPrefs, useTheme, useThreadMentions, useThreadUnread } from "@/common";
 import { useSettings } from "@/settings";
 
 import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
@@ -13,6 +13,7 @@ import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { useSockets } from "../hooks/useSockets";
 import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
@@ -30,6 +31,8 @@ import { ForumView } from "./ForumView";
 import { ImageLightbox } from "./ImageLightbox";
 import { readableRoleColor } from "./memberGroups";
 import type { MemberInfo } from "./MemberSidebar";
+import type { MentionMember } from "./MentionAutocomplete";
+import { MentionViewerContext } from "./mentionViewerContext";
 import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
 import { ThreadPanel } from "./ThreadPanel";
@@ -429,7 +432,59 @@ export const ChatView = memo(({
 
   // A read-only role still sees every message; the compose box is what goes.
   // Read here, because the role list also feeds the name colours below.
-  const { canIn, roles } = useServerPermissions(serverHost || "");
+  const { canIn, knows, roles, roleIds: myRoleIds } = useServerPermissions(serverHost || "");
+  const { serverDetailsList } = useSockets();
+  const suppressEveryone = useSyncExternalStore(
+    subscribeToPrefs,
+    () => getSuppressEveryone(serverHost || ""),
+    () => getSuppressEveryone(serverHost || ""),
+  );
+  const mentionViewer = useMemo(() => {
+    const names = new Map(
+      Object.entries(serverDetailsList).map(([h, d]) => [h, new Map((d?.channels ?? []).map((c) => [c.id, c.name]))]),
+    );
+    return {
+      host: serverHost ?? null,
+      meId: currentUserId,
+      roleIds: myRoleIds,
+      suppressEveryone,
+      massAllowed: conversationKind !== "dm",
+      roles: new Map(roles.map((r) => [r.id, { name: r.name, color: r.color }])),
+      channelName: (id: string, host: string | null) => names.get(host ?? serverHost ?? "")?.get(id) ?? null,
+    };
+  }, [serverDetailsList, serverHost, currentUserId, myRoleIds, suppressEveryone, conversationKind, roles]);
+
+  const massViewer = mentionViewer.massAllowed ? mentionViewer : undefined;
+
+  /* What @ and # offer. An older server has no Mention everyone, so it offers
+     neither @everyone nor roles, and the server has the final say anyway. */
+  const mayMentionEveryone =
+    conversationKind !== "dm" && knows("mention_everyone") && canIn(conversationKey, "mention_everyone");
+  const composerMentions = useMemo<MentionMember[]>(() => {
+    if (conversationKind === "dm" || !knows("mention_everyone")) return mentionMembers;
+    const extras: MentionMember[] = [];
+    if (mayMentionEveryone) {
+      extras.push(
+        { kind: "everyone", nickname: "everyone", serverUserId: "@everyone", hint: "Everyone who can read this channel" },
+        { kind: "here", nickname: "here", serverUserId: "@here", hint: "Everyone online right now" },
+      );
+    }
+    for (const r of roles) {
+      if (!mayMentionEveryone && !r.mentionable) continue;
+      extras.push({ kind: "role", nickname: r.name, serverUserId: `role:${r.id}`, roleId: r.id, color: r.color, hint: "Role" });
+    }
+    return [...mentionMembers, ...extras];
+  }, [conversationKind, knows, mayMentionEveryone, mentionMembers, roles]);
+  const composerChannels = useMemo<MentionMember[]>(
+    () =>
+      (serverDetailsList[serverHost ?? ""]?.channels ?? []).map((c) => ({
+        kind: "channel",
+        nickname: c.name,
+        serverUserId: `channel:${c.id}`,
+        channelId: c.id,
+      })),
+    [serverDetailsList, serverHost],
+  );
   // This channel's answer, or the server-wide one where the server sent none.
   const mayHere = useCallback(
     (permission: string) => canIn(conversationKey, permission),
@@ -504,7 +559,7 @@ export const ChatView = memo(({
           replyPreviewText={
             m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null
           }
-          isMentioned={mentionsViewer(m, currentUserId)}
+          isMentioned={mentionsViewer(m, currentUserId, massViewer)}
           customEmojiList={customEmojiList}
           memberNicknames={memberNicknames}
           blurProfanity={blurProfanity}
@@ -534,6 +589,7 @@ export const ChatView = memo(({
       threadMessages,
       messageMap,
       currentUserId,
+      massViewer,
       customEmojiList,
       memberNicknames,
       blurProfanity,
@@ -580,7 +636,8 @@ export const ChatView = memo(({
         disabled={!maySend}
         allowFiles={mayHere("attach_files")}
         maxFileSize={maxFileSize}
-        memberList={mentionMembers}
+        memberList={composerMentions}
+        channelList={composerChannels}
         getSenderName={getSenderName}
         onCancelReply={() => setThreadReplyingTo(null)}
         onCancelEditing={cancelThreadEditing}
@@ -602,7 +659,7 @@ export const ChatView = memo(({
         serverHost={serverHost}
       />
     ),
-    [maySend, mayPost, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
+    [maySend, mayPost, mayHere, maxFileSize, composerMentions, composerChannels, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
   );
 
 
@@ -627,7 +684,7 @@ export const ChatView = memo(({
   const showMessages = mayRead && !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
 
   return (
-    <>
+    <MentionViewerContext.Provider value={mentionViewer}>
       {/*
         The three panels carried no landmark roles, so the only roles in the
         whole document were status, textbox and tooltip — a screen-reader user
@@ -725,7 +782,7 @@ export const ChatView = memo(({
 
                   const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
                   const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
-                  const isMentioned = mentionsViewer(m, currentUserId);
+                  const isMentioned = mentionsViewer(m, currentUserId, massViewer);
 
                   const isNew = !seenMessageIdsRef.current.has(m.message_id) && i >= chatMessages.length - 10;
                   seenMessageIdsRef.current.add(m.message_id);
@@ -838,7 +895,8 @@ export const ChatView = memo(({
             disabled={editorDisabled}
             allowFiles={mayHere("attach_files")}
             maxFileSize={maxFileSize}
-            memberList={mentionMembers}
+            memberList={composerMentions}
+            channelList={composerChannels}
             getSenderName={getSenderName}
             onCancelReply={cancelReply}
             onCancelEditing={cancelEditing}
@@ -893,7 +951,7 @@ export const ChatView = memo(({
         confirmLabel="Delete"
         onConfirm={confirmDelete}
       />
-    </>
+    </MentionViewerContext.Provider>
   );
 });
 

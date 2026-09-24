@@ -13,6 +13,7 @@ import { type CustomEmojiEntry, preprocessCustomEmojis, preprocessSmileys, remar
 import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";
 import { MessageContextMenu } from "./MediaContextMenu";
+import { ChannelMention, MentionPill } from "./MentionView";
 import { BlurredWord } from "./ProfanityBlur";
 
 type MarkdownImgProps = React.ImgHTMLAttributes<HTMLImageElement> & {
@@ -449,15 +450,14 @@ export const MarkdownRenderer = memo(({
   }, [markedContent, customEmojis, smileyConversion, disabledSmileys]);
 
   const remarkPlugins = useMemo(() => {
+    // Always on: role and channel links need it even where no member list is known.
     if (mentionMembersById) {
       const members = Object.entries(mentionMembersById)
         .map(([serverUserId, m]) => ({ serverUserId, nickname: m.nickname }))
         .filter((m) => Boolean(m.nickname));
-      if (members.length === 0) return baseRemarkPlugins;
       return [...baseRemarkPlugins, createRemarkMention(members)];
     }
-    if (!memberNicknames || memberNicknames.length === 0) return baseRemarkPlugins;
-    return [...baseRemarkPlugins, createRemarkMention(memberNicknames.map((n) => ({ serverUserId: n, nickname: n })))];
+    return [...baseRemarkPlugins, createRemarkMention((memberNicknames ?? []).map((n) => ({ serverUserId: n, nickname: n })))];
   }, [memberNicknames, mentionMembersById]);
 
   const activeComponents = useMemo(() => {
@@ -507,27 +507,19 @@ export const MarkdownRenderer = memo(({
         );
       },
       span: ({ className, children, ...props }) => {
-        const mentionId = (props as Record<string, unknown>)["data-mention-id"];
+        const data = props as Record<string, unknown>;
+        if (className === "chat-channel" && typeof data["data-channel-id"] === "string") {
+          const host = data["data-channel-host"];
+          return <ChannelMention channelId={data["data-channel-id"]} host={typeof host === "string" && host ? host : null} />;
+        }
+        const mentionId = data["data-mention-id"];
         if (className === "chat-mention" && typeof mentionId === "string") {
-          const display = (() => {
-            if (!mentionId) return children;
-            const nick = membersById.get(mentionId);
-            if (!nick) return children;
-            return `@${nick}`;
-          })();
+          const roleId = typeof data["data-role-id"] === "string" ? data["data-role-id"] : undefined;
+          const nick = mentionId ? membersById.get(mentionId) : undefined;
           return (
-            <span
-              style={{
-                color: "var(--gryt-accent-11)",
-                fontWeight: 600,
-                background: "var(--gryt-accent-a3)",
-                borderRadius: "var(--gryt-radius-sm)",
-                padding: "0 2px",
-                cursor: "default",
-              }}
-            >
-              {display}
-            </span>
+            <MentionPill userId={mentionId || undefined} roleId={roleId}>
+              {nick ? `@${nick}` : children}
+            </MentionPill>
           );
         }
         return <span className={className} {...props}>{children}</span>;

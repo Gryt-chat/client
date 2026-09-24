@@ -10,6 +10,7 @@ import {
   getServerAccessToken,
   getServerRefreshToken,
   getStoredWorn,
+  getSuppressEveryone,
   getUploadsFileUrl,
   rememberPlacements,
   removeServerAccessToken,
@@ -21,6 +22,7 @@ import {
   setServerNotice,
   setServerRefreshToken,
   setThreadMentionCounts,
+  subscribeToPrefs,
 } from "@/common";
 import {
   evaluateMemberKeys,
@@ -30,6 +32,7 @@ import {
   ownDmPublicKey,
   readSealedVault,
 } from "@/common";
+import { rememberChannelNames } from "@/lib/channelDirectory";
 import { claimOutcomeToast, takeClaimOutcome } from "@/lib/identityClaimOutcome";
 import {
   Server,
@@ -144,7 +147,30 @@ async function dmKeyFix(): Promise<DmKeyFix> {
   }
 }
 
+type MentionRow = { conversation_id?: string; thread_id?: string | null; kind?: string };
+
+/** Dropped from badges while the server's "Suppress @everyone and @here" is on. */
+function suppressed(host: string, kind: string | undefined): boolean {
+  return (kind === "everyone" || kind === "here") && getSuppressEveryone(host);
+}
+
+/* The latest socket per server, so flipping Suppress asks again for the list
+   rather than leaving the badges on the old answer. */
+const mentionSockets = new Map<string, Socket>();
+const suppressSeen = new Map<string, boolean>();
+subscribeToPrefs(() => {
+  for (const [host, socket] of mentionSockets) {
+    const now = getSuppressEveryone(host);
+    if (suppressSeen.get(host) === now) continue;
+    suppressSeen.set(host, now);
+    if (socket.connected) socket.emit("mentions:list");
+  }
+});
+
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
+  mentionSockets.set(host, socket);
+  suppressSeen.set(host, getSuppressEveryone(host));
+
   /** Remembered rather than applied once: the next `server:clients` arrives with
       the conversation id blanked again, so this is re-applied to each. */
   let callMemberships: CallMemberships = {};
@@ -186,17 +212,25 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     "mentions:list",
     (payload: {
       counts?: Record<string, number>;
-      mentions?: Array<{ conversation_id?: string; thread_id?: string | null }>;
+      mentions?: MentionRow[];
     }) => {
-      setMentionCounts(host, payload?.counts ?? {});
+      const rows = (payload?.mentions ?? []).filter((m) => !suppressed(host, m?.kind));
+      let counts = payload?.counts ?? {};
+      if (getSuppressEveryone(host)) {
+        counts = {};
+        for (const m of rows) {
+          if (m?.conversation_id) counts[m.conversation_id] = (counts[m.conversation_id] ?? 0) + 1;
+        }
+      }
+      setMentionCounts(host, counts);
       /* Built from the rows rather than the counts beside them, which are keyed by
          thread alone and cannot say how much of a channel's count they hold. */
-      setThreadMentionCounts(host, payload?.mentions ?? []);
+      setThreadMentionCounts(host, rows);
     },
   );
 
-  socket.on("mention:new", (payload: { conversationId?: string; threadId?: string | null }) => {
-    if (!payload?.conversationId) return;
+  socket.on("mention:new", (payload: { conversationId?: string; threadId?: string | null; kind?: string }) => {
+    if (!payload?.conversationId || suppressed(host, payload.kind)) return;
     addMention(host, payload.conversationId);
     if (payload.threadId) addThreadMention(host, payload.conversationId, payload.threadId);
   });
@@ -207,6 +241,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     if (Array.isArray(data.sidebar_items)) {
       rememberPlacements(host, data.sidebar_items, Array.isArray(data.channels) ? data.channels : []);
     }
+    if (Array.isArray(data.channels)) rememberChannelNames(host, data.channels);
 
     /* Replaced rather than merged, so a removed plugin stops being listed on the
        next details. A server too old to say sends nothing. */
