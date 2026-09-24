@@ -37,11 +37,13 @@ import { TypingIndicator } from "./TypingIndicator";
 
 export type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 
+/** Where the composer would be, for somebody who may read a channel and not post. */
+const READ_ONLY_LINE = "You can read here, but not post.";
+
 export const ChatView = memo(({
   chatMessages,
   conversationKey,
   canSend,
-  canSendHere,
   sendChat,
   editMessage,
   currentUserId,
@@ -81,9 +83,6 @@ export const ChatView = memo(({
   chatMessages: ChatMessage[];
   conversationKey?: string;
   canSend: boolean;
-  /** A channel scope can take `send_messages` from a role that holds it
-      everywhere else, and only `manage_channels` can read the rules. */
-  canSendHere?: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   currentUserId?: string;
@@ -430,7 +429,12 @@ export const ChatView = memo(({
 
   // A read-only role still sees every message; the compose box is what goes.
   // Read here, because the role list also feeds the name colours below.
-  const { can: mayHere, roles } = useServerPermissions(serverHost || "");
+  const { canIn, roles } = useServerPermissions(serverHost || "");
+  // This channel's answer, or the server-wide one where the server sent none.
+  const mayHere = useCallback(
+    (permission: string) => canIn(conversationKey, permission),
+    [canIn, conversationKey],
+  );
   const { resolvedAppearance } = useTheme();
 
   /** The same map and `readableRoleColor` the member sidebar builds: a name in
@@ -560,9 +564,10 @@ export const ChatView = memo(({
       : "You’re muted on this server."
     : null;
 
-  // Both have to say yes: the role has to allow posting at all, and this
-  // channel has to be one of the ones it allows it in.
-  const maySend = mayHere("send_messages") && canSendHere !== false && !textMute;
+  // The channel's answer alone, so an allow here works for a role that cannot
+  // post elsewhere (GRYT-1418). A mute is on top, and server-wide.
+  const mayPost = mayHere("send_messages");
+  const maySend = mayPost && !textMute;
   const mayRead = mayHere("read_messages");
 
   const renderThreadComposer = useCallback(
@@ -571,7 +576,7 @@ export const ChatView = memo(({
         replyingTo={threadReplyingTo}
         editingMessage={threadEditing}
         editorRef={threadEditorRef}
-        placeholder="Reply to thread…"
+        placeholder={mayPost ? "Reply to thread…" : READ_ONLY_LINE}
         disabled={!maySend}
         allowFiles={mayHere("attach_files")}
         maxFileSize={maxFileSize}
@@ -597,7 +602,7 @@ export const ChatView = memo(({
         serverHost={serverHost}
       />
     ),
-    [maySend, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
+    [maySend, mayPost, mayHere, maxFileSize, mentionMembers, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
   );
 
 
@@ -607,7 +612,7 @@ export const ChatView = memo(({
       : !mayRead
         ? "This channel is not readable with your role."
       : !maySend
-        ? "You can read here, but not post."
+        ? READ_ONLY_LINE
         : isRateLimited && rateLimitCountdown
           ? `Please wait ${rateLimitCountdown} seconds...`
           : channelName
@@ -670,6 +675,7 @@ export const ChatView = memo(({
               currentUserId={currentUserId}
               forumTags={forumTags ?? []}
               onOpenTopic={threads.openSummary}
+              readOnlyLine={mayPost ? undefined : READ_ONLY_LINE}
             />
           ) : (
           <>
@@ -754,7 +760,7 @@ export const ChatView = memo(({
                       threadSummary={threads.summaries[m.message_id]}
                       threadUnread={threadCountsFor(threads.summaries[m.message_id]?.thread_id).unread}
                       threadMentions={threadCountsFor(threads.summaries[m.message_id]?.thread_id).mentions}
-                      onStartThread={conversationKind === "dm" ? undefined : threads.startThread}
+                      onStartThread={conversationKind === "dm" || !mayPost ? undefined : threads.startThread}
                       onOpenThread={threads.openThread}
                       /* Channels are never sealed, so the mark would be on every
                          message and mean nothing. */

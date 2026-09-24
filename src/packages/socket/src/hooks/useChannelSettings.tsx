@@ -5,6 +5,7 @@ import { ServerErrorToast, serverIconSrc } from "@/common";
 import type { Channel } from "@/settings/src/types/server";
 
 import { PiClockClockwiseFill, PiFadersHorizontalFill } from "../../../../lib/icons";
+import { canInChannel } from "../lib/permissions";
 import { useServerPermissions } from "./usePermissions";
 import { useSockets } from "./useSockets";
 
@@ -110,8 +111,8 @@ function useHandleChannelClick({
     switch (channel.type) {
       case "voice": {
         // The server refuses this too, but stopping here makes the answer read as
-        // "you are not allowed in". `can` is server-wide, `canJoin` this room's.
-        if (!can("join_voice") || channel.canJoin === false) {
+        // "you are not allowed in". The room's answer, so an allow here counts.
+        if (!canInChannel(channel, can, "join_voice")) {
           const host = currentlyViewingServer.host;
           const name = currentlyViewingServer.name || host;
           toast.error(

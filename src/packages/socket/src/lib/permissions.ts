@@ -1,3 +1,5 @@
+import type { Channel } from "@/settings/src/types/server";
+
 /**
  * The permissions a role can carry, and how to talk about them. The server owns
  * the list; what lives here is the grouping, labels and descriptions.
@@ -32,6 +34,40 @@ export const PERMISSIONS_BEFORE_CATALOGUE: readonly string[] = [
   "manage_server",
   "view_audit_log",
 ];
+
+/** The thirteen a channel or folder can allow or deny, and so the ones a
+    channel's `myPermissions` answers for. Everything else is server-wide. */
+export const CHANNEL_PERMISSIONS: readonly string[] = [
+  "read_messages",
+  "send_messages",
+  "edit_own_messages",
+  "delete_own_messages",
+  "attach_files",
+  "add_reactions",
+  "report_messages",
+  "use_link_previews",
+  "manage_messages",
+  "join_voice",
+  "speak",
+  "share_video",
+  "share_screen",
+];
+
+/** One channel's answer where the server sent it (GRYT-1416). An older server
+    sent only `canSend` and `canJoin`, and those narrow the server-wide `can`. */
+export function canInChannel(
+  channel: Pick<Channel, "myPermissions" | "canSend" | "canJoin"> | undefined,
+  can: (permission: string) => boolean,
+  permission: string,
+): boolean {
+  if (Array.isArray(channel?.myPermissions) && CHANNEL_PERMISSIONS.includes(permission)) {
+    return channel.myPermissions.includes(permission);
+  }
+  if (!can(permission)) return false;
+  if (permission === "send_messages") return channel?.canSend !== false;
+  if (permission === "join_voice") return channel?.canJoin !== false;
+  return true;
+}
 
 export type PermissionMeta = {
   id: string;

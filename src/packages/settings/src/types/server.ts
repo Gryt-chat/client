@@ -38,6 +38,11 @@ export type Channel = {
    * different questions, so a room can be visible and shut. Absent reads as yes.
    */
   canJoin?: boolean;
+  /**
+   * The channel permissions this member holds here, resolved by the server. A
+   * channel permission missing from it is a no. Absent on an older server.
+   */
+  myPermissions?: string[];
 };
 
 export type SidebarItemKind = "channel" | "separator" | "spacer" | "folder";

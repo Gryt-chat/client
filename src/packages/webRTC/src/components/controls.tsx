@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
+import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { getElectronAPI } from "../../../../lib/electron";
@@ -57,6 +58,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     isConnected,
     connectionState,
     currentServerConnected,
+    currentChannelConnected,
     getPeerConnection,
     getScreenVideoSender,
   } = useSFU();
@@ -102,6 +104,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showScreenShareModal, setShowScreenShareModal] = useState(false);
   const [isStartingScreenShare, setIsStartingScreenShare] = useState(false);
+  const { canIn } = useServerPermissions(currentServerConnected || "");
+  // The room's answer. One already on keeps its button, so it can be turned off.
+  const showCamera = cameraEnabled || canIn(currentChannelConnected, "share_video");
+  const showScreenShare = screenShareActive || isStartingScreenShare || canIn(currentChannelConnected, "share_screen");
 
   // Sync camera stream to WebRTC peer connection
   useEffect(() => {
@@ -483,12 +489,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </IconButton>
           </MaybeTooltip>
 
-          <IconButton tone="neutral" size="xsmall"
-            aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
-            onClick={handleCameraClick}
-          >
-            {cameraEnabled ? <PiVideoCameraFill size={16} /> : <PiVideoCameraSlashFill size={16} />}
-          </IconButton>
+          {showCamera && (
+            <IconButton tone="neutral" size="xsmall"
+              aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
+              onClick={handleCameraClick}
+            >
+              {cameraEnabled ? <PiVideoCameraFill size={16} /> : <PiVideoCameraSlashFill size={16} />}
+            </IconButton>
+          )}
 
           {/* Only while the camera is on, because that is the only time it can
               do anything, and next to the camera button because that is what
@@ -506,21 +514,23 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          <MaybeTooltip content={isStartingScreenShare ? "Starting screen share…" : null}>
-            <IconButton tone="neutral" size="xsmall"
-              aria-label={
-                screenShareActive
-                  ? "Stop sharing your screen"
-                  : isStartingScreenShare
-                    ? "Starting screen share"
-                    : "Share your screen"
-              }
-              disabled={isStartingScreenShare}
-              onClick={handleScreenShareClick}
-            >
-              {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
-            </IconButton>
-          </MaybeTooltip>
+          {showScreenShare && (
+            <MaybeTooltip content={isStartingScreenShare ? "Starting screen share…" : null}>
+              <IconButton tone="neutral" size="xsmall"
+                aria-label={
+                  screenShareActive
+                    ? "Stop sharing your screen"
+                    : isStartingScreenShare
+                      ? "Starting screen share"
+                      : "Share your screen"
+                }
+                disabled={isStartingScreenShare}
+                onClick={handleScreenShareClick}
+              >
+                {screenShareActive ? <PiMonitorArrowUpFill size={16} /> : <PiScreencastFill size={16} />}
+              </IconButton>
+            </MaybeTooltip>
+          )}
 
           {/* Next to the share button because that is what it acts on, and
               only while a share is actually carrying audio. */}

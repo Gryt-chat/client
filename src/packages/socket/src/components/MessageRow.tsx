@@ -137,7 +137,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLElement | null>(null);
 
-  const { can } = useServerPermissions(serverHost || "");
+  const { canIn } = useServerPermissions(serverHost || "");
+  // Asked of the message's channel, which is where the server asks it too.
+  const can = (permission: string) => canIn(m.conversation_id, permission);
   const isOwnMessage = !!currentUserId && m.sender_server_id === currentUserId;
 
   // Editing and deleting your own message each have a permission, so a role can
@@ -145,6 +147,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const canDelete = !!canDeleteAny || (isOwnMessage && can("delete_own_messages"));
   const canEdit = isOwnMessage && !!m.text && can("edit_own_messages");
   const canReport = can("report_messages");
+  const canReact = can("add_reactions");
+  const showsPreviews = can("use_link_previews");
 
   const bgColor = (isHovered || isReactionPickerOpen || isCtxMenuOpen)
     ? "var(--gryt-neutral-4)"
@@ -210,7 +214,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
    * The four this person reaches for most, read while the toolbar is going up.
    * Read on hover rather than held in state, so it is current without being told.
    */
-  const quickReactions = showToolbar && can("add_reactions")
+  const quickReactions = showToolbar && canReact
     ? getFrequentReactions(4, serverHost)
     : undefined;
 
@@ -261,7 +265,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
         </div>
         </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
           <div className="flex gap-3 items-start" style={{ width: "100%", marginTop: 12 }}>
             {/* The same card the member sidebar shows, on the avatar in the
                 flow. A message is where an impersonation is most convincing
@@ -381,12 +385,14 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 onMouseLeave={handleMouseLeave}
                 onOpenReactionPicker={handleOpenReactionPicker}
                 unencrypted={unencrypted}
+                canReact={canReact}
+                showsPreviews={showsPreviews}
               />
             </div>
           </div>
         </MessageContextMenu>
       ) : (
-        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={(src) => onReaction(src, m)} serverHost={serverHost}>
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
           <div className="flex" style={{ width: "100%", paddingLeft: 63 }}>
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               <MessageContent
@@ -421,6 +427,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 onMouseLeave={handleMouseLeave}
                 onOpenReactionPicker={handleOpenReactionPicker}
                 unencrypted={unencrypted}
+                canReact={canReact}
+                showsPreviews={showsPreviews}
               />
             </div>
           </div>
@@ -497,6 +505,8 @@ function MessageContent({
   onMouseLeave,
   onOpenReactionPicker,
   unencrypted,
+  canReact,
+  showsPreviews,
   threadUnread,
   threadMentions,
 }: {
@@ -531,6 +541,10 @@ function MessageContent({
   onOpenReactionPicker: (anchorEl?: HTMLElement) => void;
   /** Went out in the clear. */
   unencrypted?: boolean;
+  /** Whether this member may react in this message's channel. */
+  canReact: boolean;
+  /** Off where the channel denies `use_link_previews`: the embeds are not fetched. */
+  showsPreviews: boolean;
   /** Unread replies in this message's thread, and how many named you. */
   threadUnread?: number;
   threadMentions?: number;
@@ -659,7 +673,7 @@ function MessageContent({
             </span>
           </Tooltip>
         )}
-        {serverHost && !m.pending && drawsText && (
+        {serverHost && !m.pending && showsPreviews && drawsText && (
           <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
         )}
         {m.attachments && m.attachments.length > 0 && serverHost && (
@@ -727,7 +741,7 @@ function MessageContent({
         currentUserId={currentUserId}
         currentUserNickname={currentUserNickname}
         memberList={memberList}
-        onReaction={(src) => onReaction(src, m)}
+        onReaction={canReact ? (src) => onReaction(src, m) : undefined}
         onOpenPicker={onOpenReactionPicker}
       />
     </div>
@@ -747,7 +761,8 @@ function ReactionBadges({
   currentUserId: string | undefined;
   currentUserNickname: string | undefined;
   memberList?: Record<string, MemberInfo>;
-  onReaction: (src: string) => void;
+  /** Absent where this member may not react: the counts show, and nothing is pressable. */
+  onReaction?: (src: string) => void;
   onOpenPicker: (anchorEl?: HTMLElement) => void;
 }) {
   const hasReactions = reactions && reactions.length > 0;
@@ -794,7 +809,8 @@ function ReactionBadges({
                 )}
               >
                 <button
-                  onClick={() => onReaction(reaction.src)}
+                  onClick={onReaction ? () => onReaction(reaction.src) : undefined}
+                  aria-disabled={!onReaction || undefined}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -806,13 +822,13 @@ function ReactionBadges({
                     background: isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
                     border: `1px solid ${isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"}`,
                     borderRadius: "var(--gryt-radius-md)",
-                    cursor: "pointer",
+                    cursor: onReaction ? "pointer" : "default",
                     transition: "background 0.15s, border-color 0.15s",
                     whiteSpace: "nowrap",
                     color: isMine ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-4)" : "var(--gryt-neutral-4)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-8)" : "var(--gryt-neutral-6)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"; }}
+                  onMouseEnter={onReaction ? (e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-4)" : "var(--gryt-neutral-4)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-8)" : "var(--gryt-neutral-6)"; } : undefined}
+                  onMouseLeave={onReaction ? (e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"; } : undefined}
                 >
                   <EmojiText text={reaction.src} emojiSize={18} />
                   <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
@@ -822,6 +838,7 @@ function ReactionBadges({
           );
         })}
       </AnimatePresence>
+      {onReaction && (
       <button
         onClick={(e) => onOpenPicker(e.currentTarget)}
         title="Add reaction"
@@ -846,6 +863,7 @@ function ReactionBadges({
       >
         +
       </button>
+      )}
     </div>
   );
 }

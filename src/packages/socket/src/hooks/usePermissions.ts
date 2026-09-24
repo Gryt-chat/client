@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { PERMISSIONS_BEFORE_CATALOGUE } from "../lib/permissions";
+import { canInChannel, PERMISSIONS_BEFORE_CATALOGUE } from "../lib/permissions";
 import { useSockets } from "./useSockets";
 
 export type ServerRoleSummary = {
@@ -47,15 +47,26 @@ export function useServerPermissions(host: string) {
     [catalogue],
   );
 
+  const channels = host ? serverDetailsList[host]?.channels : undefined;
+  const channelById = useMemo(
+    () => new Map((channels ?? []).map((c) => [c.id, c])),
+    [channels],
+  );
+
   const roles = useMemo<ServerRoleSummary[]>(
     () => (info?.roles ?? []) as ServerRoleSummary[],
     [info?.roles],
   );
 
-  return useMemo(
-    () => ({
-      can: (permission: string) =>
-        !known || permissions.has(permission) || !serverKnows.has(permission),
+  return useMemo(() => {
+    const can = (permission: string) =>
+      !known || permissions.has(permission) || !serverKnows.has(permission);
+    return {
+      can,
+      /** `can`, in one conversation. A DM or an id the server did not list gets
+          the server-wide answer. */
+      canIn: (conversationId: string | null | undefined, permission: string) =>
+        canInChannel(conversationId ? channelById.get(conversationId) : undefined, can, permission),
       /** False unless the server actually said so. For "is this a guest". */
       has: (permission: string) => permissions.has(permission),
       known,
@@ -64,7 +75,6 @@ export function useServerPermissions(host: string) {
       roleId: info?.role,
       role: roles.find((r) => r.id === info?.role),
       isOwner: Boolean(info?.is_owner),
-    }),
-    [known, permissions, serverKnows, roles, info?.role, info?.is_owner],
-  );
+    };
+  }, [known, permissions, serverKnows, channelById, roles, info?.role, info?.is_owner]);
 }
