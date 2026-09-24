@@ -73,6 +73,47 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /**
+ * A mention link's label, never its id. An empty label (a stripped nickname)
+ * reads as "@someone" rather than nothing.
+ */
+function mentionToPlainText(_match: string, label: string): string {
+  const trimmed = label.trim();
+  const name = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  return name ? `@${name}` : "@someone";
+}
+
+/**
+ * The message text a notification can show: mentions resolve to a name, and
+ * markdown syntax is gone. Custom emoji shortcodes already read fine as-is.
+ */
+export function toPlainNotificationText(raw: string): string {
+  let text = raw;
+
+  // Mentions before generic links: both are `[...](...)`, and a mention must
+  // not be read as a link whose "url" happens to be an id.
+  text = text.replace(/\[([^\]]*)\]\(mention:[^)]*\)/g, mentionToPlainText);
+  text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, (_m, alt) => alt.trim());
+  text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, (_m, label) => label.trim());
+
+  // Code: keep what is inside, drop the fence or backticks around it.
+  text = text.replace(/```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/g, (_m, code) => code.trim());
+  text = text.replace(/`([^`]*)`/g, "$1");
+
+  // Emphasis and strikethrough, longest markers first so `**` is not read as two `*`.
+  text = text.replace(/(\*\*\*|___)([\s\S]*?)\1/g, "$2");
+  text = text.replace(/(\*\*|__)([\s\S]*?)\1/g, "$2");
+  text = text.replace(/(\*|_)([\s\S]*?)\1/g, "$2");
+  text = text.replace(/~~([\s\S]*?)~~/g, "$1");
+
+  // Line-leading markers: headers, blockquotes, list bullets and ordered items.
+  text = text.replace(/^ {0,3}#{1,6}\s+/gm, "");
+  text = text.replace(/^ {0,3}>\s?/gm, "");
+  text = text.replace(/^ {0,3}([-*+]|\d+[.)])\s+/gm, "");
+
+  return text.trim();
+}
+
+/**
  * An unopened envelope says nothing about itself: the ciphertext is right
  * there in `sealed`.
  */
@@ -81,7 +122,7 @@ export function notificationBody(msg: {
   sealed?: string | null;
   attachments?: string[] | null;
 }): string {
-  const text = msg.text?.trim();
+  const text = msg.text?.trim() ? toPlainNotificationText(msg.text.trim()) : "";
   if (text) return text.length > MAX_BODY ? `${text.slice(0, MAX_BODY - 1)}…` : text;
   if (msg.sealed) return "Sent an encrypted message";
   if (msg.attachments && msg.attachments.length > 0) {
