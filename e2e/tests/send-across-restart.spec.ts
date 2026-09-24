@@ -11,6 +11,10 @@ import type { GrytServer } from "../support/server";
    unechoed, lost on the way, sent while down, and sent before the restore (GRYT-1453). */
 
 const run = promisify(execFile);
+
+/* What Chrome logs for a redial while the server is down or still booting, which
+   this spec causes on purpose. Allowed only between the kill and the restore. */
+const REDIAL_FAILED = /^WebSocket connection to 'ws:\/\/[^']+' failed: (Connection closed before receiving a handshake response|Error in connection establishment: net::ERR_[A-Z_]+|Error during WebSocket handshake: net::ERR_[A-Z_]+)$/;
 const softly = expect.configure({ soft: true });
 
 /** Everything between alice's page and the server, with the four things these tests do to it. */
@@ -161,7 +165,7 @@ async function rowStates(rows: Locator, nonces: Set<string>): Promise<string[]> 
 }
 
 for (const kind of ["channel", "dm", "thread"] as const) {
-  test(`a ${kind} message sent across a server restart goes out once`, async ({ newMember, freshServer }) => {
+  test(`a ${kind} message sent across a server restart goes out once`, async ({ newMember, freshServer, problems }) => {
     test.setTimeout(180_000);
     const server = await freshServer({ instanceId: `restart-${kind}-${Date.now()}` });
     const container = server.containerId;
@@ -199,6 +203,7 @@ for (const kind of ["channel", "dm", "thread"] as const) {
     await type(alice.page, conversation.box, lost);
     await expect.poll(() => wire.loseNextSend, { message: "the page should have sent it" }).toBe(false);
 
+    const stopTolerating = problems.tolerate([REDIAL_FAILED]);
     await run("docker", ["kill", container]);
     await expect.poll(() => wire.open, { message: "the page should have lost its socket" }).toBe(0);
 
@@ -232,6 +237,9 @@ for (const kind of ["channel", "dm", "thread"] as const) {
         .poll(() => rowStates(conversation.rows(text), wire.nonces), { message: `"${text}" on alice's screen`, timeout: 45_000 })
         .toEqual(["sent"]);
     }
+
+    // Everything sent means every page is back, so from here a failed socket is a real one.
+    stopTolerating();
 
     // A DM typed while the socket had no id used to go out in the clear.
     if (kind === "dm") {
