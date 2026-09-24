@@ -17,7 +17,6 @@ export function useVoiceLifecycle() {
     connectionState,
     currentServerConnected,
     currentChannelConnected,
-    isConnected,
     disconnect,
   } = useSFU();
   const { servers, currentlyViewingServer } = useServerManagement();
@@ -108,13 +107,16 @@ export function useVoiceLifecycle() {
   // Leaving a server while in one of its voice channels should end the call.
   // This reads the whole server map, which is what the engine is kept away from.
   useEffect(() => {
-    if (!isConnected || !currentServerConnected) return;
+    // Any state but DISCONNECTED, not just CONNECTED: a call waiting on a socket
+    // that is never coming back holds the microphone open (GRYT-1322).
+    if (connectionState === SFUConnectionState.DISCONNECTED) return;
+    if (!currentServerConnected) return;
     if (currentlyViewingServer?.host === currentServerConnected) return;
     if (servers[currentServerConnected]) return;
     disconnect().catch((error) => {
       console.error("[Voice] Error disconnecting from a removed server:", error);
     });
-  }, [servers, currentServerConnected, isConnected, currentlyViewingServer?.host, disconnect]);
+  }, [servers, currentServerConnected, connectionState, currentlyViewingServer?.host, disconnect]);
 
   // The server hanging up on us, which it does when the same account takes the
   // channel on another device. useSocketEvents raises this from three places.

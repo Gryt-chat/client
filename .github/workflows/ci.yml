@@ -30,6 +30,9 @@ jobs:
       - run: yarn test:lan-server-memory
       - run: yarn test:lan-discovery
       - run: yarn test:voice-presence
+      # A call whose server is removed while it is reconnecting used to be
+      # skipped, and the microphone stayed open until somebody hung up.
+      - run: yarn test:voice-server-removed
       - run: yarn test:reconnect-limit
       - run: yarn test:reconnect-grace
       - run: yarn test:token-refresh-schedule
