@@ -99,8 +99,11 @@ export function watchDrawnSize(el: HTMLVideoElement, streamId: string, fit: "cov
   const win = el.ownerDocument.defaultView ?? window;
   const key = {};
   let intersecting = true;
+  let stopped = false;
 
+  // The refresh-rate probe calls back up to 21 frames later, which can be after the watch ended.
   const measure = () => {
+    if (stopped) return;
     const visible = el.isConnected && intersecting && win.document.visibilityState === "visible";
     const box = drawnBox(
       { width: el.clientWidth, height: el.clientHeight },
@@ -135,6 +138,7 @@ export function watchDrawnSize(el: HTMLVideoElement, streamId: string, fit: "cov
   measure();
 
   return () => {
+    stopped = true;
     resize.disconnect();
     intersect.disconnect();
     win.document.removeEventListener("visibilitychange", onVisibility);

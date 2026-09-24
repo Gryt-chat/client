@@ -23,7 +23,8 @@ function fakeWindow() {
     ResizeObserver: class { constructor(f) { this.f = f; win.resizers.push(this); } observe() {} disconnect() { this.gone = true; } },
     IntersectionObserver: class { constructor(f) { this.f = f; win.intersectors.push(this); } observe() {} disconnect() { this.gone = true; } },
     matchMedia: () => ({ addEventListener() {}, removeEventListener() {} }),
-    requestAnimationFrame: () => 0,
+    frames: [],
+    requestAnimationFrame: (f) => win.frames.push(f),
   };
   return win;
 }
@@ -53,6 +54,16 @@ win.document.visibilityState = "hidden";
 for (const f of win.document.listeners) f();
 assert.deepEqual(last("theirs"), { width: 0, height: 0 }, "a hidden window still counted");
 small();
+
+// A watch that ends before the refresh-rate probe finishes stays ended. React's StrictMode mounts
+// every tile twice, and the first mount's late probe used to hold the stream at full size for good.
+{
+  const w = fakeWindow();
+  const stop = watchDrawnSize(fakeVideo(w, 800, 450), "theirs", "contain");
+  stop();
+  for (let t = 0; w.frames.length; t += 16) w.frames.shift()(t);
+  assert.deepEqual(last("theirs"), { width: 0, height: 0 }, "a watch that had ended came back when the refresh-rate probe finished");
+}
 
 // Our own self-view: drawn, but never reported, or it would keep our own video from pausing.
 const before = reports.length;
