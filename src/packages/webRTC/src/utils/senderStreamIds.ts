@@ -1,25 +1,15 @@
+import { senderStreamId as coreSenderStreamId } from "@gryt/core";
+
 /** The engine keeps one sender per role on a connection, and each one keeps its stream id. */
 export type SenderRole = "camera" | "screenVideo" | "screenAudio";
 
-// Keyed by connection rather than held in a component, so a remounted Controls still knows them.
-const byConnection = new WeakMap<RTCPeerConnection, Partial<Record<SenderRole, string>>>();
-
-/**
- * The stream id a role's sender was created with, which replaceTrack leaves in place (GRYT-1251).
- * The first stream given for a role on a connection names it; with no connection, `streamId` is returned.
- */
+/** Typed wrapper: the id-keeping rule itself (GRYT-1251) now lives in @gryt/core. */
 export function senderStreamId(
   pc: RTCPeerConnection | null | undefined,
   role: SenderRole,
   streamId: string,
 ): string {
-  if (!pc) return streamId;
-  let ids = byConnection.get(pc);
-  if (!ids) {
-    ids = {};
-    byConnection.set(pc, ids);
-  }
-  return (ids[role] ??= streamId);
+  return coreSenderStreamId(pc, role, streamId);
 }
 
 const sendersByConnection = new WeakMap<RTCPeerConnection, Partial<Record<SenderRole, RTCRtpSender>>>();
