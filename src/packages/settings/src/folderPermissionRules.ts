@@ -1,4 +1,5 @@
 import { describeFolderRules, folderFollowNote } from "@gryt/core";
+
 import type { ChannelRule } from "./channelPermissionRules";
 
 /** Both moved to @gryt/core, next to describeRules: the phone wrote the same line. */
