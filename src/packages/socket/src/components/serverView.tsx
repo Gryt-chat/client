@@ -33,7 +33,6 @@ import { useCalls } from "../hooks/useCalls";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
-import { useHeldVoicePresence } from "../hooks/useHeldVoicePresence";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { useIsTinyWindow, useRoomForMemberList, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
@@ -47,7 +46,6 @@ import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
-import type { Clients } from "../types/clients";
 import { getCustomEmojis } from "../utils/emojiData";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -80,7 +78,6 @@ const fakeParticipantOptionsFromUrl = readFakeParticipantOptions(
 /** `?fakering=1` rings the open conversation, `?fakepeer=1` puts somebody in the
     call, and `&fakecallmembers=0` reproduces a call that drew nobody. */
 const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
-const NO_CLIENTS: Clients = {};
 
 /**
  * `dmSpace` swaps the channel sidebar for every server's conversations and drops
@@ -109,7 +106,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const { servers: hostedServers } = useEmbeddedServer();
 
   const {
-    clientsSpeaking, voiceWidth,
+    clientsSpeaking, heldClients: heldHostClients, selfClientId, voiceWidth,
     selectedChannelId, setSelectedChannelId,
     selectedDmId, setSelectedDmId,
     handleVoiceDisconnect, setPendingChannelId, currentChannelId,
@@ -125,7 +122,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   } = sidebarEditor;
 
   useLatencyReporting(currentConnection);
-  const peerLatency = usePeerLatency(currentConnection);
+  const peerLatency = usePeerLatency(currentConnection, heldHostClients);
 
   const {
     voiceFocused, setVoiceFocused, isMaximized, toggleMaximized,
@@ -219,15 +216,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     openLeftSidebar, closeLeftSidebar, openRightSidebar, closeRightSidebar,
   } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: false, isCompact, roomForMembers });
 
-  const heldHost = currentlyViewingServer?.host ?? "";
-  const { clients: heldHostClients, selfClientId } = useHeldVoicePresence({
-    host: heldHost,
-    clients: clients[heldHost] ?? NO_CLIENTS,
-    socketId: currentConnection?.id,
-    selfInVoice: isConnected && currentServerConnected === heldHost,
-    videoStreams,
-    streamSources,
-  });
   const serverClients = currentlyViewingServer ? heldHostClients : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
     showVoiceView, setShowVoiceView, isCompact, roomForVoice, isConnected,

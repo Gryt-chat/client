@@ -77,3 +77,41 @@ export function resolveSelfClientId(
   const mine = Object.keys(clients).filter((id) => clients[id].serverUserId === selfServerUserId);
   return mine.find((id) => clients[id].hasJoinedChannel) ?? mine[0] ?? socketId;
 }
+
+/** Something reported per member, kept by serverUserId so it outlives the socket that sent it. */
+export type ByServerUser<T> = Record<string, T>;
+
+/** The key a member's reports are held under: their serverUserId, or the socket if they have none. */
+export const heldKey = (clientId: string, client: Client): string => client.serverUserId ?? clientId;
+
+/** Files a report sent from `clientId` under that member's key. A socket the roster doesn't know is dropped. */
+export function recordByServerUser<T>(
+  byUser: ByServerUser<T>,
+  roster: Clients,
+  clientId: string,
+  value: T,
+): ByServerUser<T> {
+  const client = roster[clientId];
+  return client ? { ...byUser, [heldKey(clientId, client)]: value } : byUser;
+}
+
+/** Drops members the roster no longer has in voice, so a rejoin starts with no stale figure. */
+export function keepInVoice<T>(byUser: ByServerUser<T>, roster: Clients): ByServerUser<T> {
+  const inVoice = new Set<string>();
+  for (const [clientId, client] of Object.entries(roster)) {
+    if (client.hasJoinedChannel) inVoice.add(heldKey(clientId, client));
+  }
+  const kept = Object.keys(byUser).filter((key) => inVoice.has(key));
+  if (kept.length === Object.keys(byUser).length) return byUser;
+  return Object.fromEntries(kept.map((key) => [key, byUser[key]]));
+}
+
+/** The same reports keyed by the roster's client ids, the way tiles look them up. */
+export function byRosterClientId<T>(byUser: ByServerUser<T>, roster: Clients): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const [clientId, client] of Object.entries(roster)) {
+    const value = byUser[heldKey(clientId, client)];
+    if (value !== undefined) out[clientId] = value;
+  }
+  return out;
+}

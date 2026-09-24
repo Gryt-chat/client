@@ -8,7 +8,10 @@
 import assert from "node:assert/strict";
 
 import {
+  byRosterClientId,
   holdVoicePresence,
+  keepInVoice,
+  recordByServerUser,
   resolveSelfClientId,
 } from "../src/packages/socket/src/lib/heldVoicePresence.ts";
 
@@ -114,6 +117,48 @@ function settle(rosters, mediaLive = live) {
   assert.equal(resolveSelfClientId(twoDevices, undefined, "alice"), "d2");
   // While your socket is listed it wins, so the device in voice elsewhere isn't drawn as you.
   assert.equal(resolveSelfClientId(twoDevices, "d1", "alice"), "d1");
+}
+
+/* ── Speaking and latency follow the held tile, not the socket (GRYT-1373) ── */
+{
+  const before = { s1: inVoice("alice"), s2: inVoice("bob") };
+  let latency = recordByServerUser({}, before, "s2", { estimatedOneWayMs: 25 });
+  assert.deepEqual(latency, { bob: { estimatedOneWayMs: 25 } });
+
+  // Restarted, and bob's new socket hasn't re-announced yet.
+  const { clients } = settle([before, { n1: forgotten("alice"), n2: forgotten("bob") }]);
+  // The speaking poll reads the analyser for this streamID, so the ring keeps going.
+  assert.equal(clients.n2.streamID, "mic-bob");
+  latency = keepInVoice(latency, clients);
+  assert.deepEqual(byRosterClientId(latency, clients), { n2: { estimatedOneWayMs: 25 } });
+
+  // A report from a socket the roster doesn't know yet is dropped, not filed under nobody.
+  assert.equal(recordByServerUser(latency, clients, "n9", { estimatedOneWayMs: 1 }), latency);
+  latency = recordByServerUser(latency, clients, "n2", { estimatedOneWayMs: 30 });
+  assert.deepEqual(byRosterClientId(latency, clients), { n2: { estimatedOneWayMs: 30 } });
+}
+
+/* ── A ring polled under the old socket is drawn on the new one straight away ─ */
+{
+  const speaking = { bob: true };
+  const reannounced = settle([
+    { s1: inVoice("alice"), s2: inVoice("bob") },
+    { n1: forgotten("alice") },
+    { n1: forgotten("alice"), n2: inVoice("bob") },
+  ]).clients;
+  assert.deepEqual(byRosterClientId(speaking, reannounced), { n2: true });
+  // Nobody without a serverUserId is merged with anybody else.
+  const anon = { a1: { nickname: "x", hasJoinedChannel: true } };
+  assert.deepEqual(byRosterClientId({ a1: true }, anon), { a1: true });
+}
+
+/* ── Leaving drops the figure, so a rejoin doesn't show the old one ─────────── */
+{
+  const latency = { alice: { estimatedOneWayMs: 25 } };
+  const left = { s1: forgotten("alice") };
+  assert.deepEqual(byRosterClientId(keepInVoice(latency, left), left), {});
+  const still = { s1: inVoice("alice") };
+  assert.equal(keepInVoice(latency, still), latency);
 }
 
 console.log("held voice presence: ok");
