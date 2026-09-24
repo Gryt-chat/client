@@ -104,6 +104,7 @@ jobs:
       - run: yarn test:capture-health
       - run: yarn test:screen-audio-state
       - run: yarn test:screen-share-priority
+      - run: yarn test:drawn-video-size
       # What the video debug overlay reads out of getStats. Chromium names an outbound track only
       # on its media-source entry, and nothing else here reads the overlay's numbers.
       - run: node scripts/check-video-debug-stats.mjs

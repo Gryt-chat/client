@@ -1,5 +1,5 @@
 import { IconButton, Tooltip } from "@gryt/ui";
-import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, SFUConnectionState, useCamera, useScreenShare } from "@gryt/voice";
+import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, SFUConnectionState, useCamera, useScreenShare, type VideoSendSettings } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
 import { useEffect, useRef, useState } from "react";
@@ -17,8 +17,8 @@ import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
-import { roleSender, senderStreamId } from "../utils/senderStreamIds";
-import { liftScreenCapture, qualityBox, setSizeCeiling, supportsDownTo } from "../utils/streamQuality";
+import { senderStreamId } from "../utils/senderStreamIds";
+import { liftScreenCapture, qualityBox } from "../utils/streamQuality";
 import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
@@ -63,6 +63,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     currentChannelConnected,
     getPeerConnection,
     getScreenVideoSender,
+    setVideoSendSettings,
   } = useSFU();
   const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
@@ -99,8 +100,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const getScreenVideoSenderRef = useRef(getScreenVideoSender);
   getScreenVideoSenderRef.current = getScreenVideoSender;
   const { canIn } = useServerPermissions(currentServerConnected || "");
-  // One setParameters at a time: a second read before the first write lands is refused.
-  const screenParamsChain = useRef<Promise<void>>(Promise.resolve());
+  // The engine owns the encodings and merges these with what viewers draw (GRYT-1432).
+  const setVideoSendSettingsRef = useRef(setVideoSendSettings);
+  setVideoSendSettingsRef.current = setVideoSendSettings;
+  const screenLiftChain = useRef<Promise<void>>(Promise.resolve());
 
   // Sync camera stream to WebRTC peer connection
   useEffect(() => {
@@ -120,25 +123,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
         webrtcCameraStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "camera", cameraStream.id);
         prevCameraStreamRef.current = cameraStream;
 
-        const pc = getPeerConnectionRef.current?.();
-        if (pc) {
-          const cameraSender = roleSender(pc, "camera", videoTrack);
-          if (cameraSender) {
-            const params = cameraSender.getParameters();
-            params.degradationPreference = "maintain-framerate";
-            if (params.encodings && params.encodings.length > 0) {
-              params.encodings[0].priority = screenShareActive ? "low" : "medium";
-            }
-            const priority = params.encodings?.[0]?.priority ?? "default";
-            voiceLog.info(
-              "CAMERA",
-              `setParameters: priority=${priority} degradationPreference=${params.degradationPreference}`,
-            );
-            cameraSender.setParameters(params).catch((err: unknown) => {
-              voiceLog.warn("CAMERA", `setParameters failed: ${err}`);
-            });
-          }
-        }
+        setVideoSendSettingsRef.current?.("camera", {
+          priority: screenShareActive ? "low" : "medium",
+          degradationPreference: "maintain-framerate",
+        });
       }
     } else if (prevCameraStreamRef.current) {
       voiceLog.step("CAMERA", "sync", "Removing camera track", {
@@ -146,6 +134,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       });
       // Pauses the sender, so the camera comes back under the id senderStreamIds already has.
       removeVideoTrack();
+      setVideoSendSettingsRef.current?.("camera", null);
       prevCameraStreamRef.current = null;
       webrtcCameraStreamId.current = null;
     }
@@ -172,51 +161,33 @@ export function Controls({ onDisconnect }: ControlsProps) {
             bitrate = Math.min(Math.round(bitrate * 1.5), 50_000_000);
           }
         }
-        /* **Asked for by name, not looked up by track.** A `getSenders()` lookup
-         * matches only on the first share, so the cap stays too small (GRYT-13). */
-        const screenSender = getScreenVideoSenderRef.current?.() ?? null;
-        if (screenSender) {
-          const quality = screenShareQuality;
-          const fps = screenShareFps;
-          const apply = async () => {
-            await liftScreenCapture(videoTrack, quality, fps);
-            const hasDownTo = await supportsDownTo(screenSender);
-            const params = screenSender.getParameters();
-            params.degradationPreference = screenShareGamingMode
-              ? "maintain-framerate"
-              : "maintain-resolution";
-            if (params.encodings && params.encodings.length > 0) {
-              const effectiveBitrate = bitrate ?? 50_000_000;
-              params.encodings[0].priority = "high";
-              params.encodings[0].maxBitrate = effectiveBitrate;
-              params.encodings[0].maxFramerate = fps;
-              setSizeCeiling(params.encodings[0], qualityBox(quality), videoTrack, hasDownTo);
-              const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
-              if (!isH264 && screenShareScalabilityMode !== "L1T1") {
-                params.encodings[0].scalabilityMode = screenShareScalabilityMode;
-              }
-            }
-            const enc = params.encodings[0];
-            voiceLog.info("SCREEN", `setParameters: priority=${enc?.priority ?? "default"} maxFramerate=${enc?.maxFramerate} maxBitrate=${enc?.maxBitrate} ceiling=${quality} scalabilityMode=${enc?.scalabilityMode ?? "none"} degradationPreference=${params.degradationPreference}`);
-            await screenSender.setParameters(params);
-          };
-          screenParamsChain.current = screenParamsChain.current
-            .then(apply)
-            .catch((err: unknown) => {
-              voiceLog.warn("SCREEN", `setParameters failed: ${err}`);
-            });
-        } else {
-          // Worth a line rather than nothing: this is the state the bug sat in
-          // silently, and it is still reachable if the engine has no sender yet.
-          voiceLog.warn("SCREEN", "No screen video sender — encoding parameters not applied");
-        }
+        const quality = screenShareQuality;
+        const fps = screenShareFps;
+        const box = qualityBox(quality);
+        const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
+        const settings: VideoSendSettings = {
+          priority: "high",
+          maxBitrate: bitrate ?? 50_000_000,
+          maxFramerate: fps,
+          maxSize: box ? { width: box.maxWidth, height: box.maxHeight } : null,
+          degradationPreference: screenShareGamingMode ? "maintain-framerate" : "maintain-resolution",
+          scalabilityMode: !isH264 && screenShareScalabilityMode !== "L1T1" ? screenShareScalabilityMode : undefined,
+          // Frames the native encoder made are injected past the encoder, so viewers can't size them (GRYT-1436).
+          followDemand: nativeEncodedCodec !== "h264",
+        };
+        voiceLog.info("SCREEN", `settings: maxBitrate=${settings.maxBitrate} maxFramerate=${fps} ceiling=${quality} scalabilityMode=${settings.scalabilityMode ?? "none"} degradationPreference=${settings.degradationPreference}`);
+        // In order, so a quick second pick can't land before the first.
+        screenLiftChain.current = screenLiftChain.current
+          .then(() => liftScreenCapture(videoTrack, quality, fps))
+          .then(() => setVideoSendSettingsRef.current?.("screen", settings));
       }
     } else if (prevScreenVideoRef.current) {
       voiceLog.info("SCREEN", `controls: removing video track, prevStream=${prevScreenVideoRef.current.id}`);
       removeScreenVideoTrack();
+      setVideoSendSettingsRef.current?.("screen", null);
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, nativeEncodedCodec]);
 
   // Attach Encoded Transform when native H.264 encoding is active: injects
   // pre-encoded NALs, bypassing the browser's decode-re-encode cycle.

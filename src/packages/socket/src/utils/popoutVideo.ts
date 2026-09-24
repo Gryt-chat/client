@@ -1,3 +1,5 @@
+import { watchDrawnSize } from "../lib/drawnVideoSize";
+
 export interface PopoutHandle {
   close: () => void;
   isOpen: () => boolean;
@@ -302,6 +304,7 @@ export function popoutStream(
 
     let open = true;
     let activeStream = stream;
+    let stopWatchingSize = () => {};
 
     // One controller per stream, so replacing the stream drops the old listeners
     // instead of stacking a second set on top.
@@ -310,6 +313,7 @@ export function popoutStream(
     const markClosed = () => {
       if (!open) return;
       open = false;
+      stopWatchingSize();
       clearInterval(checkInterval);
       trackListeners.abort();
       onClose?.();
@@ -335,6 +339,7 @@ export function popoutStream(
 
     const videoEl = setupPopupWindow(popup, stream, title, audio);
     watchTracks(stream);
+    stopWatchingSize = watchDrawnSize(videoEl, stream.id, "contain");
 
     const checkInterval = setInterval(() => {
       if (popup.closed) markClosed();
@@ -359,6 +364,8 @@ export function popoutStream(
         activeStream = newStream;
         videoEl.srcObject = newStream;
         watchTracks(newStream);
+        stopWatchingSize();
+        stopWatchingSize = watchDrawnSize(videoEl, newStream.id, "contain");
       },
     };
   } catch (err) {

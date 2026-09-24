@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { roleSender, senderStreamId } from "../src/packages/webRTC/src/utils/senderStreamIds.ts";
+import { senderStreamId } from "../src/packages/webRTC/src/utils/senderStreamIds.ts";
 
 const controls = readFileSync(
   new URL("../src/packages/webRTC/src/components/controls.tsx", import.meta.url),
@@ -118,16 +118,9 @@ assert.doesNotMatch(controls, /if \(!webrtc\w+StreamId\.current\)/, "Controls ke
 
 /* ── The camera's encoding settings reach a resumed sender ───────────── */
 
-// A resumed camera gets its track from replaceTrack a task later, so a lookup by track misses it
-// and the camera kept whatever priority it had before a share started (GRYT-1329).
-{
-  const sender = { track: "camera-track-1" };
-  const connection = { getSenders: () => [sender] };
-  assert.equal(roleSender(connection, "camera", "camera-track-1"), sender);
-  sender.track = null;
-  assert.equal(roleSender(connection, "camera", "camera-track-2"), sender, "a resumed camera's sender wasn't found");
-  assert.equal(roleSender({ getSenders: () => [] }, "camera", "camera-track-2"), null, "another connection got this one's sender");
-}
-assert.match(controls, /const cameraSender = roleSender\(pc, "camera", videoTrack\)/, "Controls looks the camera's sender up by its track alone");
+// A resumed camera gets its track a task later, so a lookup by track missed it (GRYT-1329).
+// The engine now holds the sender by role, and Controls only hands it the settings.
+assert.match(controls, /setVideoSendSettingsRef\.current\?\.\("camera", \{/, "Controls doesn't hand the camera's settings to the engine");
+assert.doesNotMatch(controls, /setParameters\(/, "Controls writes an encoding itself again, beside the engine");
 
 console.log("Media state re-assert checks passed");
