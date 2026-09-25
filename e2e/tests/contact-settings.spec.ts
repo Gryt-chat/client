@@ -149,7 +149,15 @@ test("calls from friends by default: a stranger's ring never rings, and writing 
 
   // Bob writes back, which makes Alice a friend until friend requests exist.
   await reply(bob, alice, unique("hi back"));
-  await expect(callButton).toBeVisible();
+  // An older server let the first ring out, and it's still going on Alice's side.
+  const either = alice.page.locator('[data-gryt="chat-header"]').getByRole("button", { name: /^(Call|Cancel)$/ });
+  await expect
+    .poll(async () => {
+      const label = (await either.textContent())?.trim();
+      if (label === "Cancel") await either.click();
+      return label;
+    })
+    .toBe("Call");
   await callButton.click();
   await expect.poll(rang).toBe(true);
 });
