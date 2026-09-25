@@ -54,6 +54,7 @@ jobs:
       - run: yarn test:identity-certificate
       - run: yarn test:message-vault
       - run: yarn test:message-vault-upgrade
+      - run: yarn test:message-vault-reseal
       - run: yarn test:message-key
       - run: yarn test:message-key-offer
       - run: yarn test:reset-warning

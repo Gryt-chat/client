@@ -8,7 +8,12 @@ import { getIdentityWords, restoreIdentityFromWords } from "./identity-keys";
 import { generateSeed, seedToWords } from "./identity-seed";
 import { openSeed, type SealedVault, type SealedVaultV2, sealSeed } from "./identity-vault.ts";
 import { readSealedVault, writeSealedVault } from "./message-vault-account.ts";
-import { type UpgradeOutcome,upgradeSealedVault } from "./message-vault-upgrade.ts";
+import {
+  resealFromThisDevice,
+  type ResealOutcome,
+  type UpgradeOutcome,
+  upgradeSealedVault,
+} from "./message-vault-upgrade.ts";
 
 export { describePasswordProblem, generateVaultPassword, MIN_VAULT_PASSWORD } from "./message-password.ts";
 export { formatRecoveryKey, generateRecoveryKey } from "@gryt/crypto/recovery-key";
@@ -23,6 +28,19 @@ export async function sealCurrentIdentity(
 ): Promise<SealedVaultV2> {
   const words = await getIdentityWords();
   return sealSeed(new TextEncoder().encode(words), { password, secretKind: "password", recoveryKey });
+}
+
+/**
+ * A new password over the account's bundle, from this device's own seed, so the old
+ * password is not needed. Only offered where this device has the account's key.
+ */
+export async function resealCurrentIdentity(
+  old: SealedVault,
+  password: string,
+  recoveryKey?: Uint8Array,
+): Promise<ResealOutcome> {
+  const seed = new TextEncoder().encode(await getIdentityWords());
+  return resealFromThisDevice(old, seed, { password, recoveryKey }, { read: readSealedVault, write: writeSealedVault });
 }
 
 /**
