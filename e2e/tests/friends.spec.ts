@@ -92,6 +92,8 @@ test("a request, accepted: friends on both sides, and a friend's ring rings", as
   // Bob never wrote to Alice, and she can ring him because they're friends.
   const rang = await watchForRing(bob, alice.name);
   await membersPanel(alice.page).getByRole("button", { name: bob.name, exact: true }).click();
+  // The conversation has to exist before it can ring, or the ring is refused.
+  await expect(composer(alice.page, `Message ${bob.name}`)).toBeVisible();
   await alice.page.locator('[data-gryt="chat-header"]').getByRole("button", { name: "Call", exact: true }).click();
   await expect.poll(rang).toBe(true);
 });
