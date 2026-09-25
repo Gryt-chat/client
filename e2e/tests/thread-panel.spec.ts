@@ -503,7 +503,8 @@ test("a burst of refused replies settles every row, not only the newest", async 
   const box = threadComposer(alice.page);
   await box.click();
   for (let i = 0; i < count; i++) {
-    await alice.page.keyboard.insertText(`${burst} #${i}`);
+    // No "#": since GRYT-1455 "#0" opens channel suggestions, and Enter takes one.
+    await alice.page.keyboard.insertText(`${burst} no. ${i}`);
     await box.press("Enter");
     await expect(box).toHaveText("");
   }

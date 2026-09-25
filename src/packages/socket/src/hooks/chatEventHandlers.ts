@@ -206,6 +206,8 @@ export interface ChatErrorDeps {
   setRateLimitCountdown: Dispatch<SetStateAction<number>>;
   /** Given the pending id when the server named the send, and nothing when it did not. */
   onRetry: (pendingId?: string) => void;
+  /** The named send waits for its retry rather than going again on its own. */
+  onHold?: (pendingId: string) => void;
   onFail: (pendingId?: string) => void;
   retryQueueRef: MutableRefObject<Map<string, RetryQueueEntry>>;
 }
@@ -341,6 +343,7 @@ function settle(
     deps.onFail(refused.pendingId);
     return;
   }
+  if (refused.pendingId) deps.onHold?.(refused.pendingId);
   refused.entry.timeoutId = setTimeout(() => deps.onRetry(refused.pendingId), waitMs);
 }
 

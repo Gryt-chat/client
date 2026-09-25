@@ -29,6 +29,16 @@ const ALLOWED: Allowed[] = [
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */
 export class ProblemLog {
   readonly problems: string[] = [];
+  /** Allowed only while a test holds them, such as redials while it has the server down on purpose. */
+  private tolerated = new Set<RegExp>();
+
+  /** Lets these console errors through until the returned function is called. */
+  tolerate(patterns: RegExp[]): () => void {
+    for (const p of patterns) this.tolerated.add(p);
+    return () => {
+      for (const p of patterns) this.tolerated.delete(p);
+    };
+  }
 
   report = (problem: string) => {
     this.problems.push(problem);
@@ -40,6 +50,7 @@ export class ProblemLog {
       const text = msg.text();
       const { url, lineNumber } = msg.location();
       if (ALLOWED.some((a) => a.text.test(text) && (!a.url || a.url.test(url)))) return;
+      if ([...this.tolerated].some((p) => p.test(text))) return;
       this.report(`[${who}] console.error: ${text}${url ? `\n    at ${url}:${lineNumber}` : ""}`);
     });
     page.on("pageerror", (err) => {

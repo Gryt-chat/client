@@ -13,31 +13,21 @@ const send = readFileSync(
   "utf8",
 );
 
-// Both paths emit, so both have to refuse.
-const emits = [...send.matchAll(/\.then\(\(sealed\) => \{[\s\S]*?\n {6}\}\)/g)].map((m) => m[0]);
-
-assert.equal(emits.length, 2, `expected the two send paths, found ${emits.length}`);
-
-for (const [i, body] of emits.entries()) {
-  assert.match(
-    body,
-    /else if \(sealDecisionRef\.current\?\.kind === "seal"\)/,
-    `send path ${i + 1} falls back to plaintext without checking the decision`,
-  );
-  assert.match(
-    body,
-    /markLatestPendingFailed(Ref\.current)?\(\w*\);\s*\n\s*return;/,
-    `send path ${i + 1} does not stop when a sealable conversation failed to seal`,
-  );
-}
+// The one place the seal happens has to refuse when it did not.
+assert.match(
+  send,
+  /sealFailed = !sealed && sealDecisionRef\.current\?\.kind === "seal";/,
+  "sendChat falls back to plaintext without checking the decision",
+);
+assert.match(
+  send,
+  /if \(queueRef\.current && !sealFailed\) queueRef\.current\.add\(nonce\);\s*\n\s*else markLatestPendingFailed\(pendingId\);/,
+  "sendChat does not stop when a sealable conversation failed to seal",
+);
+// A seal that threw is a failure too, not a quiet plaintext send.
+assert.match(send, /\} catch \{\s*\n\s*sealFailed = true;/);
 
 // The plaintext branch has to stay for channels, which are never sealable.
-for (const [i, body] of emits.entries()) {
-  assert.match(
-    body,
-    /else payload\.text =/,
-    `send path ${i + 1} no longer sends a channel message at all`,
-  );
-}
+assert.match(send, /else payload\.text = entry\.text;/, "a channel message is no longer sent at all");
 
-console.log("sealed fallback: ok, both send paths refuse to downgrade");
+console.log("sealed fallback: ok, the send refuses to downgrade");

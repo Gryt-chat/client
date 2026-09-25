@@ -52,6 +52,11 @@ export interface ConversationSealing {
    * sent. Throws when a key is there and does not open, which is not an absence.
    */
   open: (sealed: string) => Promise<OpenedMessage | null>;
+  /**
+   * Our keys and our member id are both known. Before that a null from `open` says
+   * nothing, and right after a reconnect the member id is briefly missing.
+   */
+  canOpen: boolean;
 }
 
 export function useConversationSealing({
@@ -160,8 +165,9 @@ export function useConversationSealing({
 
   /* Stable identity: `useChat` has an effect that depends on this, and a new
      object every render re-ran it every render. */
+  const canOpen = !!keys && !!myServerUserId;
   return useMemo(
-    () => ({ decision, seal, sealFile, openFile, open }),
-    [decision, seal, sealFile, openFile, open],
+    () => ({ decision, seal, sealFile, openFile, open, canOpen }),
+    [decision, seal, sealFile, openFile, open, canOpen],
   );
 }

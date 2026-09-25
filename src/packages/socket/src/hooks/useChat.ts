@@ -181,7 +181,7 @@ export function useChat({
   /** Blob URLs made for decrypted attachments, revoked on unmount. */
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
-  const { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed, plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend } = useChatSend({
+  const { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed, holdSend, forgetSend, plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend } = useChatSend({
     seal: sealing.seal,
     sealDecision: sealing.decision,
     sealFile: sealing.sealFile,
@@ -214,6 +214,8 @@ export function useChat({
   }, []);
 
   useEffect(() => {
+    // Not yet: a message opened without our member id would be marked locked for good.
+    if (!sealing.canOpen) return;
     const pending = chatMessages.filter(
       (m) => m.sealed && !m.sealedState && !openingRef.current.has(m.message_id),
     );
@@ -340,6 +342,7 @@ export function useChat({
         rateLimitIntervalRef,
         setRateLimitCountdown,
         onRetry: performRetry,
+        onHold: holdSend,
         onFail: markLatestPendingFailed,
         retryQueueRef,
       }, ref);
@@ -350,7 +353,7 @@ export function useChat({
     return () => {
       currentConnection.off("chat:error", onError);
     };
-  }, [currentConnection, activeConversationId, cacheKeyFor, performRetry, markLatestPendingFailed, retryQueueRef, serverHost]);
+  }, [currentConnection, activeConversationId, cacheKeyFor, performRetry, holdSend, markLatestPendingFailed, retryQueueRef, serverHost]);
 
   /* The countdown belongs to the rate limit, not to the listener above, whose
      cleanup ran on the next render and left the composer locked (GRYT-1393). */
@@ -399,8 +402,7 @@ export function useChat({
         const matchByNonce = msg.nonce && entry.nonce === msg.nonce;
         const matchByText = msg.text && entry.text === msg.text.trim();
         if (matchByNonce || matchByText) {
-          if (entry.timeoutId) clearTimeout(entry.timeoutId);
-          retryQueueRef.current.delete(pendingId);
+          forgetSend(pendingId);
           break;
         }
       }

@@ -23,45 +23,35 @@ function callback(name) {
   return source.slice(start, end);
 }
 
-/* ── both senders seal ───────────────────────────────────────────────────── */
-
-for (const name of ["sendMessageWithToken", "performRetry"]) {
-  const body = callback(name);
-
-  assert.match(
-    body,
-    /seal\(/,
-    `${name} emits without sealing. That is the bug: a conversation the composer says is encrypted sends plaintext, and nothing on screen says so.`,
-  );
-
-  // `payload.text` only inside the `else` of a seal that answered null. One
-  // carrying only text, in a sealed conversation, is the leak.
-  const emits = body.slice(body.indexOf("seal("));
-  assert.match(
-    emits,
-    /else payload\.text =/,
-    `${name} sets payload.text outside the "not sealing this conversation" branch`,
-  );
-  assert.doesNotMatch(
-    body.slice(0, body.indexOf("seal(")),
-    /text: [a-zA-Z.]+,/,
-    `${name} puts text on the payload before it knows whether this conversation seals`,
-  );
-}
-
-/* ── and neither emits anywhere else ─────────────────────────────────────── */
+/* ── the message is sealed once, when it is sent ─────────────────────────── */
 
 {
-  // An `emit("chat:send")` outside a `.then` on `seal` is a path that skipped
-  // it. Counting them is crude and it is exactly the shape the bug had.
-  const emits = source.split('emit("chat:send"').length - 1;
-  assert.equal(
-    emits,
-    2,
-    `there are ${emits} chat:send emits; each one has to seal, so check the new one`,
+  const body = callback("sendChat");
+  assert.match(body, /sealed = await seal\(finalText/, "sendChat no longer seals the message it sends");
+  assert.match(
+    body,
+    /retryQueueRef\.current\.set\(pendingId, \{[\s\S]*?\bsealed,[\s\S]*?\}\);/,
+    "the envelope is not kept on the queued send, so an attempt after it would seal again or not at all",
   );
 }
 
-console.log(
-  "sealed send: the first attempt and the retry both go through the seal, and neither writes text unless it answered null",
-);
+/* ── and every attempt sends that envelope ───────────────────────────────── */
+
+{
+  const body = callback("emitSend");
+  assert.doesNotMatch(body, /seal\(/, "emitSend seals again; after a reconnect that sent DMs in the clear (GRYT-1453)");
+  // `payload.text` only in the `else` of an entry with no envelope. Anything else is the leak.
+  assert.match(body, /if \(entry\.sealed\) payload\.sealed = entry\.sealed;\s*\n\s*else payload\.text = entry\.text;/);
+  assert.doesNotMatch(body.slice(0, body.indexOf("if (entry.sealed)")), /text: [a-zA-Z.]+,/);
+
+  assert.doesNotMatch(callback("performRetry"), /emit\(/, "performRetry emits on its own instead of through the queue");
+}
+
+/* ── and nothing emits anywhere else ─────────────────────────────────────── */
+
+{
+  const emits = source.split('emit("chat:send"').length - 1;
+  assert.equal(emits, 1, `there are ${emits} chat:send emits; each one has to send the sealed envelope, so check the new one`);
+}
+
+console.log("sealed send: sealed once when sent, and every attempt sends that envelope");
