@@ -55,7 +55,9 @@ import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { GroupDialog } from "./GroupDialog";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
+import { statusConfig } from "./memberStatus";
 import { MobileServerView } from "./MobileServerView";
+import { PresenceDot } from "./PresenceDot";
 import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
 import { SecurityNoticeBanner } from "./SecurityNoticeBanner";
@@ -645,13 +647,46 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     );
   }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, disconnectVoice, setShowVoiceView, handleVoiceDisconnect]);
 
+  /* The same member list the sidebar reads presence off — someone it hides
+     from this viewer has no entry here either (GRYT-1467). */
+  const dmPresence = useMemo(() => {
+    if (!activeDm) return undefined;
+    if (activeDm.kind === "dm") {
+      const status = memberListMap[activeDm.other.server_user_id]?.status;
+      if (!status) return undefined;
+      const { label } = statusConfig[status];
+      return (
+        <span className="flex shrink-0 items-center gap-1.5 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
+          <PresenceDot status={status} size={8} />
+          {label}
+        </span>
+      );
+    }
+    const known = activeDm.members
+      .map((m) => memberListMap[m.server_user_id]?.status)
+      .filter((status): status is NonNullable<typeof status> => Boolean(status));
+    // Nobody in the member list at all reads as "no data" rather than "0 online".
+    if (known.length === 0) return undefined;
+    const online = known.filter((status) => status !== "offline").length;
+    return (
+      <span className="shrink-0 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
+        {online} online
+      </span>
+    );
+  }, [activeDm, memberListMap]);
+
   /* Memoized like the actions: ChatView is memo'd, and a fresh element every render undoes it. */
   const dmHeaderDetail = useMemo(() => {
     if (!activeDm || !currentlyViewingServer) return undefined;
     const { host, name: stored } = currentlyViewingServer;
     const name = serverDetailsList[host]?.server_info?.name || stored || host;
-    return <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />;
-  }, [activeDm, currentlyViewingServer, serverDetailsList]);
+    return (
+      <>
+        {dmPresence}
+        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
+      </>
+    );
+  }, [activeDm, currentlyViewingServer, serverDetailsList, dmPresence]);
 
   const tinyBack = useMemo(() => {
     if (!isTiny || !dmSpace || !activeDm) return undefined;

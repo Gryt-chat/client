@@ -6,8 +6,10 @@ import type { DirectoryEntry } from "../hooks/dmDirectory";
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
+import type { UserStatus } from "../types/clients";
 import { EmojiText } from "./EmojiText";
 import { MarkAsReadItem } from "./MarkAsReadItem";
+import { PresenceDot } from "./PresenceDot";
 import { ServerMark } from "./ServerChip";
 import { UnreadIndicator } from "./UnreadIndicator";
 
@@ -28,7 +30,7 @@ function when(iso: string | null): string {
 }
 
 function ConversationRow({
-  entry, serverName, serverIcon, unread, selected, hidden, onOpen, onHide, onShow,
+  entry, serverName, serverIcon, unread, selected, hidden, otherStatus, onOpen, onHide, onShow,
 }: {
   entry: DirectoryEntry;
   serverName: string;
@@ -37,6 +39,9 @@ function ConversationRow({
   selected: boolean;
   /** Drawn back and named as hidden. It still opens and reads normally. */
   hidden?: boolean;
+  /** The other party's presence, 1:1 conversations only. Undefined is "no data",
+      never drawn as offline (GRYT-1467). */
+  otherStatus?: UserStatus;
   onOpen: () => void;
   onHide?: () => void;
   onShow?: () => void;
@@ -72,17 +77,30 @@ function ConversationRow({
               }
             />
           ) : (
-            <Avatar
-              size="small"
-              fallback={conversation.other.nickname[0]}
-              src={resolveAvatarSrc(
-                conversation.other.avatar_file_id
-                  ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true })
-                  : undefined,
-                conversation.other.nickname,
-                conversation.other.avatar_worn,
-              )}
-            />
+            <span className="relative inline-flex shrink-0">
+              <Avatar
+                size="small"
+                fallback={conversation.other.nickname[0]}
+                src={resolveAvatarSrc(
+                  conversation.other.avatar_file_id
+                    ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true })
+                    : undefined,
+                  conversation.other.nickname,
+                  conversation.other.avatar_worn,
+                )}
+              />
+              {/* Bottom-right badge, the usual chat-app spot. Absent rather
+                  than grey when there is no data to show (GRYT-1467). */}
+              <span
+                className="absolute rounded-(--gryt-radius-full)"
+                style={{
+                  bottom: -2, right: -2, padding: 2,
+                  background: "var(--gryt-neutral-2)",
+                }}
+              >
+                <PresenceDot status={otherStatus} size={8} />
+              </span>
+            </span>
           )}
 
           <span className="flex min-w-0 flex-1 items-center" style={{ gap: "8px", textAlign: "left" }}>
@@ -173,7 +191,7 @@ export function DmSpaceList({
   hidden?: boolean;
 }) {
   const { servers } = useServerManagement();
-  const { serverDetailsList } = useSockets();
+  const { serverDetailsList, memberLists } = useSockets();
 
   return (
     <div className="flex flex-col gap-[2px]">
@@ -189,6 +207,15 @@ export function DmSpaceList({
             selected?.conversationId === entry.conversation.conversation_id
           }
           hidden={hidden}
+          /* Same member list the sidebar reads presence off; a member it hides
+             from this viewer never has an entry to find (GRYT-1467). */
+          otherStatus={
+            entry.conversation.kind === "dm"
+              ? memberLists[entry.host]?.find(
+                  (m) => m.serverUserId === entry.conversation.other.server_user_id,
+                )?.status
+              : undefined
+          }
           onOpen={() => onOpen(entry.host, entry.conversation)}
           onHide={onHide ? () => onHide(entry) : undefined}
           onShow={onShow ? () => onShow(entry) : undefined}
