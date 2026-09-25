@@ -579,10 +579,10 @@
     clsx "^2.1.1"
     tailwind-merge "^3.4.0"
 
-"@gryt/voice@0.5.14":
-  version "0.5.14"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.5.14.tgz#a7efd17ebff03c440f30e4c1fdcd9f673245634d"
-  integrity sha512-fNUHlKzhPQTP1hHxdSgXQdEq2KXw4OXprgwYoX4AbT8usFo1flHqmqLxWm3NWKQL9U9cqvRc2wKdMeW1TDGomQ==
+"@gryt/voice@0.6.0":
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.6.0.tgz#3c8ebdb62bef1ddb3c6ff97784ca7d63f297d616"
+  integrity sha512-uZbeDJ3aCf9uDOKsrIbJAKCNSkb5luoG4/SS5tEIAwvmgE3fZNVBiadLqbZ1O5+pBJZ/qZxpVLTAnOuky3bjJA==
 
 "@humanwhocodes/config-array@^0.13.0":
   version "0.13.0"
