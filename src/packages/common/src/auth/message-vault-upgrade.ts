@@ -1,7 +1,9 @@
 /**
- * Re-sealing a version 1 bundle as version 2, at a moment the secret is in hand. The
- * old bundle stays on the account until the new one has been read back and opened.
+ * Re-sealing the bundle: a version 1 one when its secret is in hand, or under a new
+ * password from a device that holds the seed. The old one stays until the new one opens.
  */
+
+import { formatRecoveryKey } from "@gryt/crypto/recovery-key";
 
 import {
   openSeed,
@@ -29,10 +31,7 @@ export type UpgradeOutcome =
 const sameBytes = (a: Uint8Array, b: Uint8Array) =>
   a.length === b.length && a.every((v, i) => v === b[i]);
 
-/**
- * `old` is the bundle `secret` just opened. **Never throws once the new bundle is
- * written** without having tried to put the old one back.
- */
+/** `old` is the bundle `secret` just opened. */
 export async function upgradeSealedVault(
   old: SealedVault,
   secret: string,
@@ -46,6 +45,38 @@ export async function upgradeSealedVault(
     throw new Error("The re-sealed bundle did not open. Nothing was written.");
   }
 
+  return writeKeepingOld(old, next, secret, seed, store, "upgraded");
+}
+
+export type ResealOutcome = "changed" | "resealed" | "restored";
+
+/**
+ * Seal this device's `seed` under a new password without the old one (decision 3). A
+ * fresh content key, so a recovery key made before stops opening it.
+ */
+export async function resealFromThisDevice(
+  old: SealedVault,
+  seed: Uint8Array,
+  { password, recoveryKey }: { password: string; recoveryKey?: Uint8Array },
+  store: VaultStore,
+): Promise<ResealOutcome> {
+  const next = await sealSeed(seed, { password, secretKind: "password", recoveryKey });
+  const opens = async (secret: string) => sameBytes(await openSeed(next, secret), seed);
+  if (!(await opens(password)) || (recoveryKey && !(await opens(formatRecoveryKey(recoveryKey))))) {
+    throw new Error("The re-sealed bundle did not open. Nothing was written.");
+  }
+  return writeKeepingOld(old, next, password, seed, store, "resealed");
+}
+
+/** **Never throws once `next` is written** without having tried to put `old` back. */
+async function writeKeepingOld<T extends string>(
+  old: SealedVault,
+  next: SealedVault,
+  secret: string,
+  seed: Uint8Array,
+  store: VaultStore,
+  written: T,
+): Promise<T | "changed" | "restored"> {
   // A second device may have set a new password since this one read the bundle.
   // Writing over that would put back the password the person just replaced.
   const current = await store.read();
@@ -60,7 +91,7 @@ export async function upgradeSealedVault(
   } catch {
     readable = false;
   }
-  if (readable) return "upgraded";
+  if (readable) return written;
 
   await store.write(old);
   return "restored";
