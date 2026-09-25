@@ -271,9 +271,9 @@ try {
   };
 
   await check("it runs after the extraction is renamed into place, and only then", () => {
-    const prepare = bodyOf(manager, "export async function prepareEmbeddedServerRuntime(");
+    const prepare = bodyOf(manager, "async function extractEmbeddedServerRuntime(");
     const calls = prepare.split("pruneEmbeddedRuntimes(").length - 1;
-    assert.equal(calls, 1, `prepareEmbeddedServerRuntime calls the cleanup ${calls} times`);
+    assert.equal(calls, 1, `extractEmbeddedServerRuntime calls the cleanup ${calls} times`);
 
     const call = prepare.indexOf("pruneEmbeddedRuntimes(");
     assert.ok(call > prepare.indexOf("await rename(temporary, destination)"), "the cleanup runs before the rename");
@@ -282,13 +282,13 @@ try {
   });
 
   await check("startup does not wait for it, and a failure cannot reach startup", () => {
-    const prepare = bodyOf(manager, "export async function prepareEmbeddedServerRuntime(");
+    const prepare = bodyOf(manager, "async function extractEmbeddedServerRuntime(");
     assert.doesNotMatch(prepare, /(await|return)\s+pruneEmbeddedRuntimes/, "startup waits for the cleanup");
     assert.match(prepare, /pruneEmbeddedRuntimes\([^;]*\)\.catch\(/, "a rejected cleanup is not caught");
   });
 
   await check("it does not run while embedded processes were already up", () => {
-    const prepare = bodyOf(manager, "export async function prepareEmbeddedServerRuntime(");
+    const prepare = bodyOf(manager, "async function extractEmbeddedServerRuntime(");
     const guard = prepare.indexOf("const safeToPrune = !embeddedProcessesRunning();");
     assert.notEqual(guard, -1, "the running-processes guard is gone");
     assert.ok(guard < prepare.indexOf("await extract("), "the guard is read after extraction starts");
@@ -305,10 +305,16 @@ try {
     assert.match(stripped("electron/main.ts"), /prepareEmbeddedServerRuntime\(startupLog\)/);
   });
 
+  await check("launch shows the window without waiting for the unpacking (GRYT-1496)", () => {
+    const main = stripped("electron/main.ts");
+    assert.doesNotMatch(main, /await prepareEmbeddedServerRuntime\(/, "launch waits for the runtime again");
+    assert.match(bodyOf(manager, "async function startProcesses("), /await prepareEmbeddedServerRuntime\(\)/, "a server can start before its runtime is there");
+  });
+
   /* ── The Mac App Store build ────────────────────────────────────────── */
 
   await check("the store build runs the runtime inside the app, and never unpacks it", () => {
-    const prepare = bodyOf(manager, "export async function prepareEmbeddedServerRuntime(");
+    const prepare = bodyOf(manager, "async function extractEmbeddedServerRuntime(");
     const bail = prepare.indexOf("if (process.mas) return;");
     assert.notEqual(bail, -1, "the Mac App Store build unpacks into userData, where the sandbox won't run it");
     assert.ok(bail < prepare.indexOf("await extract("), "the store build bails out after extracting");

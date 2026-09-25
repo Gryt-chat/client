@@ -45,7 +45,13 @@ assert.doesNotMatch(installer, /tasklist \/FI "IMAGENAME eq \$\{_FILE\}"/);
 
 assert.doesNotMatch(installer, /findstr\.exe" \/B \/I/);
 
-assert.doesNotMatch(installer, /!insertmacro _CHECK_APP_RUNNING/);
+// The old bridge's fixed five-second wait stays gone. electron-builder's own check runs only
+// once nsProcess has watched a quitting Gryt fail to exit by itself (GRYT-1496).
+assert.doesNotMatch(installer, /Sleep 5000/);
+assert.match(
+  installer,
+  /nsProcess::FindProcess[\s\S]*\$\{If\} \$R0 != 603\s*!insertmacro IS_POWERSHELL_AVAILABLE\s*!insertmacro _CHECK_APP_RUNNING/,
+);
 
 // Packaging invariants.
 assert.match(builder, /from: build\/embedded-server\.tar\.gz/);

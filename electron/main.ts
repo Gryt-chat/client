@@ -1,4 +1,4 @@
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import {
   app,
   autoUpdater as nativeAutoUpdater,
@@ -18,6 +18,7 @@ import {
   Tray,
 } from "electron";
 import { autoUpdater as defaultAutoUpdater, NsisUpdater } from "electron-updater";
+import type { InstallOptions } from "electron-updater/out/BaseUpdater";
 import { DownloadedUpdateHelper } from "electron-updater/out/DownloadedUpdateHelper";
 import {
   appendFileSync,
@@ -116,6 +117,15 @@ import {
   newerReleaseTags,
   type ReleaseLookupFailed,
 } from "./updateFeedPin";
+import {
+  clearInstallMarker,
+  installerRunning,
+  launchVerdict,
+  readInstallMarker,
+  requestReopen,
+  UPDATED_ARG,
+  writeInstallMarker,
+} from "./updateInProgress";
 import {
   flushUserStore,
   initUserStore,
@@ -512,11 +522,58 @@ function cleanupLegacyWindowsInstallBackup(): void {
   }
 }
 
+/** The pending download lives in sessionData; the old installer and its blockmap stay where the
+    installer puts them, or every update downloads in full (GRYT-1496). */
+class SplitUpdateCache extends DownloadedUpdateHelper {
+  private readonly pendingDir: string;
+
+  constructor(cacheDir: string, pendingDir: string) {
+    super(cacheDir);
+    this.pendingDir = pendingDir;
+  }
+
+  override get cacheDirForPendingUpdate(): string {
+    return this.pendingDir;
+  }
+}
+
+/** Where the installer copies itself, from the name electron-builder wrote into app-update.yml. */
+function updaterCacheDir(): string | null {
+  try {
+    const yml = readFileSync(join(process.resourcesPath, "app-update.yml"), "utf8");
+    const name = yml.match(/^updaterCacheDirName:\s*(.+)$/m)?.[1]?.trim();
+    const base = process.env.LOCALAPPDATA;
+    return name && base ? join(base, name) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** electron-updater stages into a directory antivirus and disk cleaners empty,
     and a failed checksum there downloads every release and installs none. */
 class WindowsUpdater extends NsisUpdater {
-  protected override downloadedUpdateHelper: DownloadedUpdateHelper =
-    new DownloadedUpdateHelper(app.getPath("sessionData"));
+  protected override downloadedUpdateHelper: DownloadedUpdateHelper = new SplitUpdateCache(
+    updaterCacheDir() ?? app.getPath("sessionData"),
+    join(app.getPath("sessionData"), "pending"),
+  );
+
+  /** Both routes in, a restart and an install on quit, so a launch meanwhile can see it. */
+  protected override doInstall(options: InstallOptions): boolean {
+    const installer = this.installerPath;
+    if (installer) {
+      try {
+        writeInstallMarker(app.getPath("userData"), {
+          version: updates.ready() ?? "",
+          installer,
+          reopens: options.isForceRunAfter,
+          at: Date.now(),
+        });
+      } catch (err) {
+        startupLog(`Update: could not write the install marker: ${String(err)}`);
+      }
+    }
+    return super.doInstall(options);
+  }
 }
 
 const autoUpdater =
@@ -639,6 +696,10 @@ function applyStartWithWindowsSetting(enabled: boolean) {
   }
 }
 
+/** The installer keeps its window up until this Gryt's is showing, and it watches the marker. */
+let installerWaitsForWindow =
+  process.platform === "win32" && process.argv.includes(UPDATED_ARG);
+
 /* No setAlwaysOnTop: it cleared the splash window, which is gone, and it is
    the part that lands on top of a fullscreen game (GRYT-1105). */
 function showMain(): void {
@@ -646,6 +707,15 @@ function showMain(): void {
 
   mainWindow.show();
   mainWindow.focus();
+
+  if (installerWaitsForWindow) {
+    installerWaitsForWindow = false;
+    try {
+      clearInstallMarker(app.getPath("userData"));
+    } catch (err) {
+      startupLog(`Update: could not clear the install marker: ${String(err)}`);
+    }
+  }
 }
 
 function sendToMain(status: string, info?: Record<string, unknown>) {
@@ -1220,6 +1290,8 @@ function startPeriodicUpdateChecks(launchAlreadyChecked: boolean): void {
     checkForUpdatesInBackground("resume")
   );
 
+  if (!updatesComeFromAStore) app.on("before-quit", installOnQuit);
+
   app.on("before-quit", () => {
     if (!updateCheckTimer) return;
     clearInterval(updateCheckTimer);
@@ -1353,11 +1425,25 @@ function initBackgroundUpdater(launchAlreadyChecked: boolean) {
   startPeriodicUpdateChecks(launchAlreadyChecked);
 }
 
+/** A restart to update or a relaunch, which each have their own plan for the quit. */
+let quitHasItsOwnPlan = false;
+
+/** Gryt crashes on its way out on Windows, before electron-updater's "quit" handler, so an install
+    on quit never started (GRYT-1496). The installer waits for the process to go. */
+function installOnQuit(): void {
+  if (quitHasItsOwnPlan || !(autoUpdater instanceof WindowsUpdater) || !updates.ready()) return;
+  startupLog(`Update: installing ${updates.ready()} on quit`);
+  autoUpdater.install(true, false);
+}
+
 /** The flag first: `quitAndInstall` skips `before-quit`, so an open window
     cancels the quit and hides, and Squirrel cannot swap the bundle. */
 function installDownloadedUpdate(): void {
   isQuitting = true;
-  autoUpdater.quitAndInstall(true, true);
+  quitHasItsOwnPlan = true;
+  /* Not silent on Windows, so the installer's own window is on screen until Gryt's is
+     (GRYT-1496). Silent, the screen stayed empty for the whole install. */
+  autoUpdater.quitAndInstall(process.platform !== "win32", true);
 }
 
 /** Every install button: the tray, the toast and Settings. Looks once more first, so
@@ -1431,6 +1517,7 @@ function downloadAnnouncedRelease({ installWhenReady = false } = {}): void {
     the new feed up, and that is all this does. */
 function relaunchApp(): void {
   isQuitting = true;
+  quitHasItsOwnPlan = true;
 
   app.relaunch({
     args: process.argv
@@ -1438,7 +1525,8 @@ function relaunchApp(): void {
       .filter(
         (arg) =>
           arg !== AUTO_START_ARG &&
-          arg !== LEGACY_UPDATE_ARG
+          arg !== LEGACY_UPDATE_ARG &&
+          arg !== UPDATED_ARG
       ),
   });
 
@@ -1845,6 +1933,7 @@ function createMainWindow(): BrowserWindow {
           })
           .then(({ response }) => {
             if (response === 0) {
+              quitHasItsOwnPlan = true;
               app.relaunch();
             }
 
@@ -2421,17 +2510,93 @@ function refreshTrayMenu(): void {
   );
 }
 
+/** Thousands of small files: 80 s on a Windows runner, which launch used to spend before
+    any window existed (GRYT-1496). Called once the window is up. */
+function prepareRuntimeInBackground(): void {
+  prepareEmbeddedServerRuntime(startupLog).then(
+    () =>
+      // No archive in a slim build, and "ready" would send somebody looking for one.
+      startupLog(
+        isSlimInstall()
+          ? "Embedded server runtime: not in this build"
+          : "Embedded server runtime ready"
+      ),
+    (error: unknown) =>
+      startupLog(`Embedded server runtime extraction failed: ${String(error)}`)
+  );
+}
+
 // ── App lifecycle ───────────────────────────────────────────────────────
 
+const UPDATE_NOTICE = "Gryt Chat is updating. It'll open again by itself when it's done.";
+
+/** Another process, since a Gryt left open keeps its files locked mid-install. Through cmd's
+    `start`: a PowerShell spawned detached exited before it drew anything. */
+function sayAnUpdateIsInstalling(done: () => void): void {
+  const text = UPDATE_NOTICE.replace(/'/g, "''");
+  const script = `(New-Object -ComObject WScript.Shell).Popup('${text}', 15, 'Gryt Chat', 64 + 4096) | Out-Null`;
+  const powershell = ["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script];
+  // cmd returns once PowerShell has started, and dies with this process if it hasn't yet.
+  const timer = setTimeout(done, 2000);
+  const finish = () => {
+    clearTimeout(timer);
+    done();
+  };
+  try {
+    const cmd = spawn("cmd.exe", ["/d", "/c", "start", '""', "/b", ...powershell], {
+      cwd: app.getPath("temp"),
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    cmd.once("exit", finish);
+    cmd.once("error", finish);
+  } catch (err) {
+    startupLog(`Update: could not show the installing notice: ${String(err)}`);
+    finish();
+  }
+}
+
+/** A launch while an installer replaces Gryt's files says so and leaves (GRYT-1496). */
+function launchedDuringAnUpdate(): boolean {
+  if (process.platform !== "win32" || !app.isPackaged) return false;
+
+  const dir = app.getPath("userData");
+  const marker = readInstallMarker(dir);
+  const verdict = launchVerdict({
+    marker,
+    argv: process.argv,
+    now: Date.now(),
+    installerRunning,
+  });
+
+  if (verdict === "clear") {
+    startupLog(`Update: cleared the install marker for ${marker?.version || "an update"}, its installer is gone`);
+    clearInstallMarker(dir);
+    return false;
+  }
+  if (verdict === "carry-on") return false;
+
+  startupLog(`Update: launched while ${marker?.version || "an update"} installs, leaving it to finish`);
+  if (!marker?.reopens) requestReopen(dir);
+  sayAnUpdateIsInstalling(() => app.exit(0));
+  return true;
+}
+
+const launchedMidUpdate = launchedDuringAnUpdate();
+
 const gotSingleInstanceLock =
-  app.requestSingleInstanceLock();
+  !launchedMidUpdate && app.requestSingleInstanceLock();
 
 if (!gotSingleInstanceLock) {
-  app.quit();
+  // A launch mid-update exits once its notice is up.
+  if (!launchedMidUpdate) app.quit();
 } else {
   app.on(
     "second-instance",
     (_event, argv) => {
+      // A launch while this one quits to install would show a window that is closing.
+      if (isQuitting) return;
+
       const deepLink = argv.find(
         (arg) =>
           arg.startsWith(
@@ -2481,21 +2646,6 @@ if (!gotSingleInstanceLock) {
             startupLog(`${kind} access request failed: ${error}`);
           }
         }
-      }
-
-      try {
-        await prepareEmbeddedServerRuntime(startupLog);
-        // It returns early when there is no archive, which is every slim build,
-        // and saying "ready" sends somebody looking for a runtime that is not there.
-        startupLog(
-          isSlimInstall()
-            ? "Embedded server runtime: not in this build"
-            : "Embedded server runtime ready"
-        );
-      } catch (error) {
-        startupLog(
-          `Embedded server runtime extraction failed: ${error}`
-        );
       }
 
       ipcMain.handle(
@@ -2820,6 +2970,7 @@ if (!gotSingleInstanceLock) {
           });
 
           isQuitting = true;
+          quitHasItsOwnPlan = true;
           app.relaunch();
           app.quit();
         }
@@ -3397,6 +3548,7 @@ if (!gotSingleInstanceLock) {
         );
 
         initBackgroundUpdater(true);
+        prepareRuntimeInBackground();
 
         if (!updatesComeFromAStore) {
           void pinFeedToNewestCompleteRelease()
@@ -3417,15 +3569,20 @@ if (!gotSingleInstanceLock) {
 
         /* Waited for: an empty frame that fills in a second later just moves the
            wait somewhere more visible. createMainWindow has a 20s fallback. */
+        const shown = () => {
+          showMain();
+          prepareRuntimeInBackground();
+        };
+
         if (
           mainWindow &&
           !mainWindow.webContents.isLoading()
         ) {
-          showMain();
+          shown();
         } else {
           mainWindow?.webContents.once(
             "did-stop-loading",
-            () => showMain()
+            shown
           );
         }
 

@@ -24,6 +24,7 @@
     "test:updater-bridge": "node scripts/check-updater-bridge.mjs",
     "test:update-feed-pin": "node scripts/check-update-feed-pin.mjs",
     "test:update-supersede": "node scripts/check-update-supersede.mjs",
+    "test:update-in-progress": "node scripts/check-update-in-progress.mjs",
     "test:dm-destination": "node scripts/check-dm-destination.mjs",
     "test:narrow-dm-parity": "node scripts/check-narrow-dm-parity.mjs",
     "test:unread-split": "node --disable-warning=ExperimentalWarning scripts/check-unread-split.mjs",

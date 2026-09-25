@@ -24,6 +24,7 @@ jobs:
       # A newer release has to replace a download that is waiting or still running,
       # so one press installs the newest. Nothing else here runs that sequence.
       - run: yarn test:update-supersede
+      - run: yarn test:update-in-progress
       - run: yarn test:dm-destination
       - run: yarn test:narrow-dm-parity
       - run: yarn test:unread-split
