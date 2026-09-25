@@ -553,6 +553,8 @@ function MessageContent({
   const hasThreadNews = (threadUnread ?? 0) > 0 || (threadMentions ?? 0) > 0;
   const sealedNote = sealedPlaceholder(m);
   const drawsText = drawsMessageText(m);
+  // For tests and tools: a row the server has not confirmed says why.
+  const sendState = m.failed ? "failed" : m.waiting && m.pending ? "waiting" : m.pending ? "pending" : undefined;
   return (
     <motion.div
       animate={{ marginBottom: hasReactions ? 30 : 0, background: bgColor }}
@@ -562,7 +564,7 @@ function MessageContent({
         margin: "0 -6px",
       }}
     >
-    <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} style={{
+    <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState} style={{
         /* Inset so the row does not shift by two pixels depending on it. */
         boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
         padding: "2px 6px",
@@ -707,6 +709,11 @@ function MessageContent({
         {m.failed && (
           <span className="text-xs" style={{ color: "var(--gryt-danger-9)", marginTop: "2px" }}>
             Failed to send
+          </span>
+        )}
+        {m.pending && m.waiting && (
+          <span className="text-xs" style={{ color: "var(--gryt-neutral-9)", marginTop: "2px" }}>
+            Waiting for the server
           </span>
         )}
       </motion.div>

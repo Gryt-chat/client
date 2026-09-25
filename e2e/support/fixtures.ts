@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { agreementAt, TERMS_STORAGE_KEY } from "@gryt/core";
 import { type BrowserContext, type BrowserContextOptions, expect, test as base } from "@playwright/test";
 
-import { channelComposer, joinServer, type Member, membersPanel, nicknameOf, recordFrames } from "./app";
+import { channelComposer, joinServer, type Member, membersPanel, nicknameOf, recordFrames, sidebarChannelRow } from "./app";
 import { routeExternal } from "./external";
 import { ProblemLog } from "./problems";
 import { externalServer, type GrytServer, type ServerOptions, startServer } from "./server";
@@ -179,6 +179,9 @@ export const test = base.extend<
     problems.watch(page, "owner", gryt.server.httpBase);
     const frames = recordFrames(page);
     await page.goto("/");
+    // The app reopens wherever the owner's last test left them, which can be another channel or a DM.
+    await page.locator('[data-gryt="sidebar"]').getByRole("button", { name: "Gryt E2E", exact: true }).click();
+    await sidebarChannelRow(page, "General").click();
     await expect(channelComposer(page)).toBeVisible();
     await provide({ context: gryt.ownerContext, page, name: gryt.ownerName, frames });
     await page.close();

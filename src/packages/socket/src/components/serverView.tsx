@@ -260,9 +260,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     currentConnection?.emit("mentions:seen", { conversationId: openConversation });
   }, [currentlyViewingServer, currentConnection, openTimelineMentions, openConversationThreadMentions, openConversation]);
 
-  const currentServerUserId = currentlyViewingServer && currentConnection?.id
+  const liveServerUserId = currentlyViewingServer && currentConnection?.id
     ? clients[currentlyViewingServer.host]?.[currentConnection.id]?.serverUserId
     : undefined;
+  /* Kept through a drop, when the socket has no id: without it a DM typed offline
+     decided it could not be sealed and went out in the clear (GRYT-1453). */
+  const lastServerUserIdRef = useRef<Record<string, string>>({});
+  if (currentlyViewingServer && liveServerUserId) lastServerUserIdRef.current[currentlyViewingServer.host] = liveServerUserId;
+  const currentServerUserId =
+    liveServerUserId ?? (currentlyViewingServer ? lastServerUserIdRef.current[currentlyViewingServer.host] : undefined);
 
   /* Ahead of `useChat`, which needs the members to know whether the next message
      can be encrypted. Both unconditional, so the order is free. */
@@ -611,7 +617,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       setShowVoiceView(true);
       connect(conversationId).catch((error) => {
         console.error("Could not start the call:", error);
-        toast.error(error instanceof Error ? error.message : "Could not start the call");
+        // The same id as a refused ring, so their call setting is said once (GRYT-1470).
+        toast.error(error instanceof Error ? error.message : "Could not start the call", { id: "call:start" });
         cancelCall(conversationId);
         // Or the engine retries a room it was refused five times, then blames the network.
         disconnectVoice().catch(() => {});

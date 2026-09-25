@@ -83,7 +83,7 @@ async function waitForHealth(httpBase: string, containerId: string | null): Prom
   throw new Error(`Gryt server at ${httpBase} never answered /health (${last})\n${tail}`);
 }
 
-async function openJoin(
+async function applyTestSettings(
   adminBase: string,
   token: string,
   joinPolicy: ServerOptions["joinPolicy"] = "open",
@@ -92,7 +92,8 @@ async function openJoin(
   const res = await fetch(`${adminBase}/management/settings`, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ joinPolicy, displayName }),
+    // Tests send near-identical text fast, which the spam filter times out. Servers before it ignore the key.
+    body: JSON.stringify({ joinPolicy, displayName, spamFilter: false }),
   });
   if (!res.ok) throw new Error(`Setting the server's join policy failed: HTTP ${res.status} ${await res.text()}`);
 }
@@ -133,7 +134,7 @@ export async function startServer(appOrigin: string, runId: string, options: Ser
     const adminPort = await hostPort(containerId, 5099);
     const httpBase = `http://127.0.0.1:${port}`;
     await waitForHealth(httpBase, containerId);
-    await openJoin(`http://127.0.0.1:${adminPort}`, adminToken, options.joinPolicy, options.displayName);
+    await applyTestSettings(`http://127.0.0.1:${adminPort}`, adminToken, options.joinPolicy, options.displayName);
 
     return {
       host: `127.0.0.1:${port}`,
@@ -155,7 +156,7 @@ export async function externalServer(host: string): Promise<GrytServer> {
 
   const adminBase = process.env.GRYT_E2E_ADMIN_URL;
   const adminToken = process.env.GRYT_E2E_ADMIN_TOKEN;
-  if (adminBase && adminToken) await openJoin(adminBase, adminToken);
+  if (adminBase && adminToken) await applyTestSettings(adminBase, adminToken);
 
   const info = (await (await fetch(`${httpBase}/info`)).json()) as {
     joinPolicy?: string;

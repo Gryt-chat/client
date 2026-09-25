@@ -1,4 +1,4 @@
-import { Dispatch, MutableRefObject, SetStateAction, useCallback, useRef, useState } from "react";
+import { Dispatch, MutableRefObject, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
@@ -10,6 +10,7 @@ import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
 import { getMediaDimensions } from "../utils/imageUtils";
 import { shouldRefreshToken } from "../utils/tokenManager";
 import { draftKey, returnDraft } from "./returnedDrafts";
+import { type EmitResult, SendQueue } from "./sendQueue";
 import { uploadChatFile } from "./uploadChatFile";
 
 export interface RetryEntry {
@@ -26,6 +27,14 @@ export interface RetryEntry {
   attachmentKeys?: Record<string, SealedAttachmentKey> | null;
   replyToMessageId?: string;
   timeoutId?: ReturnType<typeof setTimeout>;
+  /**
+   * Sealed once, when it was sent, and the same envelope on every attempt. Sealed
+   * again after a reconnect it went out in the clear while the keys reloaded.
+   */
+  sealed: string | null;
+  /** Where its row is cached and whose composer gets it back, fixed when it was sent. */
+  cacheKey: string;
+  returnTo: string;
 }
 
 interface UseChatSendParams {
@@ -70,6 +79,10 @@ interface UseChatSendReturn {
   retryQueueRef: MutableRefObject<Map<string, RetryEntry>>;
   performRetry: (pendingId?: string) => void;
   markLatestPendingFailed: (pendingId?: string) => void;
+  /** Refused with a retry to come, so it stops going again on its own meanwhile. */
+  holdSend: (pendingId: string) => void;
+  /** Confirmed: the queue lets go of it. */
+  forgetSend: (pendingId: string) => void;
   /**
    * Set when a send was held back because the conversation would go out in the
    * clear, and carries who is blocking it. Null the rest of the time.
@@ -102,13 +115,18 @@ export function useChatSend({
   sealFile,
 }: UseChatSendParams): UseChatSendReturn {
   const sealDecisionRef = useRef(sealDecision);
+  const activeConversationIdRef = useRef(activeConversationId);
+  activeConversationIdRef.current = activeConversationId;
 
   const retryQueueRef = useRef<Map<string, RetryEntry>>(new Map());
+  const queueRef = useRef<SendQueue | null>(null);
 
-  /**
-   * A ref because `markLatestPendingFailed` is declared below this and
-   * `performRetry` needs it (GRYT-765).
-   */
+  const pendingIdFor = useCallback((nonce: string): string | null => {
+    for (const [id, entry] of retryQueueRef.current) if (entry.nonce === nonce) return id;
+    return null;
+  }, []);
+
+  /** A ref, so the queue made once per socket always fails a row the current way. */
   const markLatestPendingFailedRef = useRef<(pendingId?: string) => void>(() => {});
 
   /** The named send, or with none the last one not yet retried. */
@@ -120,41 +138,10 @@ export function useChatSend({
         target = { pendingId: id, entry };
       }
     }
-    if (!target || !currentConnection) return;
-    const retried = target.pendingId;
-
+    if (!target) return;
     target.entry.retryCount++;
-    const freshToken = getServerAccessToken(currentlyViewingServer?.host || "");
-    if (freshToken) target.entry.accessToken = freshToken;
-
-    const payload: Record<string, unknown> = {
-      conversationId: target.entry.conversationId,
-      accessToken: target.entry.accessToken,
-      nonce: target.entry.nonce,
-    };
-    if (target.entry.attachments?.length) payload.attachments = target.entry.attachments;
-    if (target.entry.replyToMessageId) payload.replyToMessageId = target.entry.replyToMessageId;
-
-    /*
-     * Sealed, exactly as the first attempt was. Putting `text` on the payload
-     * sent a message the composer called encrypted in the clear (GRYT-765).
-     */
-    const text = target.entry.text;
-    // With the same file keys, so a resend does not name uploads nobody holds the
-    // key to, which draws as a broken file rather than a failed send (GRYT-761).
-    void seal(text, target.entry.attachmentKeys ?? undefined)
-      .then((sealed) => {
-        if (sealed) payload.sealed = sealed;
-        else if (sealDecisionRef.current?.kind === "seal") {
-          markLatestPendingFailedRef.current(retried);
-          return;
-        } else payload.text = text;
-        currentConnection.emit("chat:send", payload);
-      })
-      .catch(() => {
-        markLatestPendingFailedRef.current(retried);
-      });
-  }, [currentConnection, currentlyViewingServer?.host, seal]);
+    queueRef.current?.resend(target.entry.nonce);
+  }, []);
 
   /** The named send, or with none the last one queued. */
   const markLatestPendingFailed = useCallback((pendingId?: string) => {
@@ -168,69 +155,97 @@ export function useChatSend({
     const entry = queue.get(latestPendingId);
     if (entry?.timeoutId) clearTimeout(entry.timeoutId);
     queue.delete(latestPendingId);
+    if (entry) queueRef.current?.settle(entry.nonce);
 
     const failId = latestPendingId;
-    setChatMessages((prev) => {
-      const msg = prev.find((m) => m.message_id === failId);
-      if (msg?.text) setRestoreText(msg.text);
-      return prev.map((m) =>
-        m.message_id === failId ? { ...m, pending: false, failed: true } : m
-      );
-    });
-    setMessageCache((prev) => {
-      const key = cacheKeyFor(activeConversationId);
-      const existing = prev[key] || [];
-      return {
-        ...prev,
-        [key]: existing.map((m) =>
-          m.message_id === failId ? { ...m, pending: false, failed: true } : m
-        ),
-      };
-    });
+    const failed = (m: ChatMessage) => (m.message_id === failId ? { ...m, pending: false, waiting: false, failed: true } : m);
+    setChatMessages((prev) => prev.map(failed));
+    const key = entry?.cacheKey ?? cacheKeyFor(activeConversationId);
+    setMessageCache((prev) => (prev[key] ? { ...prev, [key]: prev[key].map(failed) } : prev));
+
+    // Into the box it came from: after a long wait that may no longer be the open one.
+    if (!entry) return;
+    if (entry.conversationId !== activeConversationIdRef.current) returnDraft(entry.returnTo, { text: entry.text, files: [] });
+    else if (entry.text) setRestoreText(entry.text);
   }, [activeConversationId, cacheKeyFor, setChatMessages, setMessageCache, setRestoreText]);
 
-  const sendMessageWithToken = useCallback((
-    accessToken: string,
-    messageText: string,
-    attachments: string[] | null,
-    replyToMessageId?: string,
-    nonce?: string,
-    attachmentKeys?: Record<string, SealedAttachmentKey> | null,
-  ) => {
-    const payload: Record<string, unknown> = {
-      conversationId: activeConversationId,
-      accessToken,
-    };
-    if (attachments && attachments.length > 0) payload.attachments = attachments;
-    if (replyToMessageId) payload.replyToMessageId = replyToMessageId;
-    if (nonce) payload.nonce = nonce;
+  /** Drawn on the row, so a send held for the connection does not look lost. */
+  const markWaiting = useCallback((nonce: string, waiting: boolean) => {
+    const id = pendingIdFor(nonce);
+    const entry = id ? retryQueueRef.current.get(id) : undefined;
+    if (!id || !entry) return;
+    const apply = (list: ChatMessage[]) =>
+      list.some((m) => m.message_id === id && !!m.waiting !== waiting)
+        ? list.map((m) => (m.message_id === id ? { ...m, waiting } : m))
+        : list;
+    setChatMessages(apply);
+    setMessageCache((prev) => (prev[entry.cacheKey] ? { ...prev, [entry.cacheKey]: apply(prev[entry.cacheKey]) } : prev));
+  }, [pendingIdFor, setChatMessages, setMessageCache]);
 
-    /*
-     * Sealed or in the clear, never both — the server refuses a payload carrying
-     * each. A failure to seal sends nothing rather than falling back (GRYT-729).
-     */
-    void seal(messageText, attachmentKeys ?? undefined)
-      .then((sealed) => {
-        if (sealed) payload.sealed = sealed;
-        else if (sealDecisionRef.current?.kind === "seal") {
-          // The conversation is sealable and the seal did not happen. Sending
-          // the text would put in the clear what the composer called encrypted.
-          markLatestPendingFailed();
-          return;
-        } else payload.text = messageText;
-        currentConnection!.emit("chat:send", payload);
-      })
-      .catch(() => {
-        markLatestPendingFailed();
-      });
-  }, [activeConversationId, currentConnection, seal, markLatestPendingFailed]);
+  /** A fresh token on every attempt, and the envelope made when it was sent (GRYT-765). */
+  const emitSend = useCallback(async (nonce: string): Promise<EmitResult> => {
+    const id = pendingIdFor(nonce);
+    const entry = id ? retryQueueRef.current.get(id) : undefined;
+    if (!entry || !currentConnection) return "failed";
+    if (!currentConnection.connected) return "offline";
+
+    const freshToken = getServerAccessToken(currentlyViewingServer?.host || "");
+    if (freshToken) entry.accessToken = freshToken;
+    const payload: Record<string, unknown> = {
+      conversationId: entry.conversationId,
+      accessToken: entry.accessToken,
+      nonce: entry.nonce,
+    };
+    if (entry.attachments?.length) payload.attachments = entry.attachments;
+    if (entry.replyToMessageId) payload.replyToMessageId = entry.replyToMessageId;
+
+    if (entry.sealed) payload.sealed = entry.sealed;
+    else payload.text = entry.text;
+    currentConnection.emit("chat:send", payload);
+    return "sent";
+  }, [currentConnection, currentlyViewingServer?.host, pendingIdFor]);
+
+  const emitSendRef = useRef(emitSend);
+  emitSendRef.current = emitSend;
+  const markWaitingRef = useRef(markWaiting);
+  markWaitingRef.current = markWaiting;
+
+  /* One queue per socket, which socket.io keeps across a reconnect. Replaced when
+     the server changes, and what the old one still held fails with its text back. */
+  useEffect(() => {
+    if (!currentConnection) return;
+    const queue = new SendQueue(currentConnection as unknown as ConstructorParameters<typeof SendQueue>[0], {
+      emit: (nonce) => emitSendRef.current(nonce),
+      onGiveUp: (nonce) => {
+        const id = pendingIdFor(nonce);
+        if (id) markLatestPendingFailedRef.current(id);
+      },
+      onWaiting: (nonce, waiting) => markWaitingRef.current(nonce, waiting),
+    });
+    queueRef.current = queue;
+    return () => {
+      queueRef.current = null;
+      queue.dispose();
+    };
+  }, [currentConnection, pendingIdFor]);
+
+  const holdSend = useCallback((pendingId: string) => {
+    const entry = retryQueueRef.current.get(pendingId);
+    if (entry) queueRef.current?.hold(entry.nonce);
+  }, []);
+
+  const forgetSend = useCallback((pendingId: string) => {
+    const entry = retryQueueRef.current.get(pendingId);
+    if (!entry) return;
+    if (entry.timeoutId) clearTimeout(entry.timeoutId);
+    retryQueueRef.current.delete(pendingId);
+    queueRef.current?.settle(entry.nonce);
+  }, []);
 
   markLatestPendingFailedRef.current = markLatestPendingFailed;
 
   const canSendRef = useRef(canSend);
   sealDecisionRef.current = sealDecision;
-  const activeConversationIdRef = useRef(activeConversationId);
-  activeConversationIdRef.current = activeConversationId;
   canSendRef.current = canSend;
   const isRateLimitedRef = useRef(isRateLimited);
   isRateLimitedRef.current = isRateLimited;
@@ -403,6 +418,19 @@ export function useChatSend({
 
       const finalText = body;
 
+      /*
+       * Sealed or in the clear, never both — the server refuses a payload carrying
+       * each. With the same file keys, or the files draw broken (GRYT-729, GRYT-761).
+       */
+      let sealed: string | null = null;
+      let sealFailed = false;
+      try {
+        sealed = await seal(finalText, attachmentKeys ?? undefined);
+        sealFailed = !sealed && sealDecisionRef.current?.kind === "seal";
+      } catch {
+        sealFailed = true;
+      }
+
       if (accessToken) {
         retryQueueRef.current.set(pendingId, {
           nonce,
@@ -413,15 +441,20 @@ export function useChatSend({
           attachments: fileIds,
           attachmentKeys,
           replyToMessageId,
+          sealed,
+          cacheKey: cacheKeyFor(activeConversationId),
+          returnTo,
         });
-        sendMessageWithToken(accessToken, finalText, fileIds, replyToMessageId, nonce, attachmentKeys);
+        // A seal that did not happen sends nothing: the composer called this encrypted.
+        if (queueRef.current && !sealFailed) queueRef.current.add(nonce);
+        else markLatestPendingFailed(pendingId);
       }
     };
 
     doSend();
     // `sealFile` is in here rather than behind a ref: a stale one is not a stale
     // flag — a newly sealable conversation sends the file in the clear (GRYT-761).
-  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, sealFile, sendMessageWithToken, setChatMessages, setMessageCache, plaintextGateKey]);
+  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, seal, sealFile, markLatestPendingFailed, setChatMessages, setMessageCache, plaintextGateKey]);
 
   const editMessage = useCallback((messageId: string, conversationId: string, newText: string) => {
     const text = newText.trim();
@@ -449,5 +482,5 @@ export function useChatSend({
     setPlaintextPrompt(null);
     if (pending) returnDraft(pending.returnTo, { text: pending.text, files: pending.files });
   }, []);
-  return { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed, plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend };
+  return { sendChat, editMessage, retryQueueRef, performRetry, markLatestPendingFailed, holdSend, forgetSend, plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend };
 }

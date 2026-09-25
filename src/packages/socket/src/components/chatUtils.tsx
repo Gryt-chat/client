@@ -58,6 +58,8 @@ export type ChatMessage = {
    */
   thread_id?: string | null;
   pending?: boolean;
+  /** Pending, and held until the server is back and knows who this is. */
+  waiting?: boolean;
   failed?: boolean;
   nonce?: string;
   sender_nickname?: string;

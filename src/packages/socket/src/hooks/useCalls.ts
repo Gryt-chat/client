@@ -78,7 +78,8 @@ export function useCalls({ socket, accessToken, isConnected }: UseCallsParams): 
     };
 
     const onError = (payload: { error?: string; message?: string }) => {
-      if (payload?.message) toast.error(payload.message);
+      // The join that follows a refused ring fails too, and says it under this id.
+      if (payload?.message) toast.error(payload.message, payload.error === "contact_refused" ? { id: "call:start" } : undefined);
     };
 
     socket.on("call:incoming", onIncoming);

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import toast from "react-hot-toast";
 
 import {
+  ContactPrivacyMenu,
   getHideMuted,
   getPlacement,
   getStoredSnapshot,
@@ -842,6 +843,8 @@ export const ChannelList = ({
               {notificationSubmenu({ kind: "server" })}
               <HideMutedChannelsItem host={serverHost} />
               <SuppressEveryoneItem host={serverHost} />
+              <ContextMenu.Separator />
+              <ContactPrivacyMenu host={serverHost} />
             </ContextMenu.Popup>
           </ContextMenu.Positioner>
         </ContextMenu.Portal>
@@ -941,6 +944,8 @@ export const ChannelList = ({
         {notificationSubmenu({ kind: "server" })}
         <HideMutedChannelsItem host={serverHost} />
         <SuppressEveryoneItem host={serverHost} />
+        <ContextMenu.Separator />
+        <ContactPrivacyMenu host={serverHost} />
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => onAddItem?.("channel:text")}>
           Add channel

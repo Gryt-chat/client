@@ -34,6 +34,9 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "about", section: "About", panel: true },
   { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", destination: "profile", section: "Profile", panel: true },
   { id: "security", title: "Security", description: "Your recovery key and account passkeys.", page: "security", destination: "account", section: "Security", panel: true },
+  { id: "privacy", title: "Privacy", description: "Who can send you messages and who can call you.", page: "privacy", destination: "account", section: "Privacy", panel: true },
+  { id: "who-can-send-me-messages", title: "Who can send me messages", description: "Anyone on the server, friends, or nobody. One answer for every server, and each server can have its own.", page: "privacy", destination: "account", section: "Privacy" },
+  { id: "who-can-call-me", title: "Who can call me", description: "Anyone who can message you, friends, or nobody. Friends means people you've written to in a one-to-one until friend requests arrive.", page: "privacy", destination: "account", section: "Privacy" },
   { id: "persist-server-access-tokens", title: "Persist server access tokens", description: "Keep server sign-in tokens between app sessions, or clear them when Gryt closes.", page: "security", destination: "account", section: "Security" },
   { id: "server-identities", title: "Server identities", description: "Servers Gryt recognises by their identity key, and any it has blocked for answering with a different one. Unblock a server you rebuilt yourself.", page: "identities", destination: "servers", section: "Servers", panel: true },
   ...(isElectron()

@@ -3,9 +3,10 @@ import { IconButton, TextField, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
-import { getOwnServerUserId } from "@/common";
+import { getOwnServerUserId, getServerAccessToken } from "@/common";
 
 import { PiCaretDownFill, PiCaretRightFill, PiPlus } from "../../../../lib/icons";
+import { admitConversation, dismissFiltered, type FilteredItem } from "../hooks/contactFilterStore";
 import { type DirectoryEntry,listedConversations, useDirectory } from "../hooks/dmDirectory";
 import { requestConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
 import {
@@ -18,7 +19,9 @@ import {
 import { setNewMessageOpen } from "../hooks/newMessageDialog";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerManagement } from "../hooks/useServerManagement";
+import { useSockets } from "../hooks/useSockets";
 import { DmSpaceList } from "./DmSpaceList";
+import { FilteredContacts } from "./FilteredContacts";
 import { hideConversationWithUndo } from "./hideConversation";
 
 /**
@@ -114,6 +117,32 @@ export function DmSpaceSidebar({
   function show(entry: DirectoryEntry) {
     showConversation(entry.host, getOwnServerUserId(entry.host) ?? "", entry.conversation.conversation_id);
   }
+
+  /* A filtered conversation may not be in the list yet, since its arrival was
+     dropped. Ask that server for its list again and open it when it lands. */
+  const { sockets } = useSockets();
+  const [pendingFiltered, setPendingFiltered] = useState<{ host: string; conversationId: string } | null>(null);
+  function openFiltered(item: FilteredItem) {
+    admitConversation(item.host, item.conversationId);
+    dismissFiltered(item.host, item.conversationId);
+    const found = entries.find((e) => e.host === item.host && e.conversation.conversation_id === item.conversationId);
+    if (found) {
+      open(found.host, found.conversation);
+      return;
+    }
+    setPendingFiltered({ host: item.host, conversationId: item.conversationId });
+    sockets[item.host]?.emit("dm:list", { accessToken: getServerAccessToken(item.host) });
+  }
+  useEffect(() => {
+    if (!pendingFiltered) return;
+    const found = entries.find(
+      (e) => e.host === pendingFiltered.host && e.conversation.conversation_id === pendingFiltered.conversationId,
+    );
+    if (!found) return;
+    setPendingFiltered(null);
+    open(found.host, found.conversation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, pendingFiltered]);
 
   const selected = selectedConversationId ? { host, conversationId: selectedConversationId } : null;
 
@@ -215,6 +244,8 @@ export function DmSpaceSidebar({
           )}
         </div>
       )}
+
+      <FilteredContacts onOpen={openFiltered} />
     </aside>
   );
 }

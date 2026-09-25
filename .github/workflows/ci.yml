@@ -76,6 +76,7 @@ jobs:
       # the composer, and re-pin. Otherwise the newest message sits behind it.
       - run: yarn test:chat-scroll-anchor
       - run: yarn test:chat-retry
+      - run: yarn test:send-queue
 
       # History and live messages share one order. Messages that reached a DM before
       # its history loaded were drawn above all of it.
@@ -192,6 +193,7 @@ jobs:
       - run: yarn test:voice-state
       - run: yarn test:media-state
       - run: yarn test:calls
+      - run: yarn test:contact-filter
       - run: yarn test:call-members
       - run: yarn test:alone-in-call
       - run: yarn test:held-voice-presence
