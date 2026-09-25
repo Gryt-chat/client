@@ -24,7 +24,8 @@ yarn playwright test --config e2e/playwright.config.ts dm.spec  # one file, with
 
 Each worker starts `ghcr.io/gryt-chat/server:latest` in its own container, on ports Docker
 picks. That server takes guests, lets anyone join and keeps its database and uploads inside
-the container. The container goes when the worker stops, so every run starts empty.
+the container. Its spam filter is off, since tests send lots of near-identical messages fast
+and it would time them out. The container goes when the worker stops, so every run starts empty.
 `docker pull ghcr.io/gryt-chat/server:latest` gets you a newer server, and
 `GRYT_E2E_SERVER_IMAGE` runs another tag or an image you built.
 
@@ -45,8 +46,9 @@ GRYT_E2E_SERVER=127.0.0.1:5003 GRYT_E2E_APP_PORT=4666 yarn e2e
 
 The server has to be fresh. Whoever joins a server first owns it, and the owner tests need
 that to be the suite's own guest. Start it with `GRYT_IDENTITY_TIERS=local` and
-`CORS_ORIGIN=http://127.0.0.1:4666`, and open it to joins. If you set `GRYT_E2E_ADMIN_URL`
-and `GRYT_E2E_ADMIN_TOKEN` to its management API, the suite opens it for you. This mode
+`CORS_ORIGIN=http://127.0.0.1:4666`, open it to joins and turn its spam filter off. If you
+set `GRYT_E2E_ADMIN_URL` and `GRYT_E2E_ADMIN_TOKEN` to its management API, the suite does
+both for you. This mode
 runs one worker. It skips the phone settings test, which needs a server of its own.
 
 ## Writing a test
