@@ -38,6 +38,12 @@ export const handleRateLimitError = (
     return;
   }
   
+  // Somebody's contact setting explains itself (GRYT-1470).
+  if (typeof error === 'object' && error.error === 'contact_refused' && error.message) {
+    toast.error(error.message, { id: `contact-refused:${error.message}` });
+    return;
+  }
+
   // Handle other errors
   const errorMessage = typeof error === 'string' ? error : error.error || `Unknown ${context} error`;
   toast.error(`${context} error: ${errorMessage}`);

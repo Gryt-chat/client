@@ -611,7 +611,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       setShowVoiceView(true);
       connect(conversationId).catch((error) => {
         console.error("Could not start the call:", error);
-        toast.error(error instanceof Error ? error.message : "Could not start the call");
+        // The same id as a refused ring, so their call setting is said once (GRYT-1470).
+        toast.error(error instanceof Error ? error.message : "Could not start the call", { id: "call:start" });
         cancelCall(conversationId);
         // Or the engine retries a room it was refused five times, then blames the network.
         disconnectVoice().catch(() => {});

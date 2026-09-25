@@ -24,6 +24,8 @@ const ALLOWED: Allowed[] = [
   // while it is out, and Chrome and the app both log every attempt.
   { text: /^WebSocket connection to 'ws:\/\/[^']+' failed: .*net::ERR_INTERNET_DISCONNECTED$/ },
   { text: /^\[Socket\] connect_error for [^\s]+: websocket error$/ },
+  // The test server runs without an SFU, so a call rings and then can't join its room.
+  { text: /^Could not start the call: Error: SFU configuration not available/ },
 ];
 
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */

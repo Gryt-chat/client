@@ -68,9 +68,12 @@ export function createRoomCoordinator(socket: Socket, host: string): RoomCoordin
             return;
           }
 
+          // Somebody's own call setting says why in words (GRYT-1470).
           resolve({
             granted: false,
-            reason: typeof error === "string" ? error : error.error || "Unknown error",
+            reason: typeof error === "string"
+              ? error
+              : (error.error === "contact_refused" && error.message) || error.error || "Unknown error",
           });
         };
 

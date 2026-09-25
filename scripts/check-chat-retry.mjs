@@ -123,6 +123,13 @@ const mutedForever = refuse({ error: "muted", expiresAt: null, message: "You are
 assert.deepEqual(mutedForever.muted, [null], "a mute with no end reads as no expiry rather than as no mute");
 assert.equal(mutedForever.failed, 1, "and still fails the row");
 
+// Somebody's contact setting said no (GRYT-1470). Asking again in three seconds
+// gets the same answer, so the row fails at once and the text goes back.
+const refusedByThem = refuse({ error: "contact_refused", message: "They're not taking messages from you on this server." }, 0);
+assert.equal(refusedByThem.retried, 0, "a send their setting refused should not be tried again");
+assert.equal(refusedByThem.failed, 1, "it should fail the row at once");
+assert.deepEqual(refusedByThem.rateLimited, [], "and it isn't a rate limit");
+
 // ── A burst, where each refusal names its send (GRYT-1410) ──────────
 
 /* Four sends refused at once. Without a name, every refusal landed on the last

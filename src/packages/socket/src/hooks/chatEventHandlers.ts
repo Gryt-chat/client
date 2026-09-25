@@ -246,8 +246,13 @@ export function isMutedError(error: ChatErrorPayload): boolean {
 }
 
 /** Exported for the thread panel, which queues its replies the same way. */
+/** A recipient's contact setting said no. */
+export function isContactRefusal(error: ChatErrorPayload): error is { error: "contact_refused"; message: string } {
+  return typeof error === "object" && error.error === "contact_refused" && typeof error.message === "string";
+}
+
 export function isNonRetryableError(error: ChatErrorPayload): boolean {
-  if (isMutedError(error)) return true;
+  if (isMutedError(error) || isContactRefusal(error)) return true;
   const msg = typeof error === "string" ? error : error.message || error.error || "";
   return NON_RETRYABLE_ERRORS.some((e) => msg.includes(e));
 }
@@ -268,6 +273,14 @@ export function handleChatErrorEvent(
      composer already saying it in words. */
   if (isMutedError(error)) {
     deps.onMuted?.(typeof error === "object" && typeof error.expiresAt === "string" ? error.expiresAt : null);
+    settle(refused, false, deps, RETRY_AFTER_MS);
+    return;
+  }
+
+  /* Their own setting (GRYT-1470). Said in the server's words, and never retried:
+     the answer won't change in three seconds. */
+  if (isContactRefusal(error)) {
+    handleRateLimitError(error, "Chat");
     settle(refused, false, deps, RETRY_AFTER_MS);
     return;
   }

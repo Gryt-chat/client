@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import toast from "react-hot-toast";
 
 import {
+  ContactPrivacyMenu,
   GeneratedServerIcon,
   getStoredSnapshot,
   HideMutedChannelsItem,
@@ -578,8 +579,8 @@ function ServerItem({
               then leaving, then the identifier.
 
               What Gryt has no equivalent for is absent rather than greyed —
-              boosting, insights, events, threads, privacy settings, per-server
-              profiles and raid tools. "Hide muted channels" and "Mark as read"
+              boosting, insights, events, threads, per-server profiles and
+              raid tools. "Hide muted channels" and "Mark as read"
               were in that list too, until GRYT-1034 and GRYT-1030 built them.
 
               Three rows went the other way. Edit, Share and "Add to new group"
@@ -603,6 +604,10 @@ function ServerItem({
             <HideMutedChannelsItem host={host} />
             <SuppressEveryoneItem host={host} />
             <MarkAsReadItem host={host} scope={{ kind: "server" }} />
+            <ContextMenu.Separator />
+
+            {/* This server's own answer, over the one in Settings → Privacy. */}
+            <ContactPrivacyMenu host={host} />
             <ContextMenu.Separator />
 
             <ContextMenu.Item onClick={() => openServerSettings(host)}>
