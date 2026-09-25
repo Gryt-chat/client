@@ -3,7 +3,7 @@
  * account. **Nothing here holds an administrator credential.**
  */
 
-import { isSealedVault, type SealedVault } from "./identity-vault.ts";
+import { type SealedVault, VAULT_TYPE } from "./identity-vault.ts";
 
 /** Must match the attribute name in `packages/auth/bootstrap/gryt-user-profile.json`. */
 export const VAULT_ATTRIBUTE = "grytMessageVault";
@@ -52,6 +52,8 @@ export function sealedVaultFrom(account: AccountRepresentation): SealedVault | n
     return null;
   }
 
-  return isSealedVault(parsed) ? parsed : null;
+  // Ours even at a version this build cannot open. Read as absent, it would be offered
+  // as "no password yet" and overwritten; kept, opening it says Gryt is out of date.
+  return (parsed as { type?: unknown } | null)?.type === VAULT_TYPE ? (parsed as SealedVault) : null;
 }
 

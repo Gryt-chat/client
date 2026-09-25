@@ -4,7 +4,6 @@ import toast from "react-hot-toast";
 
 import {
   adoptSealedIdentity,
-  describePasswordProblem,
   getAccountProfile,
   guestIdentitiesAtRisk,
   readSealedVault,
@@ -12,10 +11,13 @@ import {
   resetMessageIdentity,
   sealCurrentIdentity,
   type SealedVault,
+  vaultHasRecoverySlot,
+  vaultNeedsUpgrade,
   writeSealedVault,
 } from "@/common";
 
 import { phraseMatches } from "../../../socket/src/lib/confirmPhrase";
+import { type MessagePasswordChoice, MessagePasswordSetup } from "./messagePasswordSetup";
 
 /**
  * The message password, for signed-in accounts. A second device used to publish
@@ -56,7 +58,6 @@ export function MessageKeySection() {
   const [open, setOpen] = useState<"set" | "use" | "reset" | null>(null);
   const [confirmReset, setConfirmReset] = useState("");
   const [secret, setSecret] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -72,18 +73,13 @@ export function MessageKeySection() {
   const close = useCallback(() => {
     setOpen(null);
     setSecret("");
-    setConfirm("");
     setConfirmReset("");
   }, []);
 
-  const save = useCallback(async () => {
-    const problem = describePasswordProblem(secret);
-    if (problem) return toast.error(problem);
-    if (secret !== confirm) return toast.error("The two passwords do not match.");
-
+  const save = useCallback(async ({ password, recoveryKey }: MessagePasswordChoice) => {
     setBusy(true);
     try {
-      const sealed = await sealCurrentIdentity(secret, "password");
+      const sealed = await sealCurrentIdentity(password, recoveryKey);
       await writeSealedVault(sealed);
       // This device sealed it, so it plainly has the key. Without this the DM
       // prompt would offer to fetch a copy of what it just sent.
@@ -97,7 +93,7 @@ export function MessageKeySection() {
     } finally {
       setBusy(false);
     }
-  }, [secret, confirm, close]);
+  }, [close]);
 
   /**
    * Take on the identity the account already has. Without it a sealed copy is
@@ -105,11 +101,12 @@ export function MessageKeySection() {
    */
   const use = useCallback(async () => {
     if (!vault) return;
-    if (!secret) return toast.error("Enter your message password.");
+    if (!secret) return toast.error("Enter your message password or recovery key.");
 
     setBusy(true);
     try {
-      await adoptSealedIdentity(vault, secret);
+      const outcome = await adoptSealedIdentity(vault, secret);
+      if (outcome === "upgraded") setVault(await readSealedVault().catch(() => vault));
       const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
       if (sub) rememberMessageKeyHere(sub);
       close();
@@ -121,17 +118,14 @@ export function MessageKeySection() {
     }
   }, [vault, secret, close]);
 
-  const reset = useCallback(async () => {
-    const problem = describePasswordProblem(secret);
-    if (problem) return toast.error(problem);
-    if (secret !== confirm) return toast.error("The two passwords do not match.");
+  const reset = useCallback(async ({ password, recoveryKey }: MessagePasswordChoice) => {
     if (!phraseMatches(confirmReset, RESET_PHRASE)) {
       return toast.error(`Type "${RESET_PHRASE}" to confirm.`);
     }
 
     setBusy(true);
     try {
-      const sealed = await resetMessageIdentity(secret);
+      const sealed = await resetMessageIdentity(password, recoveryKey);
       await writeSealedVault(sealed);
       const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
       if (sub) rememberMessageKeyHere(sub);
@@ -143,7 +137,7 @@ export function MessageKeySection() {
     } finally {
       setBusy(false);
     }
-  }, [secret, confirm, confirmReset, close]);
+  }, [confirmReset, close]);
 
   const guests = guestIdentitiesAtRisk();
 
@@ -174,6 +168,16 @@ export function MessageKeySection() {
             Forgotten it?
           </Button>
         </div>
+      )}
+
+      {/* Decision 5's third moment: a device that already holds the key never
+          unlocks, so nothing else would ever move its old bundle forward. */}
+      {vault && !open && vaultNeedsUpgrade(vault) && (
+        <Alert severity="warning">
+          Your sealed copy uses an older lock that&rsquo;s much quicker to crack.
+          Change the password to move it to the new one. You can add a recovery
+          key at the same time.
+        </Alert>
       )}
 
       {vault === null && !open && (
@@ -231,48 +235,33 @@ export function MessageKeySection() {
             </div>
           </Alert>
 
-          <TextField
-            label={`Type \u201c${RESET_PHRASE}\u201d to confirm`}
-            value={confirmReset}
-            onChange={(e) => setConfirmReset(e.target.value)}
-          />
-          <TextField
-            type="password"
-            label="New message password"
-            autoComplete="new-password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-          />
-          <TextField
-            type="password"
-            label="Again"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
-
-          <div className="flex gap-2">
-            <Button tone="danger" size="small" onClick={reset} disabled={busy}>
-              {busy ? "Working\u2026" : "Start again"}
-            </Button>
-            <Button tone="neutral" size="small" onClick={close} disabled={busy}>
-              Cancel
-            </Button>
-          </div>
+          <MessagePasswordSetup
+            submitLabel="Start again"
+            tone="danger"
+            busy={busy}
+            onSubmit={(choice) => void reset(choice)}
+            onCancel={close}
+          >
+            <TextField
+              label={`Type \u201c${RESET_PHRASE}\u201d to confirm`}
+              value={confirmReset}
+              onChange={(e) => setConfirmReset(e.target.value)}
+            />
+          </MessagePasswordSetup>
         </div>
       )}
 
       {open === "use" && (
         <div className="flex flex-col gap-3">
           <span className="text-xs text-gryt-muted">
-            Enter the message password you set. This device will take on the
-            message key your account already has, and your existing
-            conversations become readable here.
+            Enter the message password you set, or your recovery key. This
+            device will take on the message key your account already has, and
+            your existing conversations become readable here.
           </span>
 
           <TextField
             type="password"
-            label="Message password"
+            label="Message password or recovery key"
             autoComplete="current-password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
@@ -290,38 +279,13 @@ export function MessageKeySection() {
       )}
 
       {open === "set" && (
-        <div className="flex flex-col gap-3">
-          <Alert severity="warning">
-            Write it down somewhere safe. Nobody can reset it for you &mdash; not
-            us, not a moderator. If you lose it you can start again with a new
-            key, and the messages sealed with the old one stay unreadable.
-          </Alert>
-
-          <TextField
-            type="password"
-            label="Message password"
-            autoComplete="new-password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            helperText="Anything you will remember. Longer is harder to crack, and this is worth protecting."
-          />
-          <TextField
-            type="password"
-            label="Again"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
-
-          <div className="flex gap-2">
-            <Button size="small" onClick={save} disabled={busy}>
-              {busy ? "Saving…" : "Save"}
-            </Button>
-            <Button tone="neutral" size="small" onClick={close} disabled={busy}>
-              Cancel
-            </Button>
-          </div>
-        </div>
+        <MessagePasswordSetup
+          submitLabel="Save"
+          busy={busy}
+          replacesRecoveryKey={!!vault && vaultHasRecoverySlot(vault)}
+          onSubmit={(choice) => void save(choice)}
+          onCancel={close}
+        />
       )}
     </div>
   );
