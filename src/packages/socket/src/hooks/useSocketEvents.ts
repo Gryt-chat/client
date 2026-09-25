@@ -35,7 +35,7 @@ import { challengeHostMatches } from "../utils/challengeHost";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import { idleRecovery, planRecovery, type RecoveryState } from "../utils/sessionRecovery";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
-import { parseMuteExpiry, setTextMute } from "./textMute";
+import { muteLiftsAt, parseMuteExpiry, setTextMute } from "./textMute";
 
 type Sockets = { [host: string]: Socket };
 
@@ -226,11 +226,16 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       moderationResult("server:mute:success", (p) => (p.muted ? "Server muted." : "Server mute removed."));
       moderationResult("server:deafen:success", (p) => (p.deafened ? "Server deafened." : "Server deafen removed."));
 
-      socket.on("server:muted", (data: { muted: boolean; expiresAt?: string | null }) => {
+      socket.on("server:muted", (data: { muted: boolean; expiresAt?: string | null; reason?: string }) => {
         setIsServerMuted(data.muted);
         // The mute covers text too, so the composer needs it the moment it lands.
-        setTextMute(host, data.muted ? { until: parseMuteExpiry(data.expiresAt) } : null);
-        toast(data.muted ? "You have been server muted by an admin." : "Your server mute has been removed.", {
+        const until = parseMuteExpiry(data.expiresAt);
+        setTextMute(host, data.muted ? { until } : null);
+        // Nobody pressed a button for a spam timeout, so "by an admin" would be wrong.
+        const mutedText = data.reason === "spam" && until
+          ? `The spam filter muted you until ${muteLiftsAt(until)}.`
+          : "You have been server muted by an admin.";
+        toast(data.muted ? mutedText : "Your server mute has been removed.", {
           icon: createElement(data.muted ? PiMicrophoneSlashFill : PiMicrophoneFill, { size: 18 }),
         });
       });
