@@ -13,7 +13,8 @@ const FILTERED_KEY = "gryt_contact_filtered";
 const MAX_IDS = 2000;
 const MAX_FILTERED = 100;
 
-type StoredKnowledge = Record<string, { friends?: string[]; known?: string[]; baselined?: boolean }>;
+/* `friends` is what GRYT-1470 called wroteTo, read so nothing is lost on the way. */
+type StoredKnowledge = Record<string, { wroteTo?: string[]; friends?: string[]; known?: string[]; baselined?: boolean }>;
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
@@ -41,7 +42,7 @@ export function knowledgeFor(host: string): ContactKnowledge {
   if (k) return k;
   const saved = read<StoredKnowledge>(KNOWLEDGE_KEY, {})[host];
   k = emptyKnowledge();
-  for (const id of strings(saved?.friends)) k.friends.add(id);
+  for (const id of strings(saved?.wroteTo ?? saved?.friends)) k.wroteTo.add(id);
   for (const id of strings(saved?.known)) k.known.add(id);
   k.baselined = saved?.baselined === true;
   knowledge.set(host, k);
@@ -54,7 +55,7 @@ export function persistKnowledge(host: string): void {
   if (!k) return;
   const all = read<StoredKnowledge>(KNOWLEDGE_KEY, {});
   all[host] = {
-    friends: [...k.friends].slice(-MAX_IDS),
+    wroteTo: [...k.wroteTo].slice(-MAX_IDS),
     known: [...k.known].slice(-MAX_IDS),
     baselined: k.baselined,
   };
