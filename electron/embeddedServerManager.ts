@@ -233,12 +233,31 @@ function embeddedProcessesRunning(): boolean {
   return false;
 }
 
+let runtimePreparation: Promise<void> | null = null;
+
+/** Once per run. Launch starts it after the window is up, and a server start waits on it. */
+export function prepareEmbeddedServerRuntime(
+  report: (msg: string) => void = log,
+): Promise<void> {
+  runtimePreparation ??= extractEmbeddedServerRuntime(report).catch((error: unknown) => {
+    runtimePreparation = null;
+    throw error;
+  });
+  return runtimePreparation;
+}
+
+/** Shipped but not unpacked yet, which is every first launch after an update. */
+function runtimeArchivePending(): boolean {
+  if (!app.isPackaged || process.mas || extractedRuntimeRoot) return false;
+  return existsSync(join(process.resourcesPath, "embedded-server.tar.gz"));
+}
+
 /**
  * A loose dependency tree made Squirrel.Mac traverse ~14,000 files while staging
  * an update. One signed archive instead, extracted after the install.
  */
-export async function prepareEmbeddedServerRuntime(
-  report: (msg: string) => void = log,
+async function extractEmbeddedServerRuntime(
+  report: (msg: string) => void,
 ): Promise<void> {
   if (!app.isPackaged) return;
   // The sandbox won't run files the app wrote, so the store build runs the runtime where it ships.
@@ -367,7 +386,7 @@ function getSfuBinaryPath(): string | null {
 }
 
 export function isEmbeddedServerAvailable(): boolean {
-  return getServerBundlePath() !== null && getSfuBinaryPath() !== null;
+  return (getServerBundlePath() !== null && getSfuBinaryPath() !== null) || runtimeArchivePending();
 }
 
 function stateOf(inst: Instance): EmbeddedServerState {
@@ -821,6 +840,9 @@ export async function startExistingServer(
 async function startProcesses(id: string): Promise<EmbeddedServerState | null> {
   const inst = instances.get(id);
   if (!inst) return null;
+
+  // A failure is logged by launch, and the missing paths below report it the way they always have.
+  await prepareEmbeddedServerRuntime().catch(() => undefined);
 
   try {
     inst.config = (await claimSfuLocalPorts(id, sfuLocalPorts ?? undefined)) ?? inst.config;
