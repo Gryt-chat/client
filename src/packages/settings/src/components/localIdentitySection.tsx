@@ -12,11 +12,11 @@ import {
 } from "@/common";
 
 import {
-  PiCopySimple,
   PiEyeFill,
   PiUploadSimple,
   PiWarningFill,
 } from "../../../../lib/icons";
+import { RecoveryWordsPanel } from "./recoveryWords";
 
 /* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 
@@ -35,7 +35,6 @@ export function LocalIdentitySection() {
   const [wordsInput, setWordsInput] = useState("");
   const [filePassword, setFilePassword] = useState("");
   const [lockedFile, setLockedFile] = useState("");
-  const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   /* Whether this device has been a guest anywhere, rather than how many keys are
@@ -52,7 +51,6 @@ export function LocalIdentitySection() {
     setWordsInput("");
     setFilePassword("");
     setLockedFile("");
-    setCopied(false);
   }, []);
 
   const handleShowWords = useCallback(async () => {
@@ -176,38 +174,17 @@ export function LocalIdentitySection() {
       </div>
 
       {panel === "words" && (
-        <div className="flex flex-col gap-3 rounded-md border border-gryt-border p-4">
-          <span className="text-xs text-gryt-muted">
-            These 24 words can restore your identity. Anyone who has them can
-            use it, so keep them like a password.
-          </span>
-          <code className="select-all break-words rounded-md bg-gryt-surface-raised p-3 font-mono text-sm leading-relaxed text-gryt-text">
-            {words}
-          </code>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              tone="neutral"
-              size="small"
-              onClick={() => {
-                navigator.clipboard
-                  .writeText(words)
-                  .then(() => {
-                    setCopied(true);
-                    window.setTimeout(() => setCopied(false), 2500);
-                  })
-                  .catch(() => toast.error("Could not copy"));
-              }}
-            >
-              <PiCopySimple size={16} />
-              <span aria-live="polite">
-                {copied ? "Copied" : "Copy recovery key"}
-              </span>
-            </Button>
-            <Button tone="neutral" size="small" onClick={closePanel}>
-              Hide
-            </Button>
-          </div>
-        </div>
+        <RecoveryWordsPanel
+          words={words}
+          copyLabel="Copy recovery key"
+          onHide={closePanel}
+          note={
+            <>
+              These 24 words can restore your identity. Anyone who has them can
+              use it, so keep them like a password.
+            </>
+          }
+        />
       )}
 
       {panel === "restore" && (

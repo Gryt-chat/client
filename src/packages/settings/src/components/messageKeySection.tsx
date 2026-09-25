@@ -20,6 +20,7 @@ import {
 
 import { phraseMatches } from "../../../socket/src/lib/confirmPhrase";
 import { type MessagePasswordChoice, MessagePasswordSetup } from "./messagePasswordSetup";
+import { AccountWordsReveal } from "./recoveryWords";
 
 /**
  * The message password, for signed-in accounts. A second device used to publish
@@ -60,6 +61,7 @@ export function MessageKeySection() {
   const [open, setOpen] = useState<"set" | "use" | "forgot" | "reset" | null>(null);
   const [keyIsHere, setKeyIsHere] = useState(false);
   const [confirmReset, setConfirmReset] = useState("");
+  const [resetWords, setResetWords] = useState(false);
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -80,6 +82,7 @@ export function MessageKeySection() {
     setOpen(null);
     setSecret("");
     setConfirmReset("");
+    setResetWords(false);
   }, []);
 
   const save = useCallback(async ({ password, recoveryKey }: MessagePasswordChoice) => {
@@ -91,6 +94,7 @@ export function MessageKeySection() {
       // prompt would offer to fetch a copy of what it just sent.
       const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
       if (sub) rememberMessageKeyHere(sub);
+      setKeyIsHere(true);
       setVault(sealed);
       close();
       toast.success("Message password set.");
@@ -140,6 +144,7 @@ export function MessageKeySection() {
       if (outcome === "upgraded") setVault(await readSealedVault().catch(() => vault));
       const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
       if (sub) rememberMessageKeyHere(sub);
+      setKeyIsHere(true);
       close();
       showAdoptedToast("This device now uses your message key.");
     } catch (e) {
@@ -160,6 +165,7 @@ export function MessageKeySection() {
       await writeSealedVault(sealed);
       const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
       if (sub) rememberMessageKeyHere(sub);
+      setKeyIsHere(true);
       setVault(sealed);
       close();
       showAdoptedToast("New message key set. Older conversations stay unreadable.");
@@ -209,6 +215,18 @@ export function MessageKeySection() {
           Change the password to move it to the new one. You can add a recovery
           key at the same time.
         </Alert>
+      )}
+
+      {keyIsHere && !open && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-sm">Your 24 words</span>
+            <span className="text-xs text-gryt-muted">
+              Your message key, written out as 24 words.
+            </span>
+          </div>
+          <AccountWordsReveal keyIsHere={keyIsHere} />
+        </div>
       )}
 
       {vault === null && !open && (
@@ -276,8 +294,8 @@ export function MessageKeySection() {
                     account.
                   </strong>{" "}
                   You would arrive there as a stranger, and any roles or
-                  ownership you had are gone with no way back. Save your 24 words
-                  first if you want to keep them.
+                  ownership you had are gone with no way back.{" "}
+                  <SaveWordsFirst keyIsHere={keyIsHere} onClick={() => setResetWords(true)} />
                 </span>
               ) : (
                 <span>
@@ -288,12 +306,14 @@ export function MessageKeySection() {
                   This device has no record of those, which does not mean there
                   are none &mdash; a device set up from a 24-word phrase never
                   has one. You would arrive at any such server as a stranger,
-                  and any roles or ownership there are gone with no way back.
-                  Save your 24 words first if you want to keep them.
+                  and any roles or ownership there are gone with no way back.{" "}
+                  <SaveWordsFirst keyIsHere={keyIsHere} onClick={() => setResetWords(true)} />
                 </span>
               )}
             </div>
           </Alert>
+
+          {resetWords && <AccountWordsReveal keyIsHere={keyIsHere} startAt="confirming" />}
 
           <MessagePasswordSetup
             submitLabel="Start again"
@@ -348,5 +368,22 @@ export function MessageKeySection() {
         />
       )}
     </div>
+  );
+}
+
+/** The reset warning's advice, as a link where this device can actually show the words. */
+function SaveWordsFirst({ keyIsHere, onClick }: { keyIsHere: boolean; onClick(): void }) {
+  if (!keyIsHere) return <>Save your 24 words first if you want to keep them.</>;
+  return (
+    <>
+      <button
+        type="button"
+        className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
+        onClick={onClick}
+      >
+        Save your 24 words first
+      </button>{" "}
+      if you want to keep them.
+    </>
   );
 }

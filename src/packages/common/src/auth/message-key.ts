@@ -44,6 +44,14 @@ export async function resealCurrentIdentity(
 }
 
 /**
+ * Move the account's old bundle to version 2 under the same password, from a device that
+ * already holds the key. Nothing on this device changes (GRYT-1498).
+ */
+export async function upgradeAccountVault(vault: SealedVault, secret: string): Promise<UpgradeOutcome> {
+  return upgradeSealedVault(vault, secret, { read: readSealedVault, write: writeSealedVault });
+}
+
+/**
  * Open a sealed identity and adopt it on this device. Everything derived from the
  * seed follows, which is the point: the second device is the same person.
  */
