@@ -24,6 +24,7 @@ import { DeveloperSettings } from "./developerSettings";
 import { HotkeySettings } from "./hotkeySettings";
 import { MyServersSettings } from "./myServersSettings";
 import { NotificationSettings } from "./notificationSettings";
+import { PrivacySettings } from "./privacySettings";
 import { ProfileSettings } from "./profileSettings";
 import { ScreenShareSettings } from "./screenShareSettings";
 import { SecuritySettings } from "./securitySettings";
@@ -73,6 +74,7 @@ const DESTINATIONS: SettingsDestination[] = [
     pages: [
       { value: "account", label: "Account", content: <AccountSettings /> },
       { value: "security", label: "Security", content: <SecuritySettings /> },
+      { value: "privacy", label: "Privacy", content: <PrivacySettings /> },
     ],
   },
   {

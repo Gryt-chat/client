@@ -83,6 +83,7 @@
     "test:voice-state": "node scripts/check-voice-state-reassert.mjs",
     "test:media-state": "node scripts/check-media-state-reassert.mjs",
     "test:calls": "node scripts/check-calls.mjs",
+    "test:contact-filter": "node --disable-warning=ExperimentalWarning scripts/check-contact-filter.mjs",
     "test:call-members": "node scripts/check-call-members.mjs",
     "test:alone-in-call": "node scripts/check-alone-in-call.mjs",
     "test:held-voice-presence": "node scripts/check-held-voice-presence.mjs",

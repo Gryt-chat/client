@@ -8,7 +8,7 @@ import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { MemberKeyState } from "@/common";
 import { singletonHook } from "@/common";
-import { ensureSchemeKnown, getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge, useUserId } from "@/common";
+import { effectiveContactPrefs, ensureSchemeKnown, getOwnServerUserId, getServerAccessToken, getServerRefreshToken, getServerWsBase, removeServerAccessToken, removeServerRefreshToken, useUnreadBadge, useUserId } from "@/common";
 import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
@@ -23,12 +23,14 @@ import { type EmbeddedServerState, getElectronAPI } from "../../../../lib/electr
 import { showReconnectGaveUpToast, showReconnectingToast } from "../components/connectionToasts";
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
+import { installContactGuard } from "../utils/contactFilter";
 import { RECONNECT_GRACE_MS, watchReconnects } from "../utils/reconnectGrace";
 import { replayReconnect, retryNow } from "../utils/retryNow";
 import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { getTokenExpiryTime } from "../utils/tokenManager";
 import { refreshDelayMs, RETRY_DELAY_MS } from "../utils/tokenRefreshSchedule";
+import { knowledgeFor, persistKnowledge, recordFiltered } from "./contactFilterStore";
 import { useSocketEvents } from "./useSocketEvents";
 
 /* About two minutes of trying before a server is left alone. Getting back to it
@@ -312,6 +314,17 @@ function useSocketsHook() {
         setServerConnectionStatus(prev => ({ ...prev, [host]: 'connecting' }));
         const serverName = servers[host]?.name || host;
         const toastId = `conn-${host}`;
+
+        /* Before guardSocket, which puts emit back when it lets go. Your settings,
+           checked again here against a server that ignores them (GRYT-1470). */
+        installContactGuard(socket, {
+          host,
+          selfId: () => getOwnServerUserId(host),
+          prefs: () => effectiveContactPrefs(host),
+          knowledge: knowledgeFor(host),
+          persist: () => persistKnowledge(host),
+          onFiltered: recordFiltered,
+        });
 
         // Holds everything below until the server proves itself.
         guardSocket(socket, host, (decision) => {
