@@ -1,14 +1,15 @@
 import { conversationTitle, type DirectConversation } from "@gryt/core";
-import { IconButton, TextField, Tooltip } from "@gryt/ui";
+import { Badge, IconButton, TextField, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getOwnServerUserId, getServerAccessToken } from "@/common";
 
-import { PiCaretDownFill, PiCaretRightFill, PiPlus } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiPlus, PiUsersFill } from "../../../../lib/icons";
 import { admitConversation, dismissFiltered, type FilteredItem } from "../hooks/contactFilterStore";
 import { type DirectoryEntry,listedConversations, useDirectory } from "../hooks/dmDirectory";
 import { requestConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
+import { setFriendsOpen, useIncomingFriendCount } from "../hooks/friendsStore";
 import {
   setHiddenExpanded,
   showConversation,
@@ -44,6 +45,7 @@ export function DmSpaceSidebar({
   const { countFor } = useDirectoryUnread();
   const { servers, viewServerBehindDmSpace } = useServerManagement();
   const [query, setQuery] = useState("");
+  const incomingFriends = useIncomingFriendCount();
   const reduceMotion = useReducedMotion();
 
   /* A conversation nobody has written in is listed only while it is the open one,
@@ -156,6 +158,24 @@ export function DmSpaceSidebar({
         <h1 className="text-lg" style={{ fontWeight: 700, letterSpacing: "-0.01em" }}>
           Messages
         </h1>
+        <div className="flex items-center gap-1">
+        <Tooltip title={incomingFriends > 0 ? `Friends, ${incomingFriends} waiting` : "Friends"}>
+          <IconButton
+            tone="ghost"
+            size="xsmall"
+            aria-label={incomingFriends > 0 ? `Friends, ${incomingFriends} waiting` : "Friends"}
+            data-gryt="friends-open"
+            onClick={() => setFriendsOpen(true)}
+            style={{ position: "relative" }}
+          >
+            <PiUsersFill size={16} />
+            {incomingFriends > 0 && (
+              <span data-gryt="friends-waiting" className="pointer-events-none absolute -right-2 -top-2">
+                <Badge badgeContent={incomingFriends} tone="unread" />
+              </span>
+            )}
+          </IconButton>
+        </Tooltip>
         <Tooltip title="New message">
           <IconButton
             tone="ghost"
@@ -166,6 +186,7 @@ export function DmSpaceSidebar({
             <PiPlus size={16} />
           </IconButton>
         </Tooltip>
+        </div>
       </div>
 
       {listed.length > 0 && (

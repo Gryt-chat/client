@@ -144,12 +144,12 @@ try {
     assert.ok(filtered.every((f) => f.reason === "setting" && f.host === "hostile.example"));
   });
 
-  // The defaults: messages from anyone, calls from friends. Friends stand in as
-  // people you've written to, and the first conversation list is where a device starts.
+  // The defaults: messages from anyone, calls from friends. With no friends yet, people
+  // you've written to count, and the first conversation list is where a device starts.
   await run({ messages: "everyone", calls: "friends" }, {}, async ({ server, socket, surfaced, filtered, knowledge, settle }) => {
     server.send("dm:list", { items: [view(FRIEND)] });
     await settle();
-    assert.ok(knowledge.friends.has(FRIEND), "a one-to-one in the first list counts as a friend");
+    assert.ok(knowledge.wroteTo.has(FRIEND), "a one-to-one in the first list counts as written to");
 
     server.send("call:incoming", ringFrom("stranger"));
     server.send("chat:new", message("stranger"));

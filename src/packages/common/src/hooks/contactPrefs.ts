@@ -3,7 +3,7 @@
  * override per server. Kept on this device, and written to each server on connect.
  */
 
-/** "friends" means people you've written to in a one-to-one, until GRYT-1471. */
+/** "friends" are friends on that server, or people you've written to until you have one (GRYT-1471). */
 export type ContactRule = "everyone" | "friends" | "nobody";
 
 export interface ContactPrefs {

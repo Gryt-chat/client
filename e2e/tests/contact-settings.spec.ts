@@ -147,7 +147,7 @@ test("calls from friends by default: a stranger's ring never rings, and writing 
     await bob.page.locator('[data-gryt="dm-list"]').getByRole("button", { name: alice.name }).first().click();
   }
 
-  // Bob writes back, which makes Alice a friend until friend requests exist.
+  // Bob writes back. He has no friends here, so that makes Alice count as one.
   await reply(bob, alice, unique("hi back"));
   // An older server let the first ring out, and it's still going on Alice's side.
   const either = alice.page.locator('[data-gryt="chat-header"]').getByRole("button", { name: /^(Call|Cancel)$/ });

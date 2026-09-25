@@ -116,6 +116,7 @@ import {
   UploadSimple,
   User,
   UserCircle,
+  UserPlus,
   Users,
   UsersThree,
   VideoCamera,
@@ -267,6 +268,7 @@ export const PiUploadSimple: Icon = UploadSimple;
 export const PiUploadSimpleFill: Icon = weighted(UploadSimple, "fill", "PiUploadSimpleFill");
 export const PiUserCircleFill: Icon = weighted(UserCircle, "fill", "PiUserCircleFill");
 export const PiUserFill: Icon = weighted(User, "fill", "PiUserFill");
+export const PiUserPlusFill: Icon = weighted(UserPlus, "fill", "PiUserPlusFill");
 export const PiUsersFill: Icon = weighted(Users, "fill", "PiUsersFill");
 export const PiUsersThreeFill: Icon = weighted(UsersThree, "fill", "PiUsersThreeFill");
 export const PiVideoCameraFill: Icon = weighted(VideoCamera, "fill", "PiVideoCameraFill");

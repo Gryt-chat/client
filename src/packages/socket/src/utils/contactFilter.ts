@@ -24,8 +24,8 @@ export function directConversationId(a: string, b: string): string {
 
 /** What this device has seen for itself on one server. */
 export interface ContactKnowledge {
-  /** Stands in for friends until GRYT-1471: people you wrote to one-to-one here. */
-  friends: Set<string>;
+  /** People you wrote to one-to-one here, who count as friends until you have one. */
+  wroteTo: Set<string>;
   /** Conversations already let through, which the flood cap no longer counts. */
   known: Set<string>;
   /** Whether a first conversation list has been taken as the starting point. */
@@ -33,7 +33,7 @@ export interface ContactKnowledge {
 }
 
 export function emptyKnowledge(): ContactKnowledge {
-  return { friends: new Set(), known: new Set(), baselined: false };
+  return { wroteTo: new Set(), known: new Set(), baselined: false };
 }
 
 export type FilteredKind = "message" | "call" | "conversation";
@@ -78,12 +78,20 @@ export interface ContactGuardDeps {
   onFiltered: (event: FilteredEvent) => void;
   now?: () => number;
   limiter?: { admit(now: number): boolean };
+  /** Your friends on this server as this device knows them (GRYT-1471). */
+  friends?: FriendGate;
 }
 
-function passes(rule: ContactRule, sender: string | null, k: ContactKnowledge): boolean {
-  if (rule === "everyone") return true;
-  if (rule === "nobody" || !sender) return false;
-  return k.friends.has(sender);
+export interface FriendGate {
+  isFriend: (serverUserId: string) => boolean;
+  hasAny: () => boolean;
+}
+
+const NO_FRIENDS: FriendGate = { isFriend: () => false, hasAny: () => false };
+
+/** The server's rule: until you have a friend here, people you've written to count. */
+function isFriendOf(sender: string, k: ContactKnowledge, f: FriendGate): boolean {
+  return f.isFriend(sender) || (!f.hasAny() && k.wroteTo.has(sender));
 }
 
 type Judgement = { pass: true } | { pass: false; reason: FilteredReason };
@@ -108,6 +116,12 @@ const asString = (v: unknown): string | null => (typeof v === "string" && v ? v 
 export function installContactGuard(socket: unknown, deps: ContactGuardDeps): void {
   const s = socket as SocketInternals;
   const k = deps.knowledge;
+  const friends = deps.friends ?? NO_FRIENDS;
+  const passes = (rule: ContactRule, sender: string | null): boolean => {
+    if (rule === "everyone") return true;
+    if (rule === "nobody" || !sender) return false;
+    return isFriendOf(sender, k, friends);
+  };
   const now = deps.now ?? (() => Date.now());
   const limiter = deps.limiter ?? createFloodLimiter();
   const views = new Map<string, ConversationView>();
@@ -137,7 +151,7 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
     if (k.known.has(id)) return PASS;
     const rule = deps.prefs().messages;
     const members = views.get(id)?.members ?? [];
-    const byFriend = (sender !== null && k.friends.has(sender)) || members.some((m) => k.friends.has(m));
+    const byFriend = (sender !== null && isFriendOf(sender, k, friends)) || members.some((m) => isFriendOf(m, k, friends));
     if (rule === "nobody" || (rule === "friends" && !byFriend)) return fail("setting");
     return PASS;
   }
@@ -159,7 +173,7 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
 
     if (pairWith(sender) === id) {
       // Every message, so a stricter setting covers conversations already open.
-      if (!passes(deps.prefs().messages, sender, k)) return fail("setting");
+      if (!passes(deps.prefs().messages, sender)) return fail("setting");
     } else {
       const group = admitGroup(id, sender);
       if (!group.pass) return group;
@@ -179,7 +193,7 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
     if (view.kind !== "group") {
       const other = views.get(id)?.members[0] ?? null;
       if (pairWith(other) !== id) return fail("mismatch");
-      if (!passes(deps.prefs().messages, other, k)) return fail("setting");
+      if (!passes(deps.prefs().messages, other)) return fail("setting");
     } else {
       const group = admitGroup(id, null);
       if (!group.pass) return group;
@@ -193,11 +207,11 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
     if (!id) return fail("mismatch");
     const prefs = deps.prefs();
     if (pairWith(sender) === id) {
-      if (!passes(prefs.messages, sender, k) || !passes(prefs.calls, sender, k)) return fail("setting");
+      if (!passes(prefs.messages, sender) || !passes(prefs.calls, sender)) return fail("setting");
     } else {
       const group = admitGroup(id, sender);
       if (!group.pass) return group;
-      if (!passes(prefs.calls, sender, k)) return fail("setting");
+      if (!passes(prefs.calls, sender)) return fail("setting");
     }
     return admitNew(id);
   }
@@ -222,7 +236,7 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
         const items = Array.isArray(p?.items) ? p.items : [];
         for (const item of items) remember(item);
         /* The first list this device sees is where it starts, one-to-ones counting
-           as friends. Later lists name conversations but don't vouch for them. */
+           as written to. Later lists name conversations but don't vouch for them. */
         if (!k.baselined) {
           for (const item of items) {
             const id = asString(asRecord(item)?.conversation_id);
@@ -230,7 +244,7 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
             k.known.add(id);
             const view = views.get(id);
             const other = view?.kind === "dm" ? (view.members[0] ?? null) : null;
-            if (other && pairWith(other) === id) k.friends.add(other);
+            if (other && pairWith(other) === id) k.wroteTo.add(other);
           }
           k.baselined = true;
           deps.persist();
@@ -286,7 +300,7 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
       if (!id || !id.startsWith("dm_")) return;
       const view = views.get(id);
       const other = view?.kind === "dm" ? (view.members[0] ?? null) : null;
-      if (other && pairWith(other) === id) k.friends.add(other);
+      if (other && pairWith(other) === id) k.wroteTo.add(other);
       k.known.add(id);
       deps.persist();
     } else if (event === "dm:open") {

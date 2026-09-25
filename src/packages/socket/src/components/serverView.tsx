@@ -52,6 +52,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
+import { FriendButton } from "./FriendButton";
 import { GroupDialog } from "./GroupDialog";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
@@ -607,8 +608,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     const conversationId = activeDm.conversation_id;
     const ringing = outgoingCall?.conversation_id === conversationId;
     const mayCall = viewerPermissions.can("send_direct_messages") && viewerPermissions.can("start_calls");
-    // Group settings holds Leave, so a group gets it whatever else the role may do.
-    if (!mayCall && activeDm.kind !== "group") return undefined;
+    const friendWith = activeDm.kind === "dm" ? activeDm.other.server_user_id : undefined;
 
     /** The caller is in the room from the moment it rings, or answering joins a
         room with nobody in it. Cancel is offered until somebody answers. */
@@ -630,6 +630,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
     return (
       <div className="flex items-center gap-1">
+        <FriendButton host={viewingHost} serverUserId={friendWith} compact />
         {mayCall ? (
           <Button
             size="small"
@@ -650,7 +651,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect, viewingHost]);
 
   /* The same member list the sidebar reads presence off — someone it hides
      from this viewer has no entry here either (GRYT-1467). */

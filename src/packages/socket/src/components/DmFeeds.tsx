@@ -6,6 +6,8 @@ import { getServerAccessToken } from "@/common";
 import { forgetHost, setHostConversations, setHostDmsOff } from "../hooks/dmDirectory";
 import { useContactPrefsSync } from "../hooks/useContactPrefsSync";
 import { useDirectMessages } from "../hooks/useDirectMessages";
+import { useFriendsSync } from "../hooks/useFriendsSync";
+import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
 
 /**
@@ -19,6 +21,8 @@ function HostFeed({ host, socket, isConnected }: { host: string; socket: Socket;
   const accessToken = getServerAccessToken(host);
   const { conversations, dmsDisabled } = useDirectMessages({ socket, accessToken, isConnected });
   useContactPrefsSync({ host, socket, accessToken, isConnected });
+  const { servers } = useServerManagement();
+  useFriendsSync({ host, serverName: servers[host]?.name || host, socket, accessToken, isConnected });
 
   /* Publish and forget in one effect. Split in two, StrictMode's cleanup ran
      the forget while the publish saw unchanged deps and never re-fired. */

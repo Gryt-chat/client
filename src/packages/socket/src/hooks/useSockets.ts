@@ -24,6 +24,7 @@ import { showReconnectGaveUpToast, showReconnectingToast } from "../components/c
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { installContactGuard } from "../utils/contactFilter";
+import { watchFriendTraffic } from "../utils/friendList";
 import { RECONNECT_GRACE_MS, watchReconnects } from "../utils/reconnectGrace";
 import { replayReconnect, retryNow } from "../utils/retryNow";
 import { guardSocket, serverProofErrorMessage, serverProofHelpUrl } from "../utils/serverAuth";
@@ -31,6 +32,7 @@ import { syncAvatarToHost } from "../utils/syncAvatarToHost";
 import { getTokenExpiryTime } from "../utils/tokenManager";
 import { refreshDelayMs, RETRY_DELAY_MS } from "../utils/tokenRefreshSchedule";
 import { knowledgeFor, persistKnowledge, recordFiltered } from "./contactFilterStore";
+import { friendBookFor, friendGateFor, persistFriendBook } from "./friendsStore";
 import { useSocketEvents } from "./useSocketEvents";
 
 /* About two minutes of trying before a server is left alone. Getting back to it
@@ -324,6 +326,13 @@ function useSocketsHook() {
           knowledge: knowledgeFor(host),
           persist: () => persistKnowledge(host),
           onFiltered: recordFiltered,
+          friends: friendGateFor(host),
+        });
+        // Your friends as this device knows them, which the guard above asks (GRYT-1471).
+        watchFriendTraffic(socket, {
+          book: friendBookFor(host),
+          prefs: () => effectiveContactPrefs(host),
+          persist: () => persistFriendBook(host),
         });
 
         // Holds everything below until the server proves itself.

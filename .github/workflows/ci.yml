@@ -196,6 +196,7 @@ jobs:
       - run: yarn test:media-state
       - run: yarn test:calls
       - run: yarn test:contact-filter
+      - run: yarn test:friend-list
       - run: yarn test:call-members
       - run: yarn test:alone-in-call
       - run: yarn test:held-voice-presence
