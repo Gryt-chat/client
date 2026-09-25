@@ -547,10 +547,10 @@
   resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.9.0.tgz#9cd30d2790c08e3b5c1908c9667f4b37b32f825f"
   integrity sha512-A+zB/Fy4VOwyDY6nz2IEI/wTbOPbAluIBV9a2/7ySxUdoZ0afqupmqDYrzHZczhQUxoBoaYOFP9PizgjB3rcuQ==
 
-"@gryt/crypto@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.4.0.tgz#b2d41782e13d887e20ef3cc4c2aacf8602f4797b"
-  integrity sha512-dlkPza6jmyiq0ElBEOtHVRJjHNiFdL6aJg1c2Ng+C/t+4Sj+bLFAGJNNgarruZ/nUtBh7WlzQMjAU77FW4fMGA==
+"@gryt/crypto@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.5.0.tgz#5cdcfe86263a06225bed9ef72a1b5514dd63b75b"
+  integrity sha512-iV6J5MC40tyt01EL+hU3C6/txbUpXAW/KZohQ4nv92iolhjTenFNWxQHWL2TNxdJu7ZE2N5WAu9ScDUARfUnqg==
   dependencies:
     "@noble/ciphers" "^2"
     "@noble/curves" "^2.3.0"
@@ -2720,6 +2720,11 @@ has-tostringtag@^1.0.2:
   integrity sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==
   dependencies:
     has-symbols "^1.0.3"
+
+hash-wasm@4.12.0:
+  version "4.12.0"
+  resolved "https://registry.yarnpkg.com/hash-wasm/-/hash-wasm-4.12.0.tgz#f9f1a9f9121e027a9acbf6db5d59452ace1ef9bb"
+  integrity sha512-+/2B2rYLb48I/evdOIhP+K/DD2ca2fgBjp6O+GBEnCDk2e4rpeXIK8GvIyRPjTezgmWn9gmKwkQjjx6BtqDHVQ==
 
 hasown@^2.0.2:
   version "2.0.2"

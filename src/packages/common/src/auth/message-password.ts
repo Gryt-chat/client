@@ -1,18 +1,20 @@
 /**
- * How short a message password may be. Its own module with no imports, so the
- * check script can load it.
+ * The floor on a message password somebody types. Six generated words are the default
+ * and clear it; this is for the typed one (GRYT-1473).
  */
+import { MIN_VAULT_PASSWORD } from "@gryt/crypto/vault-password";
+
+export { generateVaultPassword, MIN_VAULT_PASSWORD } from "@gryt/crypto/vault-password";
 
 /**
- * How short a message password may be. **Four is not a security control** — the
- * sealed blob is attackable offline, and the 24-word phrase is the protection.
+ * Enforced where a password is chosen, not where one is opened: a bundle sealed under
+ * the old floor of four still has to open and re-seal.
  */
-export const MIN_MESSAGE_PASSWORD = 4;
-
 export function describePasswordProblem(secret: string): string | null {
   if (secret.length === 0) return "Choose a password.";
-  if (secret.length < MIN_MESSAGE_PASSWORD) {
-    return `Use at least ${MIN_MESSAGE_PASSWORD} characters.`;
+  // Characters, not bytes and not UTF-16 units, so an emoji counts as one.
+  if ([...secret].length < MIN_VAULT_PASSWORD) {
+    return `Use at least ${MIN_VAULT_PASSWORD} characters, or the six generated words.`;
   }
   return null;
 }

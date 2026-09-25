@@ -12,11 +12,11 @@ import {
   VAULT_ATTRIBUTE,
   withSealedVault,
 } from "../src/packages/common/src/auth/message-vault.ts";
-import { sealSeed } from "../src/packages/common/src/auth/identity-vault.ts";
+import { openSeed, sealSeed } from "../src/packages/common/src/auth/identity-vault.ts";
 
 const SEED = new Uint8Array(32);
 crypto.getRandomValues(SEED);
-const vault = await sealSeed(SEED, "a secret", "password");
+const vault = await sealSeed(SEED, { password: "a secret" });
 
 /** What Keycloak hands back for an account that has been around a while. */
 const account = () => ({
@@ -68,7 +68,7 @@ const account = () => ({
 {
   // Somebody else's data, or a half-written value. Reading it must not throw, and
   // the next save overwrites it.
-  for (const junk of ["not json at all", "{}", '{"type":"something-else"}', "null", "[]"]) {
+  for (const junk of ["not json at all", "{}", '{"type":"something-else"}', "null", "[]", '"gryt-identity-vault"']) {
     assert.equal(
       sealedVaultFrom({ attributes: { [VAULT_ATTRIBUTE]: [junk] } }),
       null,
@@ -91,6 +91,15 @@ const account = () => ({
   const written = withSealedVault({ email: "x@example.com" }, vault);
   assert.equal(written.email, "x@example.com");
   assert.deepEqual(sealedVaultFrom(written), vault);
+}
+
+// ── a newer version is still ours, not absent ───────────────────────────────
+{
+  // Read as absent, the DM prompt would offer to set a password over it.
+  const newer = { type: "gryt-identity-vault", version: 3, anything: "new" };
+  const read = sealedVaultFrom({ attributes: { [VAULT_ATTRIBUTE]: [JSON.stringify(newer)] } });
+  assert.deepEqual(read, newer);
+  await assert.rejects(() => openSeed(read, "a secret"), /newer version of Gryt/);
 }
 
 console.log("check-message-vault: ok");
