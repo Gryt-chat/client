@@ -15,6 +15,10 @@ import {
 } from "@/common";
 
 import { PiKey } from "../../../../lib/icons";
+import {
+  type MessagePasswordChoice,
+  MessagePasswordSetup,
+} from "../../../settings/src/components/messagePasswordSetup";
 
 /**
  * The message key, above a direct message. Either taking the account's copy, or
@@ -64,20 +68,22 @@ export function MessageKeyPrompt() {
     };
   }, []);
 
-  const unlock = useCallback(async () => {
+  const unlock = useCallback(async (choice?: MessagePasswordChoice) => {
     if (!grytUserId) return;
-    if (!secret) return toast.error("Enter your message password.");
+    if (vault && !secret) return toast.error("Enter your message password or recovery key.");
 
     setBusy(true);
     try {
       if (vault) {
         await adoptSealedIdentity(vault, secret);
         toast.success("This device has your message key now. Reload to read older conversations.");
-      } else {
-        const sealed = await sealCurrentIdentity(secret, "password");
+      } else if (choice) {
+        const sealed = await sealCurrentIdentity(choice.password, choice.recoveryKey);
         await writeSealedVault(sealed);
         setVault(sealed);
         toast.success("Saved. Use this password on your other devices.");
+      } else {
+        return;
       }
       rememberMessageKeyHere(grytUserId);
       setKeyIsHere(true);
@@ -139,18 +145,25 @@ export function MessageKeyPrompt() {
             Not now
           </Button>
         </div>
+      ) : offer === "protect" ? (
+        <MessagePasswordSetup
+          submitLabel="Save"
+          busy={busy}
+          onSubmit={(choice) => void unlock(choice)}
+          onCancel={() => setOpen(false)}
+        />
       ) : (
         <div className="flex items-end gap-2 flex-wrap">
           <TextField
             type="password"
             size="small"
-            label="Message password"
-            autoComplete={offer === "adopt" ? "current-password" : "new-password"}
+            label="Message password or recovery key"
+            autoComplete="current-password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
           />
-          <Button size="small" onClick={unlock} disabled={busy}>
-            {busy ? "Working…" : offer === "adopt" ? "Unlock" : "Save"}
+          <Button size="small" onClick={() => void unlock()} disabled={busy}>
+            {busy ? "Working…" : "Unlock"}
           </Button>
           <Button tone="ghost" size="small" onClick={() => { setOpen(false); setSecret(""); }} disabled={busy}>
             Cancel
