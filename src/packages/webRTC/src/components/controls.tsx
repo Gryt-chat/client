@@ -366,6 +366,33 @@ export function Controls({ onDisconnect }: ControlsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, connectionState]);
 
+  /* A permission taken mid-call. The SFU has already stopped forwarding it, so the
+     call bar follows. Only on a change: joining a channel without it is not news. */
+  const mayShareVideo = canIn(currentChannelConnected, "share_video");
+  const mayShareScreen = canIn(currentChannelConnected, "share_screen");
+  const maySpeak = canIn(currentChannelConnected, "speak");
+  const lastMay = useRef<{ channel: string | null; video: boolean; screen: boolean; speak: boolean } | null>(null);
+  useEffect(() => {
+    const prev = lastMay.current;
+    lastMay.current = isConnected
+      ? { channel: currentChannelConnected, video: mayShareVideo, screen: mayShareScreen, speak: maySpeak }
+      : null;
+    if (!prev || !isConnected || prev.channel !== currentChannelConnected) return;
+    if (prev.video && !mayShareVideo && cameraEnabled) {
+      setCameraEnabled(false);
+      toast.error("You can't share video in this channel any more, so your camera is off.", { id: "share-video-taken" });
+    }
+    if (prev.screen && !mayShareScreen && screenShareActive) {
+      stopScreenShare();
+      toast.error("You can't share your screen in this channel any more, so the share stopped.", { id: "share-screen-taken" });
+    }
+    if (prev.speak && !maySpeak && !isMuted) {
+      setIsMuted(true);
+      toast.error("You can't speak in this channel any more, so you're muted.", { id: "speak-taken" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, currentChannelConnected, mayShareVideo, mayShareScreen, maySpeak]);
+
   useEffect(() => {
     return getElectronAPI()?.onNativeAudioProblem?.((problem) => {
       const message = screenAudioProblemMessage(problem);
