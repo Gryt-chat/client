@@ -9,7 +9,8 @@ import { settled } from "../support/overflow";
 
 async function openPrivacy(page: Page): Promise<Locator> {
   await page.locator('[data-tour="profile"]').click();
-  await page.getByRole("menuitem", { name: "Settings" }).click();
+  // By its tour id: a server's context menu has a Settings item too.
+  await page.locator('[data-tour="menu-settings"]').click();
   const dialog = page.getByRole("dialog", { name: "Settings", exact: true });
   await expect(dialog).toBeVisible();
   await settled(dialog);
@@ -88,6 +89,7 @@ test("a server's own answer sits over the one in settings", async ({ newMember }
   await expect(bob.page.getByRole("menuitemradio", { name: "Default (anyone on the server)" })).toBeVisible();
   await bob.page.keyboard.press("Escape");
   await bob.page.keyboard.press("Escape");
+  await expect(bob.page.getByRole("menu")).toHaveCount(0);
 
   // The default is untouched: this server has its own answer.
   const dialog = await openPrivacy(bob.page);
