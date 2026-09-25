@@ -37,6 +37,7 @@ import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
 import { ReportDialog } from "./components/reportDialog";
 import { TermsPrompt } from "./components/termsPrompt";
 import { TrayVoiceState } from "./components/trayVoiceState";
+import { VaultUpgradePrompt } from "./components/vaultUpgradePrompt";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 
@@ -144,6 +145,7 @@ export function App() {
             onGoToServer={handleGoToServer}
           />
           <IdentityClaimPrompt />
+          <VaultUpgradePrompt />
           <ReportDialog />
           <TermsPrompt />
           <PushToTalkModal />
