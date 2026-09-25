@@ -19,6 +19,10 @@ interface RoomAccessData {
 /** How long to wait for the server to answer a room request. */
 const ACCESS_TIMEOUT_MS = 15_000;
 
+/* The engine only asks again after a refusal that carries retryAfterMs. The server's
+   bare-string answers and our own timeout are failures rather than decisions. */
+const RETRY_SOON_MS = 2_000;
+
 /**
  * Gryt's half of joining a channel, over the socket the client already has. The
  * rate-limit toast is here because saying it out loud is the app's job.
@@ -29,7 +33,7 @@ export function createRoomCoordinator(socket: Socket, host: string): RoomCoordin
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
           cleanup();
-          resolve({ granted: false, reason: "Room access request timed out" });
+          resolve({ granted: false, reason: "Room access request timed out", retryAfterMs: RETRY_SOON_MS });
         }, ACCESS_TIMEOUT_MS);
 
         const cleanup = () => {
@@ -68,12 +72,16 @@ export function createRoomCoordinator(socket: Socket, host: string): RoomCoordin
             return;
           }
 
-          // Somebody's own call setting says why in words (GRYT-1470).
+          if (typeof error === "string") {
+            resolve({ granted: false, reason: error, retryAfterMs: RETRY_SOON_MS });
+            return;
+          }
+
+          // The engine hands `reason` back as connectionError, which is what gets shown.
           resolve({
             granted: false,
-            reason: typeof error === "string"
-              ? error
-              : (error.error === "contact_refused" && error.message) || error.error || "Unknown error",
+            reason: error.message || error.error || "Unknown error",
+            retryAfterMs: error.retryAfterMs,
           });
         };
 

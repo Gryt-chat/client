@@ -72,6 +72,8 @@ export function useVoiceLifecycle() {
     const host = currentServerConnected || lastHost.current;
     const name = host ? servers[host]?.name || host : "";
     const channelId = currentChannelConnected || lastChannelId.current;
+    // A refused call room is said by whoever started or answered the call.
+    if (connectionError !== "reconnect-failed" && channelId.startsWith("dm_")) return;
     const channel = host
       ? serverDetailsList[host]?.channels?.find((c) => c.id === channelId)
       : undefined;
