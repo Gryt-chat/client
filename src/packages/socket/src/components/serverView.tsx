@@ -101,7 +101,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace } = useServerManagement();
   const directory = useDirectory();
-  const { connect, disconnect: disconnectVoice, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
+  const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
   const { login } = useAccount();
   /** Servers this app hosts, for Manage server. Empty in a browser. */
@@ -620,8 +620,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         // The same id as a refused ring, so their call setting is said once (GRYT-1470).
         toast.error(error instanceof Error ? error.message : "Could not start the call", { id: "call:start" });
         cancelCall(conversationId);
-        // Or the engine retries a room it was refused five times, then blames the network.
-        disconnectVoice().catch(() => {});
       });
     };
 
@@ -652,7 +650,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, disconnectVoice, setShowVoiceView, handleVoiceDisconnect]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect]);
 
   /* The same member list the sidebar reads presence off — someone it hides
      from this viewer has no entry here either (GRYT-1467). */

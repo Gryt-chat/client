@@ -181,6 +181,8 @@ function useHandleChannelClick({
                   error instanceof Error ? error.message : "Could not join this voice channel."
                 }
               />,
+              // useVoiceLifecycle's id: a refusal is reported there as well, and shows once.
+              { id: "voice-connection" },
           );
         });
         break;
