@@ -7,7 +7,7 @@ import {
   onDesktopNotificationOpen,
 } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
-import { DmFeeds, NewMessageDialog, useDmSpaceOpen, useRememberView, useServerManagement } from "@/socket";
+import { DmFeeds, FriendsDialog, NewMessageDialog, useDmSpaceOpen, useRememberView, useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 import { useIsTinyWindow } from "@/socket/src/hooks/useNarrowWindow";
 
@@ -86,6 +86,7 @@ export function MainApp() {
           conversations, not just the one being looked at. */}
       <DmFeeds />
       <NewMessageDialog />
+      <FriendsDialog />
 
       {dmSpaceOpen && Object.keys(servers).length > 0 ? (
         <ServerView dmSpace />

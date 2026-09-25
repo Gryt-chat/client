@@ -17,6 +17,7 @@ import { useSockets } from "../hooks/useSockets";
 import { formatJoined, TIER_LABEL } from "../lib/memberFacts";
 import { describeChange, describePin } from "../utils/memberKeyWording";
 import { BotTag } from "./BotTag";
+import { FriendButton } from "./FriendButton";
 import type { MemberInfo } from "./MemberSidebar";
 import { statusConfig } from "./memberStatus";
 
@@ -256,6 +257,8 @@ export function MemberIdentityCard({
           {tier?.amber && <Chip tone="warning">{tier.label}</Chip>}
         </div>
       )}
+
+      {!member.isBot && <FriendButton host={serverHost} serverUserId={member.serverUserId} />}
 
       {worn && (
         <Button

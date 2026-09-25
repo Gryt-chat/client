@@ -14,6 +14,7 @@ export * from "./src/utils/joinServerOnce";
 // Components
 export { DeviceSwitchModal } from "./src/components/DeviceSwitchModal";
 export { DmFeeds } from "./src/components/DmFeeds";
+export { FriendsDialog } from "./src/components/FriendsDialog";
 export { InviteAcceptModal } from "./src/components/InviteAcceptModal";
 export { NewMessageDialog } from "./src/components/NewMessageDialog";
 export { ServerDoctor } from "./src/components/ServerDoctor";

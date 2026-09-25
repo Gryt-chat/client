@@ -32,7 +32,7 @@ export function PrivacySettings() {
 
       <SettingGroup
         title="Who can send me messages"
-        description="Friends are the people you've written to in a one-to-one on that server, until friend requests arrive. This counts for every server, and you can right-click a server to give it its own answer. A server finds out the next time you connect to it. Your app checks every message too, so a server that ignores this still can't get them to you."
+        description="Friends are people you've added on that server. Until you add your first one there, anybody you've written to one-to-one counts. Nobody also stops friend requests. This counts for every server, and you can right-click a server to give it its own answer. A server finds out the next time you connect to it. Your app checks every message too, so a server that ignores this still can't get them to you."
       >
         <ToggleGroup
           className="max-[439px]:flex-wrap"
