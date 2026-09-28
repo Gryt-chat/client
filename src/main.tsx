@@ -17,6 +17,7 @@ import {
 } from "@/addons";
 import {
   backfillGuestHistory,
+  clearWithdrawnBlocksOnce,
   migrateLegacyMergeChoice,
   pruneReproducibleKeys,
   SingletonHooks,
@@ -210,6 +211,9 @@ void backfillGuestHistory()
 if (import.meta.env.DEV) installAiToolkit();
 
 initGlobalStorage().then(() => {
+  // After the file store is loaded, or the desktop app would restore the old list over it.
+  const cleared = clearWithdrawnBlocksOnce();
+  if (cleared) console.log(`[ServerAuth] Cleared ${cleared} proof_withdrawn block(s) left by GRYT-1497`);
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       {/* Runs every singleton hook body, once, inside this tree. Must sit above
