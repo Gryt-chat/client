@@ -2,12 +2,14 @@ import {
   createMlsDmDriver,
   type DmSealingMode,
   encodeMlsDmContent,
+  type MlsAddOwnDeviceOptions,
   type MlsDecryptedMessage,
   type MlsDeviceRecord,
   type MlsDmContent,
   type MlsDmDriver,
   type MlsLogEntry,
   type MlsOwnDevice,
+  type MlsOwnDeviceAdd,
   mlsPinsFromPeerPins,
   type MlsServerCapability,
   type MlsStateStore,
@@ -86,6 +88,8 @@ export interface MlsSession {
   removeOwnDevice(deviceId: string): Promise<void>;
   /** This device's MLS device id here, once it has one. */
   ownDeviceId(): Promise<string | null>;
+  /** A device of yours that was just linked, into every DM here now rather than on the next send. */
+  addOwnDevice(deviceId: string, options?: MlsAddOwnDeviceOptions): Promise<MlsOwnDeviceAdd[]>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
   onChange(listener: (conversationId: string | null) => void): () => void;
   /** Stops taking work. Resolves once what was running is done, so the next session can't overlap it. */
@@ -316,6 +320,11 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       return track(driver.removeOwnDevice(deviceId).then(() => changed(null)));
     },
     ownDeviceId: async () => (await store.loadDevice())?.deviceId ?? null,
+    addOwnDevice(deviceId, options) {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      // Most recently active first, so the conversations somebody opens next are ready soonest.
+      return track(driver.addOwnDevice(deviceId, { order: recency, ...options }));
+    },
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

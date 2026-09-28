@@ -16,6 +16,7 @@ import {
 } from "@/common";
 
 import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "../../../../lib/icons";
+import { useApproveDevice } from "../../../../lib/pairing/useApproveDevice";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { LocalHistoryProblem } from "../../../socket/src/components/LocalHistoryProblem";
 import { LocalIdentitySection } from "./localIdentitySection";
@@ -182,6 +183,7 @@ function LocalHistorySection() {
 
 export function SecuritySettings() {
   const { isSignedIn } = useAccount();
+  const { open: openApproveDevice } = useApproveDevice();
   const [credentials, setCredentials] = useState<KeycloakCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -268,6 +270,19 @@ export function SecuritySettings() {
       <h2 className="text-lg">
         Security
       </h2>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-sm">Link a new device</span>
+          <span className="text-xs">
+            Set up a phone, browser or computer with your identity and servers, and your account if
+            you&rsquo;re signed in. The new device shows a code. Type it here.
+          </span>
+        </div>
+        <Button size="small" style={{ alignSelf: "flex-start" }} onClick={openApproveDevice}>
+          Link a device
+        </Button>
+      </div>
 
       {!isSignedIn && <LocalIdentitySection />}
 

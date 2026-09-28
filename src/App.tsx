@@ -28,6 +28,7 @@ import {
 import type { InviteJoinRequest } from "@/socket/src/components/InviteAcceptModal";
 import { useVoiceSounds } from "@/webRTC";
 
+import { ApproveDeviceDialog } from "./components/approveDevice";
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
@@ -132,6 +133,7 @@ export function App() {
           <Settings />
           <Welcome />
           <LinkDeviceDialog />
+          <ApproveDeviceDialog />
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
           <LeaveServer />
           <DeviceSwitchModal />

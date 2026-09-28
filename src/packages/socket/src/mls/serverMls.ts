@@ -155,6 +155,12 @@ export function forgetOwnMlsDevices(): void {
   startedDevices.clear();
 }
 
+/** This tab's MLS session on a server, for adding a device that was just linked. Undefined when there's none here. */
+export function ownDeviceAdder(host: string): Pick<MlsSession, "addOwnDevice"> | undefined {
+  const session = hosts.get(host)?.session;
+  return session?.capability ? session : undefined;
+}
+
 /** Once per socket, from `registerServerSocketEvents`. */
 export function attachServerMls(socket: Socket, host: string): void {
   const previous = hosts.get(host);
