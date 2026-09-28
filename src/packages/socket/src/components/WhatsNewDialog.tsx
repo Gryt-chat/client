@@ -37,6 +37,8 @@ export interface WhatsNewRelease {
   date: string;
   line: string;
   changes?: WhatsNewChange[];
+  /** Slug of the blog post telling this release's story, where there is one. */
+  post?: string;
 }
 
 /**
@@ -190,6 +192,22 @@ function AreaBlock({
   );
 }
 
+/** Where a release's blog post lives, given its slug. */
+function blogHref(post: string): string {
+  return `https://gryt.chat/blog/${post}`;
+}
+
+/** A link to the release's blog post, where it has one. Nothing otherwise. */
+function PostLink({ post }: { post?: string }) {
+  if (!post) return null;
+  return (
+    <a className="gryt-link whats-new-post" href={blogHref(post)} target="_blank" rel="noreferrer">
+      {" "}
+      Read the post
+    </a>
+  );
+}
+
 /**
  * One release: its line, then its security fixes in a block of their own, then the
  * rest under a heading per area. Changes that all share an area get no heading.
@@ -197,15 +215,24 @@ function AreaBlock({
 function ReleaseBody({
   line,
   changes,
+  post,
   heading = "h3",
 }: {
   line: string;
   changes?: WhatsNewChange[];
+  post?: string;
   heading?: "h3" | "h4";
 }) {
   /* Releases before 1.10 carry a line and no kinds, so there is nothing to
      label. Their one sentence is shown as it is written. */
-  if (!changes?.length) return <p className="whats-new-plain">{line}</p>;
+  if (!changes?.length) {
+    return (
+      <p className="whats-new-plain">
+        {line}
+        <PostLink post={post} />
+      </p>
+    );
+  }
 
   const security = changes.filter((c) => c.kind === "security");
   const areas = grouped(changes.filter((c) => c.kind !== "security"));
@@ -213,7 +240,10 @@ function ReleaseBody({
 
   return (
     <div className="whats-new-body">
-      <p className="whats-new-line">{line}</p>
+      <p className="whats-new-line">
+        {line}
+        <PostLink post={post} />
+      </p>
       {security.length > 0 && (
         <AreaBlock
           changes={security}
@@ -302,7 +332,7 @@ function ReleaseList({ releases }: { releases: WhatsNewRelease[] }) {
           <h3 className="whats-new-version">
             {release.version} · {readableDate(release.date)}
           </h3>
-          <ReleaseBody line={release.line} changes={release.changes} heading="h4" />
+          <ReleaseBody line={release.line} changes={release.changes} post={release.post} heading="h4" />
         </section>
       ))}
     </div>
@@ -392,7 +422,7 @@ export function WhatsNewDialog({
                 {several ? (
                   <ReleaseList releases={releases} />
                 ) : (
-                  <ReleaseBody line={newest.line} changes={newest.changes} />
+                  <ReleaseBody line={newest.line} changes={newest.changes} post={newest.post} />
                 )}
               </>
             )}

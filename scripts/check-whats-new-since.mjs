@@ -144,6 +144,18 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
   );
 }
 
+/* ── a release's blog post rides along too (GRYT-1554) ───────────────────── */
+{
+  const withPost = rel("1.12.0", { post: "direct-messages-now-run-on-mls" });
+  const withoutPost = rel("1.11.46");
+  const p = releasesToShow([withPost, withoutPost], "1.11.45", "1.12.0", false);
+  assert.deepEqual(
+    p.releases.map((r) => r.post),
+    ["direct-messages-now-run-on-mls", undefined],
+    "a release's post slug changed on the way through the range",
+  );
+}
+
 /* ── the effect uses it ──────────────────────────────────────────────────── */
 {
   const effect = whatsNew.slice(whatsNew.indexOf("onUserStoreLoaded(setStoreUser)"));
@@ -166,13 +178,24 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
   assert.match(dialog, /<h3 className="whats-new-version">\s*\{release\.version\} · \{readableDate\(release\.date\)\}/, `${DIALOG} releases have no heading`);
   assert.match(
     dialog,
-    /<ReleaseBody line=\{release\.line\} changes=\{release\.changes\} heading="h4" \/>/,
+    /<ReleaseBody line=\{release\.line\} changes=\{release\.changes\} post=\{release\.post\} heading="h4" \/>/,
     `${DIALOG} does not group each release in a range on its own, a level under its version`,
   );
   assert.match(dialog, /What&rsquo;s new since \{since\}/, `${DIALOG} does not say it covers several releases`);
   assert.match(dialog, /Here&rsquo;s what&rsquo;s new in Gryt Chat/, `${DIALOG} lost the single-release greeting`);
   assert.match(dialog, /several \? changelogHref \?\? "https:\/\/gryt\.chat\/changelog" :/, `${DIALOG} does not link several releases to the full changelog`);
   assert.equal((dialog.match(/<Dialog\.Close/g) ?? []).length, 1, `${DIALOG} should have exactly one way to close`);
+}
+
+/* ── a release with a post links to it (GRYT-1554) ───────────────────────── */
+{
+  assert.match(dialog, /post\?: string;/, `${DIALOG} does not carry a release's post slug`);
+  assert.match(
+    dialog,
+    /`https:\/\/gryt\.chat\/blog\/\$\{post\}`/,
+    `${DIALOG} does not link to the blog with the site's URL shape`,
+  );
+  assert.match(dialog, /target="_blank" rel="noreferrer">\s*\{" "\}\s*Read the post/, `${DIALOG} does not open the post in a new tab`);
 }
 
 console.log(
