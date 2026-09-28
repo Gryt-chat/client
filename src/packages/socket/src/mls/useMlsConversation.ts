@@ -3,7 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
 
-import { getUploadsFileUrl, openAttachment, openLocalArchive, sealAttachment, type SealedAttachmentKey } from "@/common";
+import {
+  getUploadsFileUrl,
+  openAttachment,
+  openLocalArchive,
+  sealAttachment,
+  type SealedAttachmentKey,
+  useLocalArchive,
+} from "@/common";
 
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
 import { draftKey, returnDraft } from "../hooks/returnedDrafts";
@@ -32,6 +39,8 @@ export interface MlsConversation {
   problems: ConversationProblems;
   lostHistory: boolean;
   home: "browser" | "app";
+  /** This device's history won't open, so a DM can't be read or sent to until it does or is cleared. */
+  archiveFailed: boolean;
   send: (text: string, files: File[], replyTo?: string) => void;
   edit: (messageId: string, text: string) => void;
   remove: (messageId: string) => void;
@@ -53,6 +62,9 @@ export function useMlsConversation({
   nameFor: (id: string) => string | undefined;
 }): MlsConversation {
   const source = useMlsSource(host);
+  const archiveNow = useLocalArchive();
+  const archiveOpen = archiveNow.status.kind === "open";
+  const archiveEpoch = archiveNow.epoch;
   const [mode, setMode] = useState<DmSealingMode | null>(null);
   const [archived, setArchived] = useState<ChatMessage[]>([]);
   const [limit, setLimit] = useState(PAGE);
@@ -165,7 +177,7 @@ export function useMlsConversation({
       if (timer) clearTimeout(timer);
       off();
     };
-  }, [source, conversationId, peer, limit]);
+  }, [source, conversationId, peer, limit, archiveOpen, archiveEpoch]);
 
   // Files are fetched and decrypted once each, the way a sealed DM's are.
   useEffect(() => {
@@ -300,6 +312,7 @@ export function useMlsConversation({
     problems: active ? problems : NO_PROBLEMS,
     lostHistory: active && archiveFacts.lostHistory,
     home: archiveFacts.home,
+    archiveFailed: !!conversationId && !!peer && archiveNow.status.kind === "failed",
     send,
     edit: useCallback(
       (id: string, text: string) => {
