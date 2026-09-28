@@ -211,6 +211,7 @@ jobs:
       - run: yarn test:fake-server-events
       - run: yarn test:channel-permissions
       - run: yarn test:report-user
+      - run: yarn test:unverified-report-copy
 
       # No comment runs past two lines. The script carries the list of paths
       # still to be swept, and that list only ever shrinks.
