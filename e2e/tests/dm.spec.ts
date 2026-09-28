@@ -210,10 +210,10 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
   await bobsReply.getByRole("button", { name: "👍 2" }).click();
   await expect(alicesReply.getByRole("button", { name: "👍 1" })).toBeVisible();
   await expect(bobsReply.getByRole("button", { name: "👍 1" })).toBeVisible();
-  // No Report until the server takes the reporter's copy (GRYT-1557).
+  // Report is offered now that the server takes the reporter's copy (server 1.10.38, GRYT-1557).
   await bobsReply.click({ button: "right" });
   await expect(bob.page.getByRole("menuitem", { name: "Reply" })).toBeVisible();
-  await expect(bob.page.getByRole("menuitem", { name: "Report" })).toHaveCount(0);
+  await expect(bob.page.getByRole("menuitem", { name: "Report" })).toBeVisible();
   await bob.page.keyboard.press("Escape");
 
   const edited = `${hello} (edited)`;
