@@ -142,6 +142,7 @@
     "test:clear-local-history": "node --disable-warning=ExperimentalWarning scripts/check-clear-local-history.mjs",
     "test:channel-permissions": "node scripts/check-channel-permissions.mjs",
     "test:report-user": "node scripts/check-report-user.mjs",
+    "test:unverified-report-copy": "node scripts/check-unverified-report-copy.mjs",
     "test:comment-length": "node scripts/check-comment-length.mjs",
     "test:window-buttons": "node scripts/check-window-buttons.mjs",
     "test:scan-consent": "node scripts/check-scan-consent.mjs",

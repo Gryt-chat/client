@@ -77,6 +77,10 @@ export function ReportsPanel({
      ref rather than a closure over `isLoading` from whenever that was. */
   const loadingRef = useRef(false);
   loadingRef.current = isLoading;
+  /* Same reason as loadingRef: onResolved needs to know whether the report it
+     just closed was unverified, and the effect below only subscribes once. */
+  const reportsRef = useRef<AggregatedReport[]>([]);
+  reportsRef.current = reports;
   const [confirmAction, setConfirmAction] = useState<{
     report: AggregatedReport;
     action: "delete" | "delete_all_and_ban";
@@ -153,11 +157,14 @@ export function ReportsPanel({
         });
         toast.success(`User banned & ${payload.deletedCount ?? 0} messages deleted`);
       } else {
+        const wasUnverified = reportsRef.current.find(
+          (r) => r.messageId === payload.messageId,
+        )?.unverified;
         setReports((prev) => prev.filter((r) => r.messageId !== payload.messageId));
         if (payload.action === "approve") {
           toast.success("Report dismissed");
         } else if (payload.action === "delete") {
-          toast.success("Message deleted");
+          toast.success(wasUnverified ? "Report closed" : "Message deleted");
         }
       }
       setConfirmAction(null);
@@ -377,7 +384,9 @@ export function ReportsPanel({
         title={
           confirmAction?.action === "delete_all_and_ban"
             ? "Delete all messages & ban user?"
-            : "Delete this message?"
+            : confirmAction?.report.unverified
+              ? "Close this report?"
+              : "Delete this message?"
         }
         description={
           confirmAction?.action === "delete_all_and_ban" ? (
@@ -386,6 +395,8 @@ export function ReportsPanel({
               <strong>{confirmAction.report.senderNickname || "this user"}</strong> across
               every channel and ban them from the server. This cannot be undone.
             </>
+          ) : confirmAction?.report.unverified ? (
+            "This closes the report. The message itself stays untouched. It's end-to-end encrypted, so only the people in that conversation have a copy."
           ) : (
             "This will permanently delete this reported message. This cannot be undone."
           )
@@ -393,7 +404,9 @@ export function ReportsPanel({
         confirmLabel={
           confirmAction?.action === "delete_all_and_ban"
             ? "Delete All & Ban"
-            : "Delete Message"
+            : confirmAction?.report.unverified
+              ? "Close Report"
+              : "Delete Message"
         }
         onConfirm={() => {
           if (!confirmAction) return;
@@ -713,7 +726,7 @@ function ReportCard({
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Delete this message">
+            <Tooltip title={report.unverified ? "Close this report" : "Delete this message"}>
               <IconButton tone="danger" size="medium"
                 onClick={onDelete}
                 style={{ cursor: "pointer" }}
