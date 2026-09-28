@@ -566,9 +566,9 @@
   integrity sha512-2T+YiP8ds8Z3dfkNd2GgaCQyknp0OPmxwC6yAwMsmRG8blGlakd7bdaEoeuUYnlXNgWt+Ssc5ZAE2r/4pMSqaA==
 
 "@gryt/theme@^0.12.0":
-  version "0.12.0"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.12.0.tgz#e73de4e6d2c632aa5ee8b9af0cbca1af0efebddc"
-  integrity sha512-MGiwgvk5VTqFNsAxrt/e7TFRGnOy/oCN5FpOa5eYjKivZyZHFstL5sLXL7fkNRPNxGBn+Xg87427ZvuzrCiSxQ==
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.12.1.tgz#9a21b6a4d0ec0f5139828b99bd86a9d9893472c4"
+  integrity sha512-oAMaBq/xF1YdR1AcBgqIRhN3CvkPW+Ifx7FgN6hC0xQ37SMp+g3WG34VNHInp5xVA5ahITUHkdRzDUq4Hb67uQ==
 
 "@gryt/ui@^0.34.3":
   version "0.34.4"
