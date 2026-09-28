@@ -1,13 +1,14 @@
 /* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md)
  * states carried by @gryt/ui Button, Spinner and Alert; the QR is the one new element. */
 import type { NewDeviceState, PairingEndReason } from "@gryt/core";
-import type { PairingEmoji } from "@gryt/crypto";
-import { Alert, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
-import { useEffect, useMemo, useState } from "react";
+import { Alert, Button, Dialog, IconButton } from "@gryt/ui";
+import { useMemo } from "react";
 import { encode } from "uqr";
 
 import { PiX } from "../lib/icons";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
+import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
+import { EmojiRow, Waiting } from "./pairingParts";
 
 const ENDED: Partial<Record<PairingEndReason, string>> = {
   cancelled_by_other: "It was cancelled on the other device.",
@@ -42,38 +43,6 @@ function QrCode({ text }: { text: string }) {
       <rect x={-3} y={-3} width={path.size + 6} height={path.size + 6} fill="#fff" />
       <path d={path.d} fill="#000" />
     </svg>
-  );
-}
-
-function EmojiRow({ emoji }: { emoji: readonly PairingEmoji[] }) {
-  return (
-    <ul className="m-0 grid list-none grid-cols-4 gap-2 p-0" aria-label="Emoji to compare">
-      {emoji.map((e, i) => (
-        <li key={i} className="flex flex-col items-center gap-1 rounded-[var(--gryt-radius-md)] bg-gryt-surface-raised py-3">
-          <span className="text-4xl leading-none" aria-hidden="true">{e.emoji}</span>
-          <span className="text-xs text-gryt-muted">{e.name}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function useSecondsLeft(deadline: number | null): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (deadline === null) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [deadline]);
-  return deadline === null ? 0 : Math.max(0, Math.floor((deadline - now) / 1000));
-}
-
-function Waiting({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="m-0 flex items-center gap-2 text-sm text-gryt-muted" role="status">
-      <Spinner />
-      {children}
-    </p>
   );
 }
 
