@@ -1,0 +1,63 @@
+import type { ArchiveKeySlot, StoredArchiveKey } from "../auth/archive-key.ts";
+
+/** One database for the message archive and the MLS state, so one key covers both. */
+
+export const ARCHIVE_DB_NAME = "gryt_archive";
+const ARCHIVE_DB_VERSION = 1;
+
+export const META_STORE = "meta";
+export const MESSAGE_STORE = "messages";
+export const MESSAGE_BY_TIME = "byTime";
+export const MLS_STORE = "mls";
+
+const KEY_SLOT = "archive-key";
+
+export function openArchiveDb(factory: IDBFactory = indexedDB, name = ARCHIVE_DB_NAME): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const open = factory.open(name, ARCHIVE_DB_VERSION);
+    open.onupgradeneeded = () => {
+      const db = open.result;
+      if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE);
+      if (!db.objectStoreNames.contains(MESSAGE_STORE)) {
+        const messages = db.createObjectStore(MESSAGE_STORE, { keyPath: ["scope", "conversationId", "messageId"] });
+        messages.createIndex(MESSAGE_BY_TIME, ["scope", "conversationId", "sentAt", "messageId"]);
+      }
+      if (!db.objectStoreNames.contains(MLS_STORE)) db.createObjectStore(MLS_STORE);
+    };
+    open.onsuccess = () => {
+      // Let a newer build in another tab upgrade the schema instead of blocking it forever.
+      open.result.onversionchange = () => open.result.close();
+      resolve(open.result);
+    };
+    open.onerror = () => reject(open.error ?? new Error("Couldn't open the message archive"));
+  });
+}
+
+export function request<T>(req: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Resolves once the transaction commits, which is when a write is actually on disk. */
+export function committed(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error("Archive transaction aborted"));
+  });
+}
+
+export function archiveKeySlot(db: IDBDatabase): ArchiveKeySlot {
+  return {
+    read: () => request(db.transaction(META_STORE, "readonly").objectStore(META_STORE).get(KEY_SLOT)),
+    async claim(value: StoredArchiveKey) {
+      const tx = db.transaction(META_STORE, "readwrite");
+      const store = tx.objectStore(META_STORE);
+      const existing = await request(store.getKey(KEY_SLOT));
+      if (existing === undefined) store.add(value, KEY_SLOT);
+      await committed(tx);
+    },
+  };
+}
