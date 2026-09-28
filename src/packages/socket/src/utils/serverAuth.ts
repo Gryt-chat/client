@@ -87,6 +87,8 @@ export function guardSocket(
     };
 
     let pendingNonce = "";
+    // One per connection. A stale one left over from before a reconnect refused a pinned server.
+    let silenceTimer: ReturnType<typeof setTimeout> | undefined;
 
     socket.on("connect", () => {
       done = false;
@@ -95,10 +97,18 @@ export function guardSocket(
 
       // An older server has no handler and never answers. Silence means "offered
       // no proof": fine for an unpinned server, a refusal for a pinned one.
-      setTimeout(() => { void settle(undefined); }, IDENTITY_TIMEOUT_MS);
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => { void settle(undefined); }, IDENTITY_TIMEOUT_MS);
+    });
+
+    // A connection that is gone cannot be silent. The next one gets its own wait.
+    socket.on("disconnect", () => {
+      clearTimeout(silenceTimer);
+      silenceTimer = undefined;
     });
 
     socket.on("server:identity", (res: { proof?: string; vouches?: string[]; error?: string }) => {
+      clearTimeout(silenceTimer);
       void settle(res?.proof, Array.isArray(res?.vouches) ? res.vouches : undefined);
     });
   });
