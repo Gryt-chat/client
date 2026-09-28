@@ -7,7 +7,9 @@ import {
   getLocalArchiveSnapshot,
   getOwnServerUserId,
   getServerAccessToken,
+  getValidIdentityToken,
   identityScopeFor,
+  type LocalArchive,
   localPeerPinStore,
   type MlsWorkerClaim,
   newMlsDevice,
@@ -21,6 +23,7 @@ import { isElectron } from "../../../../lib/electron";
 import { readMlsCapability, readMlsReports } from "./capability";
 import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
+import { authTimeOf, clearRemovedHere, markRemovedHere, removedHereAt, stillRemoved } from "./removedHere";
 import { seenOnMlsFor } from "./seenOnMls";
 import { type ConversationProblems, createMlsSession, type MlsSession, type SessionSocket } from "./session";
 
@@ -50,6 +53,8 @@ interface HostState {
   sessionKey: string | null;
   /** The previous session's work. The next one waits, so two drivers never share a store. */
   retiring: Promise<void>;
+  /** The server removed this device, and nobody has signed in since (GRYT-1555). */
+  removed: boolean;
 }
 
 const hosts = new Map<string, HostState>();
@@ -130,6 +135,7 @@ export function attachServerMls(socket: Socket, host: string): void {
     local: null,
     sessionKey: null,
     retiring: previous ? retire(previous) : Promise.resolve(),
+    removed: false,
   };
   hosts.set(host, state);
 
@@ -183,6 +189,7 @@ async function refresh(host: string): Promise<void> {
   try {
     if (state.sessionKey !== key) {
       state.sessionKey = key;
+      state.removed = false;
       const scope = identityScopeFor(host);
       // Version 1 needs no archive, so DMs that don't need MLS go on while it opens or if it won't.
       state.local = createModeOnlySource({
@@ -200,6 +207,12 @@ async function refresh(host: string): Promise<void> {
       if (!capability) return;
       const [archive, ownPersonKey] = await Promise.all([openLocalArchive(), ownPersonPublicKey(host)]);
       if (hosts.get(host) !== state || state.sessionKey !== key) return;
+      state.removed = await stillRemovedHere(scope, archive);
+      if (state.removed) {
+        state.local = removedSource(state.local);
+        setSource(host, state.local);
+        return;
+      }
       state.session = createMlsSession({
         socket: state.socket as unknown as SessionSocket,
         storeScope: scope,
@@ -215,6 +228,11 @@ async function refresh(host: string): Promise<void> {
         newDevice: () => newMlsDevice(host, isElectron() ? "Desktop" : "Web browser"),
         onDelivered: (m) => {
           for (const listener of deliveredListeners) listener({ host, ...m });
+        },
+        onDeviceRemoved: () => {
+          markRemovedHere(scope);
+          state.sessionKey = null;
+          void refresh(host);
         },
       });
       state.session.onChange((conversationId) => relayChannel?.postMessage({ changed: host, conversationId }));
@@ -238,6 +256,35 @@ async function refresh(host: string): Promise<void> {
   }
 }
 
+/** Wiped again on every start while it holds, so a crash between marking and wiping leaves nothing. */
+async function stillRemovedHere(scope: string, archive: LocalArchive): Promise<boolean> {
+  const at = removedHereAt(scope);
+  if (at === null) return false;
+  const token = await getValidIdentityToken(0).catch(() => undefined);
+  if (!stillRemoved(at, authTimeOf(token))) {
+    clearRemovedHere(scope);
+    return false;
+  }
+  await archive.wipeServer(scope);
+  return true;
+}
+
+/** DMs on a server that removed this device: version 1 to a peer without MLS, and nothing else. */
+function removedSource(base: MlsSource): MlsSource {
+  const refused: DmSealingMode = { kind: "refused", reason: "no_own_device" };
+  return {
+    storeScope: base.storeScope,
+    async modeFor(conversationId, peer) {
+      const mode = await base.modeFor(conversationId, peer).catch(() => refused);
+      return mode.kind === "sealed-v1" ? mode : refused;
+    },
+    send: () =>
+      Promise.reject(Object.assign(new Error("This device was removed from encrypted DMs on this server."), { code: "device_removed" })),
+    problems: () => ({ undecryptable: 0, lost: "device_removed" }),
+    onChange: base.onChange,
+  };
+}
+
 /** Devices whose state a clear wiped. Removed so peers stop encrypting to a device that can't read. */
 async function retireOldDevices(session: MlsSession): Promise<void> {
   const scope = session.storeScope;
@@ -252,7 +299,7 @@ async function retireOldDevices(session: MlsSession): Promise<void> {
       } catch (e) {
         const code = (e as { refusal?: { error?: string } })?.refusal?.error;
         // Already gone from the server counts as done. Anything else is tried on the next connect.
-        if (code !== "unknown_device" && code !== "invalid_device") {
+        if (code !== "unknown_device" && code !== "invalid_device" && code !== "device_removed") {
           console.warn("[MLS] Couldn't remove an old device:", deviceId, e);
           continue;
         }
@@ -282,11 +329,13 @@ subscribeToLocalArchive(() => {
 export type OwnDevicesAnswer =
   | { kind: "devices"; devices: MlsOwnDevice[] }
   | { kind: "no_mls" }
-  | { kind: "not_connected" };
+  | { kind: "not_connected" }
+  | { kind: "removed" };
 
 async function ownDevicesHere(host: string): Promise<OwnDevicesAnswer> {
   const state = hosts.get(host);
   if (state?.capability === null) return { kind: "no_mls" };
+  if (state?.removed) return { kind: "removed" };
   if (!state?.session) return { kind: "not_connected" };
   return { kind: "devices", devices: await state.session.ownDevices() };
 }

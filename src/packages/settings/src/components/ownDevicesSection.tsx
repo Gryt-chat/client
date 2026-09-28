@@ -3,13 +3,14 @@ import { Avatar, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import { GeneratedServerIcon, serverIconSrc } from "@/common";
+import { GeneratedServerIcon, serverIconSrc, useAccount } from "@/common";
 import {
   orderOwnDevices,
   ownDeviceAdded,
   ownDeviceLabel,
   type OwnDevicesAnswer,
   ownMlsDevices,
+  removedHereLine,
   removeOwnDeviceWarning,
   removeOwnMlsDevice,
   useMlsSource,
@@ -17,6 +18,7 @@ import {
   useSockets,
 } from "@/socket";
 
+import { isElectron } from "../../../../lib/electron";
 import { PiDevicesFill, PiTrashFill } from "../../../../lib/icons";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { SettingGroup } from "./settingsComponents";
@@ -66,6 +68,7 @@ function DeviceRow({ device, serverName, onRemove }: { device: MlsOwnDevice; ser
 function ServerDevices({ host, name, icon }: { host: string; name: string; icon: string | undefined }) {
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const source = useMlsSource(host);
+  const { isSignedIn } = useAccount();
 
   const load = useCallback(() => {
     ownMlsDevices(host).then(setLoaded, (e: unknown) => {
@@ -105,6 +108,11 @@ function ServerDevices({ host, name, icon }: { host: string; name: string; icon:
       </div>
       {loaded.kind === "loading" && <span className="text-xs text-gryt-muted">Loading…</span>}
       {loaded.kind === "no_mls" && <span className="text-xs text-gryt-muted">This server doesn't have encrypted DMs.</span>}
+      {loaded.kind === "removed" && (
+        <span className="text-xs text-gryt-muted">
+          {removedHereLine(isElectron() ? "app" : "browser", isSignedIn ? "sign_in" : "recovery_key")}
+        </span>
+      )}
       {loaded.kind === "not_connected" && (
         <span className="text-xs text-gryt-muted">Connect to this server to see your devices there.</span>
       )}

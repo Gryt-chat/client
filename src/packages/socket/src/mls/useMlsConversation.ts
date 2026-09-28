@@ -171,7 +171,7 @@ export function useMlsConversation({
         };
         void load();
         off = archive.messages.onChange((change) => {
-          if (change.scope !== scope || change.conversationId !== conversationId) return;
+          if (change.scope !== scope || (change.conversationId !== null && change.conversationId !== conversationId)) return;
           if (timer) clearTimeout(timer);
           timer = setTimeout(() => void load(), RELOAD_DEBOUNCE_MS);
         });

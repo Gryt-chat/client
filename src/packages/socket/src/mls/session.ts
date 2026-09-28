@@ -36,8 +36,9 @@ export interface SessionSocket extends AckSocket {
 export interface ConversationProblems {
   /** Messages that reached this device and couldn't be read. */
   undecryptable: number;
-  /** This device is out of the group and can't read new messages until it's back. */
-  lost: "removed" | "out_of_sync" | "gap" | null;
+  /** This device is out of the group and can't read new messages until it's back. `device_removed`
+      means out of every group on this server, since the server removed the device (GRYT-1555). */
+  lost: "removed" | "out_of_sync" | "gap" | "device_removed" | null;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
@@ -62,6 +63,8 @@ export interface MlsSessionOptions {
   newDevice: () => Promise<MlsDeviceRecord>;
   /** A message from somebody else that arrived live, once it's in the archive. For notifications. */
   onDelivered?: (message: { conversationId: string; senderId: string; content: MlsDmContent }) => void;
+  /** The server removed this device here. The driver has stopped; the caller wipes and gates. */
+  onDeviceRemoved?: () => void;
 }
 
 export interface MlsSession {
@@ -204,6 +207,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
         setProblems(conversationId, { undecryptable: (problems.get(conversationId)?.undecryptable ?? 0) + 1 }),
       onGroupLost: ({ conversationId, reason }) => setProblems(conversationId, { lost: reason }),
       onJoined: ({ conversationId }) => setProblems(conversationId, { lost: null }),
+      onDeviceRemoved: () => options.onDeviceRemoved?.(),
     },
   });
 

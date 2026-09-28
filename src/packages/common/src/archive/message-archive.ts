@@ -41,7 +41,8 @@ export interface ArchiveCursor {
 
 export interface ArchiveChange {
   scope: string;
-  conversationId: string;
+  /** Null when the whole server's history was wiped. */
+  conversationId: string | null;
 }
 
 const CHANNEL = "gryt-archive";
@@ -143,6 +144,11 @@ export class MessageArchive {
     tx.objectStore(MESSAGE_STORE).delete(IDBKeyRange.bound([scope, conversationId], [scope, conversationId, []]));
     await committed(tx);
     this.announce({ scope, conversationId });
+  }
+
+  /** After `wipeServer`, which deletes the rows itself alongside the MLS state. */
+  announceWiped(scope: string): void {
+    this.announce({ scope, conversationId: null });
   }
 
   /** Fires for writes from this tab and from any other tab on the same archive. */

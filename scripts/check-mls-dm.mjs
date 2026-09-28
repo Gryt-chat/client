@@ -13,9 +13,10 @@ const { asBytes, socketMlsTransport } = await import("../src/packages/socket/src
 const { publishPersonKey } = await import("../src/packages/socket/src/mls/publishPersonKey.ts");
 const { readMlsCapability, readMlsReports } = await import("../src/packages/socket/src/mls/capability.ts");
 const { seenOnMlsFor } = await import("../src/packages/socket/src/mls/seenOnMls.ts");
-const { orderOwnDevices, ownDeviceAdded, ownDeviceLabel, removeOwnDeviceWarning } = await import(
+const { orderOwnDevices, ownDeviceAdded, ownDeviceLabel, removedHereLine, removeOwnDeviceWarning } = await import(
   "../src/packages/socket/src/mls/ownDevices.ts"
 );
+const removedHere = await import("../src/packages/socket/src/mls/removedHere.ts");
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -414,9 +415,58 @@ test("the device list puts this device first and names the ones no group shows",
   assert.equal(ownDeviceAdded(listed[1]), null, "a server that sends no date shows none");
   assert.equal(
     removeOwnDeviceWarning(listed[0], "Gryt Community"),
-    "“Desktop” won't get new encrypted DMs on Gryt Community anymore. Messages already on it stay there.",
+    "“Desktop” won't get new encrypted DMs on Gryt Community anymore. The next time it connects, it deletes the encrypted DMs it has from there.",
   );
   assert.match(removeOwnDeviceWarning(listed[1], "Gryt Community"), /^That device won't/);
+});
+
+test("a removed device stays removed until a sign-in after the removal (GRYT-1555)", () => {
+  const items = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => items.get(k) ?? null,
+    setItem: (k, v) => items.set(k, String(v)),
+    removeItem: (k) => items.delete(k),
+    key: (i) => [...items.keys()][i] ?? null,
+    get length() {
+      return items.size;
+    },
+  };
+  const { removedHereAt, markRemovedHere, clearRemovedHere, clearRemovedEverywhere, stillRemoved, authTimeOf } = removedHere;
+  assert.equal(removedHereAt("srv:a"), null);
+  markRemovedHere("srv:a", 5_000_000);
+  markRemovedHere("srv:b", 6_000_000);
+  assert.equal(removedHereAt("srv:a"), 5_000_000);
+
+  assert.equal(stillRemoved(5_000_000, null), true, "a guest has no sign-in to show");
+  assert.equal(stillRemoved(5_000_000, 4_000), true, "signed in before the removal: a thief's session");
+  assert.equal(stillRemoved(5_000_000, 5_001), false, "signed in again after it");
+
+  const token = (claims) => `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`;
+  assert.equal(authTimeOf(token({ auth_time: 5_001 })), 5_001);
+  assert.equal(authTimeOf(token({ sub: "x" })), null);
+  assert.equal(authTimeOf(undefined), null);
+
+  clearRemovedHere("srv:a");
+  assert.equal(removedHereAt("srv:a"), null);
+  clearRemovedEverywhere();
+  assert.equal(removedHereAt("srv:b"), null);
+  delete globalThis.localStorage;
+});
+
+test("a DM on a server that removed this device says so, and how to set it up again", () => {
+  const removed = { undecryptable: 0, lost: "device_removed" };
+  const refused = { kind: "refused", reason: "no_own_device" };
+  const opts = { lostHistory: false, home: "app", peerName: "Ola" };
+  assert.equal(
+    mlsNotice(refused, removed, { ...opts, signedIn: true }),
+    "This device was removed from encrypted DMs on this server. To set it up again, sign out and sign back in.",
+  );
+  assert.equal(
+    mlsNotice(refused, removed, { ...opts, home: "browser" }),
+    "This browser was removed from encrypted DMs on this server. To set it up again, restore your identity from its recovery key.",
+  );
+  assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, removed, opts), null, "version 1 still works there");
+  assert.equal(removedHereLine("app", "sign_in"), mlsNotice(refused, removed, { ...opts, signedIn: true }));
 });
 
 let failed = 0;

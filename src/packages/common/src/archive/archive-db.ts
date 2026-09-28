@@ -129,6 +129,19 @@ async function retiredIn(meta: IDBObjectStore): Promise<RetiredMlsDevice[]> {
   return out;
 }
 
+/**
+ * One server's messages and MLS state, and its device note, which isn't retired: the server
+ * already removed that device (GRYT-1555). Other servers are left alone.
+ */
+export async function wipeServer(db: IDBDatabase, scope: string): Promise<void> {
+  const tx = db.transaction([META_STORE, MESSAGE_STORE, MLS_STORE], "readwrite");
+  const range = IDBKeyRange.bound([scope], [scope, []]);
+  tx.objectStore(MESSAGE_STORE).delete(range);
+  tx.objectStore(MLS_STORE).delete(range);
+  tx.objectStore(META_STORE).delete(DEVICE_NOTE + scope);
+  await committed(tx);
+}
+
 /** Written next to the sealed device record. The id isn't secret: the server hands it out. */
 export async function noteMlsDevice(db: IDBDatabase, scope: string, deviceId: string): Promise<void> {
   const tx = db.transaction(META_STORE, "readwrite");

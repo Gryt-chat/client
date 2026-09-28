@@ -5,7 +5,7 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useUnreadBadge } from "@/common";
+import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useAccount, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
@@ -201,6 +201,7 @@ export function useChat({
 
   /* A one-to-one DM goes on MLS once the other person has an MLS device (decision 4).
      Old messages still open through `sealing`, and MLS ones come from the archive. */
+  const { isSignedIn } = useAccount();
   const mls = useMlsConversation({
     host: serverHost,
     conversationId: activeConversationId,
@@ -764,7 +765,12 @@ export function useChat({
     isLoadingOlder,
     hasOlderMessages: hasOlderMessages || mls.hasMore,
     mlsNotice: dmPeer
-      ? mlsNotice(mls.mode, mls.problems, { lostHistory: mls.lostHistory, home: mls.home, peerName: dmPeerName ?? "The other person" })
+      ? mlsNotice(mls.mode, mls.problems, {
+          lostHistory: mls.lostHistory,
+          home: mls.home,
+          peerName: dmPeerName ?? "The other person",
+          signedIn: isSignedIn,
+        })
       : null,
     composerHeld: composer.held,
     deleteMlsMessage: mls.remove,

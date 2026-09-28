@@ -18,7 +18,17 @@ export function ownDeviceAdded(device: MlsOwnDevice): string | null {
   return `Added ${at.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
 }
 
+/* True because the server refuses that device id from now on, and the app on it wipes
+   that server's history when it hears so (GRYT-1555). */
 export function removeOwnDeviceWarning(device: MlsOwnDevice, serverName: string): string {
   const which = device.name ? `“${device.name}”` : "That device";
-  return `${which} won't get new encrypted DMs on ${serverName} anymore. Messages already on it stay there.`;
+  return `${which} won't get new encrypted DMs on ${serverName} anymore. The next time it connects, it deletes the encrypted DMs it has from there.`;
+}
+
+/** What a removed device says, wherever it would have shown DMs from that server. */
+export function removedHereLine(home: "browser" | "app", how: "sign_in" | "recovery_key"): string {
+  const here = home === "browser" ? "This browser" : "This device";
+  const again =
+    how === "sign_in" ? "To set it up again, sign out and sign back in." : "To set it up again, restore your identity from its recovery key.";
+  return `${here} was removed from encrypted DMs on this server. ${again}`;
 }

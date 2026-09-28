@@ -10,6 +10,7 @@ import {
   restoreIdentityFromWords,
   unlockBackup,
 } from "@/common";
+import { clearRemovedEverywhere } from "@/socket";
 
 import {
   PiEyeFill,
@@ -69,6 +70,8 @@ export function LocalIdentitySection() {
     setBusy(true);
     try {
       await restoreIdentityFromWords(wordsInput);
+      // Knowing the words is what lets a device removed from MLS set up again (GRYT-1555).
+      clearRemovedEverywhere();
       toast.success("Identity restored. Reloading…", { duration: 4000 });
       // Reloaded for the same reason restoring a file is: anything that already
       // read a key still holds it, and keeps signing as whoever this device was.
@@ -83,6 +86,7 @@ export function LocalIdentitySection() {
   const applyBackup = useCallback(
     async (text: string) => {
       const restored = await importLocalIdentities(text);
+      clearRemovedEverywhere();
       refresh();
       toast.success(
         `Restored ${restored.length} identit${restored.length === 1 ? "y" : "ies"}. Reloading…`,
