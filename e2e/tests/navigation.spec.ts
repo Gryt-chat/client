@@ -97,3 +97,22 @@ test("every button in the rail has a name", async ({ owner }) => {
   // The server's icon says which server, off its name in the rail.
   await expect(railButton(owner.page, "Gryt E2E")).toBeVisible();
 });
+
+/* The server's hover card opens over the top of the channel list and has nothing
+   to press, so a click there belongs to the channel under it. GRYT-1545. */
+test("the server's hover card lets a click through to the channel under it", async ({ newMember }) => {
+  const { page } = await newMember();
+  await channelRow(page, "Random").click();
+  await expect(channelComposer(page, "Random")).toBeVisible();
+
+  await railButton(page, "Gryt E2E").hover();
+  const card = page.locator(".gryt-preview-card").filter({ hasText: "Gryt E2E" });
+  await expect(card).toBeVisible();
+  const general = channelRow(page, "General");
+  const [a, b] = await Promise.all([card.boundingBox(), general.boundingBox()]);
+  const overlaps = !!a && !!b && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  expect(overlaps, "the card should sit over #General, or this test proves nothing").toBe(true);
+
+  await general.click({ timeout: 5_000 });
+  await expect(channelComposer(page)).toBeVisible();
+});
