@@ -6,6 +6,8 @@ export interface Release {
   changes?: { kind: string; area?: string; text: string }[];
   channel?: string;
   note?: boolean;
+  /** Slug of the blog post telling this release's story, where there is one. */
+  post?: string;
 }
 
 export interface ReleasesToShow {
