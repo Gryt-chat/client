@@ -5,6 +5,7 @@ import { getOwnServerUserId } from "@/common";
 
 import { PiCheckBold, PiClockFill, PiUserPlusFill, PiXBold } from "../../../../lib/icons";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
+import { useIsTinyWindow } from "../hooks/useNarrowWindow";
 import { friendButtonSteps, type FriendStep, type FriendStepIcon } from "../utils/friendButtonSteps";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -18,7 +19,7 @@ const ICONS: Record<FriendStepIcon, typeof PiUserPlusFill> = {
 
 /**
  * The one step you can take next with this person (GRYT-1471, GRYT-1573). `compact`
- * drops the label -- its one spot, the DM header, is part of a 300px-wide window.
+ * drops to a bare icon only once `isTinyWindow` says so; a label otherwise.
  */
 export function FriendButton({
   host,
@@ -31,6 +32,7 @@ export function FriendButton({
 }) {
   const state = useFriendState(host, serverUserId);
   const all = useAllFriends();
+  const isTiny = useIsTinyWindow();
   const [pending, setPending] = useState<FriendStep | null>(null);
 
   if (!host || !serverUserId || !state || state === "friend" || serverUserId === getOwnServerUserId(host)) return null;
@@ -54,26 +56,32 @@ export function FriendButton({
   };
 
   const activate = (step: FriendStep) => (step.confirm ? setPending(step) : run(step));
+  const iconOnly = compact && isTiny;
 
   return (
     <div className="flex flex-col gap-1">
       <div className={compact ? "flex items-center gap-1" : "flex items-center gap-1.5"}>
         {steps.map((step) => {
           const Icon = ICONS[step.icon];
-          return compact ? (
-            <Tooltip key={step.action} title={step.hint}>
-              <IconButton
-                aria-label={step.hint}
-                data-gryt="friend-button"
-                data-state={step.action}
-                size="xsmall"
-                tone={step.tone}
-                onClick={() => activate(step)}
-              >
-                <Icon size={16} />
-              </IconButton>
-            </Tooltip>
-          ) : (
+
+          if (iconOnly) {
+            return (
+              <Tooltip key={step.action} title={step.hint}>
+                <IconButton
+                  aria-label={step.hint}
+                  data-gryt="friend-button"
+                  data-state={step.action}
+                  size="xsmall"
+                  tone={step.tone}
+                  onClick={() => activate(step)}
+                >
+                  <Icon size={16} />
+                </IconButton>
+              </Tooltip>
+            );
+          }
+
+          const button = (
             <Button
               key={step.action}
               size="small"
@@ -86,6 +94,10 @@ export function FriendButton({
               {step.label}
             </Button>
           );
+
+          // The header (compact, just not tiny) still has no room for a caption
+          // line below it, so the extra detail rides a tooltip instead.
+          return compact ? <Tooltip key={step.action} title={step.hint}>{button}</Tooltip> : button;
         })}
       </div>
 
