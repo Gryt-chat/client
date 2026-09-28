@@ -10,6 +10,9 @@ export * from "@gryt/crypto/message-keys";
 // Not `@gryt/crypto/thumbprint`. `server-pins.ts` has exported `jwkThumbprint`
 // since GRYT-51 and is the copy the client's server pinning calls.
 
+export * from "./src/archive/archive-lock";
+export * from "./src/archive/local-archive";
+export * from "./src/archive/message-archive";
 export * from "./src/auth/account-api";
 export * from "./src/auth/answer-challenge";
 export * from "./src/auth/device-delegation";
