@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 
 import {
-  getServerAccessToken,
   getServerHttpBase,
   normalizeCode,
   normalizeHost,
@@ -72,22 +71,15 @@ export async function fetchServerInfo(
     controller.abort();
   }, INFO_TIMEOUT_MS);
 
-  const headers: Record<string, string> = {};
-  const storedToken = getServerAccessToken(normalizedHost);
-  if (storedToken) headers.Authorization = `Bearer ${storedToken}`;
-
   try {
-    // Plain is the default, so the first attempt at an unknown server is http.
-    // Except with a token: a bearer over http would leak before the redirect.
-    const first: Scheme = storedToken
-      ? "https"
-      : schemeFor(normalizedHost);
+    // Plain is the default, so the first attempt at an unknown server is http. No token: the
+    // server ignores it, and carrying one made this wait on the identity proof (GRYT-1547).
+    const first: Scheme = schemeFor(normalizedHost);
 
     let res: Response;
     try {
       res = await fetch(`${getServerHttpBase(normalizedHost, first)}/info`, {
         signal: controller.signal,
-        headers,
       });
     } catch (reachErr) {
       // Nothing answered, which says nothing about the scheme, so try the other.
@@ -95,7 +87,7 @@ export async function fetchServerInfo(
       if (controller.signal.aborted) throw reachErr;
       res = await fetch(
         `${getServerHttpBase(normalizedHost, otherScheme(first))}/info`,
-        { signal: controller.signal, headers },
+        { signal: controller.signal },
       );
     }
 

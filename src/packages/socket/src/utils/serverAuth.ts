@@ -8,6 +8,8 @@ import {
   type ServerProofDecision,
 } from "@/common";
 
+import { markGone, markProved, markRefused, watchHost } from "./proofGate";
+
 /**
  * Authenticate a server before we say anything else to it. **Connection-level,
  * not part of the join handshake** — a saved token reconnects without joining.
@@ -29,6 +31,8 @@ export function guardSocket(
   onRefused: (decision: ServerProofDecision & { action: "block" }) => void,
 ): GuardedSocket {
   let settled = false;
+  // HTTP with a bearer token to this host waits on the same proof as the socket.
+  watchHost(host);
   let queue: EmitArgs[] = [];
 
   const originalEmit = socket.emit.bind(socket);
@@ -45,6 +49,7 @@ export function guardSocket(
 
   const release = () => {
     settled = true;
+    markProved(host, socket);
     const pending = queue;
     queue = [];
     for (const [event, ...args] of pending) originalEmit(event, ...args);
@@ -52,6 +57,7 @@ export function guardSocket(
 
   const refuse = (decision: ServerProofDecision & { action: "block" }) => {
     settled = false;
+    markRefused(host, socket);
     queue = [];
     // Stop reconnecting. Without this the refusal reads as an ordinary dropped
     // connection and it retries forever, showing "lost connection".
@@ -111,6 +117,7 @@ export function guardSocket(
     socket.on("disconnect", () => {
       connection++;
       settled = false;
+      markGone(host, socket);
       clearTimeout(silenceTimer);
       silenceTimer = undefined;
     });
