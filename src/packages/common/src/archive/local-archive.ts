@@ -1,43 +1,33 @@
+import { useSyncExternalStore } from "react";
+
 import { isElectron } from "../../../../lib/electron";
-import { loadArchiveKey } from "../auth/archive-key.ts";
 import { osKeychain } from "../auth/os-keychain.ts";
-import { archiveKeySlot, openArchiveDb } from "./archive-db.ts";
-import { MessageArchive } from "./message-archive.ts";
-import { IndexedDbMlsStateStore } from "./mls-state-store.ts";
+import { openArchiveDb } from "./archive-db.ts";
+import { createArchiveOpener, type LocalArchive, type LocalArchiveSnapshot } from "./archive-opener.ts";
 
 export { ArchiveKeyError, type ArchiveKeyErrorCode } from "../auth/archive-key.ts";
+export type { LocalArchive, LocalArchiveSnapshot, LocalArchiveStatus } from "./archive-opener.ts";
 
-export interface LocalArchive {
-  messages: MessageArchive;
-  /** "browser" means history is gone if the browser clears this site's data. */
-  home: "browser" | "app";
-  /** Records are encrypted with a key the OS keychain holds. False on the web. */
-  sealed: boolean;
-  /** Sealed history was found with its key gone from storage, and it was cleared. */
-  lostHistory: boolean;
-  /** One per server. Pass the worker claim so only the tab holding the lock writes. */
-  mlsState(scope: string, writer?: { readonly held: boolean }): IndexedDbMlsStateStore;
-}
-
-let opening: Promise<LocalArchive> | null = null;
-
-async function open(): Promise<LocalArchive> {
-  const db = await openArchiveDb();
-  const { key, lostHistory } = await loadArchiveKey(archiveKeySlot(db), await osKeychain());
-  return {
-    messages: new MessageArchive(db, key),
-    home: isElectron() ? "app" : "browser",
-    sealed: key !== null,
-    lostHistory,
-    mlsState: (scope, writer) => new IndexedDbMlsStateStore(db, key, scope, writer),
-  };
-}
+const opener = createArchiveOpener({
+  openDb: () => openArchiveDb(),
+  keychain: osKeychain,
+  home: isElectron() ? "app" : "browser",
+  channel: typeof BroadcastChannel === "function" ? new BroadcastChannel("gryt-archive-lifecycle") : null,
+});
 
 /** Opened once per window. A failure isn't cached, so a later call tries again. */
 export function openLocalArchive(): Promise<LocalArchive> {
-  opening ??= open().catch((e: unknown) => {
-    opening = null;
-    throw e;
-  });
-  return opening;
+  return opener.open();
+}
+
+/** Only on the person's say-so: what this device decrypted is gone for good. */
+export function clearLocalArchive(): Promise<LocalArchive> {
+  return opener.clear();
+}
+
+export const subscribeToLocalArchive = opener.subscribe;
+export const getLocalArchiveSnapshot = opener.snapshot;
+
+export function useLocalArchive(): LocalArchiveSnapshot {
+  return useSyncExternalStore(opener.subscribe, opener.snapshot, opener.snapshot);
 }

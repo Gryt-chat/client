@@ -29,6 +29,7 @@ import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { EmojiText } from "./EmojiText";
 import { ForumView } from "./ForumView";
 import { ImageLightbox } from "./ImageLightbox";
+import { LocalHistoryProblem } from "./LocalHistoryProblem";
 import { readableRoleColor } from "./memberGroups";
 import type { MemberInfo } from "./MemberSidebar";
 import type { MentionMember } from "./MentionAutocomplete";
@@ -46,6 +47,8 @@ export interface MlsView {
   /** The composer waits: the mode isn't known yet, or MLS refused it. */
   held: boolean;
   remove: (messageId: string) => void;
+  /** This device's history won't open. Says why, with a retry and the way out. */
+  archiveFailed: boolean;
 }
 
 /** Where the composer would be, for somebody who may read a channel and not post. */
@@ -878,7 +881,9 @@ export const ChatView = memo(({
 
           {/* Above the composer rather than a toast: it has to still be on screen
               when somebody comes back to a box that stopped taking input. */}
-          {mls?.notice && (
+          {mls?.archiveFailed && <LocalHistoryProblem compact />}
+
+          {mls?.notice && !mls.archiveFailed && (
             <div
               aria-live="polite"
               className="mb-1.5 flex items-start gap-1.5 px-1 text-xs leading-snug"

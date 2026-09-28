@@ -138,6 +138,7 @@
     "test:sealed-save": "node --disable-warning=ExperimentalWarning scripts/check-sealed-save.mjs",
     "test:local-archive": "node --disable-warning=ExperimentalWarning scripts/check-local-archive.mjs",
     "test:mls-dm": "node --disable-warning=ExperimentalWarning scripts/check-mls-dm.mjs",
+    "test:clear-local-history": "node --disable-warning=ExperimentalWarning scripts/check-clear-local-history.mjs",
     "test:channel-permissions": "node scripts/check-channel-permissions.mjs",
     "test:report-user": "node scripts/check-report-user.mjs",
     "test:comment-length": "node scripts/check-comment-length.mjs",

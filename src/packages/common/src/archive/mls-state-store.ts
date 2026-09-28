@@ -2,7 +2,7 @@ import type { MlsDeviceRecord, MlsGroupRecord, MlsKeyPackageRecord, MlsStateStor
 import { base64Url, base64UrlDecode } from "@gryt/crypto";
 
 import { openBytes, sealBytes, type SealedBytes } from "../auth/archive-key.ts";
-import { committed, MLS_STORE, request } from "./archive-db.ts";
+import { committed, MLS_STORE, noteMlsDevice, request } from "./archive-db.ts";
 
 type Kind = "device" | "keyPackage" | "group";
 type RecordKey = [scope: string, kind: Kind, id: string];
@@ -49,12 +49,16 @@ export class IndexedDbMlsStateStore implements MlsStateStore {
     this.writer = writer ?? null;
   }
 
-  loadDevice(): Promise<MlsDeviceRecord | null> {
-    return this.read(this.keyFor("device", ""));
+  async loadDevice(): Promise<MlsDeviceRecord | null> {
+    const device = await this.read<MlsDeviceRecord>(this.keyFor("device", ""));
+    // Also notes a device saved before the note existed.
+    if (device && this.writer?.held !== false) await noteMlsDevice(this.db, this.scope, device.deviceId);
+    return device;
   }
 
-  saveDevice(device: MlsDeviceRecord): Promise<void> {
-    return this.write([[this.keyFor("device", ""), device]]);
+  async saveDevice(device: MlsDeviceRecord): Promise<void> {
+    await this.write([[this.keyFor("device", ""), device]]);
+    await noteMlsDevice(this.db, this.scope, device.deviceId);
   }
 
   putKeyPackages(records: MlsKeyPackageRecord[]): Promise<void> {

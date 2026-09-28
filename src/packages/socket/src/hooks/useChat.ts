@@ -86,6 +86,8 @@ interface UseChatReturn {
   composerHeld: boolean;
   /** Deletes an MLS message over MLS. The server has no copy to delete. */
   deleteMlsMessage: (messageId: string) => void;
+  /** This device's history won't open, which is what's holding the composer. */
+  archiveFailed: boolean;
 }
 
 export function useChat({
@@ -761,5 +763,6 @@ export function useChat({
       : null,
     composerHeld: mls.waiting || mlsMode === "refused",
     deleteMlsMessage: mls.remove,
+    archiveFailed: mls.archiveFailed,
   };
 }

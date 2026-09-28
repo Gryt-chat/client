@@ -8,13 +8,16 @@ import {
   fetchCredentials,
   getAccessTokenStorageMode,
   migrateAccessTokensToMode,
+  openLocalArchive,
   startPasskeySetup,
   updateCredentialLabel,
   useAccount,
+  useLocalArchive,
 } from "@/common";
 
 import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "../../../../lib/icons";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
+import { LocalHistoryProblem } from "../../../socket/src/components/LocalHistoryProblem";
 import { LocalIdentitySection } from "./localIdentitySection";
 import { MessageKeySection } from "./messageKeySection";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
@@ -143,6 +146,36 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
         onConfirm={() => onDelete(credential.id)}
       />
     </div>
+  );
+}
+
+function LocalHistorySection() {
+  const { status } = useLocalArchive();
+
+  useEffect(() => {
+    // Opening is how the problem is found. A failure shows below, so nothing to catch here.
+    openLocalArchive().catch(() => undefined);
+  }, []);
+
+  const line =
+    status.kind === "open"
+      ? status.home === "browser"
+        ? "Kept in this browser. Clearing its site data deletes it."
+        : status.sealed
+          ? "Kept on this device, encrypted with a key your computer's keychain holds."
+          : "Kept on this device. There's no keychain here, so it isn't encrypted on disk."
+      : status.kind === "failed"
+        ? null
+        : "Opening…";
+
+  return (
+    <SettingGroup
+      title="Message history on this device"
+      description="End-to-end encrypted DMs can only be read on the devices they reached, so their history is kept here."
+    >
+      {line && <span className="text-sm">{line}</span>}
+      <LocalHistoryProblem />
+    </SettingGroup>
   );
 }
 
@@ -317,6 +350,8 @@ export function SecuritySettings() {
           </div>
         </div>
       )}
+
+      <LocalHistorySection />
 
       <SettingGroup
         title="Persist server access tokens"

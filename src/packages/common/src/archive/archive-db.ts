@@ -12,6 +12,15 @@ export const MLS_STORE = "mls";
 
 const KEY_SLOT = "archive-key";
 const CHECK_SLOT = "key-check";
+/** Each server's MLS device id in the clear, so it can still be removed once the key is gone. */
+const DEVICE_NOTE = "mls-device:";
+/** Devices whose state was wiped, still to be removed from their servers. Survives a wipe. */
+const RETIRED_SLOT = "retired-mls-devices";
+
+export interface RetiredMlsDevice {
+  scope: string;
+  deviceId: string;
+}
 
 export function openArchiveDb(factory: IDBFactory = indexedDB, name = ARCHIVE_DB_NAME): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -93,8 +102,53 @@ export function archiveKeySlot(db: IDBDatabase): ArchiveKeySlot {
     async wipe() {
       const stores = [META_STORE, MESSAGE_STORE, MLS_STORE];
       const tx = db.transaction(stores, "readwrite");
+      const meta = tx.objectStore(META_STORE);
+      const retired = await retiredIn(meta);
       for (const name of stores) tx.objectStore(name).clear();
+      if (retired.length) meta.put(retired, RETIRED_SLOT);
       await committed(tx);
     },
   };
+}
+
+/** The old retired list plus every noted device, which a wipe is about to orphan. */
+async function retiredIn(meta: IDBObjectStore): Promise<RetiredMlsDevice[]> {
+  const notes = IDBKeyRange.bound(DEVICE_NOTE, DEVICE_NOTE + "\uffff");
+  const [keys, ids, earlier] = await Promise.all([
+    request(meta.getAllKeys(notes)),
+    request(meta.getAll(notes) as IDBRequest<unknown[]>),
+    request(meta.get(RETIRED_SLOT) as IDBRequest<RetiredMlsDevice[] | undefined>),
+  ]);
+  const out = [...(earlier ?? [])];
+  keys.forEach((key, i) => {
+    const scope = String(key).slice(DEVICE_NOTE.length);
+    const deviceId = ids[i];
+    if (typeof deviceId !== "string") return;
+    if (!out.some((d) => d.scope === scope && d.deviceId === deviceId)) out.push({ scope, deviceId });
+  });
+  return out;
+}
+
+/** Written next to the sealed device record. The id isn't secret: the server hands it out. */
+export async function noteMlsDevice(db: IDBDatabase, scope: string, deviceId: string): Promise<void> {
+  const tx = db.transaction(META_STORE, "readwrite");
+  tx.objectStore(META_STORE).put(deviceId, DEVICE_NOTE + scope);
+  await committed(tx);
+}
+
+export async function retiredMlsDevices(db: IDBDatabase, scope: string): Promise<string[]> {
+  const tx = db.transaction(META_STORE, "readonly");
+  const all = (await request(tx.objectStore(META_STORE).get(RETIRED_SLOT))) as RetiredMlsDevice[] | undefined;
+  return (all ?? []).filter((d) => d.scope === scope).map((d) => d.deviceId);
+}
+
+/** Once the server has removed it, or said it never had it. */
+export async function forgetRetiredMlsDevice(db: IDBDatabase, scope: string, deviceId: string): Promise<void> {
+  const tx = db.transaction(META_STORE, "readwrite");
+  const meta = tx.objectStore(META_STORE);
+  const all = ((await request(meta.get(RETIRED_SLOT))) as RetiredMlsDevice[] | undefined) ?? [];
+  const left = all.filter((d) => d.scope !== scope || d.deviceId !== deviceId);
+  if (left.length) meta.put(left, RETIRED_SLOT);
+  else meta.delete(RETIRED_SLOT);
+  await committed(tx);
 }

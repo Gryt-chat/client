@@ -4,6 +4,7 @@ import type { Socket } from "socket.io-client";
 
 import {
   claimMlsWorker,
+  getLocalArchiveSnapshot,
   getOwnServerUserId,
   getServerAccessToken,
   identityScopeFor,
@@ -13,6 +14,7 @@ import {
   openLocalArchive,
   ownPersonPublicKey,
   personKeyBindingFor,
+  subscribeToLocalArchive,
 } from "@/common";
 
 import { isElectron } from "../../../../lib/electron";
@@ -185,6 +187,8 @@ async function refresh(host: string): Promise<void> {
     if (!session?.capability || !accessToken) return;
     state.socket.emit("dm:list", { accessToken });
     await publishPersonKey(state.socket, accessToken, await personKeyBindingFor(host));
+    // Never holds up the start: a device left behind is tried again on the next connect.
+    await retireOldDevices(session).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
     await Promise.race([state.pinned.promise, new Promise((r) => setTimeout(r, MEMBERS_WAIT_MS))]);
     if (state.session === session) await session.start();
   } catch (e) {
@@ -193,6 +197,44 @@ async function refresh(host: string): Promise<void> {
     console.warn("[MLS] Couldn't start for", host, e);
   }
 }
+
+/** Devices whose state a clear wiped. Removed so peers stop encrypting to a device that can't read. */
+async function retireOldDevices(session: MlsSession): Promise<void> {
+  const scope = session.storeScope;
+  const archive = await openLocalArchive();
+  const retired = await archive.retiredMlsDevices(scope);
+  if (!retired.length) return;
+  const current = (await archive.mlsState(scope, claim ?? undefined).loadDevice())?.deviceId;
+  for (const deviceId of retired) {
+    if (deviceId !== current) {
+      try {
+        await session.removeOwnDevice(deviceId);
+      } catch (e) {
+        const code = (e as { refusal?: { error?: string } })?.refusal?.error;
+        // Already gone from the server counts as done. Anything else is tried on the next connect.
+        if (code !== "unknown_device" && code !== "invalid_device") {
+          console.warn("[MLS] Couldn't remove an old device:", deviceId, e);
+          continue;
+        }
+      }
+    }
+    await archive.forgetRetiredMlsDevice(scope, deviceId);
+  }
+}
+
+// After a clear, or a retry that got the keychain to open it, every session starts again.
+let archiveSeen = getLocalArchiveSnapshot();
+subscribeToLocalArchive(() => {
+  const next = getLocalArchiveSnapshot();
+  const cleared = next.epoch !== archiveSeen.epoch;
+  const recovered = archiveSeen.status.kind === "failed" && next.status.kind === "open";
+  archiveSeen = next;
+  if (!cleared && !recovered) return;
+  for (const [host, state] of hosts) {
+    if (cleared) state.sessionKey = null;
+    void refresh(host);
+  }
+});
 
 // ── Other tabs ask the one holding the lock ─────────────────────────────
 
