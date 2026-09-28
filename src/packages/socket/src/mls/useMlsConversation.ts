@@ -117,7 +117,8 @@ export function useMlsConversation({
           setProblems(source.problems(conversationId));
         })
         .catch((e: unknown) => {
-          console.warn("[MLS] Couldn't tell how to send here:", e);
+          // Waiting on the archive isn't worth a warning every few seconds.
+          if ((e as { code?: string })?.code !== "archive_closed") console.warn("[MLS] Couldn't tell how to send here:", e);
           if (live) retry = setTimeout(refresh, MODE_RETRY_MS);
         });
       setProblems(source.problems(conversationId));

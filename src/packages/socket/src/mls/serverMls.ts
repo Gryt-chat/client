@@ -19,6 +19,7 @@ import {
 
 import { isElectron } from "../../../../lib/electron";
 import { readMlsCapability } from "./capability";
+import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
 import { seenOnMlsFor } from "./seenOnMls";
 import { type ConversationProblems, createMlsSession, type MlsSession, type SessionSocket } from "./session";
@@ -44,6 +45,8 @@ interface HostState {
   ready: boolean;
   pinned: { promise: Promise<void>; resolve: () => void };
   session: MlsSession | null;
+  /** What this tab answers with: the session, or the mode-only source until it's there. */
+  local: MlsSource | null;
   sessionKey: string | null;
   /** The previous session's work. The next one waits, so two drivers never share a store. */
   retiring: Promise<void>;
@@ -101,8 +104,9 @@ export function attachServerMls(socket: Socket, host: string): void {
     ready: false,
     pinned: deferred(),
     session: null,
+    local: null,
     sessionKey: null,
-    retiring: previous ? retire(host, previous) : Promise.resolve(),
+    retiring: previous ? retire(previous) : Promise.resolve(),
   };
   hosts.set(host, state);
 
@@ -139,10 +143,9 @@ export function serverMlsPinned(host: string): void {
   hosts.get(host)?.pinned.resolve();
 }
 
-function retire(host: string, state: HostState): Promise<void> {
+function retire(state: HostState): Promise<void> {
   const session = state.session;
   state.session = null;
-  if (hosts.get(host) === state) setSource(host, null);
   return session ? session.dispose() : Promise.resolve();
 }
 
@@ -156,11 +159,23 @@ async function refresh(host: string): Promise<void> {
   try {
     if (state.sessionKey !== key) {
       state.sessionKey = key;
-      state.retiring = state.retiring.then(() => retire(host, state));
+      const scope = identityScopeFor(host);
+      // Version 1 needs no archive, so DMs that don't need MLS go on while it opens or if it won't.
+      state.local = createModeOnlySource({
+        socket: state.socket,
+        storeScope: scope,
+        dmScope: scope,
+        serverUserId,
+        capability,
+        getAccessToken: async () => getServerAccessToken(host),
+        seen: seenOnMlsFor(scope),
+      });
+      setSource(host, state.local);
+      state.retiring = state.retiring.then(() => retire(state));
       await state.retiring;
+      if (!capability) return;
       const [archive, ownPersonKey] = await Promise.all([openLocalArchive(), ownPersonPublicKey(host)]);
       if (hosts.get(host) !== state || state.sessionKey !== key) return;
-      const scope = identityScopeFor(host);
       state.session = createMlsSession({
         socket: state.socket as unknown as SessionSocket,
         storeScope: scope,
@@ -179,6 +194,7 @@ async function refresh(host: string): Promise<void> {
         },
       });
       state.session.onChange((conversationId) => relayChannel?.postMessage({ changed: host, conversationId }));
+      state.local = state.session;
       setSource(host, state.session);
     }
 
@@ -251,13 +267,13 @@ function listenForRelay(): void {
   relayChannel.addEventListener("message", (event: MessageEvent<RelayRequest>) => {
     const req = event.data;
     if (!req?.id || !req.op) return;
-    const session = hosts.get(req.host)?.session;
+    const source = hosts.get(req.host)?.local;
     const answer = (reply: Omit<RelayReply, "id">) => relayChannel.postMessage({ id: req.id, ...reply });
-    if (!session) return answer({ error: { message: "This server isn't connected in the other tab." } });
+    if (!source) return answer({ error: { message: "This server isn't connected in the other tab." } });
     const job =
       req.op === "mode"
-        ? session.modeFor(req.conversationId, req.peer).then((mode) => ({ mode, problems: session.problems(req.conversationId) }))
-        : session.send(req.conversationId, req.peer, req.content as MlsDmContent).then(() => ({}));
+        ? source.modeFor(req.conversationId, req.peer).then((mode) => ({ mode, problems: source.problems(req.conversationId) }))
+        : source.send(req.conversationId, req.peer, req.content as MlsDmContent).then(() => ({}));
     job.then(answer, (e: unknown) =>
       answer({ error: { code: (e as { code?: string })?.code, message: e instanceof Error ? e.message : String(e) } }),
     );

@@ -13,7 +13,7 @@ import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
 import { heldRoleIds } from "../lib/permissions";
-import { isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
+import { dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
 import { useMlsConversation } from "../mls/useMlsConversation";
 import { mergeSenders } from "../utils/mergeSender";
 import { openSealedAttachment } from "../utils/sealedAttachments";
@@ -86,7 +86,7 @@ interface UseChatReturn {
   composerHeld: boolean;
   /** Deletes an MLS message over MLS. The server has no copy to delete. */
   deleteMlsMessage: (messageId: string) => void;
-  /** This device's history won't open, which is what's holding the composer. */
+  /** This device's history won't open, and that's what's holding the composer. */
   archiveFailed: boolean;
 }
 
@@ -712,16 +712,15 @@ export function useChat({
     [onMlsPath, sealing.decision],
   );
 
+  const composer = dmComposer({ dmPeer, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed });
+  const sendPath = composer.path;
   const sendOnEitherPath = useCallback(
     (text: string, files: File[], replyToMessageId?: string) => {
       // Waiting or refused sends nothing: version 1 to somebody on MLS is what decision 4 rules out.
-      if (dmPeer && mlsMode !== "sealed-v1") {
-        if (mlsMode === "mls") sendOverMls(text, files, replyToMessageId);
-        return;
-      }
-      sendChat(text, files, replyToMessageId);
+      if (sendPath === "mls") sendOverMls(text, files, replyToMessageId);
+      else if (sendPath === "server") sendChat(text, files, replyToMessageId);
     },
-    [dmPeer, mlsMode, sendOverMls, sendChat],
+    [sendPath, sendOverMls, sendChat],
   );
 
   const editOnEitherPath = useCallback(
@@ -761,8 +760,8 @@ export function useChat({
     mlsNotice: dmPeer
       ? mlsNotice(mls.mode, mls.problems, { lostHistory: mls.lostHistory, home: mls.home, peerName: dmPeerName ?? "The other person" })
       : null,
-    composerHeld: mls.waiting || mlsMode === "refused",
+    composerHeld: composer.held,
     deleteMlsMessage: mls.remove,
-    archiveFailed: mls.archiveFailed,
+    archiveFailed: composer.archiveProblem,
   };
 }

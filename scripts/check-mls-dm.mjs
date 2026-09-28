@@ -5,8 +5,9 @@
 
 import assert from "node:assert/strict";
 
-const { archivedRow, isMlsPlaceholder, mergeTimeline, mlsNotice, newMessage, sendFailure, withOpenedFiles } =
+const { archivedRow, dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice, newMessage, sendFailure, withOpenedFiles } =
   await import("../src/packages/socket/src/mls/timeline.ts");
+const { createModeOnlySource } = await import("../src/packages/socket/src/mls/modeOnly.ts");
 const { applyMlsContent } = await import("../src/packages/socket/src/mls/applyContent.ts");
 const { asBytes, socketMlsTransport } = await import("../src/packages/socket/src/mls/transport.ts");
 const { publishPersonKey } = await import("../src/packages/socket/src/mls/publishPersonKey.ts");
@@ -281,6 +282,77 @@ test("somebody seen on MLS stays seen, per server, across tabs", () => {
   assert.equal(seenOnMlsFor("srv:b", storage).has("ola"), false);
   store.set("gryt_mls_seen:srv:a", "not json");
   assert.equal(a.has("ola"), false);
+});
+
+/* ── a DM while the archive won't open (GRYT-1553) ────────────────────── */
+
+const memoryStorage = () => {
+  const store = new Map();
+  return { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+};
+const modeOnly = (capability, reply = () => undefined, seen = seenOnMlsFor("srv:a", memoryStorage())) => {
+  const socket = fakeSocket(reply);
+  const source = createModeOnlySource({
+    socket,
+    storeScope: "srv:a",
+    dmScope: "srv:a",
+    serverUserId: "me",
+    capability,
+    getAccessToken: token,
+    seen,
+  });
+  return { socket, source, seen };
+};
+const MLS = { version: 1, ciphersuites: [1], retentionDays: 30 };
+const archiveClosed = (e) => e.code === "archive_closed";
+
+test("with the archive shut and no MLS on the server, a DM still sends and reads over version 1", async () => {
+  // Nothing here opens the archive: the source has no store, so this is the state a failed open leaves.
+  const { socket, source } = modeOnly(null);
+  const mode = await source.modeFor("dm_1", "kari");
+  assert.deepEqual(mode, { kind: "sealed-v1", reason: "server_without_mls" });
+  assert.equal(socket.sent.length, 0, "no MLS call to a server without MLS");
+
+  const composer = dmComposer({ dmPeer: "kari", mode, waiting: false, archiveFailed: true });
+  assert.deepEqual(composer, { path: "server", held: false, archiveProblem: false });
+
+  // Reading is the server's history alone, with nothing from the archive.
+  const shown = mergeTimeline({ server: [row("s1", 1), row("s2", 2)], serverHasMore: false, archived: [], archiveHasMore: false });
+  assert.deepEqual(ids(shown), ["s1", "s2"]);
+});
+
+test("with the archive shut, a server that dropped MLS still says so", async () => {
+  const seen = seenOnMlsFor("srv:a", memoryStorage());
+  seen.add("kari");
+  const { source } = modeOnly(null, undefined, seen);
+  assert.deepEqual(await source.modeFor("dm_1", "kari"), { kind: "refused", reason: "server_dropped_mls" });
+});
+
+test("with the archive shut and MLS on the server, only a peer without MLS gets version 1", async () => {
+  const devices = (list) => (event) => (event === "mls:devices" ? { ok: true, devices: list } : undefined);
+
+  const without = modeOnly(MLS, devices([{ serverUserId: "me", deviceId: "d1" }]));
+  assert.deepEqual(await without.source.modeFor("dm_1", "kari"), { kind: "sealed-v1", reason: "peer_without_mls" });
+  assert.deepEqual(without.socket.sent.map((m) => m.event), ["mls:devices"]);
+
+  const onMls = modeOnly(MLS, devices([{ serverUserId: "kari", deviceId: "k1" }]));
+  await assert.rejects(onMls.source.modeFor("dm_1", "kari"), archiveClosed);
+  assert.deepEqual(onMls.socket.sent.map((m) => m.event), ["mls:devices"], "nothing registered or published");
+  await assert.rejects(onMls.source.send("dm_1", "kari", { type: "message", id: "n", text: "hi" }), archiveClosed);
+
+  const composer = dmComposer({ dmPeer: "kari", mode: null, waiting: true, archiveFailed: true });
+  assert.deepEqual(composer, { path: "none", held: true, archiveProblem: true });
+});
+
+test("the composer holds only a DM waiting on its mode or refused", () => {
+  const base = { dmPeer: "kari", waiting: false, archiveFailed: false };
+  assert.deepEqual(dmComposer({ ...base, dmPeer: null, mode: null }), { path: "server", held: false, archiveProblem: false });
+  assert.equal(dmComposer({ ...base, mode: { kind: "mls" } }).path, "mls");
+  assert.deepEqual(dmComposer({ ...base, mode: { kind: "refused", reason: "peer_left_mls" } }), {
+    path: "none",
+    held: true,
+    archiveProblem: false,
+  });
 });
 
 let failed = 0;
