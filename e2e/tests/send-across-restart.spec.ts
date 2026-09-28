@@ -118,10 +118,22 @@ function channel(page: Page): Conversation {
   };
 }
 
+/** Bob's app without MLS, so the DM stays on the sealed chat:send path this spec taps.
+    On MLS it goes over mls:send, which the tap never sees, and the test skipped itself. */
+function withoutMls() {
+  const send = WebSocket.prototype.send;
+  WebSocket.prototype.send = function (this: WebSocket, data: string | ArrayBufferLike | Blob | ArrayBufferView) {
+    if (typeof data === "string" && data.includes('"mls:')) return;
+    send.call(this, data);
+  };
+}
+
 async function dm(alice: Member, bob: Member): Promise<Conversation> {
   const box = composer(alice.page, `Message ${bob.name}`);
   await membersPanel(alice.page).getByRole("button", { name: bob.name, exact: true }).click();
-  await expect(box).toBeVisible();
+  // The composer is drawn before the DM knows how to send, and stays read-only until it does.
+  await expect(alice.page.getByText("This conversation is encrypted.")).toBeVisible();
+  await expect(box).toBeEditable();
   return {
     box,
     rows: (text) => alice.page.locator("[data-message-id]").filter({ hasText: text }),
@@ -152,6 +164,8 @@ async function type(page: Page, box: Locator, text: string): Promise<void> {
   // and react-hot-toast holds every toast while the pointer is over one, so it never left.
   await box.focus();
   await page.keyboard.insertText(text);
+  // An empty box after Enter proves nothing if the text never went in.
+  await expect(box).toHaveText(text);
   await box.press("Enter");
   await expect(box).toHaveText("");
 }
@@ -179,7 +193,12 @@ for (const kind of ["channel", "dm", "thread"] as const) {
     const wire = await tapWire(alice.context, server);
     await alice.page.reload();
     await joinServer(alice.page, server.host);
-    const bob = kind === "dm" ? await newMember({ server, label: "bob" }) : null;
+    const bob = kind === "dm" ? await newMember({ server, join: false, label: "bob" }) : null;
+    if (bob) {
+      await bob.context.addInitScript(withoutMls);
+      await bob.page.reload();
+      await joinServer(bob.page, server.host);
+    }
 
     const conversation =
       kind === "channel" ? channel(alice.page) : kind === "dm" ? await dm(alice, bob!) : await thread(alice.page);
