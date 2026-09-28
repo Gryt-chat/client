@@ -65,6 +65,8 @@ export interface MemberInfo {
    * joined with. Verified and pinned client-side; the server never reads it.
    */
   dmKeyBinding?: string | null;
+  /** Their MLS person key, signed by the same identity. Checked the same way. */
+  personKeyBinding?: string | null;
   /**
    * How many times this member has renamed themselves here, and when they last
    * did. The old names are deliberately not sent.

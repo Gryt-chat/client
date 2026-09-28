@@ -87,6 +87,14 @@ export type ChatMessage = {
    * is ordinary and permanent; `broken` is a key that does not open, which is not.
    */
   sealedState?: "opening" | "open" | "locked" | "broken";
+  /** Sent over MLS and read from this device's archive. Edits and deletes go that way too. */
+  mls?: boolean;
+  /** Why a failed send failed, when there's more to say than that it did. */
+  failure?: string;
+  /** The line the server writes for apps from before MLS. This app hides it (GRYT-1517). */
+  mls_placeholder?: { seq: number; sender_server_id: string } | null;
+  /** The message this one answers, when it's in the archive but not on screen. */
+  reply_original?: ChatMessage;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components

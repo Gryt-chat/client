@@ -295,7 +295,8 @@ export function installContactGuard(socket: unknown, deps: ContactGuardDeps): vo
   function outbound(event: string, payload: unknown): void {
     const p = asRecord(payload);
     if (!p) return;
-    if (event === "chat:send") {
+    // An MLS message is written to them as much as a sealed one is.
+    if (event === "chat:send" || event === "mls:send") {
       const id = asString(p.conversationId);
       if (!id || !id.startsWith("dm_")) return;
       const view = views.get(id);

@@ -4,9 +4,13 @@ import { base64Url as sharedBase64Url, base64UrlDecode as sharedBase64UrlDecode 
  * identity authentication. The private key never leaves the client.
  */
 import {
+  createMlsDevice,
   deriveDmKeyPair,
+  derivePersonKeyPair,
   type DmKeyPair,
+  type MlsDevice,
   signDmKeyBinding,
+  signPersonKeyBinding,
 } from "@gryt/crypto";
 
 import { getElectronAPI } from "../../../../lib/electron";
@@ -373,6 +377,51 @@ export async function dmKeyBindingFor(host: string): Promise<string | null> {
     identityPrivateKey: identity.privateKey,
     identityPublicJwk,
   });
+}
+
+async function readSeedFor(host: string): Promise<{ seed: Uint8Array; scope: IdentityScope }> {
+  const db = await openDB();
+  try {
+    return { seed: await getOrCreateSeed(db), scope: identityScopeFor(host) };
+  } finally {
+    db.close();
+  }
+}
+
+/** The MLS person key's public half on one server, for the pins and your own row. */
+export async function ownPersonPublicKey(host: string): Promise<Uint8Array> {
+  const { seed, scope } = await readSeedFor(host);
+  const pair = derivePersonKeyPair(seed, scope);
+  pair.privateKey.fill(0);
+  return pair.publicKey;
+}
+
+/**
+ * `mls:person:publish`'s binding. The server refuses it unless the same scope and
+ * signer made the DM key binding, so this mirrors `dmKeyBindingFor`.
+ */
+export async function personKeyBindingFor(host: string): Promise<string> {
+  const { seed, scope } = await readSeedFor(host);
+  const identity = await deriveLocalKeyPair(seed, scope);
+  const identityPublicJwk = await crypto.subtle.exportKey("jwk", identity.publicKey);
+  const person = derivePersonKeyPair(seed, scope);
+  person.privateKey.fill(0);
+
+  return signPersonKeyBinding({
+    personPublicKey: person.publicKey,
+    scope,
+    identityPrivateKey: identity.privateKey,
+    identityPublicJwk,
+  });
+}
+
+/** This device's MLS leaf on one server. The leaf key is random; the seed only certifies it. */
+export async function newMlsDevice(
+  host: string,
+  deviceName: string,
+): Promise<MlsDevice & { deviceId: string }> {
+  const { seed, scope } = await readSeedFor(host);
+  return createMlsDevice({ seed, scope, deviceName });
 }
 
 /**

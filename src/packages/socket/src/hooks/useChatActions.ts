@@ -19,6 +19,8 @@ interface UseChatActionsParams {
   isRateLimited?: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
+  /** An MLS message is deleted over MLS: the server has no copy to delete. */
+  deleteMls?: (messageId: string) => void;
   editorRef: RefObject<ChatEditorHandle | null>;
   forceScrollToBottomRef: { current: boolean };
 }
@@ -33,6 +35,7 @@ export function useChatActions({
   isRateLimited,
   sendChat,
   editMessage,
+  deleteMls,
   editorRef,
   forceScrollToBottomRef,
 }: UseChatActionsParams) {
@@ -85,6 +88,11 @@ export function useChatActions({
 
   const confirmDelete = useCallback(() => {
     if (!pendingDeleteMessage || !socketConnection) return;
+    if (pendingDeleteMessage.mls) {
+      deleteMls?.(pendingDeleteMessage.message_id);
+      setPendingDeleteMessage(null);
+      return;
+    }
     const accessToken = getServerAccessToken(serverHost || "");
     if (!accessToken) return;
     (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:delete", {
@@ -93,7 +101,7 @@ export function useChatActions({
       accessToken,
     });
     setPendingDeleteMessage(null);
-  }, [pendingDeleteMessage, socketConnection, serverHost]);
+  }, [pendingDeleteMessage, socketConnection, serverHost, deleteMls]);
 
   const startEditing = useCallback((message: ChatMessage) => {
     if (!message.text) return;

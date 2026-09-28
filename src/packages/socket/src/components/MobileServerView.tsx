@@ -13,7 +13,7 @@ import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
 import { ChannelList } from "./ChannelList";
 import type { ChatMessage } from "./chatUtils";
-import { ChatView } from "./ChatView";
+import { ChatView, type MlsView } from "./ChatView";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { MemberSidebar } from "./MemberSidebar";
@@ -84,6 +84,7 @@ interface MobileServerViewProps {
   chatMessages: ChatMessage[];
   /** Whether the next message will be encrypted (GRYT-729). */
   sealing?: SealDecision;
+  mls?: MlsView;
   /** Member id to nickname, so a refusal names the person. */
   memberNames?: Record<string, string>;
   canSend: boolean;
@@ -219,6 +220,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
         <ChatView
           chatMessages={props.chatMessages}
           sealing={props.sealing}
+          mls={props.mls}
           memberNames={props.memberNames}
           conversationKey={props.selectedDmId ?? props.selectedChannelId ?? undefined}
           canSend={props.canSend}

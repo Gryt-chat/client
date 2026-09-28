@@ -5,6 +5,7 @@ import { Socket } from "socket.io-client";
 import type { MemberKeyState } from "@/common";
 import {
   answerChallenge,
+  getOwnServerUserId,
   getServerRefreshToken,
   getSuppressEveryone,
   isSessionExpired,
@@ -19,7 +20,8 @@ import {
   setServerFileToken,
   shouldNotifyForMessage,
 } from "@/common";
-import { showDesktopNotification } from "@/lib/desktopNotification";
+import { channelNamesFor } from "@/lib/channelDirectory";
+import { notificationBody, showDesktopNotification } from "@/lib/desktopNotification";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
 import {
   Server,
@@ -30,10 +32,12 @@ import {
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { MemberInfo } from "../components/MemberSidebar";
 import { heldRoleIds } from "../lib/permissions";
+import { onMlsDelivered } from "../mls/serverMls";
 import { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import { idleRecovery, planRecovery, type RecoveryState } from "../utils/sessionRecovery";
+import { getDirectorySnapshot } from "./dmDirectory";
 import { registerServerSocketEvents } from "./registerServerSocketEvents";
 import { muteLiftsAt, parseMuteExpiry, setTextMute } from "./textMute";
 
@@ -52,6 +56,7 @@ type BackgroundMessage = {
   /* The server always sent this; the type never named it, so a thread reply and
      a channel message were badged the same. */
   thread_id?: string | null;
+  mls_placeholder?: unknown;
 };
 
 export interface SocketEventDeps {
@@ -159,6 +164,27 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   useEffect(() => { desktopNotificationsEnabledRef.current = desktopNotificationsEnabled; }, [desktopNotificationsEnabled]);
   useEffect(() => { incrementUnreadRef.current = incrementUnread; }, [incrementUnread]);
   useEffect(() => { onTokenRefreshedRef.current = onTokenRefreshed; }, [onTokenRefreshed]);
+
+  /* An MLS message says nothing until it's decrypted, so it notifies from here rather
+     than from `chat:new`, whose line only stands in for it (GRYT-1517). */
+  useEffect(() => onMlsDelivered(({ host, conversationId, senderId, content }) => {
+    if (content.type !== "message") return;
+    const msg = { sender_server_id: senderId, conversation_id: conversationId, text: content.text, attachments: Object.keys(content.attachments ?? {}) };
+    const notify = shouldNotifyForMessage(host, msg, {
+      myId: getOwnServerUserId(host),
+      viewingThisServer: host === currentlyViewingServerRef.current?.host,
+      windowFocused: document.hasFocus(),
+      mentionsMe: false,
+    });
+    if (!notify) return;
+    if (messageSoundEnabledRef.current) playNotificationSound(messageSoundFileRef.current, messageSoundVolumeRef.current);
+    if (notificationBadgeEnabledRef.current) incrementUnreadRef.current();
+    if (!desktopNotificationsEnabledRef.current) return;
+    const sender = getDirectorySnapshot()
+      .find((e) => e.host === host && e.conversation.conversation_id === conversationId)
+      ?.conversation.members.find((m) => m.server_user_id === senderId)?.nickname;
+    showDesktopNotification(sender || "New message", notificationBody(msg, channelNamesFor(host)));
+  }), [currentlyViewingServerRef]);
 
   useEffect(() => {
     Object.entries(sockets).forEach(([host, socket]) => {
@@ -451,8 +477,18 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
       // ---- Background chat notification (non-focused servers) ----
 
+      /* Unread for an MLS message counts from the log entry. Its `chat:new` is a
+         system line for older apps, dropped below (GRYT-1517). */
+      socket.on("mls:message", (entry: { kind?: string; conversationId?: string; senderServerUserId?: string }) => {
+        if (host === currentlyViewingServerRef.current?.host) return;
+        if (entry?.kind !== "application" || !entry.conversationId) return;
+        if (entry.senderServerUserId === getOwnServerUserId(host)) return;
+        markChannelUnread(host, entry.conversationId);
+      });
+
       socket.on("chat:new", (msg: BackgroundMessage) => {
         if (host === currentlyViewingServerRef.current?.host) return;
+        if (msg.mls_placeholder) return;
         const myId = socket.id ? clientsRef.current[host]?.[socket.id]?.serverUserId : undefined;
         if (myId && msg.sender_server_id === myId) return;
         // Counted against the thread rather than the channel: both trackers were

@@ -169,11 +169,69 @@ test("an encrypted DM: each side reads the other's message", async ({ newMember 
   await expect(messageRow(bob.page, answer)).toBeVisible();
 
   for (const member of [alice, bob]) {
-    const sealedSend = member.frames.filter((frame) => frame.startsWith('42["chat:send"') && frame.includes("gryt-sealed-message"));
-    expect(sealedSend, `${member.name}'s socket carried no sealed message at all`).not.toEqual([]);
+    // Both apps and the server do MLS, so the messages go as MLS ciphertext rather than as sealed ones.
+    const mlsSend = member.frames.filter((frame) => /^4\d*-?\d*\["mls:send"/.test(frame));
+    expect(mlsSend, `${member.name}'s socket carried no MLS message at all`).not.toEqual([]);
     const leaked = member.frames.filter((frame) => frame.includes(question) || frame.includes(answer));
     expect(leaked, `${member.name} sent or got a DM in plain text over the socket`).toEqual([]);
   }
+});
+
+test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lines for older apps", async ({ newMember }) => {
+  const alice = await newMember();
+  const bob = await newMember();
+  const hello = unique("hello over MLS");
+  await openDmFromMembers(bob, alice);
+  await send(bob.page, alice.name, hello);
+  await openDmFromList(alice.page, bob.name);
+  await expect(messageRow(alice.page, hello)).toBeVisible();
+
+  const helloRow = messageRow(alice.page, hello);
+  await helloRow.click({ button: "right" });
+  await alice.page.getByRole("menuitem", { name: "Reply" }).click();
+  const reply = unique("a reply");
+  await send(alice.page, bob.name, reply);
+  await expect(messageRow(bob.page, reply)).toContainText(hello);
+  // The server has no copy of an MLS message to react to or report (GRYT-1524).
+  await messageRow(bob.page, reply).hover();
+  await expect(bob.page.getByRole("button", { name: "Reply" }).first()).toBeVisible();
+  await expect(bob.page.getByRole("button", { name: "React with another emoji" })).toHaveCount(0);
+
+  const edited = `${hello} (edited)`;
+  await messageRow(bob.page, hello).first().click({ button: "right" });
+  await bob.page.getByRole("menuitem", { name: "Edit Message" }).click();
+  const box = composer(bob.page, `Message ${alice.name}`);
+  await expect(box).toHaveText(hello);
+  await expect(async () => {
+    await box.press("ControlOrMeta+A");
+    expect(await box.evaluate(() => getSelection()?.toString())).toBe(hello);
+  }).toPass();
+  await bob.page.keyboard.insertText(edited);
+  await box.press("Enter");
+  await expect(messageRow(alice.page, edited).first()).toBeVisible();
+
+  await attachAndSend(bob.page, [fixture("gradient.png")], box);
+  const image = alice.page.locator(`${CONFIRMED_ROW} img[alt="gradient.png"]`);
+  await expect(image).toHaveAttribute("src", /^blob:/);
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(96);
+
+  const doomed = messageRow(bob.page, edited).first();
+  await doomed.hover();
+  await doomed.getByTitle("Delete", { exact: true }).click();
+  await bob.page.getByRole("alertdialog", { name: "Delete message?" }).getByRole("button", { name: "Delete" }).click();
+  await expect(messageRow(alice.page, edited)).toHaveCount(0);
+
+  // Still there after a reload, from the archive, and no "update Gryt" lines among them.
+  await alice.page.locator('[data-gryt="sidebar"]').getByRole("button", { name: "Gryt E2E", exact: true }).click();
+  await alice.page.reload();
+  // A confirmed row means her socket is joined again, so the DM's history can load.
+  await sendMessage(alice.page, unique("back from a reload"));
+  await openDmFromList(alice.page, bob.name);
+  await expect(messageRow(alice.page, reply)).toBeVisible();
+  await expect(image).toHaveAttribute("src", /^blob:/);
+  await expect(alice.page.getByText("Update Gryt to read it")).toHaveCount(0);
+  await expect(alice.page.locator(CONFIRMED_ROW).filter({ hasText: "Not encrypted" })).toHaveCount(0);
+  await expect(messageRow(alice.page, edited)).toHaveCount(0);
 });
 
 test("messages that arrive before a DM's history loads go below it", async ({ newMember }) => {
@@ -297,11 +355,11 @@ test("an encrypted DM's video has its own shape before it is decrypted, and keep
   expect({ width: after.width, height: after.height }).toEqual({ width: before.width, height: before.height });
 });
 
-/** A member whose app never publishes a message key, so a DM with them can't be encrypted. */
+/** A member whose app never publishes a message key or does MLS, so a DM with them can't be encrypted. */
 function neverPublishKey() {
   const send = WebSocket.prototype.send;
   WebSocket.prototype.send = function (this: WebSocket, data: string | ArrayBufferLike | Blob | ArrayBufferView) {
-    if (typeof data === "string" && data.includes('"dm:key:publish"')) return;
+    if (typeof data === "string" && (data.includes('"dm:key:publish"') || data.includes('"mls:'))) return;
     send.call(this, data);
   };
 }

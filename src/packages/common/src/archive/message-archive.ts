@@ -16,9 +16,11 @@ export interface ArchivedMessage {
   text: string;
   attachments: Record<string, SealedAttachmentKey>;
   editedAt?: number;
+  /** The message this one answers, by `messageId`. */
+  replyTo?: string;
 }
 
-type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt">;
+type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo">;
 
 /** Ids and time stay readable for the indexes; the server already knows all four. */
 interface StoredMessage {
@@ -171,6 +173,7 @@ export class MessageArchive {
     const body: MessageBody = { senderId: m.senderId, text: m.text, attachments: m.attachments };
     if (m.senderDeviceId !== undefined) body.senderDeviceId = m.senderDeviceId;
     if (m.editedAt !== undefined) body.editedAt = m.editedAt;
+    if (m.replyTo !== undefined) body.replyTo = m.replyTo;
 
     if (!this.key) {
       row.plain = body;

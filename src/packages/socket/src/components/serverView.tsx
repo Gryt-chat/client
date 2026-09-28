@@ -306,12 +306,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     return names;
   }, [memberLists, currentlyViewingServer?.host]);
 
-  const conversationMembers = useMemo(
-    () =>
-      directConversations.find((c) => c.conversation_id === activeConversationId)
-        ?.members ?? null,
+  const activeConversation = useMemo(
+    () => directConversations.find((c) => c.conversation_id === activeConversationId),
     [directConversations, activeConversationId],
   );
+  const conversationMembers = activeConversation?.members ?? null;
 
   const {
     chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
@@ -319,12 +318,19 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend,
+    mlsNotice, composerHeld, deleteMlsMessage,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
     currentUserId: currentServerUserId,
     conversationMembers,
+    dmPeer: activeConversation?.kind === "dm" ? activeConversation.other.server_user_id : null,
+    dmPeerName: activeConversation?.other.nickname,
   });
+  const mlsView = useMemo(
+    () => ({ notice: mlsNotice, held: composerHeld, remove: deleteMlsMessage }),
+    [mlsNotice, composerHeld, deleteMlsMessage],
+  );
 
   /** The server already withholds new messages, so this covers what was drawn
       when Block was pressed. Filtered here, so unblocking needs no refetch. */
@@ -880,6 +886,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         isBlocked={isBlocked}
         conversationKey={activeConversationId}
         sealing={activeDm ? sealing : undefined}
+        mls={activeDm ? mlsView : undefined}
         memberNames={memberNames}
         canSend={canSend}
         sendChat={sendChat}
@@ -999,6 +1006,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             mentionCounts={mentionCounts}
             chatMessages={visibleChatMessages}
             sealing={activeDm ? sealing : undefined}
+            mls={activeDm ? mlsView : undefined}
             memberNames={memberNames}
             canSend={canSend}
             sendChat={sendChat}

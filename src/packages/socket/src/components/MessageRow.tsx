@@ -144,11 +144,14 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 
   // Editing and deleting your own message each have a permission, so a role can
   // post and not revise. `canDeleteAny` is worked out where the server is known.
-  const canDelete = !!canDeleteAny || (isOwnMessage && can("delete_own_messages"));
-  const canEdit = isOwnMessage && !!m.text && can("edit_own_messages");
-  const canReport = can("report_messages");
-  const canReact = can("add_reactions");
-  const showsPreviews = can("use_link_previews");
+  const mls = !!m.mls;
+  // The server has no copy of an MLS message to delete, react to or report (GRYT-1524).
+  const canDelete = mls ? isOwnMessage && !m.pending && !m.failed : !!canDeleteAny || (isOwnMessage && can("delete_own_messages"));
+  const canEdit = isOwnMessage && !!m.text && can("edit_own_messages") && !(mls && (m.pending || m.failed));
+  const canReport = !mls && can("report_messages");
+  const canReact = !mls && can("add_reactions");
+  // Off in encrypted conversations for now: fetching one tells the server the link (decision 13).
+  const showsPreviews = !mls && can("use_link_previews");
 
   const bgColor = (isHovered || isReactionPickerOpen || isCtxMenuOpen)
     ? "var(--gryt-neutral-4)"
@@ -708,7 +711,7 @@ function MessageContent({
         )}
         {m.failed && (
           <span className="text-xs" style={{ color: "var(--gryt-danger-9)", marginTop: "2px" }}>
-            Failed to send
+            {m.failure ?? "Failed to send"}
           </span>
         )}
         {m.pending && m.waiting && (
