@@ -9,7 +9,7 @@ import { type AckSocket, socketMlsTransport } from "./transport.ts";
  * MLS on the server only its version 1 answers stand, and anything else waits for the archive.
  */
 
-export type ModeOnlySource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "onChange">;
+export type ModeOnlySource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "waiting" | "onChange">;
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
 
@@ -65,6 +65,7 @@ export function createModeOnlySource(options: {
     },
     send: closed,
     problems: () => NO_PROBLEMS,
+    waiting: () => false,
     onChange: () => () => undefined,
   };
 }
