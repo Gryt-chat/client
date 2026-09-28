@@ -283,6 +283,7 @@ function removedSource(base: MlsSource): MlsSource {
     send: () =>
       Promise.reject(Object.assign(new Error("This device was removed from encrypted DMs on this server."), { code: "device_removed" })),
     problems: () => ({ undecryptable: 0, lost: "device_removed" }),
+    waiting: () => false,
     onChange: base.onChange,
   };
 }
