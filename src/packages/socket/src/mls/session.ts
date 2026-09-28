@@ -7,6 +7,7 @@ import {
   type MlsDmContent,
   type MlsDmDriver,
   type MlsLogEntry,
+  type MlsOwnDevice,
   mlsPinsFromPeerPins,
   type MlsServerCapability,
   type MlsStateStore,
@@ -74,6 +75,8 @@ export interface MlsSession {
   /** Who is in which DM, newest first, from `dm:list` and `dm:opened`. */
   noteConversations(conversations: { conversation_id: string; members: { server_user_id: string }[] }[]): void;
   problems(conversationId: string): ConversationProblems;
+  /** Your devices on this server, named from their certificates where a group shows them. */
+  ownDevices(): Promise<MlsOwnDevice[]>;
   /** One of your own devices, off the server. Peers drop it from each DM on their next pass. */
   removeOwnDevice(deviceId: string): Promise<void>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
@@ -290,9 +293,13 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       for (const c of list) members.set(c.conversation_id, c.members.map((m) => m.server_user_id));
     },
     problems: (conversationId) => problems.get(conversationId) ?? NO_PROBLEMS,
+    ownDevices() {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      return track(driver.ownDevices());
+    },
     removeOwnDevice(deviceId) {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
-      return track(driver.removeOwnDevice(deviceId));
+      return track(driver.removeOwnDevice(deviceId).then(() => changed(null)));
     },
     onChange(listener) {
       listeners.add(listener);

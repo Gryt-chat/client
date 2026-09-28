@@ -8,6 +8,10 @@ export * from "./src/hooks/useServerManagement";
 export * from "./src/hooks/useSockets";
 export * from "./src/hooks/whatsNewRequest";
 
+// MLS
+export * from "./src/mls/ownDevices";
+export { type OwnDevicesAnswer, ownMlsDevices, removeOwnMlsDevice, useMlsSource } from "./src/mls/serverMls";
+
 // Utils
 export * from "./src/utils/joinServerOnce";
 

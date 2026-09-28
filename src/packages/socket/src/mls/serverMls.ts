@@ -1,4 +1,4 @@
-import type { DmSealingMode, MlsDmContent, MlsServerCapability } from "@gryt/core";
+import type { DmSealingMode, MlsDmContent, MlsOwnDevice, MlsServerCapability } from "@gryt/core";
 import { useSyncExternalStore } from "react";
 import type { Socket } from "socket.io-client";
 
@@ -276,10 +276,59 @@ subscribeToLocalArchive(() => {
   }
 });
 
+// ── Your devices, for Settings ─────────────────────────────────────────
+
+/** One server's answer for the device list. */
+export type OwnDevicesAnswer =
+  | { kind: "devices"; devices: MlsOwnDevice[] }
+  | { kind: "no_mls" }
+  | { kind: "not_connected" };
+
+async function ownDevicesHere(host: string): Promise<OwnDevicesAnswer> {
+  const state = hosts.get(host);
+  if (state?.capability === null) return { kind: "no_mls" };
+  if (!state?.session) return { kind: "not_connected" };
+  return { kind: "devices", devices: await state.session.ownDevices() };
+}
+
+async function removeHere(host: string, deviceId: string): Promise<void> {
+  const session = hosts.get(host)?.session;
+  if (!session) throw new Error("This server isn't connected.");
+  await session.removeOwnDevice(deviceId);
+}
+
+const askOtherTab = () => !!claim && !claim.held && !!relayChannel;
+
+/** Your devices on one server, from whichever tab runs its driver. */
+export async function ownMlsDevices(host: string): Promise<OwnDevicesAnswer> {
+  if (!askOtherTab()) return ownDevicesHere(host);
+  return (await askRelay({ host, op: "devices" })).devices ?? { kind: "not_connected" };
+}
+
+/** Takes one of your devices off that server. Your other devices drop it from each DM. */
+export async function removeOwnMlsDevice(host: string, deviceId: string): Promise<void> {
+  if (!askOtherTab()) return removeHere(host, deviceId);
+  await askRelay({ host, op: "remove", deviceId });
+}
+
 // ── Other tabs ask the one holding the lock ─────────────────────────────
 
-type RelayRequest = { id: string; host: string; op: "mode" | "send"; conversationId: string; peer: string; content?: MlsDmContent };
-type RelayReply = { id: string; mode?: DmSealingMode; problems?: ConversationProblems; error?: { code?: string; message: string } };
+type RelayRequest = {
+  id: string;
+  host: string;
+  op: "mode" | "send" | "devices" | "remove";
+  conversationId?: string;
+  peer?: string;
+  content?: MlsDmContent;
+  deviceId?: string;
+};
+type RelayReply = {
+  id: string;
+  mode?: DmSealingMode;
+  problems?: ConversationProblems;
+  devices?: OwnDevicesAnswer;
+  error?: { code?: string; message: string };
+};
 type RelayChanged = { changed: string; conversationId: string | null };
 
 const relayChannel = typeof BroadcastChannel === "function" ? new BroadcastChannel(RELAY_CHANNEL) : null;
@@ -291,40 +340,49 @@ function listenForRelay(): void {
   relayChannel.addEventListener("message", (event: MessageEvent<RelayRequest>) => {
     const req = event.data;
     if (!req?.id || !req.op) return;
-    const source = hosts.get(req.host)?.local;
     const answer = (reply: Omit<RelayReply, "id">) => relayChannel.postMessage({ id: req.id, ...reply });
+    const fail = (e: unknown) =>
+      answer({ error: { code: (e as { code?: string })?.code, message: e instanceof Error ? e.message : String(e) } });
+    if (req.op === "devices") return void ownDevicesHere(req.host).then((devices) => answer({ devices }), fail);
+    if (req.op === "remove") return void removeHere(req.host, req.deviceId ?? "").then(() => answer({}), fail);
+    const source = hosts.get(req.host)?.local;
     if (!source) return answer({ error: { message: "This server isn't connected in the other tab." } });
+    const conversationId = req.conversationId ?? "";
+    const peer = req.peer ?? "";
     const job =
       req.op === "mode"
-        ? source.modeFor(req.conversationId, req.peer).then((mode) => ({ mode, problems: source.problems(req.conversationId) }))
-        : source.send(req.conversationId, req.peer, req.content as MlsDmContent).then(() => ({}));
+        ? source.modeFor(conversationId, peer).then((mode) => ({ mode, problems: source.problems(conversationId) }))
+        : source.send(conversationId, peer, req.content as MlsDmContent).then(() => ({}));
     job.then(answer, (e: unknown) =>
       answer({ error: { code: (e as { code?: string })?.code, message: e instanceof Error ? e.message : String(e) } }),
     );
   });
 }
 
+function askRelay(req: Omit<RelayRequest, "id">): Promise<RelayReply> {
+  return new Promise<RelayReply>((resolve, reject) => {
+    if (!relayChannel) return reject(new Error("No other tab to send through."));
+    const id = crypto.randomUUID();
+    const timer = setTimeout(() => done(new Error("The tab sending encrypted messages didn't answer.")), RELAY_TIMEOUT_MS);
+    const onReply = (event: MessageEvent<RelayReply>) => {
+      if (event.data?.id !== id) return;
+      if (!event.data.error) return done(null, event.data);
+      done(Object.assign(new Error(event.data.error.message), { code: event.data.error.code }));
+    };
+    const done = (error: Error | null, reply?: RelayReply) => {
+      clearTimeout(timer);
+      relayChannel.removeEventListener("message", onReply);
+      if (error) reject(error);
+      else resolve(reply!);
+    };
+    relayChannel.addEventListener("message", onReply);
+    relayChannel.postMessage({ id, ...req });
+  });
+}
+
 function relaySource(host: string): MlsSource {
   const problems = new Map<string, ConversationProblems>();
-  const ask = (req: Omit<RelayRequest, "id" | "host">) =>
-    new Promise<RelayReply>((resolve, reject) => {
-      if (!relayChannel) return reject(new Error("No other tab to send through."));
-      const id = crypto.randomUUID();
-      const timer = setTimeout(() => done(new Error("The tab sending encrypted messages didn't answer.")), RELAY_TIMEOUT_MS);
-      const onReply = (event: MessageEvent<RelayReply>) => {
-        if (event.data?.id !== id) return;
-        if (!event.data.error) return done(null, event.data);
-        done(Object.assign(new Error(event.data.error.message), { code: event.data.error.code }));
-      };
-      const done = (error: Error | null, reply?: RelayReply) => {
-        clearTimeout(timer);
-        relayChannel.removeEventListener("message", onReply);
-        if (error) reject(error);
-        else resolve(reply!);
-      };
-      relayChannel.addEventListener("message", onReply);
-      relayChannel.postMessage({ id, host, ...req });
-    });
+  const ask = (req: Omit<RelayRequest, "id" | "host">) => askRelay({ host, ...req });
 
   return {
     storeScope: identityScopeFor(host),

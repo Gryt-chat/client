@@ -13,6 +13,9 @@ const { asBytes, socketMlsTransport } = await import("../src/packages/socket/src
 const { publishPersonKey } = await import("../src/packages/socket/src/mls/publishPersonKey.ts");
 const { readMlsCapability, readMlsReports } = await import("../src/packages/socket/src/mls/capability.ts");
 const { seenOnMlsFor } = await import("../src/packages/socket/src/mls/seenOnMls.ts");
+const { orderOwnDevices, ownDeviceAdded, ownDeviceLabel, removeOwnDeviceWarning } = await import(
+  "../src/packages/socket/src/mls/ownDevices.ts"
+);
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -396,6 +399,24 @@ test("the composer holds only a DM waiting on its mode or refused", () => {
     held: true,
     archiveProblem: false,
   });
+});
+
+test("the device list puts this device first and names the ones no group shows", () => {
+  const dev = (deviceId, extra = {}) => ({ serverUserId: "kari", deviceId, name: null, addedAt: null, lastSeenAt: null, thisDevice: false, ...extra });
+  const listed = [
+    dev("old", { name: "Desktop", addedAt: "2026-09-01T10:00:00.000Z" }),
+    dev("unseen"),
+    dev("here", { name: "Web browser", thisDevice: true, addedAt: "2026-09-20T10:00:00.000Z" }),
+  ];
+  assert.deepEqual(orderOwnDevices(listed).map((d) => d.deviceId), ["here", "old", "unseen"]);
+  assert.equal(ownDeviceLabel(listed[1]), "Another device");
+  assert.match(ownDeviceAdded(listed[0]), /^Added .*2026/);
+  assert.equal(ownDeviceAdded(listed[1]), null, "a server that sends no date shows none");
+  assert.equal(
+    removeOwnDeviceWarning(listed[0], "Gryt Community"),
+    "“Desktop” won't get new encrypted DMs on Gryt Community anymore. Messages already on it stay there.",
+  );
+  assert.match(removeOwnDeviceWarning(listed[1], "Gryt Community"), /^That device won't/);
 });
 
 let failed = 0;
