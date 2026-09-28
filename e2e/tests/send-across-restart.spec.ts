@@ -148,7 +148,9 @@ async function thread(page: Page): Promise<Conversation> {
 }
 
 async function type(page: Page, box: Locator, text: string): Promise<void> {
-  await box.click();
+  // Not a click: that parks the pointer on the thread reply box, under the reconnect toast,
+  // and react-hot-toast holds every toast while the pointer is over one, so it never left.
+  await box.focus();
   await page.keyboard.insertText(text);
   await box.press("Enter");
   await expect(box).toHaveText("");
