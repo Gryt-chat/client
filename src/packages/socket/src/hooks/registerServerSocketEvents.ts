@@ -30,6 +30,7 @@ import {
   localPeerPinStore,
   type MemberKeyState,
   ownDmPublicKey,
+  ownPersonPublicKey,
   readSealedVault,
 } from "@/common";
 import { rememberChannelNames } from "@/lib/channelDirectory";
@@ -49,6 +50,7 @@ import {
   type CallMemberships,
   rememberCallMembers,
 } from "../lib/callMembers";
+import { attachServerMls, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
@@ -170,6 +172,7 @@ subscribeToPrefs(() => {
 export function registerServerSocketEvents(socket: Socket, host: string, ctx: ServerEventContext) {
   mentionSockets.set(host, socket);
   suppressSeen.set(host, getSuppressEveryone(host));
+  attachServerMls(socket, host);
 
   /** Remembered rather than applied once: the next `server:clients` arrives with
       the conversation id blanked again, so this is re-applied to each. */
@@ -319,6 +322,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // Not awaited: a key that never arrives means no encrypted messages rather
     // than a connection that failed.
     if (firstTimeOnThisSocket(socket, DM_KEY)) void publishDmKey(socket, host);
+    serverMlsReady(host);
 
     if (data.sfu_hosts?.length) {
       warmSfuSelection(host, data.sfu_hosts);
@@ -714,18 +718,22 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // Separate from the list above, so a slow evaluation never holds up the
     // sidebar: a key decision changes what can be encrypted, not who is online.
     const myId = myServerUserIdByHost.get(host) ?? null;
-    void (myId ? ownDmPublicKey(host).catch(() => null) : Promise.resolve(null))
-      .then((ownKey) =>
+    // The person keys are pinned here too, before the MLS driver ever meets their devices.
+    const own = (key: (host: string) => Promise<Uint8Array>) => (myId ? key(host).catch(() => null) : Promise.resolve(null));
+    void Promise.all([own(ownDmPublicKey), own(ownPersonPublicKey)])
+      .then(([ownKey, ownPersonKey]) =>
         evaluateMemberKeys({
           store: localPeerPinStore,
           scope: identityScopeFor(host),
           ownKey,
+          ownPersonKey,
           members: data,
           myServerUserId: myId,
         }),
       )
       .then((states) => {
         setMemberKeyStates((old) => ({ ...old, [host]: states }));
+        serverMlsPinned(host);
 
         /* Held back before it is shown, since our own publish races the first
            member list. A second device really does mismatch, so it is named first. */

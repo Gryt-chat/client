@@ -13,6 +13,8 @@ import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
 import { heldRoleIds } from "../lib/permissions";
+import { isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
+import { useMlsConversation } from "../mls/useMlsConversation";
 import { mergeSenders } from "../utils/mergeSender";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { sealedNotificationBody } from "../utils/sealedNotification";
@@ -44,6 +46,10 @@ interface UseChatParams {
   /** Everybody but you, or null for a channel: only a conversation can be
       encrypted. */
   conversationMembers?: { server_user_id: string }[] | null;
+  /** The other person in a one-to-one DM, the only kind that goes on MLS for now. */
+  dmPeer?: string | null;
+  /** Their name, for the line that says why a DM can't be sent to. */
+  dmPeerName?: string;
 }
 
 interface UseChatReturn {
@@ -74,6 +80,12 @@ interface UseChatReturn {
   fetchOlderMessages: () => void;
   isLoadingOlder: boolean;
   hasOlderMessages: boolean;
+  /** What a DM on, or held off, MLS says above the composer. */
+  mlsNotice: string | null;
+  /** The composer waits: the DM's mode isn't known, or MLS refused it. */
+  composerHeld: boolean;
+  /** Deletes an MLS message over MLS. The server has no copy to delete. */
+  deleteMlsMessage: (messageId: string) => void;
 }
 
 export function useChat({
@@ -86,6 +98,8 @@ export function useChat({
   nickname,
   currentUserId,
   conversationMembers,
+  dmPeer = null,
+  dmPeerName,
 }: UseChatParams): UseChatReturn {
   const serverHost = currentlyViewingServer?.host || "";
   const serverDetailsListRef = useRef(serverDetailsList);
@@ -178,6 +192,16 @@ export function useChat({
     members: conversationMembers ?? null,
   });
 
+  /* A one-to-one DM goes on MLS once the other person has an MLS device (decision 4).
+     Old messages still open through `sealing`, and MLS ones come from the archive. */
+  const mls = useMlsConversation({
+    host: serverHost,
+    conversationId: activeConversationId,
+    peer: dmPeer,
+    me: { serverUserId: currentUserId, nickname },
+    nameFor: (id) => (id === currentUserId ? nickname : undefined),
+  });
+  const mlsMode = mls.mode?.kind ?? null;
   /** Blob URLs made for decrypted attachments, revoked on unmount. */
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
@@ -407,6 +431,8 @@ export function useChat({
         }
       }
       handleNewMessage(msg, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages, deletedIdsRef.current);
+      // Counted from `mls:message` instead: it's a system line standing in for one (GRYT-1517).
+      if (isMlsPlaceholder(msg)) return;
 
       /* A thread reply is news about the thread. The store refuses to count the
          open thread rather than this clearing it: handler order is arbitrary. */
@@ -535,8 +561,14 @@ export function useChat({
       setReconnectNonce((n) => n + 1);
     };
 
+    const onMlsEntry = (entry: { kind?: string; conversationId?: string; senderServerUserId?: string }) => {
+      if (entry?.kind !== "application" || !entry.conversationId || entry.senderServerUserId === currentUserId) return;
+      if (entry.conversationId !== activeConversationId) markChannelUnread(serverHost, entry.conversationId);
+    };
+
     currentConnection.on("connect", onConnect);
     currentConnection.on("chat:new", onNew);
+    currentConnection.on("mls:message", onMlsEntry);
     currentConnection.on("chat:history", onHistory);
     currentConnection.on("chat:reaction", onReaction);
     currentConnection.on("chat:deleted", onDeleted);
@@ -548,6 +580,7 @@ export function useChat({
     return () => {
       currentConnection.off("connect", onConnect);
       currentConnection.off("chat:new", onNew);
+      currentConnection.off("mls:message", onMlsEntry);
       currentConnection.off("chat:history", onHistory);
       currentConnection.off("chat:reaction", onReaction);
       currentConnection.off("chat:deleted", onDeleted);
@@ -646,7 +679,9 @@ export function useChat({
     reconnectNonce,
   ]);
 
+  const { loadOlder: loadOlderFromArchive, send: sendOverMls, edit: editOverMls } = mls;
   const fetchOlderMessages = useCallback(() => {
+    loadOlderFromArchive();
     if (!currentConnection || !activeConversationId || isLoadingOlder || !hasOlderMessages) {
       return;
     }
@@ -657,19 +692,55 @@ export function useChat({
     const scopedKey = cacheKeyFor(activeConversationId);
     inFlightFetchRef.current.add(scopedKey);
     currentConnection.emit("chat:fetch", { conversationId: activeConversationId, limit: 50, before });
-  }, [currentConnection, activeConversationId, isLoadingOlder, hasOlderMessages, chatMessages, cacheKeyFor]);
+  }, [currentConnection, activeConversationId, isLoadingOlder, hasOlderMessages, chatMessages, cacheKeyFor, loadOlderFromArchive]);
+
+  const shownMessages = useMemo(
+    () =>
+      dmPeer
+        ? mergeTimeline({ server: chatMessages, serverHasMore: hasOlderMessages, archived: mls.rows, archiveHasMore: mls.hasMore })
+        : chatMessages.filter((m) => !isMlsPlaceholder(m)),
+    [dmPeer, chatMessages, hasOlderMessages, mls.rows, mls.hasMore],
+  );
+
+  /* On MLS, or refused by it, nothing goes through the version 1 path. It reads as
+     encrypted, which it is, and the composer line says why it can't send. */
+  const onMlsPath = !!dmPeer && (mlsMode === "mls" || mlsMode === "refused");
+  const shownSealing = useMemo<SealDecision>(
+    () => (onMlsPath ? { kind: "seal", recipients: [] } : sealing.decision),
+    [onMlsPath, sealing.decision],
+  );
+
+  const sendOnEitherPath = useCallback(
+    (text: string, files: File[], replyToMessageId?: string) => {
+      // Waiting or refused sends nothing: version 1 to somebody on MLS is what decision 4 rules out.
+      if (dmPeer && mlsMode !== "sealed-v1") {
+        if (mlsMode === "mls") sendOverMls(text, files, replyToMessageId);
+        return;
+      }
+      sendChat(text, files, replyToMessageId);
+    },
+    [dmPeer, mlsMode, sendOverMls, sendChat],
+  );
+
+  const editOnEitherPath = useCallback(
+    (messageId: string, conversationId: string, newText: string) => {
+      if (shownMessages.find((m) => m.message_id === messageId)?.mls) editOverMls(messageId, newText);
+      else editMessage(messageId, conversationId, newText);
+    },
+    [shownMessages, editOverMls, editMessage],
+  );
 
   return {
     plaintextPrompt,
     confirmPlaintextSend,
     cancelPlaintextSend,
-    chatMessages,
+    chatMessages: shownMessages,
     /** Whether the next message is encrypted and who is stopping it: a composer
         that does not draw this sends in the clear without saying so. */
-    sealing: sealing.decision,
+    sealing: shownSealing,
     canSend,
-    sendChat,
-    editMessage,
+    sendChat: sendOnEitherPath,
+    editMessage: editOnEitherPath,
     isLoadingMessages,
     isRateLimited,
     rateLimitCountdown,
@@ -684,6 +755,11 @@ export function useChat({
     clearRestoreText,
     fetchOlderMessages,
     isLoadingOlder,
-    hasOlderMessages,
+    hasOlderMessages: hasOlderMessages || mls.hasMore,
+    mlsNotice: dmPeer
+      ? mlsNotice(mls.mode, mls.problems, { lostHistory: mls.lostHistory, home: mls.home, peerName: dmPeerName ?? "The other person" })
+      : null,
+    composerHeld: mls.waiting || mlsMode === "refused",
+    deleteMlsMessage: mls.remove,
   };
 }

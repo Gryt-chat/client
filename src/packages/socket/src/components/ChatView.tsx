@@ -7,7 +7,7 @@ import type { SealDecision } from "@/common";
 import { getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPrefs, useTheme, useThreadMentions, useThreadUnread } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -40,6 +40,14 @@ import { TypingIndicator } from "./TypingIndicator";
 
 export type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 
+/** What a DM on MLS adds: the line above the composer, and deleting over MLS. */
+export interface MlsView {
+  notice: string | null;
+  /** The composer waits: the mode isn't known yet, or MLS refused it. */
+  held: boolean;
+  remove: (messageId: string) => void;
+}
+
 /** Where the composer would be, for somebody who may read a channel and not post. */
 const READ_ONLY_LINE = "You can read here, but not post.";
 
@@ -62,6 +70,7 @@ export const ChatView = memo(({
   channelType,
   conversationKind = "channel",
   sealing,
+  mls,
   memberNames,
   serverName,
   headerAction,
@@ -107,6 +116,7 @@ export const ChatView = memo(({
   conversationKind?: "channel" | "dm";
   /** Absent on a channel, which is never encrypted and needs no note. */
   sealing?: SealDecision;
+  mls?: MlsView;
   /** Member id to nickname, so a refusal can name the person rather than an id. */
   memberNames?: Record<string, string>;
   serverName?: string;
@@ -229,6 +239,7 @@ export const ChatView = memo(({
     isRateLimited,
     sendChat,
     editMessage,
+    deleteMls: mls?.remove,
     editorRef,
     forceScrollToBottomRef,
   });
@@ -395,7 +406,7 @@ export const ChatView = memo(({
     for (let i = chatMessages.length - 1; i >= 0; i--) {
       const message = chatMessages[i];
       if (message.sender_server_id === currentUserId) continue;
-      return message.sealed ? null : getSenderName(message);
+      return message.sealed || message.mls ? null : getSenderName(message);
     }
     return null;
   }, [chatMessages, conversationKind, currentUserId, getSenderName, sealing?.kind]);
@@ -550,7 +561,7 @@ export const ChatView = memo(({
          map does not hold. Thread first, then fall back for the root. */
       const replyOriginal = m.reply_to_message_id
         ? threadMessages.find((t) => t.message_id === m.reply_to_message_id) ??
-          messageMap.get(m.reply_to_message_id)
+          messageMap.get(m.reply_to_message_id) ?? m.reply_original
         : undefined;
       return (
         <MessageRow
@@ -678,7 +689,7 @@ export const ChatView = memo(({
               : `Message #${channelName}`
             : "Chat with your friends!";
 
-  const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead;
+  const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = mayRead && !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
@@ -780,7 +791,9 @@ export const ChatView = memo(({
                   const meta = messageMetadata[i];
                   if (!meta) return null;
 
-                  const replyOriginal = m.reply_to_message_id ? messageMap.get(m.reply_to_message_id) : undefined;
+                  const replyOriginal = m.reply_to_message_id
+                    ? messageMap.get(m.reply_to_message_id) ?? m.reply_original
+                    : undefined;
                   const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
                   const isMentioned = mentionsViewer(m, currentUserId, massViewer);
 
@@ -821,7 +834,7 @@ export const ChatView = memo(({
                       onOpenThread={threads.openThread}
                       /* Channels are never sealed, so the mark would be on every
                          message and mean nothing. */
-                      unencrypted={conversationKind === "dm" && !m.sealed}
+                      unencrypted={conversationKind === "dm" && !m.sealed && !m.mls}
                     />
                   );
                 })}
@@ -865,6 +878,17 @@ export const ChatView = memo(({
 
           {/* Above the composer rather than a toast: it has to still be on screen
               when somebody comes back to a box that stopped taking input. */}
+          {mls?.notice && (
+            <div
+              aria-live="polite"
+              className="mb-1.5 flex items-start gap-1.5 px-1 text-xs leading-snug"
+              style={{ color: "var(--gryt-neutral-11)" }}
+            >
+              <PiInfoFill aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
+              <span>{mls.notice}</span>
+            </div>
+          )}
+
           {muteLine && (
             <div
               aria-live="polite"
