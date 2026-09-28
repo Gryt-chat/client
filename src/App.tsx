@@ -32,6 +32,7 @@ import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
+import { LinkDeviceDialog } from "./components/linkDevice";
 import { MainApp } from "./components/mainApp";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
 import { ReportDialog } from "./components/reportDialog";
@@ -130,6 +131,7 @@ export function App() {
           <MainApp />
           <Settings />
           <Welcome />
+          <LinkDeviceDialog />
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
           <LeaveServer />
           <DeviceSwitchModal />

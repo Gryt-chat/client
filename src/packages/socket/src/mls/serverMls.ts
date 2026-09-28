@@ -124,6 +124,37 @@ function deferred() {
   return { promise, resolve };
 }
 
+const startedDevices = new Map<string, string>();
+const deviceWaiters = new Map<string, Set<(deviceId: string) => void>>();
+
+function announceDevice(host: string, deviceId: string): void {
+  startedDevices.set(host, deviceId);
+  for (const resolve of deviceWaiters.get(host) ?? []) resolve(deviceId);
+  deviceWaiters.delete(host);
+}
+
+/** This device's MLS device on a server once a start has run there, or null after `timeoutMs`. For linking. */
+export function whenOwnMlsDevice(host: string, timeoutMs: number): Promise<string | null> {
+  const known = startedDevices.get(host);
+  if (known) return Promise.resolve(known);
+  return new Promise((resolve) => {
+    const waiters = deviceWaiters.get(host) ?? new Set();
+    const done = (deviceId: string | null) => {
+      clearTimeout(timer);
+      waiters.delete(done);
+      resolve(deviceId);
+    };
+    const timer = setTimeout(() => done(null), timeoutMs);
+    waiters.add(done);
+    deviceWaiters.set(host, waiters);
+  });
+}
+
+/** Linking replaced this device's identity, so device ids from before it mean nothing. */
+export function forgetOwnMlsDevices(): void {
+  startedDevices.clear();
+}
+
 /** Once per socket, from `registerServerSocketEvents`. */
 export function attachServerMls(socket: Socket, host: string): void {
   const previous = hosts.get(host);
@@ -192,6 +223,7 @@ async function refresh(host: string): Promise<void> {
     if (state.sessionKey !== key) {
       state.sessionKey = key;
       state.removed = false;
+      startedDevices.delete(host);
       const scope = identityScopeFor(host);
       // Version 1 needs no archive, so DMs that don't need MLS go on while it opens or if it won't.
       state.local = createModeOnlySource({
@@ -250,7 +282,10 @@ async function refresh(host: string): Promise<void> {
     // Never holds up the start: a device left behind is tried again on the next connect.
     await retireOldDevices(session).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
     await Promise.race([state.pinned.promise, new Promise((r) => setTimeout(r, MEMBERS_WAIT_MS))]);
-    if (state.session === session) await session.start();
+    if (state.session !== session) return;
+    await session.start();
+    const deviceId = await session.ownDeviceId();
+    if (deviceId && state.session === session) announceDevice(host, deviceId);
   } catch (e) {
     // Tried again on the next connect rather than left without a session for good.
     if (!state.session) state.sessionKey = null;

@@ -84,6 +84,8 @@ export interface MlsSession {
   waiting(): boolean;
   /** One of your own devices, off the server. Peers drop it from each DM on their next pass. */
   removeOwnDevice(deviceId: string): Promise<void>;
+  /** This device's MLS device id here, once it has one. */
+  ownDeviceId(): Promise<string | null>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
   onChange(listener: (conversationId: string | null) => void): () => void;
   /** Stops taking work. Resolves once what was running is done, so the next session can't overlap it. */
@@ -313,6 +315,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
       return track(driver.removeOwnDevice(deviceId).then(() => changed(null)));
     },
+    ownDeviceId: async () => (await store.loadDevice())?.deviceId ?? null,
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
