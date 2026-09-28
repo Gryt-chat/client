@@ -317,7 +317,7 @@ function useSocketsHook() {
         const serverName = servers[host]?.name || host;
         const toastId = `conn-${host}`;
 
-        /* Before guardSocket, which puts emit back when it lets go. Your settings,
+        /* Before guardSocket, whose wrapper calls through to these. Your settings,
            checked again here against a server that ignores them (GRYT-1470). */
         installContactGuard(socket, {
           host,

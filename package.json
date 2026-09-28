@@ -35,6 +35,7 @@
     "test:reconnect-limit": "node scripts/check-reconnect-limit.mjs",
     "test:reconnect-grace": "node --disable-warning=ExperimentalWarning scripts/check-reconnect-grace.mjs",
     "test:identity-timeout": "node --disable-warning=ExperimentalWarning scripts/check-identity-timeout.mjs",
+    "test:hold-until-proven": "node --disable-warning=ExperimentalWarning scripts/check-hold-until-proven.mjs",
     "test:token-refresh-schedule": "node scripts/check-token-refresh-schedule.mjs",
     "test:identity-vault": "node scripts/check-identity-vault.mjs",
     "test:identity-restart": "node scripts/check-identity-restart.mjs",
