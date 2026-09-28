@@ -111,7 +111,7 @@ const asString = (v: unknown): string | null => (typeof v === "string" && v ? v 
 
 /**
  * Wraps one socket. Events that fail never reach a listener: no notification,
- * badge, unread mark or ring. Install before `guardSocket`, which restores emit.
+ * badge, unread mark or ring. Install before `guardSocket`, whose wrapper calls this one.
  */
 export function installContactGuard(socket: unknown, deps: ContactGuardDeps): void {
   const s = socket as SocketInternals;

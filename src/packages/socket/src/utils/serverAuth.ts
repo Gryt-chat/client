@@ -33,7 +33,8 @@ export function guardSocket(
 
   const originalEmit = socket.emit.bind(socket);
 
-  // Hold everything except the identity request itself.
+  // Hold everything except the identity request itself. Stays for the socket's life so a
+  // reconnect holds again, as the phone's does; released, it passes straight through.
   socket.emit = ((event: string, ...args: unknown[]) => {
     if (settled || event === "server:identify") {
       return originalEmit(event, ...args);
@@ -44,14 +45,13 @@ export function guardSocket(
 
   const release = () => {
     settled = true;
-    socket.emit = originalEmit;
     const pending = queue;
     queue = [];
     for (const [event, ...args] of pending) originalEmit(event, ...args);
   };
 
   const refuse = (decision: ServerProofDecision & { action: "block" }) => {
-    settled = true;
+    settled = false;
     queue = [];
     // Stop reconnecting. Without this the refusal reads as an ordinary dropped
     // connection and it retries forever, showing "lost connection".
@@ -72,7 +72,10 @@ export function guardSocket(
       done = true;
 
       const nonce = pendingNonce;
+      const mine = connection;
       const decision = await evaluateServerProof({ host, proof, sentNonce: nonce, vouches });
+      // The connection this answer was for went while it was checked. The next one proves itself.
+      if (mine !== connection) return;
       applyServerProofDecision(host, decision);
       logDecision(host, decision);
 
@@ -87,10 +90,12 @@ export function guardSocket(
     };
 
     let pendingNonce = "";
+    let connection = 0;
     // One per connection. A stale one left over from before a reconnect refused a pinned server.
     let silenceTimer: ReturnType<typeof setTimeout> | undefined;
 
     socket.on("connect", () => {
+      connection++;
       done = false;
       pendingNonce = createClientNonce();
       originalEmit("server:identify", { clientNonce: pendingNonce });
@@ -101,8 +106,11 @@ export function guardSocket(
       silenceTimer = setTimeout(() => { void settle(undefined); }, IDENTITY_TIMEOUT_MS);
     });
 
-    // A connection that is gone cannot be silent. The next one gets its own wait.
+    // Hold from the moment it goes: socket.io flushes its buffer on reconnect, before the
+    // new server has proved anything. And a connection that is gone cannot be silent.
     socket.on("disconnect", () => {
+      connection++;
+      settled = false;
       clearTimeout(silenceTimer);
       silenceTimer = undefined;
     });
