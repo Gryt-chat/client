@@ -95,6 +95,8 @@ interface MessageRowProps {
   threadUnread?: number;
   threadMentions?: number;
   isNew?: boolean;
+  /** The server takes the reporter's copy of an MLS message (decision 11). */
+  mlsReports?: boolean;
 }
 
 export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
@@ -128,6 +130,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   threadUnread,
   threadMentions,
   isNew,
+  mlsReports,
 }, forwardedRef) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
@@ -145,11 +148,13 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   // Editing and deleting your own message each have a permission, so a role can
   // post and not revise. `canDeleteAny` is worked out where the server is known.
   const mls = !!m.mls;
-  // The server has no copy of an MLS message to delete, react to or report (GRYT-1524).
-  const canDelete = mls ? isOwnMessage && !m.pending && !m.failed : !!canDeleteAny || (isOwnMessage && can("delete_own_messages"));
+  // The server has no copy of an MLS message, so deletes and reactions go over MLS (GRYT-1524).
+  const sentOverMls = mls && !m.pending && !m.failed;
+  const canDelete = mls ? isOwnMessage && sentOverMls : !!canDeleteAny || (isOwnMessage && can("delete_own_messages"));
   const canEdit = isOwnMessage && !!m.text && can("edit_own_messages") && !(mls && (m.pending || m.failed));
-  const canReport = !mls && can("report_messages");
-  const canReact = !mls && can("add_reactions");
+  // Your own copy of somebody else's message, once the server takes one (GRYT-1557).
+  const canReport = mls ? !!mlsReports && !isOwnMessage && sentOverMls && can("report_messages") : can("report_messages");
+  const canReact = (!mls || sentOverMls) && can("add_reactions");
   // Off in encrypted conversations for now: fetching one tells the server the link (decision 13).
   const showsPreviews = !mls && can("use_link_previews");
 

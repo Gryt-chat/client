@@ -1,6 +1,5 @@
 import {
   createMlsDmDriver,
-  decodeMlsDmContent,
   type DmSealingMode,
   encodeMlsDmContent,
   type MlsDecryptedMessage,
@@ -12,6 +11,7 @@ import {
   type MlsServerCapability,
   type MlsStateStore,
   type MlsWelcomeDelivery,
+  readMlsDmContent,
 } from "@gryt/core";
 import { generateMlsKeyPackage, type PeerPinStore } from "@gryt/crypto";
 
@@ -163,7 +163,9 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
   };
 
   async function received(m: MlsDecryptedMessage): Promise<void> {
-    const content = decodeMlsDmContent(m.plaintext);
+    const content = readMlsDmContent(m.plaintext);
+    // Something a newer app sent, a new kind of content: skipped, not counted as broken.
+    if (content === "newer") return;
     if (!content) {
       setProblems(m.conversationId, { undecryptable: (problems.get(m.conversationId)?.undecryptable ?? 0) + 1 });
       return;

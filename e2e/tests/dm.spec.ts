@@ -192,10 +192,29 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
   const reply = unique("a reply");
   await send(alice.page, bob.name, reply);
   await expect(messageRow(bob.page, reply)).toContainText(hello);
-  // The server has no copy of an MLS message to react to or report (GRYT-1524).
-  await messageRow(bob.page, reply).hover();
-  await expect(bob.page.getByRole("button", { name: "Reply" }).first()).toBeVisible();
-  await expect(bob.page.getByRole("button", { name: "React with another emoji" })).toHaveCount(0);
+
+  // Reactions go over MLS too, both ways, and a second tap takes one off (GRYT-1524).
+  const bobsReply = messageRow(bob.page, reply);
+  // Hovered again if the row was still sliding in and the toolbar went with the pointer.
+  await expect(async () => {
+    await bobsReply.hover();
+    await bobsReply.getByTitle("React with another emoji").click({ timeout: 2000 });
+  }).toPass();
+  await bob.page.getByPlaceholder("Search emojis...").fill("thumbsup");
+  await bob.page.getByTitle(":thumbsup:").click();
+  await expect(bobsReply.getByRole("button", { name: "👍 1" })).toBeVisible();
+  const alicesReply = messageRow(alice.page, reply);
+  await expect(alicesReply.getByRole("button", { name: "👍 1" })).toBeVisible();
+  await alicesReply.getByRole("button", { name: "👍 1" }).click();
+  await expect(bobsReply.getByRole("button", { name: "👍 2" })).toBeVisible();
+  await bobsReply.getByRole("button", { name: "👍 2" }).click();
+  await expect(alicesReply.getByRole("button", { name: "👍 1" })).toBeVisible();
+  await expect(bobsReply.getByRole("button", { name: "👍 1" })).toBeVisible();
+  // No Report until the server takes the reporter's copy (GRYT-1557).
+  await bobsReply.click({ button: "right" });
+  await expect(bob.page.getByRole("menuitem", { name: "Reply" })).toBeVisible();
+  await expect(bob.page.getByRole("menuitem", { name: "Report" })).toHaveCount(0);
+  await bob.page.keyboard.press("Escape");
 
   const edited = `${hello} (edited)`;
   await messageRow(bob.page, hello).first().click({ button: "right" });
@@ -228,6 +247,7 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
   await sendMessage(alice.page, unique("back from a reload"));
   await openDmFromList(alice.page, bob.name);
   await expect(messageRow(alice.page, reply)).toBeVisible();
+  await expect(messageRow(alice.page, reply).getByRole("button", { name: "👍 1" })).toBeVisible();
   await expect(image).toHaveAttribute("src", /^blob:/);
   await expect(alice.page.getByText("Update Gryt to read it")).toHaveCount(0);
   await expect(alice.page.locator(CONFIRMED_ROW).filter({ hasText: "Not encrypted" })).toHaveCount(0);

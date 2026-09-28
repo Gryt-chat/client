@@ -1,10 +1,10 @@
-import type { MlsDmContent } from "@gryt/core";
+import { applyMlsReaction, type MlsDmContent } from "@gryt/core";
 
 import type { ArchivedMessage, MessageArchive } from "@/common";
 
 /**
  * One decrypted message into the archive. Only the sender can edit or delete a message, and
- * a peer can't overwrite one of your messages by reusing its id.
+ * a peer can't overwrite one of your messages by reusing its id. Anyone in it can react.
  */
 export async function applyMlsContent(
   messages: Pick<MessageArchive, "get" | "put" | "remove">,
@@ -26,6 +26,15 @@ export async function applyMlsContent(
   },
 ): Promise<void> {
   const existing = await messages.get(scope, conversationId, content.id);
+  if (content.type === "reaction") {
+    // A reaction to something this device never had has nothing to go on.
+    if (!existing) return;
+    const reactions = applyMlsReaction(existing.reactions, { emoji: content.emoji, userId: senderId, action: content.action });
+    const next: ArchivedMessage = { ...existing, reactions };
+    if (!reactions.length) delete next.reactions;
+    await messages.put([next]);
+    return;
+  }
   if (existing && existing.senderId !== senderId) return;
 
   if (content.type === "message") {
@@ -41,6 +50,7 @@ export async function applyMlsContent(
     };
     if (senderDeviceId) record.senderDeviceId = senderDeviceId;
     if (content.replyTo) record.replyTo = content.replyTo;
+    if (existing?.reactions?.length) record.reactions = existing.reactions;
     await messages.put([record]);
   } else if (!existing) {
     // An edit or delete for something this phone never had.

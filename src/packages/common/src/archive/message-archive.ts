@@ -18,9 +18,11 @@ export interface ArchivedMessage {
   editedAt?: number;
   /** The message this one answers, by `messageId`. */
   replyTo?: string;
+  /** Reactions sent over MLS, in the server's shape. Left off when there are none. */
+  reactions?: { src: string; amount: number; users: string[] }[];
 }
 
-type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo">;
+type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions">;
 
 /** Ids and time stay readable for the indexes; the server already knows all four. */
 interface StoredMessage {
@@ -174,6 +176,7 @@ export class MessageArchive {
     if (m.senderDeviceId !== undefined) body.senderDeviceId = m.senderDeviceId;
     if (m.editedAt !== undefined) body.editedAt = m.editedAt;
     if (m.replyTo !== undefined) body.replyTo = m.replyTo;
+    if (m.reactions?.length) body.reactions = m.reactions;
 
     if (!this.key) {
       row.plain = body;

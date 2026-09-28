@@ -26,9 +26,14 @@ export function archivedRow(m: ArchivedMessage, nameFor: (id: string) => string 
     created_at: new Date(m.sentAt).toISOString(),
     edited_at: m.editedAt === undefined ? null : new Date(m.editedAt).toISOString(),
     reply_to_message_id: m.replyTo ?? null,
-    reactions: null,
+    reactions: m.reactions?.length ? m.reactions : null,
     mls: true,
   };
+}
+
+/** What goes with a report of an MLS message: this device's copy, which the server can't check (GRYT-1557). */
+export function mlsReportCopy(message: Pick<ChatMessage, "sender_server_id" | "text">): { senderServerUserId: string; text: string } {
+  return { senderServerUserId: message.sender_server_id, text: message.text ?? "" };
 }
 
 /** The row with its files as far as they've opened. One that won't open shows as its id. */

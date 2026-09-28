@@ -47,6 +47,8 @@ export interface AggregatedReport {
   reporters: string[];
   firstReportedAt: string;
   reportIds: string[];
+  /** From an encrypted DM: the reporter's own copy, which the server can't check (decision 11). */
+  unverified?: boolean;
 }
 
 export function ReportsPanel({
@@ -649,6 +651,11 @@ function ReportCard({
               <Chip tone="danger">
                 {report.reportCount} {report.reportCount === 1 ? "report" : "reports"}
               </Chip>
+              {report.unverified && (
+                <Tooltip title="This came from an encrypted DM, so the server never had a copy. It's what the reporter's app says the message was.">
+                  <Chip>Reporter&rsquo;s copy, unverified</Chip>
+                </Tooltip>
+              )}
             </div>
 
             <div style={{

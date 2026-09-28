@@ -6,6 +6,7 @@ import { getServerAccessToken } from "@/common";
 
 import type { ChatEditorHandle } from "../components/ChatEditor";
 import type { ChatMessage } from "../components/chatUtils";
+import { mlsReportCopy } from "../mls/timeline";
 import { recordReaction } from "../utils/recentReactions";
 import { useServerPermissions } from "./usePermissions";
 
@@ -21,6 +22,8 @@ interface UseChatActionsParams {
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   /** An MLS message is deleted over MLS: the server has no copy to delete. */
   deleteMls?: (messageId: string) => void;
+  /** Reactions on an MLS message go over MLS too. */
+  reactMls?: (messageId: string, emoji: string) => void;
   editorRef: RefObject<ChatEditorHandle | null>;
   forceScrollToBottomRef: { current: boolean };
 }
@@ -36,6 +39,7 @@ export function useChatActions({
   sendChat,
   editMessage,
   deleteMls,
+  reactMls,
   editorRef,
   forceScrollToBottomRef,
 }: UseChatActionsParams) {
@@ -56,13 +60,17 @@ export function useChatActions({
       return;
     }
     recordReaction(reactionSrc, serverHost);
+    if (message.mls) {
+      reactMls?.(message.message_id, reactionSrc);
+      return;
+    }
     (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:react", {
       conversationId: message.conversation_id,
       messageId: message.message_id,
       reactionSrc,
       accessToken,
     });
-  }, [socketConnection, currentUserId, serverHost, canIn]);
+  }, [socketConnection, currentUserId, serverHost, canIn, reactMls]);
 
   const handleReply = useCallback((message: ChatMessage) => {
     setReplyingTo(message);
@@ -77,6 +85,8 @@ export function useChatActions({
       conversationId: message.conversation_id,
       messageId: message.message_id,
       accessToken,
+      // The server has no copy, so this device sends its own, and it's shown as unverified.
+      ...(message.mls ? { mls: mlsReportCopy(message) } : {}),
     });
   }, [socketConnection, currentUserId, serverHost]);
 
