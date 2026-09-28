@@ -279,4 +279,5 @@ export const PiWarningFill: Icon = weighted(Warning, "fill", "PiWarningFill");
 export const PiWebhooksLogoFill: Icon = weighted(WebhooksLogo, "fill", "PiWebhooksLogoFill");
 export const PiWifiSlashFill: Icon = weighted(WifiSlash, "fill", "PiWifiSlashFill");
 export const PiX: Icon = X;
+export const PiXBold: Icon = weighted(X, "bold", "PiXBold");
 export const PiXCircleFill: Icon = weighted(XCircle, "fill", "PiXCircleFill");
