@@ -7,3 +7,8 @@ export function readMlsCapability(value: unknown): MlsServerCapability | null {
   if (v.version !== 1 || !Array.isArray(v.ciphersuites) || !v.ciphersuites.includes(1)) return null;
   return { version: 1, ciphersuites: v.ciphersuites, retentionDays: Number(v.retentionDays) || 30 };
 }
+
+/** `server:info.mls.reports`: the server takes the reporter's copy of an MLS message (GRYT-1557). */
+export function readMlsReports(value: unknown): boolean {
+  return !!value && typeof value === "object" && (value as { reports?: unknown }).reports === true;
+}

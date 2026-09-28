@@ -13,6 +13,7 @@ import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
 import { heldRoleIds } from "../lib/permissions";
+import { useMlsReportsTaken } from "../mls/serverMls";
 import { dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
 import { useMlsConversation } from "../mls/useMlsConversation";
 import { mergeSenders } from "../utils/mergeSender";
@@ -86,6 +87,10 @@ interface UseChatReturn {
   composerHeld: boolean;
   /** Deletes an MLS message over MLS. The server has no copy to delete. */
   deleteMlsMessage: (messageId: string) => void;
+  /** Adds or takes off this person's reaction to an MLS message, over MLS. */
+  reactMlsMessage: (messageId: string, emoji: string) => void;
+  /** The server takes the reporter's copy of an MLS message. */
+  mlsReportsTaken: boolean;
   /** This device's history won't open, and that's what's holding the composer. */
   archiveFailed: boolean;
 }
@@ -204,6 +209,7 @@ export function useChat({
     nameFor: (id) => (id === currentUserId ? nickname : undefined),
   });
   const mlsMode = mls.mode?.kind ?? null;
+  const mlsReportsTaken = useMlsReportsTaken(serverHost);
   /** Blob URLs made for decrypted attachments, revoked on unmount. */
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
@@ -762,6 +768,8 @@ export function useChat({
       : null,
     composerHeld: composer.held,
     deleteMlsMessage: mls.remove,
+    reactMlsMessage: mls.react,
+    mlsReportsTaken,
     archiveFailed: composer.archiveProblem,
   };
 }

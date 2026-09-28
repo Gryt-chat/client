@@ -5,13 +5,13 @@
 
 import assert from "node:assert/strict";
 
-const { archivedRow, dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice, newMessage, sendFailure, withOpenedFiles } =
+const { archivedRow, dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice, mlsReportCopy, newMessage, sendFailure, withOpenedFiles } =
   await import("../src/packages/socket/src/mls/timeline.ts");
 const { createModeOnlySource } = await import("../src/packages/socket/src/mls/modeOnly.ts");
 const { applyMlsContent } = await import("../src/packages/socket/src/mls/applyContent.ts");
 const { asBytes, socketMlsTransport } = await import("../src/packages/socket/src/mls/transport.ts");
 const { publishPersonKey } = await import("../src/packages/socket/src/mls/publishPersonKey.ts");
-const { readMlsCapability } = await import("../src/packages/socket/src/mls/capability.ts");
+const { readMlsCapability, readMlsReports } = await import("../src/packages/socket/src/mls/capability.ts");
 const { seenOnMlsFor } = await import("../src/packages/socket/src/mls/seenOnMls.ts");
 
 const tests = [];
@@ -164,6 +164,49 @@ test("somebody else can't overwrite, edit or delete your message", async () => {
   assert.equal(db.rows.get("m").text, "mine");
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "gone", text: "x" } });
   assert.equal(db.rows.size, 1);
+});
+
+test("anyone in the DM can react, a repeat changes nothing, and taking the last one off clears it", async () => {
+  const db = memoryArchive();
+  const react = (senderId, emoji, action) => applyMlsContent(db, { ...base, senderId, content: { type: "reaction", id: "m", emoji, action } });
+  await applyMlsContent(db, { ...base, senderId: "me", content: { type: "message", id: "m", text: "mine" } });
+  await react("ola", "👍", "add");
+  await react("ola", "👍", "add");
+  await react("me", "👍", "add");
+  await react("me", ":owl:", "add");
+  assert.deepEqual(db.rows.get("m").reactions, [
+    { src: "👍", amount: 2, users: ["ola", "me"] },
+    { src: ":owl:", amount: 1, users: ["me"] },
+  ]);
+  assert.equal(db.rows.get("m").text, "mine");
+  await react("ola", "👍", "remove");
+  await react("me", "👍", "remove");
+  await react("me", ":owl:", "remove");
+  assert.equal("reactions" in db.rows.get("m"), false);
+  await react("ola", "👍", "add");
+  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "reaction", id: "never-had", emoji: "👍", action: "add" } });
+  assert.equal(db.rows.has("never-had"), false);
+});
+
+test("reactions survive an edit and a repeat of the message, and reach the row", async () => {
+  const db = memoryArchive();
+  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei" } });
+  await applyMlsContent(db, { ...base, senderId: "me", content: { type: "reaction", id: "m", emoji: "👍", action: "add" } });
+  await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
+  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hallo" } });
+  const stored = db.rows.get("m");
+  assert.deepEqual(stored.reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
+  assert.deepEqual(archivedRow(stored, () => undefined).reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
+  assert.equal(archivedRow({ ...stored, reactions: undefined }, () => undefined).reactions, null);
+});
+
+test("a report of an MLS message carries this device's copy, and waits for a server that takes it", () => {
+  assert.deepEqual(mlsReportCopy({ sender_server_id: "ola", text: "hei" }), { senderServerUserId: "ola", text: "hei" });
+  assert.deepEqual(mlsReportCopy({ sender_server_id: "ola", text: null }), { senderServerUserId: "ola", text: "" });
+  assert.equal(readMlsReports({ version: 1, ciphersuites: [1], reports: true }), true);
+  assert.equal(readMlsReports({ version: 1, ciphersuites: [1] }), false);
+  assert.equal(readMlsReports({ reports: "yes" }), false);
+  assert.equal(readMlsReports(undefined), false);
 });
 
 function fakeSocket(reply) {

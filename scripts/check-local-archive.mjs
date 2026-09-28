@@ -135,16 +135,19 @@ test("with a keychain, records on disk hold no plaintext and reopen with the sam
   assert.ok(key);
   const archive = new MessageArchive(db, key);
   assert.equal(archive.sealed, true);
-  await archive.put([msg({ messageId: "m1", sentAt: 1, text: "a secret", attachments: { f: { k: "x" } } })]);
+  const reactions = [{ src: ":secret_owl:", amount: 1, users: ["ola"] }];
+  await archive.put([msg({ messageId: "m1", sentAt: 1, text: "a secret", attachments: { f: { k: "x" } }, reactions })]);
 
   const [row] = await rawRows(db, MESSAGE_STORE);
   assert.equal(row.plain, undefined);
   assert.ok(!Buffer.from(row.sealed.ct).toString("latin1").includes("a secret"));
+  assert.ok(!Buffer.from(row.sealed.ct).toString("latin1").includes("secret_owl"));
 
   const again = new MessageArchive(db, await keyFor(db, keychain));
   const got = await again.get("srv:a", "c1", "m1");
   assert.equal(got.text, "a secret");
   assert.deepEqual(got.attachments, { f: { k: "x" } });
+  assert.deepEqual(got.reactions, reactions);
   archive.close();
   again.close();
 });

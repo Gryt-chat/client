@@ -18,7 +18,7 @@ import {
 } from "@/common";
 
 import { isElectron } from "../../../../lib/electron";
-import { readMlsCapability } from "./capability";
+import { readMlsCapability, readMlsReports } from "./capability";
 import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
 import { seenOnMlsFor } from "./seenOnMls";
@@ -64,6 +64,29 @@ const setSource = (host: string, source: MlsSource | null) => {
   sources = next;
   for (const listener of sourceListeners) listener();
 };
+
+let reportHosts: ReadonlySet<string> = new Set();
+const reportListeners = new Set<() => void>();
+const setReportsTaken = (host: string, taken: boolean) => {
+  if (reportHosts.has(host) === taken) return;
+  const next = new Set(reportHosts);
+  if (taken) next.add(host);
+  else next.delete(host);
+  reportHosts = next;
+  for (const listener of reportListeners) listener();
+};
+
+/** Whether this server takes a report of an MLS message. Until it does, Report isn't offered. */
+export function useMlsReportsTaken(host: string | null | undefined): boolean {
+  const set = useSyncExternalStore(
+    (listener) => {
+      reportListeners.add(listener);
+      return () => reportListeners.delete(listener);
+    },
+    () => reportHosts,
+  );
+  return !!host && set.has(host);
+}
 
 /** Null until this tab knows how to reach MLS for that server. */
 export function useMlsSource(host: string | null | undefined): MlsSource | null {
@@ -111,6 +134,7 @@ export function attachServerMls(socket: Socket, host: string): void {
   hosts.set(host, state);
 
   socket.on("server:info", (info: { mls?: unknown }) => {
+    setReportsTaken(host, readMlsReports(info?.mls));
     const next = readMlsCapability(info?.mls);
     if (state.capability !== undefined && JSON.stringify(state.capability) === JSON.stringify(next)) return;
     state.capability = next;

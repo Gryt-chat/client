@@ -1,4 +1,4 @@
-import type { DmSealingMode, MlsDmContent } from "@gryt/core";
+import { type DmSealingMode, type MlsDmContent, mlsReactionAction } from "@gryt/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -44,6 +44,8 @@ export interface MlsConversation {
   send: (text: string, files: File[], replyTo?: string) => void;
   edit: (messageId: string, text: string) => void;
   remove: (messageId: string) => void;
+  /** Adds this person's reaction, or takes it off if it's already there. */
+  react: (messageId: string, emoji: string) => void;
 }
 
 /** One DM on MLS: its mode, its archived messages and its sends (design, sections 5 and 6). */
@@ -81,6 +83,8 @@ export function useMlsConversation({
   nameRef.current = nameFor;
   const meRef = useRef(me);
   meRef.current = me;
+  const archivedRef = useRef(archived);
+  archivedRef.current = archived;
 
   const active = !!(source && conversationId && peer);
 
@@ -323,5 +327,15 @@ export function useMlsConversation({
       [change],
     ),
     remove: useCallback((id: string) => change({ type: "delete", id }, "Couldn't delete that message."), [change]),
+    react: useCallback(
+      (id: string, emoji: string) => {
+        const self = meRef.current.serverUserId;
+        const row = archivedRef.current.find((m) => m.message_id === id);
+        if (!self || !row) return;
+        const action = mlsReactionAction(row.reactions, emoji, self);
+        change({ type: "reaction", id, emoji, action }, "Couldn't react to that message.");
+      },
+      [change],
+    ),
   };
 }

@@ -47,6 +47,10 @@ export interface MlsView {
   /** The composer waits: the mode isn't known yet, or MLS refused it. */
   held: boolean;
   remove: (messageId: string) => void;
+  /** Adds or takes off this person's reaction, over MLS. */
+  react: (messageId: string, emoji: string) => void;
+  /** The server takes the reporter's copy of an MLS message. */
+  reportsTaken: boolean;
   /** This device's history won't open. Says why, with a retry and the way out. */
   archiveFailed: boolean;
 }
@@ -243,6 +247,7 @@ export const ChatView = memo(({
     sendChat,
     editMessage,
     deleteMls: mls?.remove,
+    reactMls: mls?.react,
     editorRef,
     forceScrollToBottomRef,
   });
@@ -838,6 +843,7 @@ export const ChatView = memo(({
                       /* Channels are never sealed, so the mark would be on every
                          message and mean nothing. */
                       unencrypted={conversationKind === "dm" && !m.sealed && !m.mls}
+                      mlsReports={!!mls?.reportsTaken}
                     />
                   );
                 })}
