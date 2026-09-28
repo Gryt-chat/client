@@ -100,6 +100,27 @@ export function mergeTimeline({
     .sort((a, b) => at(a) - at(b));
 }
 
+/**
+ * Where a send goes: "server" is a channel or version 1, which never needs the archive. Only a
+ * DM still waiting on its mode, or refused, holds the composer and shows an archive problem.
+ */
+export function dmComposer({
+  dmPeer,
+  mode,
+  waiting,
+  archiveFailed,
+}: {
+  dmPeer: string | null;
+  mode: DmSealingMode | null;
+  waiting: boolean;
+  archiveFailed: boolean;
+}): { path: "server" | "mls" | "none"; held: boolean; archiveProblem: boolean } {
+  if (!dmPeer) return { path: "server", held: false, archiveProblem: false };
+  const held = waiting || mode?.kind === "refused";
+  const path = mode?.kind === "sealed-v1" ? "server" : mode?.kind === "mls" ? "mls" : "none";
+  return { path, held, archiveProblem: archiveFailed && held };
+}
+
 /** The line above the composer for a DM on, or held off, MLS. Null says nothing. */
 export function mlsNotice(
   mode: DmSealingMode | null,
