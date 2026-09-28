@@ -7,6 +7,7 @@ import { base64Url as sharedBase64Url, base64UrlDecode as sharedBase64UrlDecode 
 const PINS_KEY = "serverIdentityPins";
 const HOST_INDEX_KEY = "serverIdentityHostIndex";
 const BLOCKLIST_KEY = "serverIdentityBlocklist";
+const WITHDRAWN_CLEARED_KEY = "serverIdentityWithdrawnBlocksCleared";
 
 const VERIFY_ALGO: EcdsaParams = { name: "ECDSA", hash: "SHA-256" };
 const IMPORT_ALGO: EcKeyImportParams = { name: "ECDSA", namedCurve: "P-256" };
@@ -246,6 +247,19 @@ export function blockServer(entry: BlockedServer): void {
   );
   blocked.push(entry);
   writeJson(BLOCKLIST_KEY, blocked);
+}
+
+/**
+ * Once per install, drop the `proof_withdrawn` blocks a stale timer made (GRYT-1497). **Pins
+ * and host expectations stay**, so a server that still offers no proof is refused again.
+ */
+export function clearWithdrawnBlocksOnce(): number {
+  if (readJson<boolean>(WITHDRAWN_CLEARED_KEY, false)) return 0;
+  const blocked = listBlocked();
+  const kept = blocked.filter((b) => b.reason !== "proof_withdrawn");
+  if (kept.length !== blocked.length) writeJson(BLOCKLIST_KEY, kept);
+  writeJson(WITHDRAWN_CLEARED_KEY, true);
+  return blocked.length - kept.length;
 }
 
 /**
