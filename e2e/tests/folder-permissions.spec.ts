@@ -191,7 +191,14 @@ test("a channel dragged into a folder follows it, and one with its own permissio
     }, "the template should be saved before the folder is put on it").toBe(true);
 
     socket.emit("server:sidebar:item:upsert", { accessToken, itemId: folderId, kind: "folder", label: folderLabel, position: 5000 });
+    const folderScope = () =>
+      ask<{ folderId: string; scopeId?: string | null }>(
+        socket, "server:folders:scope:get", { accessToken, folderId }, "server:folders:scope", (r) => r.folderId === folderId,
+      );
+    // The server handles the two at once, and a scope set that reads before the upsert writes finds no folder.
+    await expect.poll(() => folderScope().then(() => true, () => false), "the folder should exist before it gets a scope").toBe(true);
     socket.emit("server:folders:scope:set", { accessToken, folderId, templateId });
+    await expect.poll(async () => (await folderScope()).scopeId, "the folder should be on the template").toBe(templateId);
     let position = 5010;
     for (const key of ["plain", "mine", "kept"] as const) {
       socket.emit("server:channels:upsert", { accessToken, channelId: ids[key], name: names[key], type: "text", description: null });
