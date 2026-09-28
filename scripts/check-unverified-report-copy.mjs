@@ -1,9 +1,7 @@
 /* eslint-env node */
 
-// An unverified report card is a reporter's own copy of an encrypted DM message,
-// which the server never saw. Delete on one of those closes the report and
-// touches nothing else (server#250, GRYT-1569). This checks the copy still says
-// so, and that a normal report still gets the old "permanently deletes" wording.
+// Delete on an unverified report (a reporter's own encrypted-DM copy) only
+// closes the report — the server never had the message (server#250, GRYT-1569).
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -21,9 +19,8 @@ assert.match(
   `${PANEL}: the delete tooltip must branch on report.unverified`,
 );
 
-/* The confirmation dialog: title, body and confirm label all have to know about
-   an unverified card, or the old "permanently deletes" wording survives on a
-   card where nothing gets deleted. */
+/* Title, body and confirm label all have to branch, or the old
+   "permanently deletes" wording survives on a card where nothing is deleted. */
 assert.match(
   panel,
   /confirmAction\?\.report\.unverified\s*\n\s*\? "Close this report\?"/,
