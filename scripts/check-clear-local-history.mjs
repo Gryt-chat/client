@@ -227,6 +227,26 @@ test("a clear in one tab makes the other tab open the fresh archive", async () =
   bChannel.close();
 });
 
+test("a server that removed this device loses only its own history and MLS state (GRYT-1555)", async () => {
+  const name = await archiveWithHistory();
+  const archive = await openerFor(name, allowing).opener.open();
+  await archive.messages.put([msg({ scope: "srv:b", messageId: "b1", sentAt: 1, text: "other server" })]);
+  await archive.mlsState("srv:b").saveDevice({ ...oldDevice, deviceId: "b-device" });
+  const changes = [];
+  archive.messages.onChange((c) => changes.push(c));
+
+  await archive.wipeServer("srv:a");
+  assert.equal(await archive.messages.get("srv:a", "c1", "m1"), null);
+  assert.equal(await archive.mlsState("srv:a").loadDevice(), null);
+  assert.deepEqual(await archive.mlsState("srv:a").listGroups(), []);
+  assert.deepEqual(await archive.retiredMlsDevices("srv:a"), [], "the server already removed it, so nothing to retire");
+  assert.deepEqual(changes, [{ scope: "srv:a", conversationId: null }]);
+
+  assert.equal((await archive.messages.get("srv:b", "c1", "b1")).text, "other server");
+  assert.equal((await archive.mlsState("srv:b").loadDevice()).deviceId, "b-device");
+  archive.messages.close();
+});
+
 let failed = 0;
 for (const { name, fn } of tests) {
   try {

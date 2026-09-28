@@ -1,5 +1,5 @@
 import { ArchiveKeyError, type ArchiveKeyErrorCode, type Keychain, loadArchiveKey } from "../auth/archive-key.ts";
-import { archiveKeySlot, forgetRetiredMlsDevice, retiredMlsDevices } from "./archive-db.ts";
+import { archiveKeySlot, forgetRetiredMlsDevice, retiredMlsDevices, wipeServer } from "./archive-db.ts";
 import { MessageArchive } from "./message-archive.ts";
 import { IndexedDbMlsStateStore } from "./mls-state-store.ts";
 
@@ -21,6 +21,8 @@ export interface LocalArchive {
   /** MLS devices whose state was wiped here, still to be removed from that server. */
   retiredMlsDevices(scope: string): Promise<string[]>;
   forgetRetiredMlsDevice(scope: string, deviceId: string): Promise<void>;
+  /** Deletes one server's messages and MLS state, after the server removed this device there. */
+  wipeServer(scope: string): Promise<void>;
 }
 
 export type LocalArchiveStatus =
@@ -76,14 +78,19 @@ export function createArchiveOpener({ openDb, keychain, home, channel }: Archive
     const db = await openDb();
     try {
       const { key, lostHistory } = await loadArchiveKey(archiveKeySlot(db), await keychain());
+      const messages = new MessageArchive(db, key);
       return {
-        messages: new MessageArchive(db, key),
+        messages,
         home,
         sealed: key !== null,
         lostHistory,
         mlsState: (scope, writer) => new IndexedDbMlsStateStore(db, key, scope, writer),
         retiredMlsDevices: (scope) => retiredMlsDevices(db, scope),
         forgetRetiredMlsDevice: (scope, deviceId) => forgetRetiredMlsDevice(db, scope, deviceId),
+        async wipeServer(scope) {
+          await wipeServer(db, scope);
+          messages.announceWiped(scope);
+        },
       };
     } catch (e) {
       db.close();

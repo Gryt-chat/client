@@ -4,6 +4,7 @@ import type { SealedAttachmentKey } from "@gryt/crypto";
 import type { ArchivedMessage } from "@/common";
 
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
+import { removedHereLine } from "./ownDevices.ts";
 import type { ConversationProblems } from "./session";
 
 /* A DM on MLS reads from two places: the server's history for old messages, and this
@@ -130,10 +131,19 @@ export function dmComposer({
 export function mlsNotice(
   mode: DmSealingMode | null,
   problems: ConversationProblems,
-  { lostHistory, home, peerName }: { lostHistory: boolean; home: "browser" | "app"; peerName: string },
+  {
+    lostHistory,
+    home,
+    peerName,
+    signedIn = false,
+  }: { lostHistory: boolean; home: "browser" | "app"; peerName: string; signedIn?: boolean },
 ): string | null {
   const here = home === "browser" ? "this browser" : "this device";
   const Here = home === "browser" ? "This browser" : "This device";
+  if (problems.lost === "device_removed") {
+    // Version 1 to a peer without MLS still works from here, and needs no warning.
+    return mode?.kind === "sealed-v1" ? null : removedHereLine(home, signedIn ? "sign_in" : "recovery_key");
+  }
   if (mode?.kind === "refused") {
     if (mode.reason === "peer_left_mls") return `Can't send. ${peerName}'s app stopped using end-to-end encryption here.`;
     if (mode.reason === "server_dropped_mls") return "Can't send. This server stopped supporting end-to-end encryption.";

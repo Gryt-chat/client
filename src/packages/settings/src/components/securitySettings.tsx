@@ -20,6 +20,7 @@ import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { LocalHistoryProblem } from "../../../socket/src/components/LocalHistoryProblem";
 import { LocalIdentitySection } from "./localIdentitySection";
 import { MessageKeySection } from "./messageKeySection";
+import { OwnDevicesSection } from "./ownDevicesSection";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 const PASSKEY_TYPE = "webauthn-passwordless";
@@ -352,6 +353,8 @@ export function SecuritySettings() {
       )}
 
       <LocalHistorySection />
+
+      <OwnDevicesSection />
 
       <SettingGroup
         title="Persist server access tokens"

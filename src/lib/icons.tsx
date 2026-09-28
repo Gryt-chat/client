@@ -40,6 +40,7 @@ import {
   CornersOut,
   Desktop,
   DeviceMobile,
+  Devices,
   DotsSixVertical,
   DotsThreeCircle,
   DotsThreeVertical,
@@ -182,6 +183,7 @@ export const PiCornersInFill: Icon = weighted(CornersIn, "fill", "PiCornersInFil
 export const PiCornersOutFill: Icon = weighted(CornersOut, "fill", "PiCornersOutFill");
 export const PiDesktopFill: Icon = weighted(Desktop, "fill", "PiDesktopFill");
 export const PiDeviceMobileFill: Icon = weighted(DeviceMobile, "fill", "PiDeviceMobileFill");
+export const PiDevicesFill: Icon = weighted(Devices, "fill", "PiDevicesFill");
 export const PiDotsSixVerticalFill: Icon = weighted(DotsSixVertical, "fill", "PiDotsSixVerticalFill");
 export const PiDotsThreeCircleFill: Icon = weighted(DotsThreeCircle, "fill", "PiDotsThreeCircleFill");
 export const PiDotsThreeVerticalBold: Icon = weighted(DotsThreeVertical, "bold", "PiDotsThreeVerticalBold");
