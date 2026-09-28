@@ -39,6 +39,7 @@ jobs:
       - run: yarn test:identity-timeout
       - run: yarn test:hold-until-proven
       - run: yarn test:withdrawn-blocks
+      - run: yarn test:http-proof-gate
       - run: yarn test:token-refresh-schedule
       - run: yarn test:server-notice
       - run: yarn test:auth-outage

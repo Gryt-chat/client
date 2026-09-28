@@ -16,6 +16,10 @@ import ts from "typescript";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = readFileSync(join(root, "src/packages/socket/src/utils/serverAuth.ts"), "utf8");
 
+// serverAuth.ts's own relative imports, resolved from where it sits rather than from here.
+const resolveFromGuard = (spec) =>
+  spec.startsWith("./") ? new URL(`../src/packages/socket/src/utils/${spec.slice(2)}.ts`, import.meta.url).href : import.meta.resolve(spec);
+
 // Only what the guard asks of @/common. A proof is good when it echoes the nonce it answers.
 const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
 const COMMON = moduleUrl(`
@@ -36,7 +40,7 @@ const compiled = ts
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   })
   .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) =>
-    `${head}"${spec === "@/common" ? COMMON : import.meta.resolve(spec)}"`);
+    `${head}"${spec === "@/common" ? COMMON : resolveFromGuard(spec)}"`);
 const { guardSocket } = await import(moduleUrl(compiled));
 console.error = () => {};
 

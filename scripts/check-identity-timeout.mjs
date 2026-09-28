@@ -15,6 +15,10 @@ const source = readFileSync(join(root, "src/packages/socket/src/utils/serverAuth
 const IDENTITY_TIMEOUT_MS = Number(source.match(/const IDENTITY_TIMEOUT_MS = (\d+);/)?.[1]);
 assert.ok(IDENTITY_TIMEOUT_MS > 0, "serverAuth.ts no longer declares IDENTITY_TIMEOUT_MS as a number");
 
+// serverAuth.ts's own relative imports, resolved from where it sits rather than from here.
+const resolveFromGuard = (spec) =>
+  spec.startsWith("./") ? new URL(`../src/packages/socket/src/utils/${spec.slice(2)}.ts`, import.meta.url).href : import.meta.resolve(spec);
+
 // Only what the guard asks of @/common. A missing proof is a refusal, as it is for a pinned server.
 const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
 const COMMON = moduleUrl(`
@@ -32,7 +36,7 @@ const COMMON = moduleUrl(`
 const compiled = ts
   .transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } })
   .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) =>
-    `${head}"${spec === "@/common" ? COMMON : import.meta.resolve(spec)}"`);
+    `${head}"${spec === "@/common" ? COMMON : resolveFromGuard(spec)}"`);
 
 // A clock the check turns, so five seconds of silence take no time at all.
 let now = 0;
