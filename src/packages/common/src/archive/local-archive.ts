@@ -5,13 +5,15 @@ import { archiveKeySlot, openArchiveDb } from "./archive-db.ts";
 import { MessageArchive } from "./message-archive.ts";
 import { IndexedDbMlsStateStore } from "./mls-state-store.ts";
 
+export { ArchiveKeyError, type ArchiveKeyErrorCode } from "../auth/archive-key.ts";
+
 export interface LocalArchive {
   messages: MessageArchive;
   /** "browser" means history is gone if the browser clears this site's data. */
   home: "browser" | "app";
   /** Records are encrypted with a key the OS keychain holds. False on the web. */
   sealed: boolean;
-  /** An archive was found whose key had gone from the keychain, and it was cleared. */
+  /** Sealed history was found with its key gone from storage, and it was cleared. */
   lostHistory: boolean;
   /** One per server. Pass the worker claim so only the tab holding the lock writes. */
   mlsState(scope: string, writer?: { readonly held: boolean }): IndexedDbMlsStateStore;

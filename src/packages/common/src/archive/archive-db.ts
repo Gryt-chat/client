@@ -50,15 +50,33 @@ export function committed(tx: IDBTransaction): Promise<void> {
   });
 }
 
+function anySealed(store: IDBObjectStore): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const cursor = store.openCursor();
+    cursor.onerror = () => reject(cursor.error);
+    cursor.onsuccess = () => {
+      const at = cursor.result;
+      if (!at) return resolve(false);
+      if ((at.value as { sealed?: unknown }).sealed) return resolve(true);
+      at.continue();
+    };
+  });
+}
+
 export function archiveKeySlot(db: IDBDatabase): ArchiveKeySlot {
   return {
-    async read() {
-      const store = db.transaction(META_STORE, "readonly").objectStore(META_STORE);
+    async read({ lookForSealed = false } = {}) {
+      const tx = db.transaction([META_STORE, MESSAGE_STORE, MLS_STORE], "readonly");
+      const meta = tx.objectStore(META_STORE);
       const [key, check] = await Promise.all([
-        request<unknown>(store.get(KEY_SLOT)),
-        request<SealedBytes | undefined>(store.get(CHECK_SLOT)),
+        request<unknown>(meta.get(KEY_SLOT)),
+        request<SealedBytes | undefined>(meta.get(CHECK_SLOT)),
       ]);
-      return { key, check };
+      // Only asked when the key is missing, which is a first run or the case that needs it.
+      const scan = lookForSealed && key === undefined && check === undefined;
+      const sealedRecords =
+        scan && ((await anySealed(tx.objectStore(MESSAGE_STORE))) || (await anySealed(tx.objectStore(MLS_STORE))));
+      return { key, check, sealedRecords };
     },
     async claim(value: StoredArchiveKey) {
       const tx = db.transaction(META_STORE, "readwrite");
