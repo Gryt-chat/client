@@ -706,7 +706,9 @@ function ServerItem({
           onOpenChange={setDoctorOpen}
         />
         <PreviewCard.Portal>
-          <PreviewCard.Positioner side="right" align="center">
+          {/* It opens over the top of the channel list and has nothing to press,
+              so clicks go through to the channel under it. GRYT-1545. */}
+          <PreviewCard.Positioner side="right" align="center" className="pointer-events-none">
             <PreviewCard.Popup>
           <div>
             <h2 className="text-xs">
