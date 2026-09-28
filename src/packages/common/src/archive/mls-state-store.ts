@@ -1,13 +1,8 @@
+import type { MlsDeviceRecord, MlsGroupRecord, MlsKeyPackageRecord, MlsStateStore } from "@gryt/core";
 import { base64Url, base64UrlDecode } from "@gryt/crypto";
 
 import { openBytes, sealBytes, type SealedBytes } from "../auth/archive-key.ts";
 import { committed, MLS_STORE, request } from "./archive-db.ts";
-import type {
-  MlsDeviceRecord,
-  MlsGroupRecord,
-  MlsKeyPackageRecord,
-  MlsStateStore,
-} from "./mls-state-types.ts";
 
 type Kind = "device" | "keyPackage" | "group";
 type RecordKey = [scope: string, kind: Kind, id: string];
@@ -70,6 +65,10 @@ export class IndexedDbMlsStateStore implements MlsStateStore {
     return this.read(this.keyFor("keyPackage", ref));
   }
 
+  listKeyPackages(): Promise<MlsKeyPackageRecord[]> {
+    return this.list("keyPackage");
+  }
+
   deleteKeyPackage(ref: string): Promise<void> {
     return this.remove(this.keyFor("keyPackage", ref));
   }
@@ -78,15 +77,8 @@ export class IndexedDbMlsStateStore implements MlsStateStore {
     return this.read(this.keyFor("group", conversationId));
   }
 
-  async listGroups(): Promise<MlsGroupRecord[]> {
-    const range = IDBKeyRange.bound([this.scope, "group"], [this.scope, "group", []]);
-    const tx = this.db.transaction(MLS_STORE, "readonly");
-    const store = tx.objectStore(MLS_STORE);
-    const [keys, values] = await Promise.all([
-      request(store.getAllKeys(range)),
-      request(store.getAll(range) as IDBRequest<StoredValue[]>),
-    ]);
-    return Promise.all(values.map((v, i) => this.open<MlsGroupRecord>(keys[i] as RecordKey, v)));
+  listGroups(): Promise<MlsGroupRecord[]> {
+    return this.list("group");
   }
 
   /** `state` and `cursor` sit in one record, so they can't be written apart. */
@@ -112,6 +104,17 @@ export class IndexedDbMlsStateStore implements MlsStateStore {
     const tx = this.db.transaction(MLS_STORE, "readonly");
     const value = await request<StoredValue | undefined>(tx.objectStore(MLS_STORE).get(key));
     return value ? this.open<T>(key, value) : null;
+  }
+
+  private async list<T>(kind: Kind): Promise<T[]> {
+    const range = IDBKeyRange.bound([this.scope, kind], [this.scope, kind, []]);
+    const tx = this.db.transaction(MLS_STORE, "readonly");
+    const store = tx.objectStore(MLS_STORE);
+    const [keys, values] = await Promise.all([
+      request(store.getAllKeys(range)),
+      request(store.getAll(range) as IDBRequest<StoredValue[]>),
+    ]);
+    return Promise.all(values.map((v, i) => this.open<T>(keys[i] as RecordKey, v)));
   }
 
   private async write(entries: [RecordKey, unknown][]): Promise<void> {

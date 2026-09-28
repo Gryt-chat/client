@@ -9,6 +9,9 @@ const KEY_BYTES = 32;
 const IV_BYTES = 12;
 const AAD_PREFIX = "gryt-archive-v1:";
 
+const CHECK_CONTEXT = "key-check";
+const CHECK_TEXT = "gryt-archive-key-check";
+
 /** The OS keychain bridge. `canSeal` is false on a Linux box with no keyring. */
 export interface Keychain {
   canSeal: boolean;
@@ -22,8 +25,13 @@ export interface StoredArchiveKey {
 
 /** Where the sealed key is kept. `claim` writes only if nothing is there yet. */
 export interface ArchiveKeySlot {
-  read(): Promise<unknown>;
+  /** Both in one read, so a key claimed by another window never shows up as a lone check. */
+  read(): Promise<{ key: unknown; check: SealedBytes | undefined }>;
   claim(value: StoredArchiveKey): Promise<void>;
+  /** A value sealed with the key, so a key that doesn't belong to this archive is caught. */
+  writeCheck(check: SealedBytes): Promise<void>;
+  /** Deletes every record, the MLS state, the key and the check. */
+  wipe(): Promise<void>;
 }
 
 export interface SealedBytes {
@@ -31,20 +39,24 @@ export interface SealedBytes {
   ct: Uint8Array;
 }
 
+export interface LoadedArchiveKey {
+  /** Null keeps records in the clear: the web client, or Electron with no keyring. */
+  key: CryptoKey | null;
+  /** An archive was here whose key had gone from the keychain, so it was cleared. */
+  lostHistory: boolean;
+}
+
 function isStoredKey(value: unknown): value is StoredArchiveKey {
   return typeof value === "object" && value !== null && typeof (value as StoredArchiveKey).sealed === "string";
 }
 
-async function unsealKey(stored: StoredArchiveKey, keychain: Keychain | null): Promise<CryptoKey> {
-  // Throws rather than returning null: a fresh key would orphan every record already written.
-  if (!keychain) {
-    throw new Error("Your message history was locked to this computer's keychain and can't be opened here.");
-  }
+/** Null when the keychain can't open it. A key that opens to the wrong length throws. */
+async function unsealKey(stored: StoredArchiveKey, keychain: Keychain): Promise<CryptoKey | null> {
   let raw: Uint8Array<ArrayBuffer>;
   try {
     raw = base64UrlDecode(await keychain.unseal(stored.sealed));
   } catch {
-    throw new Error("Your message history couldn't be unlocked. The keychain may have been reset.");
+    return null;
   }
   if (raw.length !== KEY_BYTES) throw new Error("Your message history key is damaged.");
   try {
@@ -54,15 +66,53 @@ async function unsealKey(stored: StoredArchiveKey, keychain: Keychain | null): P
   }
 }
 
+async function checkKey(slot: ArchiveKeySlot, key: CryptoKey): Promise<void> {
+  const { check } = await slot.read();
+  if (!check) {
+    await slot.writeCheck(await sealBytes(key, CHECK_CONTEXT, new TextEncoder().encode(CHECK_TEXT)));
+    return;
+  }
+  let text = "";
+  try {
+    text = new TextDecoder().decode(await openBytes(key, CHECK_CONTEXT, check));
+  } catch {
+    // Falls through to the throw below.
+  }
+  if (text !== CHECK_TEXT) {
+    throw new Error("Your message history doesn't match this computer's key, so it can't be opened.");
+  }
+}
+
 /**
- * The archive key, made on first use when a keychain can seal it. Null means this
- * archive keeps records in the clear: the web client, or Electron with no keyring.
+ * The archive key, made on first use when a keychain can seal it. A key the keychain
+ * no longer has clears the archive; a key that's there but doesn't match throws.
  */
-export async function loadArchiveKey(slot: ArchiveKeySlot, keychain: Keychain | null): Promise<CryptoKey | null> {
-  const stored = await slot.read();
-  if (isStoredKey(stored)) return unsealKey(stored, keychain);
-  if (stored !== undefined) throw new Error("Your message history key is damaged.");
-  if (!keychain?.canSeal) return null;
+export async function loadArchiveKey(slot: ArchiveKeySlot, keychain: Keychain | null): Promise<LoadedArchiveKey> {
+  const { key: stored, check } = await slot.read();
+  let lostHistory: boolean;
+
+  if (isStoredKey(stored)) {
+    if (!keychain) {
+      throw new Error("Your message history was locked to this computer's keychain and can't be opened here.");
+    }
+    const key = await unsealKey(stored, keychain);
+    if (key) {
+      await checkKey(slot, key);
+      return { key, lostHistory: false };
+    }
+    // A keyring that's only locked says so through canSeal, and wiping then would lose history for nothing.
+    if (!keychain.canSeal) {
+      throw new Error("Your message history couldn't be unlocked. Check that your system keyring is unlocked.");
+    }
+    lostHistory = true;
+  } else if (stored !== undefined) {
+    throw new Error("Your message history key is damaged.");
+  } else {
+    lostHistory = check !== undefined;
+  }
+
+  if (lostHistory) await slot.wipe();
+  if (!keychain?.canSeal) return { key: null, lostHistory };
 
   const raw = crypto.getRandomValues(new Uint8Array(KEY_BYTES));
   const fresh: StoredArchiveKey = { sealed: await keychain.seal(base64Url(raw)) };
@@ -70,9 +120,11 @@ export async function loadArchiveKey(slot: ArchiveKeySlot, keychain: Keychain | 
 
   // Another window may have claimed the slot first, and then its key is the one records use.
   await slot.claim(fresh);
-  const winner = await slot.read();
-  if (!isStoredKey(winner)) throw new Error("Your message history key couldn't be saved.");
-  return unsealKey(winner, keychain);
+  const winner = (await slot.read()).key;
+  const key = isStoredKey(winner) ? await unsealKey(winner, keychain) : null;
+  if (!key) throw new Error("Your message history key couldn't be saved.");
+  await checkKey(slot, key);
+  return { key, lostHistory };
 }
 
 function aad(context: string): Uint8Array<ArrayBuffer> {

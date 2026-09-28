@@ -1,4 +1,4 @@
-import type { ArchiveKeySlot, StoredArchiveKey } from "../auth/archive-key.ts";
+import type { ArchiveKeySlot, SealedBytes, StoredArchiveKey } from "../auth/archive-key.ts";
 
 /** One database for the message archive and the MLS state, so one key covers both. */
 
@@ -11,6 +11,7 @@ export const MESSAGE_BY_TIME = "byTime";
 export const MLS_STORE = "mls";
 
 const KEY_SLOT = "archive-key";
+const CHECK_SLOT = "key-check";
 
 export function openArchiveDb(factory: IDBFactory = indexedDB, name = ARCHIVE_DB_NAME): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -51,12 +52,30 @@ export function committed(tx: IDBTransaction): Promise<void> {
 
 export function archiveKeySlot(db: IDBDatabase): ArchiveKeySlot {
   return {
-    read: () => request(db.transaction(META_STORE, "readonly").objectStore(META_STORE).get(KEY_SLOT)),
+    async read() {
+      const store = db.transaction(META_STORE, "readonly").objectStore(META_STORE);
+      const [key, check] = await Promise.all([
+        request<unknown>(store.get(KEY_SLOT)),
+        request<SealedBytes | undefined>(store.get(CHECK_SLOT)),
+      ]);
+      return { key, check };
+    },
     async claim(value: StoredArchiveKey) {
       const tx = db.transaction(META_STORE, "readwrite");
       const store = tx.objectStore(META_STORE);
       const existing = await request(store.getKey(KEY_SLOT));
       if (existing === undefined) store.add(value, KEY_SLOT);
+      await committed(tx);
+    },
+    async writeCheck(check: SealedBytes) {
+      const tx = db.transaction(META_STORE, "readwrite");
+      tx.objectStore(META_STORE).put(check, CHECK_SLOT);
+      await committed(tx);
+    },
+    async wipe() {
+      const stores = [META_STORE, MESSAGE_STORE, MLS_STORE];
+      const tx = db.transaction(stores, "readwrite");
+      for (const name of stores) tx.objectStore(name).clear();
       await committed(tx);
     },
   };

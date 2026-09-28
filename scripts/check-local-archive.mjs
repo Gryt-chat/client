@@ -15,10 +15,12 @@ const { MessageArchive } = await import("../src/packages/common/src/archive/mess
 const { IndexedDbMlsStateStore } = await import("../src/packages/common/src/archive/mls-state-store.ts");
 const { loadArchiveKey } = await import("../src/packages/common/src/auth/archive-key.ts");
 
+const keyFor = async (db, kc) => (await loadArchiveKey(archiveKeySlot(db), kc)).key;
+
 let dbCount = 0;
 const freshDb = () => openArchiveDb(indexedDB, `archive-test-${++dbCount}`);
 
-/** A keychain that only this test can open, and one that has forgotten everything. */
+/** A keychain that only this test can open. */
 const keychain = {
   canSeal: true,
   seal: async (plain) => `kc1.${Buffer.from(plain).toString("base64")}`,
@@ -27,7 +29,15 @@ const keychain = {
     return Buffer.from(sealed.slice(4), "base64").toString();
   },
 };
-const resetKeychain = { ...keychain, unseal: async () => { throw new Error("keychain reset"); } };
+// After a reset the keychain still works, but only for what it sealed since.
+const resetKeychain = {
+  canSeal: true,
+  seal: async (plain) => `kc2.${Buffer.from(plain).toString("base64")}`,
+  unseal: async (sealed) => {
+    if (!sealed.startsWith("kc2.")) throw new Error("keychain reset");
+    return Buffer.from(sealed.slice(4), "base64").toString();
+  },
+};
 const noKeyring = { ...keychain, canSeal: false };
 
 const msg = (over) => ({
@@ -54,8 +64,8 @@ const test = (name, fn) => tests.push({ name, fn });
 
 test("a web archive has no key and keeps records in the clear", async () => {
   const db = await freshDb();
-  assert.equal(await loadArchiveKey(archiveKeySlot(db), null), null);
-  assert.equal(await loadArchiveKey(archiveKeySlot(db), noKeyring), null, "no keyring behaves like the web");
+  assert.deepEqual(await loadArchiveKey(archiveKeySlot(db), null), { key: null, lostHistory: false });
+  assert.equal(await keyFor(db, noKeyring), null, "no keyring behaves like the web");
 
   const archive = new MessageArchive(db, null);
   assert.equal(archive.sealed, false);
@@ -121,7 +131,7 @@ test("an edit replaces the record, a delete removes it", async () => {
 
 test("with a keychain, records on disk hold no plaintext and reopen with the same key", async () => {
   const db = await freshDb();
-  const key = await loadArchiveKey(archiveKeySlot(db), keychain);
+  const key = await keyFor(db, keychain);
   assert.ok(key);
   const archive = new MessageArchive(db, key);
   assert.equal(archive.sealed, true);
@@ -131,7 +141,7 @@ test("with a keychain, records on disk hold no plaintext and reopen with the sam
   assert.equal(row.plain, undefined);
   assert.ok(!Buffer.from(row.sealed.ct).toString("latin1").includes("a secret"));
 
-  const again = new MessageArchive(db, await loadArchiveKey(archiveKeySlot(db), keychain));
+  const again = new MessageArchive(db, await keyFor(db, keychain));
   const got = await again.get("srv:a", "c1", "m1");
   assert.equal(got.text, "a secret");
   assert.deepEqual(got.attachments, { f: { k: "x" } });
@@ -139,26 +149,82 @@ test("with a keychain, records on disk hold no plaintext and reopen with the sam
   again.close();
 });
 
-test("a key that won't unseal throws instead of starting a fresh archive", async () => {
+async function sealedArchiveWithHistory() {
   const db = await freshDb();
-  await loadArchiveKey(archiveKeySlot(db), keychain);
-  const before = await archiveKeySlot(db).read();
+  const archive = new MessageArchive(db, await keyFor(db, keychain));
+  await archive.put([msg({ messageId: "m1", sentAt: 1 })]);
+  const mls = new IndexedDbMlsStateStore(db, await keyFor(db, keychain), "srv:a");
+  await mls.saveGroup(group("c1"));
+  archive.close();
+  return { db, before: await archiveKeySlot(db).read() };
+}
 
-  await assert.rejects(loadArchiveKey(archiveKeySlot(db), resetKeychain), /couldn't be unlocked/);
+test("a key the keychain lost clears the archive and says so", async () => {
+  const { db, before } = await sealedArchiveWithHistory();
+  const loaded = await loadArchiveKey(archiveKeySlot(db), resetKeychain);
+  assert.equal(loaded.lostHistory, true);
+  assert.ok(loaded.key, "a fresh key replaces the lost one");
+  assert.notDeepEqual((await archiveKeySlot(db).read()).key, before.key);
+  assert.deepEqual(await rawRows(db, MESSAGE_STORE), []);
+  assert.deepEqual(await rawRows(db, MLS_STORE), []);
+
+  const archive = new MessageArchive(db, loaded.key);
+  await archive.put([msg({ messageId: "m2", sentAt: 2, text: "after" })]);
+  assert.equal((await archive.get("srv:a", "c1", "m2")).text, "after");
+  archive.close();
+  assert.equal((await loadArchiveKey(archiveKeySlot(db), resetKeychain)).lostHistory, false, "only once");
+});
+
+test("a key slot that's gone with its check still there clears the archive", async () => {
+  const { db } = await sealedArchiveWithHistory();
+  const tx = db.transaction("meta", "readwrite");
+  tx.objectStore("meta").delete("archive-key");
+  await new Promise((resolve) => (tx.oncomplete = resolve));
+  const loaded = await loadArchiveKey(archiveKeySlot(db), keychain);
+  assert.equal(loaded.lostHistory, true);
+  assert.deepEqual(await rawRows(db, MESSAGE_STORE), []);
+});
+
+test("a locked keyring, a missing bridge or the wrong key throws and deletes nothing", async () => {
+  const { db, before } = await sealedArchiveWithHistory();
+  const lockedKeyring = { ...resetKeychain, canSeal: false };
+  await assert.rejects(loadArchiveKey(archiveKeySlot(db), lockedKeyring), /keyring is unlocked/);
   await assert.rejects(loadArchiveKey(archiveKeySlot(db), null), /locked to this computer/);
-  // A locked keyring still gets asked to unseal: canSeal only says whether new sealing works.
-  assert.ok(await loadArchiveKey(archiveKeySlot(db), noKeyring));
-  assert.deepEqual(await archiveKeySlot(db).read(), before, "the sealed key is never replaced");
+
+  // A key that opens but isn't the one this archive was written with.
+  const other = await freshDb();
+  await keyFor(other, keychain);
+  const { key: otherKey } = await archiveKeySlot(other).read();
+  const tx = db.transaction("meta", "readwrite");
+  tx.objectStore("meta").put(otherKey, "archive-key");
+  await new Promise((resolve) => (tx.oncomplete = resolve));
+  await assert.rejects(loadArchiveKey(archiveKeySlot(db), keychain), /doesn't match/);
+
+  assert.deepEqual((await archiveKeySlot(db).read()).check, before.check, "the check is untouched");
+  assert.equal((await rawRows(db, MESSAGE_STORE)).length, 1);
+  assert.equal((await rawRows(db, MLS_STORE)).length, 1);
+});
+
+test("a locked keyring still gets asked to unseal a key it made earlier", async () => {
+  const { db } = await sealedArchiveWithHistory();
+  const loaded = await loadArchiveKey(archiveKeySlot(db), noKeyring);
+  assert.equal(loaded.lostHistory, false);
+  const archive = new MessageArchive(db, loaded.key);
+  assert.equal((await archive.get("srv:a", "c1", "m1")).text, "hello");
+  archive.close();
 });
 
 test("a window that loses the race to make the key uses the winner's", async () => {
   const db = await freshDb();
-  const k1 = await loadArchiveKey(archiveKeySlot(db), keychain);
+  const k1 = await keyFor(db, keychain);
   // The second window read an empty slot just before the first one filled it.
   const slot = archiveKeySlot(db);
   let stale = true;
-  const racing = { ...slot, read: () => (stale ? ((stale = false), Promise.resolve(undefined)) : slot.read()) };
-  const k2 = await loadArchiveKey(racing, keychain);
+  const empty = { key: undefined, check: undefined };
+  const racing = { ...slot, read: () => (stale ? ((stale = false), Promise.resolve(empty)) : slot.read()) };
+  const loaded = await loadArchiveKey(racing, keychain);
+  assert.equal(loaded.lostHistory, false, "losing the race isn't losing history");
+  const k2 = loaded.key;
   const a = new MessageArchive(db, k1);
   const b = new MessageArchive(db, k2);
   await a.put([msg({ messageId: "m1", sentAt: 1, text: "from a" })]);
@@ -169,7 +235,7 @@ test("a window that loses the race to make the key uses the winner's", async () 
 
 test("a sealed record moved under another id doesn't open", async () => {
   const db = await freshDb();
-  const archive = new MessageArchive(db, await loadArchiveKey(archiveKeySlot(db), keychain));
+  const archive = new MessageArchive(db, await keyFor(db, keychain));
   await archive.put([msg({ messageId: "m1", sentAt: 1 })]);
   const [row] = await rawRows(db, MESSAGE_STORE);
 
@@ -191,10 +257,10 @@ test("a sealed record moved under another id doesn't open", async () => {
 
 test("records written before the keychain was there stay readable after", async () => {
   const db = await freshDb();
-  const plain = new MessageArchive(db, await loadArchiveKey(archiveKeySlot(db), noKeyring));
+  const plain = new MessageArchive(db, await keyFor(db, noKeyring));
   await plain.put([msg({ messageId: "old", sentAt: 1, text: "before" })]);
 
-  const sealed = new MessageArchive(db, await loadArchiveKey(archiveKeySlot(db), keychain));
+  const sealed = new MessageArchive(db, await keyFor(db, keychain));
   await sealed.put([msg({ messageId: "new", sentAt: 2, text: "after" })]);
   assert.deepEqual((await sealed.page("srv:a", "c1")).map((m) => m.text), ["before", "after"]);
   plain.close();
@@ -235,7 +301,7 @@ for (const sealedMode of [false, true]) {
 
   test(`MLS state round-trips every record kind (${label})`, async () => {
     const db = await freshDb();
-    const key = sealedMode ? await loadArchiveKey(archiveKeySlot(db), keychain) : null;
+    const key = sealedMode ? await keyFor(db, keychain) : null;
     const store = new IndexedDbMlsStateStore(db, key, "srv:a");
 
     assert.equal(await store.loadDevice(), null);
@@ -243,8 +309,13 @@ for (const sealedMode of [false, true]) {
     assert.deepEqual(await store.loadDevice(), device);
 
     const kp = { ref: "r1", keyPackage: bytes(7), privatePackage: bytes(8), lastResort: false, createdAt: 3 };
-    await store.putKeyPackages([kp, { ...kp, ref: "r2", lastResort: true }]);
+    // Records from before core 0.7.0 have no expiresAt, and it has to stay absent.
+    const expiring = { ...kp, ref: "r3", expiresAt: 1_900_000_000 };
+    await store.putKeyPackages([kp, { ...kp, ref: "r2", lastResort: true }, expiring]);
     assert.deepEqual(await store.getKeyPackage("r1"), kp);
+    assert.equal("expiresAt" in (await store.getKeyPackage("r1")), false);
+    assert.deepEqual(await store.getKeyPackage("r3"), expiring);
+    assert.deepEqual((await store.listKeyPackages()).map((r) => r.ref).sort(), ["r1", "r2", "r3"]);
     await store.deleteKeyPackage("r1");
     assert.equal(await store.getKeyPackage("r1"), null);
     assert.equal((await store.getKeyPackage("r2")).lastResort, true);
@@ -273,14 +344,16 @@ test("each server gets its own MLS state", async () => {
   const b = new IndexedDbMlsStateStore(db, null, "srv:b");
   await a.saveDevice(device);
   await a.saveGroup(group("c1"));
+  await a.putKeyPackages([{ ref: "r1", keyPackage: bytes(1), privatePackage: bytes(2), lastResort: false, createdAt: 1 }]);
   assert.equal(await b.loadDevice(), null);
+  assert.deepEqual(await b.listKeyPackages(), []);
   assert.deepEqual(await b.listGroups(), []);
   assert.equal(await b.loadGroup("c1"), null);
 });
 
 test("a sealed MLS record that won't open throws rather than reading as missing", async () => {
   const db = await freshDb();
-  const store = new IndexedDbMlsStateStore(db, await loadArchiveKey(archiveKeySlot(db), keychain), "srv:a");
+  const store = new IndexedDbMlsStateStore(db, await keyFor(db, keychain), "srv:a");
   await store.saveGroup(group("c1"));
   const keyless = new IndexedDbMlsStateStore(db, null, "srv:a");
   await assert.rejects(keyless.loadGroup("c1"), /can't be opened/);

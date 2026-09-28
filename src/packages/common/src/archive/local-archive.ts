@@ -11,6 +11,8 @@ export interface LocalArchive {
   home: "browser" | "app";
   /** Records are encrypted with a key the OS keychain holds. False on the web. */
   sealed: boolean;
+  /** An archive was found whose key had gone from the keychain, and it was cleared. */
+  lostHistory: boolean;
   /** One per server. Pass the worker claim so only the tab holding the lock writes. */
   mlsState(scope: string, writer?: { readonly held: boolean }): IndexedDbMlsStateStore;
 }
@@ -19,11 +21,12 @@ let opening: Promise<LocalArchive> | null = null;
 
 async function open(): Promise<LocalArchive> {
   const db = await openArchiveDb();
-  const key = await loadArchiveKey(archiveKeySlot(db), await osKeychain());
+  const { key, lostHistory } = await loadArchiveKey(archiveKeySlot(db), await osKeychain());
   return {
     messages: new MessageArchive(db, key),
     home: isElectron() ? "app" : "browser",
     sealed: key !== null,
+    lostHistory,
     mlsState: (scope, writer) => new IndexedDbMlsStateStore(db, key, scope, writer),
   };
 }
