@@ -1,5 +1,7 @@
 import { jwtDecode } from "jwt-decode";
 
+import { forgetAllServerFileAccess, forgetServerFileAccess, hasServerFileAccess, holdServerFileAccess } from "./fileUrlAuth";
+
 export type AccessTokenStorageMode = "local" | "session";
 
 const MODE_KEY = "accessTokenStorageMode";
@@ -92,21 +94,28 @@ export function removeServerAccessToken(host: string): void {
   removeStoredAccessToken(`accessToken_${host}`);
 }
 
-// ── File tokens ───────────────────────────────────────────────────
+// ── File access ───────────────────────────────────────────────────
 //
-// Reads uploads on one server and nothing else, and travels in the query string
-// of an `<img src>` — so what leaks is the weaker of the two (GRYT-740).
+// Upload URLs are signed with a key held in memory (fileUrlAuth.ts, GRYT-1549). Only an older
+// server's file token is kept on disk, and it is only used once that server proves itself.
 
-export function getServerFileToken(host: string): string | null {
-  return getStoredAccessToken(`fileToken_${host}`);
+/** From `server:joined`, `token:refreshed` or `file:key`. */
+export function setServerFileAccess(host: string, grant: { fileKey?: unknown; fileToken?: string | null }): void {
+  const took = holdServerFileAccess(host, grant);
+  if (took === "key") removeStoredAccessToken(`fileToken_${host}`);
+  if (took === "token" && grant.fileToken) setStoredAccessToken(`fileToken_${host}`, grant.fileToken);
 }
 
-export function setServerFileToken(host: string, token: string): void {
-  setStoredAccessToken(`fileToken_${host}`, token);
+/** After the socket's proof: an older server sends no key on a restored session, only its token. */
+export function restoreServerFileToken(host: string): void {
+  if (hasServerFileAccess(host)) return;
+  const token = getStoredAccessToken(`fileToken_${host}`);
+  if (token) holdServerFileAccess(host, { fileToken: token });
 }
 
 export function removeServerFileToken(host: string): void {
   removeStoredAccessToken(`fileToken_${host}`);
+  forgetServerFileAccess(host);
 }
 
 // ── Refresh tokens ────────────────────────────────────────────────
@@ -131,7 +140,7 @@ export function clearAllServerTokens(): void {
     try {
       for (let i = 0; i < storage.length; i++) {
         const key = storage.key(i);
-        if (key && (key.startsWith("accessToken_") || key.startsWith("serverUserId_") || key.startsWith("refreshToken_"))) keysToRemove.push(key);
+        if (key && (key.startsWith("accessToken_") || key.startsWith("serverUserId_") || key.startsWith("refreshToken_") || key.startsWith("fileToken_"))) keysToRemove.push(key);
       }
       console.log(`[TokenStorage] clearAllServerTokens: removing ${keysToRemove.length} keys from ${name}:`, keysToRemove.join(", "));
       keysToRemove.forEach((k) => storage.removeItem(k));
@@ -141,6 +150,7 @@ export function clearAllServerTokens(): void {
   };
   clear(localStorage, "localStorage");
   clear(sessionStorage, "sessionStorage");
+  forgetAllServerFileAccess();
 }
 
 export function migrateAccessTokensToMode(mode: AccessTokenStorageMode): void {

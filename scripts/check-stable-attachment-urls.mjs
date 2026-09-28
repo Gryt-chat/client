@@ -28,15 +28,25 @@ const hookSource = stripTypeScriptTypes(read(HOOK))
 const useStableFileUrl = new Function(
   "useState",
   "useCallback",
+  "useEffect",
   "getUploadsFileUrl",
+  "subscribeServerFileAccess",
   `${hookSource}\nreturn useStableFileUrl;`,
 );
+
+/** Stands in for fileUrlAuth's listeners: the socket handing over a key calls each one. */
+const accessListeners = new Set();
+function subscribeServerFileAccess(listener) {
+  accessListeners.add(listener);
+  return () => accessListeners.delete(listener);
+}
 
 let token = "A";
 const requested = [];
 function getUploadsFileUrl(host, fileId, opts) {
   requested.push({ host, fileId, opts });
-  return `http://${host}/api/uploads/files/${fileId}?${opts?.thumb ? "thumb=1&" : ""}t=${token}`;
+  const q = [opts?.thumb ? "thumb=1" : "", token ? `t=${token}` : ""].filter(Boolean).join("&");
+  return `http://${host}/api/uploads/files/${fileId}${q ? `?${q}` : ""}`;
 }
 
 /** One mounted component: state survives renders, and a set during render renders again. */
@@ -65,7 +75,13 @@ function mount(initialProps) {
     if (!(i in callbacks)) callbacks[i] = fn;
     return callbacks[i];
   };
-  const hook = useStableFileUrl(useState, useCallback, getUploadsFileUrl);
+  // Runs once, at mount, which is all the hook's one effect needs.
+  const effects = [];
+  const useEffect = (fn) => {
+    const i = slot++;
+    if (!(i in effects)) effects[i] = fn();
+  };
+  const hook = useStableFileUrl(useState, useCallback, useEffect, getUploadsFileUrl, subscribeServerFileAccess);
 
   const render = () => {
     let passes = 0;
@@ -126,6 +142,24 @@ function mount(initialProps) {
   assert.match(file.url, /files\/f2\?t=B$/, "a different file kept the old file's URL");
   file.render({ host: "other.example" });
   assert.match(file.url, /^http:\/\/other\.example\//, "a different server kept the old server's URL");
+}
+
+{
+  // Mounted before the socket proved itself, so nothing signed it (GRYT-1549).
+  token = "";
+  const file = mount({ host: "chat.example", fileId: "f1" });
+  assert.doesNotMatch(file.url, /[?&][st]=/, "a URL built with no access carries something anyway");
+
+  token = "A";
+  for (const listener of accessListeners) listener("other.example");
+  assert.match(file.render()[0], /files\/f1$/, "a key for another server re-signed this one");
+
+  for (const listener of accessListeners) listener("chat.example");
+  assert.match(file.render()[0], /t=A$/, "the key arriving did not sign a URL that had nothing");
+
+  token = "B";
+  for (const listener of accessListeners) listener("chat.example");
+  assert.match(file.render()[0], /t=A$/, "a key refresh reloaded an attachment that already loaded");
 }
 
 /* ── where the URLs are built ───────────────────────────────────────────── */

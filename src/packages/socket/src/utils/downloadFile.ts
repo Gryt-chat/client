@@ -1,5 +1,7 @@
 import toast from "react-hot-toast";
 
+import { freshUploadsFileUrl } from "@/common";
+
 /** Hands `blob` to the browser's download under `fileName`, then frees the URL made for it. */
 export function saveBlob(blob: Blob, fileName?: string | null): void {
   const blobUrl = URL.createObjectURL(blob);
@@ -50,7 +52,9 @@ export async function triggerDownload(
   // Already in this page. A query string breaks a blob URL, and opening one in a tab saves nothing.
   if (url.startsWith("blob:")) return saveOpenedFile(() => readBlobUrl(url), fileName);
 
-  const downloadUrl = url.includes("?") ? `${url}&download=1` : `${url}?download=1`;
+  // Signed again: the link was built when the file was drawn, and only lasts minutes.
+  const signed = freshUploadsFileUrl(url);
+  const downloadUrl = signed.includes("?") ? `${signed}&download=1` : `${signed}?download=1`;
 
   try {
     const res = await fetch(downloadUrl);

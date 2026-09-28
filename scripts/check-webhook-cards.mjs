@@ -159,8 +159,8 @@ assert.match(helpers, /const isFirstInGroup = isSystem \|\| webhookIdentityChang
 const joinHook = read("src/packages/settings/src/hooks/useServerJoin.ts");
 assert.match(
   joinHook,
-  /if \(result\.joinInfo\.fileToken\) setServerFileToken\(normalizedHost, result\.joinInfo\.fileToken\);/,
-  "useServerJoin drops the file token, so a card's pictures don't load until a rejoin",
+  /setServerFileAccess\(normalizedHost, result\.joinInfo\);/,
+  "useServerJoin drops the file key, so a card's pictures don't load until a rejoin",
 );
 
 console.log("webhook cards: ok");

@@ -26,6 +26,8 @@ const COMMON = moduleUrl(`
   let n = 0;
   export const createClientNonce = () => "nonce-" + ++n;
   export const listBlocked = () => [];
+  export const forgetServerFileAccess = () => {};
+  export const restoreServerFileToken = () => {};
   export const applyServerProofDecision = () => {};
   export const evaluateServerProof = async ({ proof, sentNonce }) =>
     proof && proof === sentNonce

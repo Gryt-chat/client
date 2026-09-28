@@ -8,6 +8,7 @@ import {
   listPins,
   normalizeHost,
   removeServerAccessToken,
+  removeServerFileToken,
   removeServerRefreshToken,
 } from "@/common";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
@@ -365,6 +366,7 @@ function useServerManagementHook(): ServerManagement {
       for (const host of dropped) {
         delete newServers[host];
         removeServerAccessToken(host);
+        removeServerFileToken(host);
         removeServerRefreshToken(host);
         forgetHost(host);
         clearSignedOut(host);
@@ -443,6 +445,7 @@ function useServerManagementHook(): ServerManagement {
         delete newServers[host];
 
         removeServerAccessToken(host);
+        removeServerFileToken(host);
         removeServerRefreshToken(host);
         forgetHost(host);
         // Nothing is left of this server here, so the note saying not to rejoin

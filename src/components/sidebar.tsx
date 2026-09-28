@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 
 import {
   ContactPrivacyMenu,
+  freshUploadsFileUrl,
   GeneratedServerIcon,
   getStoredSnapshot,
   HideMutedChannelsItem,
@@ -122,7 +123,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   // The same nickname shown under it, so your face here is the one everyone else
   // sees — and it changes when you rename.
   const displayAvatarUrl = resolveAvatarSrc(
-    activeProfile?.avatarUrl || avatarDataUrl,
+    // Signed again: the profile keeps the link from the join, which lasts minutes.
+    (activeProfile?.avatarUrl && freshUploadsFileUrl(activeProfile.avatarUrl)) || avatarDataUrl,
     displayNickname,
     activeProfile?.avatarWorn,
   );

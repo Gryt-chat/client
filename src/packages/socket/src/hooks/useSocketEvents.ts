@@ -17,7 +17,7 @@ import {
   removeServerAccessToken,
   removeServerRefreshToken,
   setServerAccessToken,
-  setServerFileToken,
+  setServerFileAccess,
   shouldNotifyForMessage,
 } from "@/common";
 import { channelNamesFor } from "@/lib/channelDirectory";
@@ -337,12 +337,15 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       const recoveryWorked = () => { delete revokedRecoveryRef.current[host]; };
       socket.on("server:joined", recoveryWorked);
 
-      socket.on("token:refreshed", (refreshInfo: { accessToken: string; fileToken?: string }) => {
+      // A restored session gets no `token:refreshed`, so the key for its upload URLs comes alone.
+      socket.on("file:key", (fileKey: unknown) => setServerFileAccess(host, { fileKey }));
+
+      socket.on("token:refreshed", (refreshInfo: { accessToken: string; fileToken?: string; fileKey?: unknown }) => {
         recoveryWorked();
         setServerAccessToken(host, refreshInfo.accessToken);
-        // With the access token: a file token lasts hours, so a session that keeps
-        // refreshing never reaches the point where pictures fail.
-        if (refreshInfo.fileToken) setServerFileToken(host, refreshInfo.fileToken);
+        // With the access token, so a session that keeps refreshing always has
+        // something current to sign its pictures with.
+        setServerFileAccess(host, refreshInfo);
         onTokenRefreshedRef.current();
 
         setServerDetailsList(prev => {
