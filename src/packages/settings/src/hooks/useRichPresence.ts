@@ -55,5 +55,13 @@ export function useRichPresence() {
     [api, refresh],
   );
 
-  return { ...status, setConsent, setHidden, refresh };
+  const setName = useCallback(
+    async (appId: string, name: string | null) => {
+      await api?.setRichPresenceName?.(appId, name);
+      await refresh();
+    },
+    [api, refresh],
+  );
+
+  return { ...status, setConsent, setHidden, setName, refresh };
 }

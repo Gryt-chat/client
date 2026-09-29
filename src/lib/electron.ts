@@ -169,6 +169,8 @@ export interface RichPresenceStatus extends RichPresenceSocketStatus {
   current: RichPresenceCard | null;
   /** What came in, newest last. Older builds of the main process don't send it. */
   log?: RichPresenceLogEntry[];
+  /** Names you gave games no list knows. */
+  names?: Record<string, string>;
 }
 
 export interface GameDetectionStatus {
@@ -237,6 +239,8 @@ export interface ElectronAPI {
   getRichPresence?(): Promise<RichPresenceStatus>;
   setRichPresenceConsent?(allow: boolean): Promise<string | null>;
   setRichPresenceHidden?(apps: RichPresenceApp[]): Promise<RichPresenceApp[]>;
+  /** A name for a game no list knows, kept on this device (GRYT-1638). */
+  setRichPresenceName?(appId: string, name: string | null): Promise<void>;
   onRichPresenceChanged?(callback: (card: RichPresenceCard | null) => void): () => void;
   onRichPresenceState?(callback: (status: RichPresenceSocketStatus) => void): () => void;
   /** Known games spotted by their program, each asked about once (GRYT-1636). */
