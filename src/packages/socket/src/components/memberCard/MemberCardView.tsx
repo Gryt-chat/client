@@ -52,6 +52,11 @@ export interface MemberCardViewProps {
   children?: ReactNode;
 }
 
+/** Without a picture or a pattern the tall banner is an empty block of colour, so it shrinks to fit the name. */
+function hasPattern(style: MemberCardViewProps["profile"]["cardStyle"]): boolean {
+  return !!style?.pattern && style.pattern !== "none";
+}
+
 export function MemberCardView({
   name,
   avatarSrc,
@@ -90,7 +95,7 @@ export function MemberCardView({
       {...attrs}
       style={style}
     >
-      <div className={bannerUrl ? "gmc-banner img" : "gmc-banner"}>
+      <div className={["gmc-banner", bannerUrl ? "img" : "", !bannerUrl && !hasPattern(profile.cardStyle) ? "short" : ""].filter(Boolean).join(" ")}>
         <div className="gmc-over">
           <span className="gmc-av" style={{ "--s": "64px", "--ring": presence.ring } as CSSProperties}>
             {avatarSrc ? <img alt="" src={avatarSrc} /> : <img alt="" />}
