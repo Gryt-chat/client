@@ -91,6 +91,7 @@ import {
   saveGlobalStore,
   setGlobalValue,
 } from "./globalStore";
+import { connectHelper } from "./helperChannel";
 import {
   getDiscoveredLanServers,
   rescanLanServers,
@@ -278,6 +279,7 @@ function startRichPresence(): void {
       mainWindow?.webContents.send("rich-presence-state", socketStatus());
     },
     createHost: createRpcHost,
+    connect: connectHelper,
     findHolder: () => findHolder(ipcPath(0, ipcDir())),
   });
   void presenceSource.start();

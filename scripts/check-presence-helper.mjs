@@ -10,13 +10,8 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import {
-  connectHelper,
-  createPresenceSource,
-  helperPath,
-  isPrivateDir,
-  parseHelperLine,
-} from "../electron/presenceHelper.ts";
+import { connectHelper, helperPath, isPrivateDir, parseHelperLine } from "../electron/helperChannel.ts";
+import { createPresenceSource } from "../electron/presenceHelper.ts";
 
 let failures = 0;
 async function check(name, run) {
