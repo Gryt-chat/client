@@ -59,6 +59,7 @@ import {
   stopNativeAudioCapture,
   supportsPerApplicationAudio,
 } from "./audioCaptureManager";
+import bundledDetectable from "./detectable-snapshot.json";
 import { createRpcHost, findHolder, type Holder, ipcDir, ipcPath, type RpcHostState } from "./discordIpc";
 import {
   autoStartIfNeeded,
@@ -82,6 +83,7 @@ import {
   updateServerPortsFor,
 } from "./embeddedServerManager";
 import { createGameIndex, readGameList } from "./gameList";
+import { createDetectableIndex, type DetectableEntry, maybeRefreshDetectableList, readDetectableList, resolveGameName } from "./gameListCache";
 import bundledGames from "./games.json";
 import {
   deleteGlobalValue,
@@ -230,6 +232,17 @@ function processScanAllowed(): boolean {
 /** A sandboxed Mac App Store build has its own temp folder, where no game would look. */
 const canHostRichPresence = !process.mas;
 const gameIndex = createGameIndex(readGameList(bundledGames));
+/* The bigger list from Gryt-chat/rich-presence: our own games.json still wins. */
+const bundledDetectableIndex = createDetectableIndex(readDetectableList(bundledDetectable));
+let downloadedDetectableIndex = new Map<string, DetectableEntry>();
+
+/** Overrides first, then whatever was last fetched from the repo, then the snapshot shipped with this build. */
+function nameForApp(appId: string): string | null {
+  return resolveGameName(
+    { overrides: gameIndex.nameForApp, downloaded: downloadedDetectableIndex, bundled: bundledDetectableIndex },
+    appId,
+  );
+}
 let presenceSource: PresenceSource | null = null;
 let presenceBoard: PresenceBoard | null = null;
 let rpcState: RpcHostState = "off";
@@ -272,8 +285,12 @@ function readHiddenApps(value: unknown = loadGlobalStore()["richPresenceHidden"]
 /** As early as the app can, since whichever of Gryt and Discord binds first gets the games. */
 function startRichPresence(): void {
   if (!canHostRichPresence || presenceSource || !readRichPresenceConsent()) return;
+  // Only while this is on, and never more than once a day (GRYT-1603).
+  void maybeRefreshDetectableList({ userDataDir: app.getPath("userData") })
+    .then((index) => { downloadedDetectableIndex = index; })
+    .catch((err: unknown) => console.error("rich presence: game list refresh failed", err));
   const board = createPresenceBoard({
-    nameForApp: gameIndex.nameForApp,
+    nameForApp,
     onChange: (card) => mainWindow?.webContents.send("rich-presence-changed", card),
   });
   board.setHidden(readHiddenApps().map((app) => app.id));
