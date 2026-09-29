@@ -172,6 +172,7 @@
     "test:discord-ipc": "node scripts/check-discord-ipc.mjs",
     "test:rich-presence": "node scripts/check-rich-presence.mjs",
     "test:presence-helper": "node scripts/check-presence-helper.mjs",
+    "test:helper-startup": "node scripts/check-helper-startup.mjs",
     "test:game-list": "node scripts/check-game-list.mjs",
     "test:game-card": "node scripts/check-game-card.mjs",
     "test:appimage-location": "node scripts/check-appimage-location.mjs",

@@ -17,6 +17,9 @@
   ; Never keep the install directory as NSIS' working directory while we move it.
   SetOutPath "$TEMP"
 
+  ; gryt-helper runs from this folder once turned on, and a running exe can't be replaced.
+  nsExec::Exec 'taskkill /F /IM gryt-helper.exe'
+
   ; If this machine has already crossed the broken-installer boundary, normal
   ; electron-builder upgrades should run unchanged.
   ReadRegDWORD $R1 HKCU \
@@ -168,5 +171,14 @@ Var pid
         ${EndIf}
       ${LoopWhile} $R9 < 80
     ${EndIf}
+  ${EndIf}
+!macroend
+
+; The helper's startup value is only ever written by the app, when somebody turns it on.
+; An update runs the old uninstaller too, and that must leave the setting alone.
+!macro customUnInstall
+  nsExec::Exec 'taskkill /F /IM gryt-helper.exe'
+  ${IfNot} ${isUpdated}
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "GrytHelper"
   ${EndIf}
 !macroend
