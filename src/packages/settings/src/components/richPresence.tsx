@@ -1,8 +1,10 @@
 import { Button } from "@gryt/ui";
 
 import { isMacAppStoreBuild, type RichPresenceApp } from "../../../../lib/electron";
+import { usePresenceHelper } from "../hooks/usePresenceHelper";
 import { useRichPresence } from "../hooks/useRichPresence";
 import { PresenceHelperSettings } from "./presenceHelper";
+import { helperCopy } from "./presenceHelperCopy";
 import { socketLine } from "./richPresenceCopy";
 
 /**
@@ -11,6 +13,7 @@ import { socketLine } from "./richPresenceCopy";
  */
 export function RichPresenceSettings() {
   const rp = useRichPresence();
+  const helper = usePresenceHelper();
 
   if (!rp.supported) {
     // The browser can't open a local socket, and the web copy of this panel would promise something it can't do.
@@ -56,6 +59,12 @@ export function RichPresenceSettings() {
   // Hidden apps stay listed after a restart, when nothing has connected yet.
   const apps: RichPresenceApp[] = [...rp.seen, ...rp.hidden.filter((h) => !rp.seen.some((s) => s.id === h.id))];
 
+  // Opens the helper's own box rather than turning it on, since that's where it says what it costs.
+  const showHelper = () => {
+    document.getElementById("gryt-helper")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("gryt-helper-on")?.focus({ preventScroll: true });
+  };
+
   const toggle = (app: RichPresenceApp) =>
     void rp.setHidden(hiddenIds.has(app.id) ? rp.hidden.filter((h) => h.id !== app.id) : [...rp.hidden, app]);
 
@@ -71,6 +80,14 @@ export function RichPresenceSettings() {
         >
           <span className={line.warn ? "text-xs" : "text-xs text-gryt-muted"}>{line.text}</span>
           {line.fix && <span className="text-xs">{line.fix}</span>}
+          {rp.holder?.isDiscord && helper.offered && !helper.enabledAt && (
+            <div className="flex items-center gap-2" style={{ marginTop: 2 }}>
+              <Button size="xsmall" onClick={showHelper}>
+                {helperCopy.turnOn}
+              </Button>
+              <span className="text-xs">{helperCopy.warningHint}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -101,7 +118,7 @@ export function RichPresenceSettings() {
         </ul>
       )}
 
-      <PresenceHelperSettings />
+      <PresenceHelperSettings helper={helper} />
 
       <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
         <Button size="xsmall" tone="neutral" onClick={() => void rp.setConsent(false)}>

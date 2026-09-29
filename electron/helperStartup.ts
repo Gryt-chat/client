@@ -30,6 +30,8 @@ export interface StartupDeps {
   /** The client checkout in development, where scripts/build-helper.mjs puts helper/dist. */
   devRoot: string;
   mas: boolean;
+  /** process.windowsStore: MSIX keeps its registry writes to itself, so a Run value would never be seen. */
+  windowsStore: boolean;
   /** Runs a program and reports its exit code. Never a shell. */
   run: (command: string, args: string[]) => Promise<number>;
   /** Electron's app.setLoginItemSettings and getLoginItemSettings, which use SMAppService on macOS. */
@@ -49,10 +51,13 @@ export function bundledHelper(deps: StartupDeps): string {
 }
 
 /** The sandboxed builds can't start anything at login, and a game outside the sandbox can't see their socket anyway. */
-export type Unoffered = "mas" | "flatpak" | "snap" | "missing";
+export type Unoffered = "mas" | "store" | "portable" | "flatpak" | "snap" | "missing";
 
 export function helperOffer(deps: StartupDeps): { offered: true; binary: string } | { offered: false; why: Unoffered } {
   if (deps.mas) return { offered: false, why: "mas" };
+  if (deps.platform === "win32" && deps.windowsStore) return { offered: false, why: "store" };
+  // The portable exe unpacks to a new temp folder each run, so a Run value would point at nothing.
+  if (deps.platform === "win32" && deps.env.PORTABLE_EXECUTABLE_DIR) return { offered: false, why: "portable" };
   if (deps.platform === "linux" && (deps.env.FLATPAK_ID || existsSync("/.flatpak-info"))) return { offered: false, why: "flatpak" };
   if (deps.platform === "linux" && deps.env.SNAP) return { offered: false, why: "snap" };
   const binary = bundledHelper(deps);

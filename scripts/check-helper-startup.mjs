@@ -36,7 +36,7 @@ async function check(name, run) {
 
 const roots = [];
 /** A machine: a home folder, the app's resources with a helper in them, and a fake OS. */
-function machine(platform, { env = {}, withHelper = true, withPlist = true, mas = false } = {}) {
+function machine(platform, { env = {}, withHelper = true, withPlist = true, mas = false, windowsStore = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "ghs-"));
   roots.push(root);
   const home = join(root, "home");
@@ -65,6 +65,7 @@ function machine(platform, { env = {}, withHelper = true, withPlist = true, mas 
     isPackaged: true,
     devRoot: root,
     mas,
+    windowsStore,
     run: async (command, args) => {
       calls.push([command, ...args]);
       assert.equal(command, "reg.exe");
@@ -194,6 +195,8 @@ await check("Linux: an XDG autostart entry with TryExec, and an AppImage's helpe
 
 await check("not offered where it can't work", () => {
   assert.deepEqual(helperOffer(machine("darwin", { mas: true }).deps), { offered: false, why: "mas" });
+  assert.deepEqual(helperOffer(machine("win32", { windowsStore: true }).deps), { offered: false, why: "store" });
+  assert.deepEqual(helperOffer(machine("win32", { env: { PORTABLE_EXECUTABLE_DIR: "C:\\x" } }).deps), { offered: false, why: "portable" });
   assert.deepEqual(helperOffer(machine("linux", { env: { FLATPAK_ID: "chat.gryt.Gryt" } }).deps), { offered: false, why: "flatpak" });
   assert.deepEqual(helperOffer(machine("linux", { env: { SNAP: "/snap/gryt/1" } }).deps), { offered: false, why: "snap" });
   assert.deepEqual(helperOffer(machine("win32", { withHelper: false }).deps), { offered: false, why: "missing" });

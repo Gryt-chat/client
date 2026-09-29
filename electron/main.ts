@@ -321,6 +321,7 @@ function helperDeps(): StartupDeps {
     isPackaged: app.isPackaged,
     devRoot: join(__dirname, ".."),
     mas: Boolean(process.mas),
+    windowsStore: process.windowsStore === true,
     run: runQuietly,
     setLoginItem: (options) => app.setLoginItemSettings(options),
     getLoginItem: (options) => app.getLoginItemSettings(options),

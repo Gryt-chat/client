@@ -1,11 +1,10 @@
 import { Button } from "@gryt/ui";
 
-import { usePresenceHelper } from "../hooks/usePresenceHelper";
+import type { usePresenceHelper } from "../hooks/usePresenceHelper";
 import { helperCopy, helperStateLine } from "./presenceHelperCopy";
 
 /** Off until somebody turns it on here. Nothing else registers it (GRYT-1605). */
-export function PresenceHelperSettings() {
-  const helper = usePresenceHelper();
+export function PresenceHelperSettings({ helper }: { helper: ReturnType<typeof usePresenceHelper> }) {
   if (!helper.offered) return null;
   const line = helperStateLine(helper);
 
@@ -32,7 +31,7 @@ export function PresenceHelperSettings() {
             <span className="text-xs text-gryt-muted">{helperCopy.offNote}</span>
           </>
         ) : (
-          <Button size="xsmall" disabled={helper.busy} onClick={() => void helper.set(true)}>
+          <Button id="gryt-helper-on" size="xsmall" disabled={helper.busy} onClick={() => void helper.set(true)}>
             {helperCopy.turnOn}
           </Button>
         )}
