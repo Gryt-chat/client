@@ -20,7 +20,7 @@ export function ownDeviceAdded(device: MlsOwnDevice): string | null {
 
 /* True because the server refuses that device id from now on, and the app on it wipes
    that server's history when it hears so (GRYT-1555). */
-export function removeOwnDeviceWarning(device: MlsOwnDevice, serverName: string): string {
+export function removeOwnDeviceWarning(device: Pick<MlsOwnDevice, "name">, serverName: string): string {
   const which = device.name ? `“${device.name}”` : "That device";
   return `${which} won't get new encrypted DMs on ${serverName} anymore. The next time it connects, it deletes the encrypted DMs it has from there.`;
 }

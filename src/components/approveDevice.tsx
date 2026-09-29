@@ -1,6 +1,6 @@
 /* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md)
  * states carried by @gryt/ui Button, TextField, Progress and Alert; nothing new drawn here. */
-import type { ApproverState, PairingEndReason } from "@gryt/core";
+import type { ApproverState } from "@gryt/core";
 import { parsePairingCode } from "@gryt/crypto";
 import { Alert, Button, Dialog, IconButton, Progress, TextField } from "@gryt/ui";
 import { useState } from "react";
@@ -8,35 +8,12 @@ import { useState } from "react";
 import { useAccount } from "@/common";
 
 import { PiX } from "../lib/icons";
+import { approverEndText, sendingHistoryText, sentHistoryText } from "../lib/pairing/approverWords";
+import { deviceCapLine } from "../lib/pairing/deviceCap";
 import { useApproveDevice } from "../lib/pairing/useApproveDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
+import { openUserSettings } from "../packages/socket/src/components/dmKeyWarningToast";
 import { EmojiRow, Waiting } from "./pairingParts";
-
-const ENDED: Partial<Record<PairingEndReason, string>> = {
-  cancelled: "Nothing was linked.",
-  cancelled_by_other: "It was cancelled on the new device.",
-  mismatch: "You said the emoji didn't match, so nothing was sent. Someone may have been in the middle of the connection.",
-  timed_out: "It wasn't approved in time, so nothing was sent.",
-  expired: "That code ran out. The new device shows a fresh one.",
-  already_claimed: "Somebody else already entered this code. If that wasn't you, cancel on the new device.",
-  unknown_code: "No device is showing that code. Check it, or wait for the new device to show a fresh one.",
-  wrong_relay: "That code is for a different linking service from the one this device uses.",
-  not_pairing: "That isn't a Gryt linking code.",
-  newer_version: "The new device is on a newer version of Gryt. Update this one first.",
-  tampered: "A message from the new device didn't check out, so nothing was sent.",
-  rate_limited: "Too many tries from this network. Wait a few minutes.",
-  relay_error: "Couldn't reach the linking service. Check your connection.",
-  "approve:network": "Couldn't reach the sign-in server to approve the new device.",
-  "approve:required_actions": "Your account has something to finish first, like verifying your email. Do that under Account, then try again.",
-  "approve:rate_limited": "You've linked a lot of devices lately. Try again in an hour.",
-  "approve:user_locked": "Your account is locked for now after too many sign-in attempts.",
-};
-
-function endedText(reason: PairingEndReason): string {
-  if (ENDED[reason]) return ENDED[reason]!;
-  if (reason.startsWith("approve:")) return `The sign-in server refused to sign in the new device (${reason.slice(8)}).`;
-  return "Linking stopped before it finished.";
-}
 
 function CodeEntry() {
   const { claim, close } = useApproveDevice();
@@ -82,7 +59,7 @@ function CodeEntry() {
 }
 
 function Confirm({ state }: { state: Extract<ApproverState, { phase: "confirming" }> }) {
-  const { approve, deny, mismatch } = useApproveDevice();
+  const { approve, deny, mismatch, fullServers, close } = useApproveDevice();
   const { isSignedIn } = useAccount();
   const secondsLeft = useSecondsLeft(state.deadline);
   const { device } = state;
@@ -101,6 +78,26 @@ function Confirm({ state }: { state: Extract<ApproverState, { phase: "confirming
         </span>
       </div>
       <EmojiRow emoji={state.emoji} />
+      {fullServers.length > 0 && (
+        <Alert severity="info">
+          <div className="flex flex-col gap-2">
+            {fullServers.map((s) => (
+              <span key={s.host}>{deviceCapLine(s.name)}</span>
+            ))}
+            <Button
+              size="xsmall"
+              tone="neutral"
+              style={{ alignSelf: "flex-start" }}
+              onClick={() => {
+                close();
+                openUserSettings("security");
+              }}
+            >
+              Your devices
+            </Button>
+          </div>
+        </Alert>
+      )}
       <Alert severity="warning">
         This device gets your messages, your keys and {isSignedIn ? "your account" : "your servers"}. Only approve
         a device that&rsquo;s in front of you, and only if it shows the same emoji. Gryt never asks you to type or
@@ -118,7 +115,7 @@ function Confirm({ state }: { state: Extract<ApproverState, { phase: "confirming
 }
 
 function Body() {
-  const { state, failure, open, close } = useApproveDevice();
+  const { state, failure, history, open, close } = useApproveDevice();
 
   if (failure) {
     return (
@@ -160,12 +157,24 @@ function Body() {
           <Progress value={state.total ? (state.done / state.total) * 100 : null} aria-label="Conversations done" />
         </div>
       );
+    case "sending":
+      return (
+        <div className="flex flex-col gap-2" role="status">
+          <span className="text-sm">{sendingHistoryText(history)}</span>
+          <Progress
+            value={history?.total ? (Math.min(history.messages, history.total) / history.total) * 100 : null}
+            aria-label="History sent"
+          />
+        </div>
+      );
     case "done": {
       const failed = Object.values(state.added).flat().filter((a) => a.outcome === "failed").length;
+      const sent = sentHistoryText(history);
       return (
         <div className="flex flex-col gap-3">
           <Dialog.Description className="m-0">
             {state.device.name} is linked.
+            {sent && ` ${sent}`}
             {failed > 0 &&
               ` It couldn't be added to ${failed === 1 ? "one conversation" : `${failed} conversations`} yet. It joins ${failed === 1 ? "that one" : "those"} the next time someone sends a message there.`}
           </Dialog.Description>
@@ -177,7 +186,7 @@ function Body() {
       return (
         <div className="flex flex-col gap-3">
           <Alert severity={state.reason === "mismatch" || state.reason === "tampered" ? "error" : "info"}>
-            {endedText(state.reason)}
+            {approverEndText(state.reason)}
           </Alert>
           <div className="flex flex-wrap gap-2">
             <Button size="small" onClick={open}>Try again</Button>

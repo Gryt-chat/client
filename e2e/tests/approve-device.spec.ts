@@ -4,8 +4,8 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "../support/fixtures";
 
-// Approving a new device from Settings as a guest (GRYT-1484). The relay isn't deployed yet,
-// so this runs only against a local one from auth#45: GRYT_E2E_PAIRING_RELAY=http://127.0.0.1:<port>.
+// Approving a new device from Settings as a guest (GRYT-1484). Needs a relay, so it only runs
+// with one named: GRYT_E2E_PAIRING_RELAY=https://id.gryt.chat, or a local one from auth#45.
 const RELAY = process.env.GRYT_E2E_PAIRING_RELAY;
 
 const nodeFetch: PairingFetch = (url, init) => fetch(url, init);
@@ -26,7 +26,7 @@ function seedOf(page: Page): Promise<number[]> {
 }
 
 test.describe("approving a linked device", () => {
-  test.skip(!RELAY, "needs a local pairing relay from auth#45 in GRYT_E2E_PAIRING_RELAY");
+  test.skip(!RELAY, "needs a pairing relay in GRYT_E2E_PAIRING_RELAY");
 
   test("Settings hands this guest's identity and servers to a new device", async ({ newMember, gryt, problems }) => {
     test.setTimeout(120_000);

@@ -1,4 +1,11 @@
-import { type ApproverPairing, type ApproverState, createApproverPairing, createPairingRelay, type PairingFetch } from "@gryt/core";
+import {
+  type ApproverPairing,
+  type ApproverState,
+  createApproverPairing,
+  createPairingRelay,
+  type HistoryProgress,
+  type PairingFetch,
+} from "@gryt/core";
 import { useCallback, useRef, useState } from "react";
 
 import {
@@ -7,18 +14,22 @@ import {
   identityScopeFor,
   initKeycloak,
   listPeerPins,
+  openLocalArchive,
   readIdentityForLinking,
   singletonHook,
   useAccount,
 } from "@/common";
 import { useServerSettings } from "@/settings";
 import { seenOnMlsFor } from "@/socket/src/mls/seenOnMls";
-import { ownDeviceAdder } from "@/socket/src/mls/serverMls";
+import { holdLinkedDeviceNotices, ownDeviceAdder, ownMlsDevices, setMlsArchiveListener } from "@/socket/src/mls/serverMls";
 
 import { getGrytConfig } from "../../config";
 import { getElectronAPI, isElectron } from "../electron";
 import { describeThisDevice } from "./device";
+import { serversAtDeviceCap } from "./deviceCap";
 import { accountFromToken, buildEnvelope } from "./envelope";
+import { historyArchive } from "./historyArchive";
+import { toHistoryRecord } from "./historyRecords";
 
 /* The approving side of linking (GRYT-1484): this device claims the new one's code, shows
    the emoji, and on Approve hands over its identity, signs the new device in and adds it. */
@@ -31,6 +42,10 @@ export interface ApproveDevice {
   state: ApproverState | null;
   /** Set when the envelope couldn't be put together, which is this device's problem, not the other's. */
   failure: string | null;
+  /** The history going across, once approved. Null with no archive here. */
+  history: HistoryProgress | null;
+  /** Servers where the new device would be a sixth, read while confirming. */
+  fullServers: { host: string; name: string }[];
   open(): void;
   claim(code: string): void;
   approve(): void;
@@ -43,6 +58,8 @@ const init: ApproveDevice = {
   isOpen: false,
   state: null,
   failure: null,
+  history: null,
+  fullServers: [],
   open: () => {},
   claim: () => {},
   approve: () => {},
@@ -62,15 +79,21 @@ export const useApproveDevice = singletonHook<ApproveDevice>(init, () => {
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useState<ApproverState | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryProgress | null>(null);
+  const [fullServers, setFullServers] = useState<{ host: string; name: string }[]>([]);
   const pairing = useRef<ApproverPairing | null>(null);
+  const claiming = useRef<object | null>(null);
   const live = useRef({ isSignedIn, servers });
   live.current = { isSignedIn, servers };
 
   const reset = useCallback(() => {
     pairing.current?.cancel().catch(() => undefined);
     pairing.current = null;
+    claiming.current = null;
     setState(null);
     setFailure(null);
+    setHistory(null);
+    setFullServers([]);
   }, []);
 
   const open = useCallback(() => {
@@ -80,22 +103,56 @@ export const useApproveDevice = singletonHook<ApproveDevice>(init, () => {
 
   const claim = useCallback((code: string) => {
     reset();
-    const relayOrigin = getGrytConfig().GRYT_IDENTITY_URL.replace(/\/+$/, "");
-    const next = createApproverPairing({
-      relay: createPairingRelay(relayOrigin, pairingFetch),
-      relayOrigin,
-      fetch: pairingFetch,
-      devices: ownDeviceAdder,
-    });
-    pairing.current = next;
-    next.subscribe((s) => {
-      if (pairing.current !== next) return;
-      setState(s);
-      if (s.phase === "browser") openInBrowser(s.url);
-    });
-    next.claim({ code });
-    setState(next.state);
+    const attempt = {};
+    claiming.current = attempt;
+    setState({ phase: "claiming" });
+    void (async () => {
+      const opened = await openLocalArchive().catch((e: unknown) => {
+        console.warn("[Pairing] No archive, so no history goes across:", e);
+        return null;
+      });
+      if (claiming.current !== attempt) return;
+      const relayOrigin = getGrytConfig().GRYT_IDENTITY_URL.replace(/\/+$/, "");
+      const next = createApproverPairing({
+        relay: createPairingRelay(relayOrigin, pairingFetch),
+        relayOrigin,
+        fetch: pairingFetch,
+        devices: ownDeviceAdder,
+        history: opened ? historyArchive(opened.messages) : undefined,
+      });
+      pairing.current = next;
+      let release: (() => void) | null = null;
+      next.subscribe((s) => {
+        if (s.phase === "confirming") void checkDeviceCap(next);
+        if (inFlight(s.phase) && !release) {
+          release = holdLinkedDeviceNotices();
+          setMlsArchiveListener((host, m) => next.noteMessage({ host, ...m, record: toHistoryRecord(m.record) }));
+        }
+        if ((s.phase === "done" || s.phase === "ended") && release) {
+          setMlsArchiveListener(null);
+          release();
+        }
+        if (pairing.current !== next) return;
+        setState(s);
+        if (s.phase === "browser") openInBrowser(s.url);
+      });
+      next.subscribeHistory((progress) => {
+        if (pairing.current === next) setHistory(progress);
+      });
+      next.claim({ code });
+    })();
   }, [reset]);
+
+  const checkDeviceCap = async (of: ApproverPairing) => {
+    const list = Object.values(live.current.servers);
+    const counts = await Promise.all(
+      list.map(async ({ host, name }) => {
+        const answer = await ownMlsDevices(host).catch(() => null);
+        return { host, name: name || host, deviceCount: answer?.kind === "devices" ? answer.devices.length : null };
+      }),
+    );
+    if (pairing.current === of) setFullServers(serversAtDeviceCap(counts).map(({ host, name }) => ({ host, name })));
+  };
 
   const approve = useCallback(() => {
     const current = pairing.current;
@@ -142,11 +199,11 @@ export const useApproveDevice = singletonHook<ApproveDevice>(init, () => {
     setIsOpen(false);
   }, [reset]);
 
-  return { isOpen, state, failure, open, claim, approve, deny, mismatch, close };
+  return { isOpen, state, failure, history, fullServers, open, claim, approve, deny, mismatch, close };
 });
 
 const inFlight = (phase: ApproverState["phase"] | undefined) =>
-  phase === "signing_in" || phase === "browser" || phase === "waiting_ready" || phase === "adding";
+  phase === "signing_in" || phase === "browser" || phase === "waiting_ready" || phase === "adding" || phase === "sending";
 
 function openInBrowser(url: string) {
   const api = getElectronAPI();

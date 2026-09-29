@@ -11,6 +11,10 @@ import { base64Url, encodePairingEnvelope } from "@gryt/crypto";
 import { ISSUER, memoryKeycloak, memoryRelay } from "./pairing-fakes.mjs";
 
 const { accountFromToken, buildEnvelope } = await import("../src/lib/pairing/envelope.ts");
+const { fromHistoryRecord, toHistoryRecord } = await import("../src/lib/pairing/historyRecords.ts");
+const { historyArchive } = await import("../src/lib/pairing/historyArchive.ts");
+const { approverEndText, sendingHistoryText, sentHistoryText } = await import("../src/lib/pairing/approverWords.ts");
+const { deviceCapLine, serversAtDeviceCap } = await import("../src/lib/pairing/deviceCap.ts");
 
 // ── the envelope ─────────────────────────────────────────────────────
 
@@ -73,7 +77,7 @@ const waitFor = (machine, phases, ms = 10_000) =>
   });
 
 /** The new device's side, as small as core allows: Keycloak straight through `fetch`. */
-function newDevice(relay, keycloak) {
+function newDevice(relay, keycloak, sink) {
   const post = async (path, form) => {
     const res = await keycloak.fetch(`${ISSUER}/protocol/openid-connect/${path}`, { method: "POST", body: new URLSearchParams(form).toString() });
     return { status: res.status, json: await res.json() };
@@ -84,6 +88,7 @@ function newDevice(relay, keycloak) {
     machine: createNewDevicePairing({
       relay,
       device: { name: "Pixel", app: "Gryt for Android", platform: "Android" },
+      history: sink,
       storage: { commit: async (e, tokens) => void committed.push({ e, tokens }) },
       oidc: {
         async deviceAuthorization(r) {
@@ -100,13 +105,15 @@ function newDevice(relay, keycloak) {
   };
 }
 
-async function approveOne({ env, keycloak = memoryKeycloak(), accessToken, added = [], progress = [] }) {
+async function approveOne({ env, keycloak = memoryKeycloak(), accessToken, added = [], progress = [], history, sink }) {
   const relay = memoryRelay();
-  const n = newDevice(relay, keycloak);
+  const n = newDevice(relay, keycloak, sink);
   const a = createApproverPairing({
     relay,
     relayOrigin: "https://id.gryt.chat",
     fetch: keycloak.fetch,
+    history,
+    lateWindowMs: 10,
     devices: (host) =>
       host === "chat.example"
         ? {
@@ -121,6 +128,7 @@ async function approveOne({ env, keycloak = memoryKeycloak(), accessToken, added
               results.forEach((result, i) => options?.onProgress?.({ done: i + 1, total: 2, result }));
               return results;
             },
+            groupPositions: async () => [],
           }
         : undefined,
   });
@@ -185,5 +193,110 @@ const account = { issuer: ISSUER, clientId: "gryt-web", identityUrl: "https://id
   await waitFor(n.machine, ["joining"]);
   await n.machine.cancel();
 }
+
+// ── history: this archive's records, across and back into an archive ──
+
+const record = (i, extra = {}) => ({
+  scope: "srv:ORIGIN",
+  conversationId: `dm-${i % 3}`,
+  messageId: `m${i}`,
+  sentAt: 1_700_000_000_000 + i * 60_000,
+  senderId: i % 2 ? "me" : "them",
+  text: `message ${i}`,
+  attachments: {},
+  ...extra,
+});
+
+{
+  const full = record(1, {
+    senderDeviceId: "dev-1",
+    editedAt: 5,
+    replyTo: "m0",
+    reactions: [{ src: "👍", amount: 1, users: ["them"] }],
+    attachments: { f1: { id: "a1", key: "k", nonce: "n", mime: "image/png", size: 3 } },
+  });
+  assert.deepEqual(fromHistoryRecord(toHistoryRecord(full)), full, "a record survives the trip whole");
+  assert.equal(toHistoryRecord(record(2)).message.reactions, undefined, "nothing unset goes across");
+  assert.equal(fromHistoryRecord({ ...toHistoryRecord(record(2)), message: "x" }), null);
+  assert.equal(fromHistoryRecord({ ...toHistoryRecord(record(2)), message: { text: "no sender", attachments: {} } }), null);
+  const messy = fromHistoryRecord({
+    ...toHistoryRecord(record(3)),
+    message: { senderId: "me", text: "t", attachments: { ok: { id: "a", key: "k" }, bad: 7 }, editedAt: "soon", reactions: [{ src: 1 }] },
+  });
+  assert.deepEqual(Object.keys(messy.attachments), ["ok"], "a broken attachment is dropped, not the message");
+  assert.equal(messy.editedAt, undefined);
+  assert.equal(messy.reactions, undefined);
+}
+
+/** MessageArchive's page and conversations, over an array. */
+function arrayArchive(rows) {
+  return {
+    async conversations() {
+      const counts = new Map();
+      for (const r of rows) {
+        const k = JSON.stringify([r.scope, r.conversationId]);
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+      return [...counts].map(([k, count]) => {
+        const [scope, conversationId] = JSON.parse(k);
+        return { scope, conversationId, count };
+      });
+    },
+    async page(scope, conversationId, { before, limit }) {
+      const older = (r) => !before || r.sentAt < before.sentAt || (r.sentAt === before.sentAt && r.messageId < before.messageId);
+      return rows
+        .filter((r) => r.scope === scope && r.conversationId === conversationId && older(r))
+        .sort((x, y) => x.sentAt - y.sentAt)
+        .slice(-limit);
+    },
+  };
+}
+
+// A guest with 250 messages in three DMs: every one lands in the new device's archive once.
+{
+  const rows = Array.from({ length: 250 }, (_, i) => record(i));
+  const stored = new Map();
+  const sink = { put: async (records) => records.map(fromHistoryRecord).forEach((m) => stored.set(m.messageId, m)) };
+  const sent = [];
+  const { a, n } = await approveOne({ env: envelope, history: historyArchive(arrayArchive(rows)), sink });
+  a.subscribe((s) => void (s.phase === "sending" && sent.push(sendingHistoryText(a.history))));
+  await waitFor(n.machine, ["joining"]);
+  await n.machine.ready([{ host: "chat.example", deviceId: "dev-new" }]);
+  assert.equal((await waitFor(a, ["done", "ended"])).phase, "done");
+  assert.equal((await waitFor(n.machine, ["done", "ended"])).phase, "done");
+  assert.equal(stored.size, 250);
+  assert.deepEqual(stored.get("m7"), rows[7]);
+  assert.equal(sentHistoryText(a.history), "250 messages of history came across.");
+  assert.ok(sent.length > 0 && sent[0].startsWith("Sending your message history"));
+}
+
+// ── what the approving side says ─────────────────────────────────────
+
+for (const reason of ["code_used", "code_expired", "required_actions", "stale_token", "access_denied", "expired_token", "rate_limited"]) {
+  assert.notEqual(approverEndText(reason), "Linking stopped before it finished.", `${reason} has its own line`);
+}
+assert.equal(
+  approverEndText("approve:weird_thing"),
+  "The sign-in service turned this down (weird_thing). Start again from the new device.",
+);
+assert.equal(sendingHistoryText(null), "Sending your message history…");
+assert.equal(sendingHistoryText({ messages: 12, total: null }), "Sending your message history: 12 so far");
+assert.equal(sendingHistoryText({ messages: 12, total: 10 }), "Sending your message history: 10 of 10");
+assert.equal(sentHistoryText({ messages: 0 }), null);
+assert.equal(sentHistoryText({ messages: 1 }), "1 message of history came across.");
+
+// ── a sixth device ───────────────────────────────────────────────────
+
+assert.deepEqual(
+  serversAtDeviceCap([
+    { host: "a", deviceCount: 5 },
+    { host: "b", deviceCount: 4 },
+    { host: "c", deviceCount: null },
+    { host: "d", deviceCount: 6 },
+  ]).map((s) => s.host),
+  ["a", "d"],
+  "full at five, and a server whose count isn't known isn't named",
+);
+assert.equal(deviceCapLine("Chat"), "Chat already has 5 of your devices, so the new one won't get your DMs there. Remove one first.");
 
 console.log("pairing, approving device: ok");

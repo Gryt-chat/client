@@ -93,6 +93,23 @@ test("pages run newest to oldest, each page oldest first", async () => {
   archive.close();
 });
 
+test("conversations lists each one once, with its count, for pairing's history", async () => {
+  const db = await freshDb();
+  const archive = new MessageArchive(db, null);
+  assert.deepEqual(await archive.conversations(), []);
+  await archive.put([
+    ...Array.from({ length: 5 }, (_, i) => msg({ messageId: `a${i}`, sentAt: i })),
+    msg({ conversationId: "c2", messageId: "b1", sentAt: 1 }),
+    msg({ scope: "srv:b", messageId: "c1", sentAt: 1 }),
+  ]);
+  assert.deepEqual(await archive.conversations(), [
+    { scope: "srv:a", conversationId: "c1", count: 5 },
+    { scope: "srv:a", conversationId: "c2", count: 1 },
+    { scope: "srv:b", conversationId: "c1", count: 1 },
+  ]);
+  archive.close();
+});
+
 test("conversations and servers don't leak into each other", async () => {
   const db = await freshDb();
   const archive = new MessageArchive(db, null);

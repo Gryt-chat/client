@@ -20,12 +20,20 @@ import {
 } from "@/common";
 
 import { isElectron } from "../../../../lib/electron";
+import { showLinkedDeviceToast } from "../components/linkedDeviceToast";
 import { readMlsCapability, readMlsReports } from "./capability";
+import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
 import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
 import { authTimeOf, clearRemovedHere, markRemovedHere, removedHereAt, stillRemoved } from "./removedHere";
 import { seenOnMlsFor } from "./seenOnMls";
-import { type ConversationProblems, createMlsSession, type MlsSession, type SessionSocket } from "./session";
+import {
+  type ArchivedMlsMessage,
+  type ConversationProblems,
+  createMlsSession,
+  type MlsSession,
+  type SessionSocket,
+} from "./session";
 
 /**
  * MLS for every connected server. Only the tab holding the Web Lock runs a driver; the
@@ -156,9 +164,50 @@ export function forgetOwnMlsDevices(): void {
 }
 
 /** This tab's MLS session on a server, for adding a device that was just linked. Undefined when there's none here. */
-export function ownDeviceAdder(host: string): Pick<MlsSession, "addOwnDevice"> | undefined {
+export function ownDeviceAdder(host: string): Pick<MlsSession, "addOwnDevice" | "groupPositions"> | undefined {
   const session = hosts.get(host)?.session;
-  return session?.capability ? session : undefined;
+  if (!session?.capability) return undefined;
+  return {
+    addOwnDevice(deviceId, options) {
+      expectOwnDevice(session.storeScope, deviceId);
+      return session.addOwnDevice(deviceId, options);
+    },
+    groupPositions: () => session.groupPositions(),
+  };
+}
+
+// ── Linking: the history tail, and holding "New device linked" while this device links one ──
+
+let archiveListener: ((host: string, message: ArchivedMlsMessage) => void) | null = null;
+
+/** Every MLS archive write in this tab goes here while set, for a pairing's history tail. */
+export function setMlsArchiveListener(listener: ((host: string, message: ArchivedMlsMessage) => void) | null): void {
+  archiveListener = listener;
+}
+
+let noticesHeld = 0;
+
+/** While this device approves a link, its new device shows up before it's known here. */
+export function holdLinkedDeviceNotices(): () => void {
+  noticesHeld++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (--noticesHeld === 0) for (const host of hosts.keys()) void checkOwnDevices(host);
+  };
+}
+
+async function checkOwnDevices(host: string): Promise<void> {
+  const session = hosts.get(host)?.session;
+  if (noticesHeld || !session?.capability) return;
+  try {
+    const devices = await session.ownDevices();
+    if (noticesHeld || hosts.get(host)?.session !== session) return;
+    for (const notice of noteOwnDevices(host, session.storeScope, devices)) showLinkedDeviceToast(notice);
+  } catch (e) {
+    console.warn("[MLS] Couldn't check for new devices on", host, e);
+  }
 }
 
 /** Once per socket, from `registerServerSocketEvents`. */
@@ -274,6 +323,8 @@ async function refresh(host: string): Promise<void> {
           state.sessionKey = null;
           void refresh(host);
         },
+        archiveListener: () => (archiveListener ? (m) => archiveListener?.(host, m) : null),
+        onOwnDevicesChanged: () => void checkOwnDevices(host),
       });
       state.session.onChange((conversationId) => relayChannel?.postMessage({ changed: host, conversationId }));
       state.local = state.session;
@@ -292,6 +343,7 @@ async function refresh(host: string): Promise<void> {
     await session.start();
     const deviceId = await session.ownDeviceId();
     if (deviceId && state.session === session) announceDevice(host, deviceId);
+    if (state.session === session) void checkOwnDevices(host);
   } catch (e) {
     // Tried again on the next connect rather than left without a session for good.
     if (!state.session) state.sessionKey = null;
