@@ -31,7 +31,7 @@ export function WatchedPrograms() {
   if (!supported) {
     return (
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-bold">What you&rsquo;re playing</span>
+        <span className="text-sm font-bold">Programs you add</span>
         <span className="text-xs text-gryt-muted">
           {isMacAppStoreBuild() ? (
             <>The Mac App Store version can&rsquo;t see what other apps you have open.</>
@@ -71,7 +71,7 @@ export function WatchedPrograms() {
   if (!consentedAt) {
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-bold">What you&rsquo;re playing</span>
+        <span className="text-sm font-bold">Programs you add</span>
         <span className="text-xs text-gryt-muted">
           Gryt can show other people what you&rsquo;re playing. To do that it
           reads which programs are running on this machine, every ten seconds,
@@ -93,7 +93,7 @@ export function WatchedPrograms() {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-bold">What you&rsquo;re playing</span>
+      <span className="text-sm font-bold">Programs you add</span>
       <span className="text-xs text-gryt-muted">
         List a program and Gryt says its name under yours while it&rsquo;s
         running, instead of the line above. Nothing else you have open is

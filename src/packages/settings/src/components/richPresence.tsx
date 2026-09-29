@@ -21,7 +21,7 @@ export function RichPresenceSettings() {
     if (!isMacAppStoreBuild()) return null;
     return (
       <div className="flex flex-col gap-1">
-        <span className="text-sm font-bold">Games that report what you&rsquo;re doing</span>
+        <span className="text-sm font-bold">Rich Presence</span>
         <span className="text-xs text-gryt-muted">
           The Mac App Store version can&rsquo;t open the connection games use.
         </span>
@@ -32,7 +32,7 @@ export function RichPresenceSettings() {
   if (!rp.consentedAt) {
     return (
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-bold">Games that report what you&rsquo;re doing</span>
+        <span className="text-sm font-bold">Rich Presence</span>
         <span className="text-xs text-gryt-muted">
           Lots of games tell Discord what you&rsquo;re up to, like the map you&rsquo;re on or how
           full your party is. Gryt can pick that up and show it under your name.
@@ -71,7 +71,7 @@ export function RichPresenceSettings() {
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-bold">Games that report what you&rsquo;re doing</span>
+      <span className="text-sm font-bold">Rich Presence</span>
 
       {line.text && (
         <div
