@@ -100,6 +100,10 @@ export async function routeExternal(
     report(`Request to a live site with no fixture: ${route.request().method()} ${url.href}`);
     return route.abort("blockedbyclient");
   });
+  // Game art comes from the test server, which may predate the route; a missing one would log a 404.
+  await context.route(/\/api\/game-art\/\d+$/, (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", headers: CORS, body: TRANSPARENT_PNG }),
+  );
 }
 
 export { APP_VERSION };
