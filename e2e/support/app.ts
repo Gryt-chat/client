@@ -26,6 +26,10 @@ export function recordFrames(page: Page): string[] {
   return frames;
 }
 
+/** The e2e server has no SFU, so a caller's join fails and cancels the ring within a few ms,
+    often before the callee's app has drawn it. Dropping the cancel keeps it ringing. */
+export const ringCancel = (frame: string): boolean => frame.startsWith('42["call:cancel",');
+
 export function composer(page: Page, placeholder: string): Locator {
   return page.locator(`[role="textbox"][aria-placeholder="${placeholder}"]`);
 }
