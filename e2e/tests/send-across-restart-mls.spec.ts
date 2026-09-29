@@ -82,6 +82,45 @@ async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wir
   return wire;
 }
 
+/* How long bob's KeyPackages are held back, as on a slow CI runner. Without the wait for them,
+   alice's DM goes out as sealed v1 before bob has an MLS device (GRYT-1624). */
+const SLOW_PUBLISH_MS = 3000;
+
+/** True once the server has taken this context's KeyPackages, which is when its MLS device exists. */
+async function watchKeyPackages(context: BrowserContext, server: GrytServer): Promise<() => boolean> {
+  const port = new URL(server.httpBase).port;
+  let published = false;
+  await context.routeWebSocket(
+    (url) => url.port === port && url.pathname.startsWith("/socket.io/"),
+    (page) => {
+      const toServer = page.connectToServer();
+      toServer.onClose(() => void page.close());
+      const asked = new Set<string>();
+      let held: (string | Buffer)[] | null = null;
+      page.onMessage((message) => {
+        if (held) return void held.push(message);
+        const publish = typeof message === "string" ? /^4[25](?:\d+-)?(\d+)\["mls:keypackages:publish"/.exec(message) : null;
+        if (publish) {
+          asked.add(publish[1]);
+          held = [message];
+          setTimeout(() => {
+            for (const m of held ?? []) toServer.send(m);
+            held = null;
+          }, SLOW_PUBLISH_MS);
+          return;
+        }
+        toServer.send(message);
+      });
+      toServer.onMessage((message) => {
+        const ack = typeof message === "string" ? /^4[36](?:\d+-)?(\d+)\[(.*)$/s.exec(message) : null;
+        if (ack && asked.delete(ack[1]) && !ack[2].includes('"error"')) published = true;
+        page.send(message);
+      });
+    },
+  );
+  return () => published;
+}
+
 async function healthy(server: GrytServer): Promise<boolean> {
   try {
     return (await fetch(`${server.httpBase}/health`)).ok;
@@ -133,7 +172,12 @@ for (const kind of ["unacked", "lost"] as const) {
     const wire = await tapWire(alice.context, server);
     await alice.page.reload();
     await joinServer(alice.page, server.host);
-    const bob = await newMember({ server, label: "bob" });
+    // Bob has no MLS device until his KeyPackages are up. A DM opened before that goes as sealed v1.
+    const bob = await newMember({ server, join: false, label: "bob" });
+    const bobOnMls = await watchKeyPackages(bob.context, server);
+    await bob.page.reload();
+    await joinServer(bob.page, server.host);
+    await expect.poll(bobOnMls, { message: "bob's app should have published its KeyPackages", timeout: 30_000 }).toBe(true);
 
     const box = await openDm(alice, bob);
     const before = unique("said over MLS before the restart");
