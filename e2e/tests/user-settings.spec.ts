@@ -112,6 +112,8 @@ test("user settings on a 390px phone: the keyboard and search still reach a page
   await phone.page.keyboard.press("Enter");
   await expect(option("Profile")).toBeFocused();
   await phone.page.keyboard.press("ArrowDown");
+  await expect(option("Edit my card")).toBeFocused();
+  await phone.page.keyboard.press("ArrowDown");
   await expect(option("Account")).toBeFocused();
   await phone.page.keyboard.press("Enter");
   await expect(option("Account")).toBeHidden();
