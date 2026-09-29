@@ -18,6 +18,7 @@ import { AddonsSettings } from "./addonsSettings";
 import { AdvancedSettings } from "./advancedSettings";
 import { AudioSettings } from "./audioSettings";
 import { CameraSettings } from "./cameraSettings";
+import { CardSettings } from "./cardSettings";
 import { ChatSettings } from "./chatSettings";
 import { DesktopSettings } from "./desktopSettings";
 import { DeveloperSettings } from "./developerSettings";
@@ -65,7 +66,10 @@ const DESTINATIONS: SettingsDestination[] = [
     value: "profile",
     label: "Profile",
     icon: PiUserFill,
-    content: <ProfileSettings />,
+    pages: [
+      { value: "profile", label: "Profile", content: <ProfileSettings /> },
+      { value: "card", label: "Edit my card", content: <CardSettings /> },
+    ],
   },
   {
     value: "account",

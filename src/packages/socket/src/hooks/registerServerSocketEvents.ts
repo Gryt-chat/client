@@ -50,6 +50,8 @@ import {
   type CallMemberships,
   rememberCallMembers,
 } from "../lib/callMembers";
+import { cardUpdatePayload, getStoredCard, hasCardFields, isDefaultCard } from "../lib/memberCard/cardStore";
+import { cardProfileOf } from "../lib/memberCard/cardStyle";
 import { attachServerMls, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
@@ -343,7 +345,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     });
   });
 
-  socket.on("server:joined", (joinInfo: { accessToken: string; fileToken?: string; fileKey?: unknown; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null; identityClaim?: unknown }) => {
+  socket.on("server:joined", (joinInfo: { accessToken: string; fileToken?: string; fileKey?: unknown; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null; identityClaim?: unknown; cardStyle?: unknown; bio?: string | null; pronouns?: string | null; statusLine?: string | null }) => {
     setServerAccessToken(host, joinInfo.accessToken);
     // Before anything renders. Every avatar and every picture reaches for this,
     // so storing it late means a screen of broken images on the first join.
@@ -383,8 +385,15 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         // Undefined from a server older than the field, which reads as no
         // designed look — and that is what such a server has.
         avatarWorn: joinInfo.avatarWorn ?? null,
+        card: cardProfileOf(joinInfo),
       },
     }));
+
+    // Only when the server has no card for you, since `server:joined` fires on reconnects too.
+    const storedCard = getStoredCard();
+    if (storedCard && !isDefaultCard(storedCard) && !hasCardFields(joinInfo)) {
+      socket.emit("profile:update", cardUpdatePayload(storedCard));
+    }
 
     // Only when the server has none: the look is per-server once set, and
     // `server:joined` fires on reconnects, so pushing would undo that choice.
@@ -408,7 +417,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }
   });
 
-  socket.on("profile:updated", (data: { nickname: string; avatarFileId: string | null; avatarWorn?: string | null }) => {
+  socket.on("profile:updated", (data: { nickname: string; avatarFileId: string | null; avatarWorn?: string | null; cardStyle?: unknown; bio?: string | null; pronouns?: string | null; statusLine?: string | null }) => {
     setServerProfiles(prev => ({
       ...prev,
       [host]: {
@@ -420,6 +429,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         // Optional on the wire, since an older server does not send it. Undefined
         // reads as no designed look, and the uploaded PNG shows instead.
         avatarWorn: data.avatarWorn ?? null,
+        card: cardProfileOf(data),
       },
     }));
   });
@@ -785,12 +795,19 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     const me = data.find((member) => member.serverUserId === myServerUserId);
     if (!me) return;
 
+    // A first join goes through its own socket, so the card is offered here too, once.
+    const storedCard = getStoredCard();
+    if (storedCard && !isDefaultCard(storedCard) && !hasCardFields(me) && firstTimeOnThisSocket(socket, "member-card")) {
+      socket.emit("profile:update", cardUpdatePayload(storedCard));
+    }
+
     setServerProfiles((prev) => {
       const existing = prev[host];
       if (
         existing?.nickname === me.nickname &&
         existing?.avatarFileId === (me.avatarFileId ?? null) &&
-        existing?.avatarWorn === (me.avatarWorn ?? null)
+        existing?.avatarWorn === (me.avatarWorn ?? null) &&
+        JSON.stringify(existing?.card) === JSON.stringify(cardProfileOf(me))
       ) {
         return prev;
       }
@@ -804,6 +821,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
             ? getUploadsFileUrl(host, me.avatarFileId)
             : null,
           avatarWorn: me.avatarWorn ?? null,
+          card: cardProfileOf(me),
         },
       };
     });

@@ -1,3 +1,5 @@
+import type { CardProfile } from "../lib/memberCard/cardStyle";
+
 export type UserStatus = 'online' | 'in_voice' | 'afk' | 'offline';
 
 export type Client = {
@@ -36,4 +38,6 @@ export type ServerProfile = {
   avatarUrl: string | null;
   /** The designed look, or null for an uploaded picture or the seeded owl. */
   avatarWorn: string | null;
+  /** Your card as this server holds it. Absent from a server older than cards. */
+  card?: CardProfile;
 };
