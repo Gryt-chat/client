@@ -217,6 +217,22 @@ export function setUserValue(key: string, value: unknown): void {
   }
 }
 
+/** One value for a user who may not be the loaded one, such as an account about to sign in. */
+export async function updateStoredValueFor<T>(
+  userId: string,
+  key: string,
+  update: (current: T | undefined) => T,
+): Promise<void> {
+  if (userId === cachedUserId && !pendingLoad) {
+    setUserValue(key, update(cache[key] as T | undefined));
+    return;
+  }
+  const next = update((await readStoredData(userId))[key] as T | undefined);
+  const api = isElectron() ? getElectronAPI() : null;
+  if (api) api.setUserData(userId, key, next);
+  else localStorage.setItem(webKey(userId, key), JSON.stringify(next));
+}
+
 export function removeUserValue(key: string): void {
   console.log("[UserStore] removeUserValue:", key, "for user", cachedUserId);
   delete cache[key];

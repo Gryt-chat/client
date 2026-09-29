@@ -67,6 +67,9 @@ jobs:
       - run: yarn test:reset-warning
       - run: yarn test:guest-history
       - run: yarn test:identity-claim
+      # Linking a device: what the new one writes, in what order, and that a wrong
+      # account or a mismatch writes nothing. Both of core's machines, one relay in memory.
+      - run: yarn test:pairing-new-device
 
       # Fires once per version, so a mistake is a modal nobody sees again or one
       # that greets a fresh install. Neither shows up in a build.

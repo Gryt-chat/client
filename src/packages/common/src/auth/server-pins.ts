@@ -8,6 +8,7 @@ const PINS_KEY = "serverIdentityPins";
 const HOST_INDEX_KEY = "serverIdentityHostIndex";
 const BLOCKLIST_KEY = "serverIdentityBlocklist";
 const WITHDRAWN_CLEARED_KEY = "serverIdentityWithdrawnBlocksCleared";
+const LINEAGE_HINTS_KEY = "serverIdentityLineageHints";
 
 const VERIFY_ALGO: EcdsaParams = { name: "ECDSA", hash: "SHA-256" };
 const IMPORT_ALGO: EcKeyImportParams = { name: "ECDSA", namedCurve: "P-256" };
@@ -137,7 +138,7 @@ export function listHostExpectations(): Record<string, string> {
   return readHostIndex();
 }
 
-export function savePin(keyId: string, jwk: JsonWebKey, host: string): void {
+export function savePin(keyId: string, jwk: JsonWebKey, host: string, originKeyId?: string): void {
   const pins = listPins();
   const now = Date.now();
   const existing = pins[keyId];
@@ -148,13 +149,30 @@ export function savePin(keyId: string, jwk: JsonWebKey, host: string): void {
     firstSeenAt: existing?.firstSeenAt ?? now,
     lastSeenAt: now,
     lastHost: host,
-    originKeyId: existing?.originKeyId ?? existing?.keyId ?? keyId,
+    originKeyId: existing?.originKeyId ?? existing?.keyId ?? originKeyId ?? keyId,
   };
   writeJson(PINS_KEY, pins);
 
   const index = readHostIndex();
   index[host] = keyId;
   writeJson(HOST_INDEX_KEY, index);
+}
+
+/**
+ * The lineage another device knows a server by, handed over when linking (GRYT-1484).
+ * Used once, when this device first pins that address, so both derive under one scope.
+ */
+export function expectServerLineage(host: string, originKeyId: string): void {
+  writeJson(LINEAGE_HINTS_KEY, { ...readJson<Record<string, string>>(LINEAGE_HINTS_KEY, {}), [host]: originKeyId });
+}
+
+function takeLineageHint(host: string): string | undefined {
+  const hints = readJson<Record<string, string>>(LINEAGE_HINTS_KEY, {});
+  const hint = hints[host];
+  if (hint === undefined) return undefined;
+  delete hints[host];
+  writeJson(LINEAGE_HINTS_KEY, hints);
+  return hint;
 }
 
 /**
@@ -622,7 +640,7 @@ export function applyServerProofDecision(
 ): void {
   switch (decision.action) {
     case "pin":
-      savePin(decision.keyId, decision.jwk, host);
+      savePin(decision.keyId, decision.jwk, host, takeLineageHint(host));
       break;
     case "rotated":
       replacePin(decision.previousKeyId, decision.keyId, decision.jwk, host);
