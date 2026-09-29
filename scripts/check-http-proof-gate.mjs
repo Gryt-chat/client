@@ -47,7 +47,31 @@ const resolveFromGuard = (spec) =>
 
 // Only what the guard asks of @/common. A proof is good when it echoes the nonce it answers.
 const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+// The real one, since a refusal has to leave nothing that signs upload URLs (GRYT-1549).
+const FILE_ACCESS = moduleUrl(
+  ts
+    .transpileModule(readFileSync(join(root, "src/packages/common/src/utils/fileUrlAuth.ts"), "utf8"), {
+      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    })
+    .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) => `${head}"${import.meta.resolve(spec)}"`),
+);
+const fileAccess = await import(FILE_ACCESS);
+// An older server's token on disk, which may only come out once that server has proved itself.
+const disk = new Map();
+const fakeStorage = { getItem: (k) => disk.get(k) ?? null, setItem: (k, v) => disk.set(k, v), removeItem: (k) => disk.delete(k), key: (i) => [...disk.keys()][i] ?? null, get length() { return disk.size; } };
+globalThis.localStorage = fakeStorage;
+globalThis.sessionStorage = fakeStorage;
+const TOKEN_STORAGE = moduleUrl(
+  ts
+    .transpileModule(readFileSync(join(root, "src/packages/common/src/utils/tokenStorage.ts"), "utf8"), {
+      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    })
+    .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) =>
+      `${head}"${spec === "./fileUrlAuth" ? FILE_ACCESS : import.meta.resolve(spec)}"`),
+);
 const COMMON = moduleUrl(`
+  export { forgetServerFileAccess } from "${FILE_ACCESS}";
+  export { restoreServerFileToken } from "${TOKEN_STORAGE}";
   let n = 0;
   export const createClientNonce = () => "nonce-" + ++n;
   export const listBlocked = () => [];
@@ -82,7 +106,7 @@ const INFO_STUBS = {
     export const schemeOfUrl = (url) => new URL(url).protocol.slice(0, -1);
     export const rememberScheme = () => {};
     export const setServerAccessToken = () => {};
-    export const setServerFileToken = () => {};
+    export const setServerFileAccess = () => {};
     export const setServerRefreshToken = () => {};
   `),
   "@/socket": moduleUrl("export const joinServerOnce = () => {};"),
@@ -215,6 +239,35 @@ try {
     assert.equal(seen.refused, null);
   }
 
+  // An older server's stored token is only used after its proof, and never for one that fails it.
+  {
+    const proving = await started();
+    disk.set(`fileToken_${proving.host}`, "legacy-token");
+    const { socket } = connect(proving);
+    sockets.push(socket);
+    assert.equal(fileAccess.hasServerFileAccess(proving.host), false, "the stored token was used before the proof");
+    await until("the proof", () => fileAccess.hasServerFileAccess(proving.host));
+    assert.deepEqual(fileAccess.fileAccessParams(proving.host, "f1", false), [["t", "legacy-token"]]);
+
+    const failing = await started(false);
+    disk.set(`fileToken_${failing.host}`, "legacy-token");
+    const second = connect(failing);
+    sockets.push(second.socket);
+    await until("the refusal", () => second.seen.refused);
+    assert.equal(fileAccess.hasServerFileAccess(failing.host), false, "a server that never proved itself got the stored token in its URLs");
+  }
+
+  // What signs upload URLs goes with a refusal, so no `<img>` sends anything to that server.
+  {
+    const server = await started(false);
+    fileAccess.holdServerFileAccess(server.host, { fileKey: { key: "B".repeat(43), user: "u1", until: 2e9, now: Date.now() } });
+    assert.ok(fileAccess.fileAccessParams(server.host, "f1", false).length > 0, "the key was not taken, so nothing was tested");
+    const { socket, seen } = connect(server);
+    sockets.push(socket);
+    await until("the refusal", () => seen.refused);
+    assert.deepEqual(fileAccess.fileAccessParams(server.host, "f1", false), [], "a refused server still gets signed upload URLs");
+  }
+
   // Never proves itself: no request with the token reaches it, and each one fails instead.
   {
     const server = await started(false);
@@ -240,16 +293,20 @@ try {
     sockets.push(socket);
     assert.equal((await fetch(`${server.url}/api/uploads`, { method: "POST", headers: BEARER })).status, 200);
     const sentBefore = withToken(server).length;
+    fileAccess.holdServerFileAccess(server.host, { fileKey: { key: "B".repeat(43), user: "u1", until: 2e9, now: Date.now() } });
 
     server.proves = false;
     server.drop();
     await until("the drop", () => !socket.connected);
+    // A drop alone keeps it: every reconnect goes through a new proof before it gets a new one.
+    assert.equal(fileAccess.hasServerFileAccess(server.host), true, "an ordinary drop threw away the key");
     const whileDown = fetch(`${server.url}/api/uploads`, { method: "POST", headers: BEARER });
     const whileDownXhr = xhrUpload(`${server.url}/api/emojis`);
     await assert.rejects(whileDown, /has not proved its identity/);
     assert.equal(await whileDownXhr, "failed");
     assert.ok(seen.refused, "the reconnect was never refused, so nothing was tested");
     assert.equal(withToken(server).length, sentBefore, "a bearer request went to the unproved reconnect");
+    assert.equal(fileAccess.hasServerFileAccess(server.host), false, "the refused reconnect kept what signs upload URLs");
   }
 
   // /info from the dialogs goes straight through a host that has not proved itself yet, with no token.

@@ -65,6 +65,10 @@ const recordingFetch = async (url, init) => {
   if (!env.serverAnswer) throw new TypeError("Failed to fetch");
   return env.serverAnswer;
 };
+// Stands in for signing again at the moment of use: "t=A" is the link as drawn, "t=B" as fetched.
+function resign(url) {
+  return url.replace("t=A", "t=B");
+}
 const reset = () => {
   env.saves = [];
   env.tabs = [];
@@ -75,7 +79,7 @@ const reset = () => {
 };
 
 const { saveBlob, readBlobUrl, saveOpenedFile, triggerDownload } = new Function(
-  "toast", "document", "window", "URL", "fetch",
+  "toast", "document", "window", "URL", "fetch", "freshUploadsFileUrl",
   `${moduleBody(DOWNLOAD)}\nreturn { saveBlob, readBlobUrl, saveOpenedFile, triggerDownload };`,
 )(
   { error: (message) => env.toasts.push(message) },
@@ -83,6 +87,7 @@ const { saveBlob, readBlobUrl, saveOpenedFile, triggerDownload } = new Function(
   { open: (url) => env.tabs.push(url) },
   fakeUrl,
   recordingFetch,
+  resign,
 );
 
 const bytesOf = async (blob) => Array.from(new Uint8Array(await blob.arrayBuffer()));
@@ -179,7 +184,8 @@ assert.notDeepEqual(Array.from(picture.ciphertext.slice(0, 64)), Array.from(PICT
   reset();
   env.serverAnswer = { ok: true, blob: async () => new Blob(["plain"], { type: "text/plain" }) };
   await triggerDownload("https://chat.example/api/uploads/files/f1?t=A", "notes.txt");
-  assert.deepEqual(env.fetches.map((f) => f.url), ["https://chat.example/api/uploads/files/f1?t=A&download=1"]);
+  assert.deepEqual(env.fetches.map((f) => f.url), ["https://chat.example/api/uploads/files/f1?t=B&download=1"],
+    "a download fetched the link as it was drawn, which may have expired, instead of signing it again");
   assert.equal(env.saves[0]?.name, "notes.txt");
 
   reset();
@@ -199,12 +205,13 @@ assert.notDeepEqual(Array.from(picture.ciphertext.slice(0, 64)), Array.from(PICT
 {
   const written = [];
   const copyImageToClipboard = new Function(
-    "fetch", "navigator", "ClipboardItem",
+    "fetch", "navigator", "ClipboardItem", "freshUploadsFileUrl",
     `${moduleBody(CLIPBOARD)}\nreturn copyImageToClipboard;`,
   )(
     recordingFetch,
     { clipboard: { write: async (items) => written.push(...items) } },
     class { constructor(parts) { this.parts = parts; } },
+    resign,
   );
 
   reset();
@@ -217,6 +224,7 @@ assert.notDeepEqual(Array.from(picture.ciphertext.slice(0, 64)), Array.from(PICT
   reset();
   env.serverAnswer = { ok: true, blob: async () => new Blob([PICTURE], { type: "image/png" }) };
   await copyImageToClipboard("https://chat.example/api/uploads/files/f1?t=A");
+  assert.equal(env.fetches[0].url, "https://chat.example/api/uploads/files/f1?t=B", "Copy Image fetched the link as drawn instead of signing it again");
   assert.equal(env.fetches[0].init?.cache, "no-store",
     "Copy Image reads the server copy from the cache again, where the <img> left it without CORS headers");
 }

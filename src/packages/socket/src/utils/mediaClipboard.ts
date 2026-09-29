@@ -1,3 +1,5 @@
+import { freshUploadsFileUrl } from "@/common";
+
 function convertToPng(blob: Blob): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -20,7 +22,7 @@ function convertToPng(blob: Blob): Promise<Blob> {
 /** `source` is a URL to fetch, or the image itself when the client already holds it. */
 export async function copyImageToClipboard(source: string | Blob) {
   // Not from the cache: the <img> left an entry without CORS headers there, and this fetch fails on it.
-  const blob = typeof source === "string" ? await (await fetch(source, { cache: "no-store" })).blob() : source;
+  const blob = typeof source === "string" ? await (await fetch(freshUploadsFileUrl(source), { cache: "no-store" })).blob() : source;
   const pngBlob = blob.type === "image/png"
     ? blob
     : await convertToPng(blob);

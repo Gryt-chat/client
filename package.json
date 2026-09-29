@@ -38,6 +38,7 @@
     "test:hold-until-proven": "node --disable-warning=ExperimentalWarning scripts/check-hold-until-proven.mjs",
     "test:withdrawn-blocks": "node --disable-warning=ExperimentalWarning scripts/check-withdrawn-blocks.mjs",
     "test:http-proof-gate": "node --disable-warning=ExperimentalWarning scripts/check-http-proof-gate.mjs",
+    "test:signed-file-urls": "node --disable-warning=ExperimentalWarning scripts/check-signed-file-urls.mjs",
     "test:token-refresh-schedule": "node scripts/check-token-refresh-schedule.mjs",
     "test:identity-vault": "node scripts/check-identity-vault.mjs",
     "test:identity-restart": "node scripts/check-identity-restart.mjs",

@@ -18,7 +18,7 @@ import {
   removeServerRefreshToken,
   setMentionCounts,
   setServerAccessToken,
-  setServerFileToken,
+  setServerFileAccess,
   setServerNotice,
   setServerRefreshToken,
   setThreadMentionCounts,
@@ -343,11 +343,11 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     });
   });
 
-  socket.on("server:joined", (joinInfo: { accessToken: string; fileToken?: string; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null; identityClaim?: unknown }) => {
+  socket.on("server:joined", (joinInfo: { accessToken: string; fileToken?: string; fileKey?: unknown; refreshToken?: string; nickname: string; avatarFileId?: string | null; avatarWorn?: string | null; identityClaim?: unknown }) => {
     setServerAccessToken(host, joinInfo.accessToken);
     // Before anything renders. Every avatar and every picture reaches for this,
     // so storing it late means a screen of broken images on the first join.
-    if (joinInfo.fileToken) setServerFileToken(host, joinInfo.fileToken);
+    setServerFileAccess(host, joinInfo);
 
     // The earlier of the two publishes, so the key is on the server before the
     // first member list goes out and nobody sees them appear without one.

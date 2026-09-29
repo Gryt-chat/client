@@ -74,15 +74,17 @@ export function markGone(host: string, connection: object): void {
   stateFor(host)?.proved.delete(connection);
 }
 
-export function markRefused(host: string, connection: object): void {
+/** True when nothing to this host is proved any more, so it now counts as refused. */
+export function markRefused(host: string, connection: object): boolean {
   const state = stateFor(host);
-  if (!state) return;
+  if (!state) return false;
   state.proved.delete(connection);
-  if (state.proved.size > 0) return;
+  if (state.proved.size > 0) return false;
   state.refused = true;
   const err = new Error(`${host} has not proved its identity, so nothing that carries your token goes to it.`);
   for (const w of state.waiters) w.reject(err);
   state.waiters.clear();
+  return true;
 }
 
 /** True when a request to `url` has to wait: its server is watched and nothing to it has proved itself. */

@@ -3,7 +3,7 @@ import { AvatarChoiceDialog, OwlDesignerDialog } from "@gryt/ui";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { compressStaticAvatarToLimit, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getStoredWorn, getUploadsFileUrl, resolveAvatarSrc, setStoredWorn, useUserId } from "@/common";
+import { compressStaticAvatarToLimit, freshUploadsFileUrl, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getStoredWorn, getUploadsFileUrl, resolveAvatarSrc, setStoredWorn, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
@@ -606,7 +606,7 @@ export function ProfileSettings() {
 
     setSyncing(true);
     try {
-      const response = await fetch(source);
+      const response = await fetch(freshUploadsFileUrl(source));
       if (!response.ok) {
         throw new Error(`the server answered ${response.status}`);
       }
@@ -815,7 +815,8 @@ export function ProfileSettings() {
           const host = selectedTab;
           const profile = serverProfiles[host];
           const serverNickname = profile?.nickname || nickname;
-          const serverAvatarUrl = profile?.avatarUrl || allServerAvatarUrl;
+          // Signed again, since the profile keeps the link from when it was set.
+          const serverAvatarUrl = (profile?.avatarUrl && freshUploadsFileUrl(profile.avatarUrl)) || allServerAvatarUrl;
           const serverInitial = serverNickname?.[0]?.toUpperCase() || "?";
           const serverName = serverDetailsList?.[host]?.server_info?.name || servers[host]?.name || host;
 

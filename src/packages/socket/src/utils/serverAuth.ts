@@ -4,7 +4,9 @@ import {
   applyServerProofDecision,
   createClientNonce,
   evaluateServerProof,
+  forgetServerFileAccess,
   listBlocked,
+  restoreServerFileToken,
   type ServerProofDecision,
 } from "@/common";
 
@@ -50,6 +52,7 @@ export function guardSocket(
   const release = () => {
     settled = true;
     markProved(host, socket);
+    restoreServerFileToken(host);
     const pending = queue;
     queue = [];
     for (const [event, ...args] of pending) originalEmit(event, ...args);
@@ -57,7 +60,8 @@ export function guardSocket(
 
   const refuse = (decision: ServerProofDecision & { action: "block" }) => {
     settled = false;
-    markRefused(host, socket);
+    // Upload URLs are signed from what the socket handed over, so a refused server gets none.
+    if (markRefused(host, socket)) forgetServerFileAccess(host);
     queue = [];
     // Stop reconnecting. Without this the refusal reads as an ordinary dropped
     // connection and it retries forever, showing "lost connection".

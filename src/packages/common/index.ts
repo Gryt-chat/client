@@ -58,6 +58,7 @@ export * from "./src/types/account";
 export * from "./src/utils/auth";
 export * from "./src/utils/avatarStore";
 export * from "./src/utils/betaBuild";
+export * from "./src/utils/fileUrlAuth";
 export * from "./src/utils/imageCompress";
 export * from "./src/utils/invite";
 export * from "./src/utils/openServerLink";

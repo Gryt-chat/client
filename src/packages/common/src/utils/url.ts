@@ -7,7 +7,7 @@
 
 const SCHEME_KEY = "serverSchemeOverrides";
 
-import { getServerFileToken } from "./tokenStorage";
+import { fileAccessParams, hasServerFileAccess } from "./fileUrlAuth";
 
 export type Scheme = "http" | "https";
 
@@ -159,8 +159,8 @@ export function getServerWsBase(host: string): string {
 }
 
 /**
- * The URL for a stored file, carrying the token allowed to read it. In the query
- * string because most of these become `<img src>`, which cannot send a header.
+ * The URL for a stored file, signed for that file alone and for a few minutes (GRYT-1549).
+ * In the query string because most of these become `<img src>`, which cannot send a header.
  */
 export function getUploadsFileUrl(
   host: string,
@@ -170,8 +170,21 @@ export function getUploadsFileUrl(
   const base = getServerHttpBase(host);
   const params = new URLSearchParams();
   if (opts?.thumb) params.set("thumb", "1");
-  const token = getServerFileToken(host);
-  if (token) params.set("t", token);
+  for (const [name, value] of fileAccessParams(host, fileId, !!opts?.thumb)) params.set(name, value);
   const q = params.toString();
   return `${base}/api/uploads/files/${fileId}${q ? `?${q}` : ""}`;
+}
+
+/** `url` signed again when it is an upload link, for a URL held longer than its few minutes. */
+export function freshUploadsFileUrl(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  const match = /^\/api\/uploads\/files\/([^/]+)$/.exec(parsed.pathname);
+  if (!match || !hasServerFileAccess(parsed.host)) return url;
+  const thumb = parsed.searchParams.get("thumb") === "1";
+  return getUploadsFileUrl(parsed.host, decodeURIComponent(match[1]), thumb ? { thumb: true } : undefined);
 }
