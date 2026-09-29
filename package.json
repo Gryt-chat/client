@@ -92,6 +92,7 @@
     "test:welcome-tour": "node --disable-warning=ExperimentalWarning scripts/check-welcome-tour.mjs",
     "test:windows-signature": "node scripts/check-windows-signature.mjs",
     "test:builder-config": "node scripts/check-builder-config.mjs",
+    "test:helper-packaging": "node scripts/check-helper-packaging.mjs",
     "test:server-order": "node scripts/check-server-order.mjs",
     "test:voice-state": "node scripts/check-voice-state-reassert.mjs",
     "test:media-state": "node scripts/check-media-state-reassert.mjs",
