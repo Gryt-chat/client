@@ -227,6 +227,9 @@ jobs:
       - run: yarn test:comment-length
       - run: yarn test:window-buttons
       - run: yarn test:scan-consent
+      # Automatic mode reads every running program and hands on only listed game names.
+      - run: yarn test:auto-games
+      - run: node scripts/check-game-list.mjs
       - run: yarn test:role-pills
       # tsc -b and eslint with --max-warnings 0. client#115 merged with three
       # TS6133 errors and main did not compile until the next PR.

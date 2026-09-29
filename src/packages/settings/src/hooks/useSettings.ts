@@ -63,6 +63,8 @@ function useSettingsHook() {
   const [showVideoDebugOverlay, setShowVideoDebugOverlay] = useState(false);
   const [nickname, setNickname] = useState("Unknown");
   const [activity, setActivity] = useState("");
+  /* Listed games automatic mode spotted. Names only, and only once it's been turned on. */
+  const [spottedGames, setSpottedGames] = useState<string[]>([]);
   /* Pushed from the main process, the only side that can look. Empty until
      somebody lists something: the watcher does not poll for nothing. */
   const [playingNow, setPlayingNow] = useState<string[]>([]);
@@ -230,6 +232,24 @@ function useSettingsHook() {
     avatarObjectUrlRef.current = url;
     setAvatarDataUrlState(url);
   }
+
+  useEffect(() => {
+    if (!isElectron()) return;
+    const api = getElectronAPI();
+    if (!api?.onAutoGamesChanged) return;
+
+    let cancelled = false;
+    void api.getAutoGames?.().then((status) => {
+      if (!cancelled) setSpottedGames(status.running);
+    });
+    const drop = api.onAutoGamesChanged((names) => {
+      if (!cancelled) setSpottedGames(names);
+    });
+    return () => {
+      cancelled = true;
+      drop();
+    };
+  }, []);
 
   /* Read once as well as subscribed: a window opened after a game started would
      otherwise wait for the next change, which is when it quits. */
@@ -522,8 +542,9 @@ function useSettingsHook() {
     setActivity: updateActivity,
     /* A game wins while running and hands the line back when it stops. Only the
        first: a member list row is one line. */
-    effectiveActivity: playingNow[0] ?? activity,
+    effectiveActivity: playingNow[0] ?? spottedGames[0] ?? activity,
     playingNow,
+    spottedGames,
     avatarDataUrl,
     setAvatarDataUrl: updateAvatarDataUrl,
     setAvatarFile,

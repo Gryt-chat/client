@@ -3,12 +3,22 @@ import { useEffect, useState } from "react";
 
 import { isMacAppStoreBuild, type WatchedProgram } from "../../../../lib/electron";
 import { useWatchedPrograms } from "../hooks/useWatchedPrograms";
+import { AutoGames } from "./autoGames";
 
 /**
  * The programs you want seen, under the line you type yourself. Gryt looks at
  * what is running and tells anybody only about this list (GRYT-931).
  */
 export function WatchedPrograms() {
+  return (
+    <>
+      <WatchedProgramList />
+      <AutoGames />
+    </>
+  );
+}
+
+function WatchedProgramList() {
   const { supported, watched, running, setWatched, listRunning, consentedAt, setConsent } =
     useWatchedPrograms();
 

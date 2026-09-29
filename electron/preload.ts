@@ -150,6 +150,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("processes-set-watched", programs);
   },
 
+  /* Automatic mode: listed games spotted among everything running. Names only. */
+  getAutoGames(): Promise<unknown> {
+    return ipcRenderer.invoke("auto-games-get");
+  },
+
+  setAutoGamesConsent(allow: boolean): Promise<string | null> {
+    return ipcRenderer.invoke("auto-games-set-consent", allow);
+  },
+
+  setAutoGamesHidden(names: string[]): Promise<string[]> {
+    return ipcRenderer.invoke("auto-games-set-hidden", names);
+  },
+
+  onAutoGamesChanged(callback: (names: string[]) => void) {
+    const handler = (_event: unknown, names: string[]) => callback(names);
+    ipcRenderer.on("auto-games-changed", handler);
+    return () => ipcRenderer.removeListener("auto-games-changed", handler);
+  },
+
   getRunningWatched(): Promise<string[]> {
     return ipcRenderer.invoke("processes-running");
   },

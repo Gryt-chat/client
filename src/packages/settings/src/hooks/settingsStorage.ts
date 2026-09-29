@@ -75,6 +75,8 @@ export interface Settings {
   effectiveActivity: string;
   /** The watched programs running now. Empty in the browser, and usually. */
   playingNow: string[];
+  /** Listed games automatic mode spotted. After watched programs, before the typed line. */
+  spottedGames: string[];
 
   avatarDataUrl: string | null;
   setAvatarDataUrl: (value: string | null) => void;
@@ -293,6 +295,7 @@ export const settingsInit: Settings = {
   setActivity: noop,
   effectiveActivity: "",
   playingNow: [],
+  spottedGames: [],
   avatarDataUrl: null,
   setAvatarDataUrl: noop,
   setAvatarFile: async () => {},

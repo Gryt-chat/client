@@ -138,6 +138,16 @@ export interface WatchedProgram {
   name: string;
 }
 
+export interface AutoGamesStatus {
+  supported: boolean;
+  consentedAt: string | null;
+  /** Listed games running now, hidden ones left out. */
+  running: string[];
+  /** Listed games seen since the app started, for hiding one. */
+  seen: string[];
+  hidden: string[];
+}
+
 export interface ElectronAPI {
   isElectron: true;
   /** False where the compositor draws and places windows itself. */
@@ -179,6 +189,11 @@ export interface ElectronAPI {
   setProcessScanConsent?(allow: boolean): Promise<string | null>;
   getWatchedPrograms?(): Promise<WatchedProgram[]>;
   setWatchedPrograms?(programs: WatchedProgram[]): Promise<WatchedProgram[]>;
+  /** Automatic mode: games from the shipped list spotted among everything running (GRYT-1310). */
+  getAutoGames?(): Promise<AutoGamesStatus>;
+  setAutoGamesConsent?(allow: boolean): Promise<string | null>;
+  setAutoGamesHidden?(names: string[]): Promise<string[]>;
+  onAutoGamesChanged?(callback: (names: string[]) => void): () => void;
   getRunningWatched?(): Promise<string[]>;
   onWatchedProgramsChanged?(callback: (running: string[]) => void): () => void;
 

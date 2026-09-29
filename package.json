@@ -151,6 +151,7 @@
     "test:comment-length": "node scripts/check-comment-length.mjs",
     "test:window-buttons": "node scripts/check-window-buttons.mjs",
     "test:scan-consent": "node scripts/check-scan-consent.mjs",
+    "test:auto-games": "node scripts/check-auto-games.mjs",
     "test:card-byline": "node scripts/check-card-byline.mjs",
     "test:link-preview-retry": "node scripts/check-link-preview-retry.mjs",
     "test:stable-attachment-urls": "node --disable-warning=ExperimentalWarning scripts/check-stable-attachment-urls.mjs",

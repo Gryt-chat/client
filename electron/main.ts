@@ -59,6 +59,7 @@ import {
   stopNativeAudioCapture,
   supportsPerApplicationAudio,
 } from "./audioCaptureManager";
+import { registerAutoGamesIpc, startAutoGames } from "./autoGames";
 import {
   autoStartIfNeeded,
   cleanupOnQuit,
@@ -1866,6 +1867,8 @@ function createMainWindow(): BrowserWindow {
 
   /* Here rather than at app start, since a match only reaches a renderer. Once,
      or a second window means two pollers asking the same question. */
+  startAutoGames(() => mainWindow);
+
   if (!processWatcher && canListProcesses) {
     processWatcher = createProcessWatcher({
       onChange: (running) => {
@@ -2770,6 +2773,8 @@ if (!gotSingleInstanceLock) {
       );
 
       ipcMain.handle("processes-get-consent", () => readScanConsent());
+
+      registerAutoGamesIpc(ipcMain);
 
       /* Withdrawing takes the list with it. Emptying the list already stops the
          watcher, so this is the same off switch under one name. */
