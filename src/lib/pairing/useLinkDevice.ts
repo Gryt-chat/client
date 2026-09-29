@@ -1,6 +1,7 @@
 import {
   createNewDevicePairing,
   createPairingRelay,
+  type HistoryProgress,
   type NewDevicePairing,
   type NewDeviceState,
   type PairedServerDevice,
@@ -13,6 +14,7 @@ import {
   installPairedIdentity,
   listGuestScopes,
   localPeerPinStore,
+  openLocalArchive,
   rememberMessageKeyHere,
   rememberScheme,
   singletonHook,
@@ -27,6 +29,7 @@ import { forgetOwnMlsDevices, whenOwnMlsDevice } from "@/socket/src/mls/serverMl
 import { getGrytConfig, setCustomAuthIssuer, setCustomIdentityUrl } from "../../config";
 import { isElectron } from "../electron";
 import { describeThisDevice } from "./device";
+import { historySink } from "./historySink";
 import { createLinkStorage } from "./install";
 import { createPairingOidc } from "./oidc";
 
@@ -45,6 +48,8 @@ export interface LinkDevice {
   state: NewDeviceState | null;
   /** Servers or guest identities this device already has, which linking replaces. */
   replaces: number;
+  /** The history coming in, once the other device sends some. */
+  history: HistoryProgress | null;
   open(): void;
   start(): void;
   close(): void;
@@ -55,6 +60,7 @@ const init: LinkDevice = {
   isOpen: false,
   state: null,
   replaces: 0,
+  history: null,
   open: () => {},
   start: () => {},
   close: () => {},
@@ -73,6 +79,7 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useState<NewDeviceState | null>(null);
   const [replaces, setReplaces] = useState(0);
+  const [history, setHistory] = useState<HistoryProgress | null>(null);
   const pairing = useRef<NewDevicePairing | null>(null);
   const live = useRef({ servers, setServers, adoptLinkedSession });
   live.current = { servers, setServers, adoptLinkedSession };
@@ -111,11 +118,17 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       storage,
       oidc: createPairingOidc(pairingFetch),
       relayOrigin: relayOrigin === DEFAULT_RELAY ? undefined : relayOrigin,
+      // Opened when the first batch arrives, which is after the identity is in place.
+      history: historySink(async () => (await openLocalArchive()).messages),
     });
     pairing.current = next;
     next.subscribe((s) => {
       if (pairing.current === next) setState(s);
     });
+    next.subscribeHistory((progress) => {
+      if (pairing.current === next) setHistory(progress);
+    });
+    setHistory(null);
     setState(next.state);
     next.start();
   }, []);
@@ -163,5 +176,5 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     pairing.current?.mismatch().catch(() => undefined);
   }, []);
 
-  return { isOpen, state, replaces, open, start, close, mismatch };
+  return { isOpen, state, replaces, history, open, start, close, mismatch };
 });

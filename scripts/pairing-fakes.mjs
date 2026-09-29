@@ -1,6 +1,6 @@
 /* eslint-env node */
 
-// In-memory stand-ins for linking a device (GRYT-1484): the relay with auth#45's shapes,
+// In-memory stand-ins for linking a device (GRYT-1484): the relay with auth#45's shapes and chunks,
 // and Keycloak's device grant with auth#46's approve endpoint. Only what the apps touch.
 
 import assert from "node:assert/strict";
@@ -49,6 +49,8 @@ export function memoryRelay() {
       push(s, side, message);
     },
     async poll(id, token, after, waitSeconds, signal) {
+      // Like fetch: an aborted poll throws rather than coming back empty.
+      signal?.throwIfAborted();
       const { s, side } = find(id, token);
       const other = side === "n" ? "a" : "n";
       const ready = () => s.sent[other].filter((m) => m.seq > after);
@@ -59,6 +61,7 @@ export function memoryRelay() {
           signal?.addEventListener("abort", () => (clearTimeout(timer), resolve()), { once: true });
         });
       }
+      signal?.throwIfAborted();
       if (s.closed) throw new PairingRelayError(410, "closed");
       return ready();
     },
@@ -66,6 +69,20 @@ export function memoryRelay() {
       const { s } = find(id, token);
       s.closed = true;
       wake(s);
+    },
+    async putChunk(id, token, n, sealed) {
+      const { s, side } = find(id, token);
+      assert.equal(side, "a", "only the approving side uploads history");
+      (s.chunks ??= new Map()).set(n, new Uint8Array(sealed));
+    },
+    async getChunk(id, token, n) {
+      const { s } = find(id, token);
+      const chunk = s.chunks?.get(n);
+      if (!chunk) throw new PairingRelayError(404, "unknown_chunk");
+      return chunk;
+    },
+    async deleteChunk(id, token, n) {
+      find(id, token).s.chunks?.delete(n);
     },
   };
 }

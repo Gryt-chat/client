@@ -3,8 +3,8 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "../support/fixtures";
 
-// Linking a new browser from an old one as a guest (GRYT-1484). The relay isn't deployed yet,
-// so this runs only against a local one from auth#45: GRYT_E2E_PAIRING_RELAY=http://127.0.0.1:<port>.
+// Linking a new browser from an old one as a guest (GRYT-1484). Needs a relay, so it only runs
+// with one named: GRYT_E2E_PAIRING_RELAY=https://id.gryt.chat, or a local one from auth#45.
 const RELAY = process.env.GRYT_E2E_PAIRING_RELAY;
 
 const nodeFetch: PairingFetch = (url, init) => fetch(url, init);
@@ -45,7 +45,7 @@ function serverUserIdOf(page: Page, host: string): Promise<string | null> {
 }
 
 test.describe("linking a device", () => {
-  test.skip(!RELAY, "needs a local pairing relay from auth#45 in GRYT_E2E_PAIRING_RELAY");
+  test.skip(!RELAY, "needs a pairing relay in GRYT_E2E_PAIRING_RELAY");
 
   test("a new browser links from an old one and comes back as the same guest", async ({ newMember, gryt, problems }) => {
     test.setTimeout(120_000);
@@ -73,7 +73,7 @@ test.describe("linking a device", () => {
       relay: createPairingRelay(RELAY!, nodeFetch),
       relayOrigin: RELAY!,
       fetch: nodeFetch,
-      devices: (h) => ({ addOwnDevice: async (deviceId) => (added.push([h, deviceId]), []) }),
+      devices: (h) => ({ addOwnDevice: async (deviceId) => (added.push([h, deviceId]), []), groupPositions: async () => [] }),
     });
     approver.claim({ code });
 

@@ -1,27 +1,15 @@
 /* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md)
  * states carried by @gryt/ui Button, Spinner and Alert; the QR is the one new element. */
-import type { NewDeviceState, PairingEndReason } from "@gryt/core";
-import { Alert, Button, Dialog, IconButton } from "@gryt/ui";
+import type { HistoryProgress, NewDeviceState } from "@gryt/core";
+import { Alert, Button, Dialog, IconButton, Progress } from "@gryt/ui";
 import { useMemo } from "react";
 import { encode } from "uqr";
 
 import { PiX } from "../lib/icons";
+import { historyLines, newDeviceEndText } from "../lib/pairing/newDeviceWords";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
 import { EmojiRow, Waiting } from "./pairingParts";
-
-const ENDED: Partial<Record<PairingEndReason, string>> = {
-  cancelled_by_other: "It was cancelled on the other device.",
-  mismatch: "You said the emoji didn't match, so nothing was linked. Someone may have been in the middle of the connection.",
-  timed_out: "The other device didn't approve in time.",
-  expired: "The code ran out before anyone used it.",
-  tampered: "A message from the other device didn't check out, so nothing was linked.",
-  wrong_account: "You got signed in as a different account from the one on your other device. Nothing was kept.",
-  sign_in_failed: "Signing in didn't finish, so nothing was kept on this device.",
-  newer_version: "Your other device is on a newer version of Gryt. Update this one first.",
-  rate_limited: "Too many tries from this network. Wait a few minutes.",
-  relay_error: "Couldn't reach the linking service. Check your connection.",
-};
 
 /** Black on white whatever the theme: phone cameras read a light-on-dark code badly. */
 function QrCode({ text }: { text: string }) {
@@ -46,7 +34,21 @@ function QrCode({ text }: { text: string }) {
   );
 }
 
-function Body({ state, replaces }: { state: NewDeviceState | null; replaces: number }) {
+function History({ progress }: { progress: HistoryProgress | null }) {
+  const lines = historyLines(progress);
+  if (!progress || !lines.length) return null;
+  const share = progress.total ? Math.min(progress.messages, progress.total) / progress.total : null;
+  return (
+    <div className="flex flex-col gap-2" role="status">
+      {lines.map((line) => (
+        <span key={line} className="text-sm">{line}</span>
+      ))}
+      {!progress.complete && <Progress value={share === null ? null : share * 100} aria-label="History received" />}
+    </div>
+  );
+}
+
+function Body({ state, replaces, history }: { state: NewDeviceState | null; replaces: number; history: HistoryProgress | null }) {
   const { start, close, mismatch } = useLinkDevice();
   const secondsLeft = useSecondsLeft(state?.phase === "comparing" ? state.deadline : null);
 
@@ -123,9 +125,13 @@ function Body({ state, replaces }: { state: NewDeviceState | null; replaces: num
             This device is linked to {state.from}.
             {state.phase === "linked" && " Your other device is adding it to your conversations. You can use Gryt while that finishes."}
           </Dialog.Description>
+          <History progress={history} />
           <div className="flex flex-wrap gap-2">
             {replaces > 0 ? (
-              <Button size="small" onClick={() => window.location.reload()}>Restart Gryt</Button>
+              // A restart now would leave the rest of the history behind.
+              <Button size="small" disabled={state.phase === "linked"} onClick={() => window.location.reload()}>
+                Restart Gryt
+              </Button>
             ) : (
               <Button size="small" onClick={close}>Done</Button>
             )}
@@ -137,10 +143,14 @@ function Body({ state, replaces }: { state: NewDeviceState | null; replaces: num
       return (
         <div className="flex flex-col gap-3">
           <Alert severity={state.reason === "mismatch" || state.reason === "tampered" ? "error" : "info"}>
-            {ENDED[state.reason] ?? "Linking stopped before it finished."}
+            {newDeviceEndText(state.reason)}
           </Alert>
           <div className="flex flex-wrap gap-2">
-            <Button size="small" onClick={start}>Try again</Button>
+            {state.reason === "history_failed" ? (
+              replaces > 0 && <Button size="small" onClick={() => window.location.reload()}>Restart Gryt</Button>
+            ) : (
+              <Button size="small" onClick={start}>Try again</Button>
+            )}
             <Button size="small" tone="neutral" onClick={close}>Close</Button>
           </div>
         </div>
@@ -150,7 +160,7 @@ function Body({ state, replaces }: { state: NewDeviceState | null; replaces: num
 
 /** Link this device to one already signed in (GRYT-1484), from the new device's side. */
 export function LinkDeviceDialog() {
-  const { isOpen, state, replaces, close } = useLinkDevice();
+  const { isOpen, state, replaces, history, close } = useLinkDevice();
   const title = state?.phase === "comparing" ? "Check the emoji" : "Link this device";
 
   return (
@@ -163,7 +173,7 @@ export function LinkDeviceDialog() {
           </Dialog.Close>
           <Dialog.Title className="pr-10">{title}</Dialog.Title>
           <div className="mt-3">
-            <Body state={state} replaces={replaces} />
+            <Body state={state} replaces={replaces} history={history} />
           </div>
         </Dialog.Popup>
       </Dialog.Portal>

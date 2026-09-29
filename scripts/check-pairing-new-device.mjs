@@ -13,6 +13,9 @@ import { ISSUER, memoryKeycloak, memoryRelay } from "./pairing-fakes.mjs";
 const { createPairingOidc } = await import("../src/lib/pairing/oidc.ts");
 const { describeThisDevice } = await import("../src/lib/pairing/device.ts");
 const { createLinkStorage, mergePeerPins, lineageHints } = await import("../src/lib/pairing/install.ts");
+const { historySink } = await import("../src/lib/pairing/historySink.ts");
+const { toHistoryRecord } = await import("../src/lib/pairing/historyRecords.ts");
+const { historyLines, newDeviceEndText } = await import("../src/lib/pairing/newDeviceWords.ts");
 
 // ── the install, recorded ────────────────────────────────────────────
 
@@ -64,24 +67,30 @@ const waitFor = (machine, phases, ms = 10_000) =>
     check(machine.state);
   });
 
-async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), added = [] }) {
+async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), added = [], history, sink }) {
   const relay = memoryRelay();
   const n = createNewDevicePairing({
     relay,
     device: describeThisDevice("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/140.0 Safari/537.36", true),
     storage: createLinkStorage(deps.deps),
     oidc: createPairingOidc(keycloak.fetch),
+    history: sink,
   });
   const a = createApproverPairing({
     relay,
     relayOrigin: "https://id.gryt.chat",
     fetch: keycloak.fetch,
-    devices: (host) => ({ addOwnDevice: async (deviceId) => (added.push([host, deviceId]), []) }),
+    history,
+    lateWindowMs: 10,
+    devices: (host) => ({
+      addOwnDevice: async (deviceId) => (added.push([host, deviceId]), []),
+      groupPositions: async () => [],
+    }),
   });
   n.start();
   const showing = await waitFor(n, ["showing"]);
   assert.match(showing.code, /^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
-  assert.match(showing.qr, /^GRYT:1:/);
+  assert.match(showing.qr, /^\*GRYT\*1\*/, "crypto 0.9's QR, which a camera app won't open");
   a.claim({ code: showing.code.toLowerCase() });
   const [nCompare, aConfirm] = await Promise.all([waitFor(n, ["comparing"]), waitFor(a, ["confirming"])]);
   assert.deepEqual(nCompare.emoji, aConfirm.emoji, "both sides show the same emoji");
@@ -212,5 +221,63 @@ assert.equal(describeThisDevice("Mozilla/5.0 (Windows NT 10.0) Electron/40.0", t
 
 assert.deepEqual(lineageHints(envelope().servers), [{ host: "chat.example", originKeyId: "ORIGINKEY" }]);
 assert.deepEqual(mergePeerPins({}, {}).pins, {});
+
+// ── history into this device's archive ──────────────────────────────
+
+{
+  const rows = Array.from({ length: 40 }, (_, i) => ({
+    scope: "srv:ORIGINKEY",
+    conversationId: "dm-1",
+    messageId: `m${i}`,
+    sentAt: 1_700_000_000_000 + i * 1000,
+    senderId: "them",
+    text: `hi ${i}`,
+    attachments: {},
+  }));
+  const archive = {
+    conversations: async () => [{ scope: "srv:ORIGINKEY", conversationId: "dm-1", count: rows.length }],
+    page: async (scope, conversationId, { before, limit }) =>
+      rows.filter((r) => !before || r.sentAt < before.sentAt).slice(-limit).map(toHistoryRecord),
+  };
+  const put = [];
+  const sink = historySink(async () => ({ put: async (m) => void put.push(...m) }));
+  const { n, a } = await link({ env: envelope(), history: archive, sink });
+  await waitFor(n, ["joining"]);
+  await n.ready([{ host: "chat.example", deviceId: "dev-new" }]);
+  assert.equal((await waitFor(n, ["done", "ended"])).phase, "done");
+  await waitFor(a, ["done", "ended"]);
+  assert.deepEqual(put.map((m) => m.messageId).sort(), rows.map((r) => r.messageId).sort());
+  assert.deepEqual(put.find((m) => m.messageId === "m3"), rows[3]);
+  assert.match(historyLines(n.history)[0], /^Your message history goes back to /);
+}
+
+// An archive that won't take it: linked, and the reason says the history is what failed.
+{
+  const archive = {
+    conversations: async () => [{ scope: "s", conversationId: "c", count: 1 }],
+    page: async (scope, conversationId, { before }) =>
+      before ? [] : [toHistoryRecord({ scope, conversationId, messageId: "x", sentAt: 1, senderId: "a", text: "t", attachments: {} })],
+  };
+  const sink = historySink(async () => ({ put: async () => { throw new Error("disk full"); } }));
+  const deps = recordingDeps();
+  const { n } = await link({ env: envelope(), deps, history: archive, sink });
+  await waitFor(n, ["joining"]);
+  await n.ready([]);
+  const ended = await waitFor(n, ["done", "ended"]);
+  assert.equal(ended.reason, "history_failed");
+  assert.ok(deps.log.some(([what]) => what === "identity"), "the keys stay in place");
+  assert.match(newDeviceEndText("history_failed"), /^You're linked/);
+}
+
+for (const reason of ["history_failed", "access_denied", "expired_token"]) {
+  assert.notEqual(newDeviceEndText(reason), "Linking stopped before it finished.", `${reason} has its own line`);
+}
+const progress = (over) => ({ messages: 0, total: null, chunks: 0, listed: 0, missing: 0, refused: 0, truncated: false, oldest: null, complete: false, ...over });
+assert.deepEqual(historyLines(null), []);
+assert.deepEqual(historyLines(progress({ messages: 3 })), ["Getting your message history: 3 so far"]);
+assert.deepEqual(historyLines(progress({ messages: 3, total: 9 })), ["Getting your message history: 3 of 9"]);
+assert.deepEqual(historyLines(progress({ complete: true })), [], "nothing came, nothing to say");
+assert.match(historyLines(progress({ complete: true, messages: 5, oldest: 0, truncated: true }))[0], /^The oldest messages didn't fit, so your history starts on /);
+assert.deepEqual(historyLines(progress({ complete: true, messages: 5, oldest: 0, missing: 1, refused: 1 }))[1], "2 batches of messages couldn't be downloaded.");
 
 console.log("pairing, new device: ok");
