@@ -92,15 +92,12 @@ assert.deepEqual(
 assert.deepEqual(named({ role: "admin" }), ["Admin"], "the fallback from roles to role is gone");
 assert.deepEqual(named({}), [], "a member with no role at all throws or draws something");
 
-// And the chip has to render the name off that list rather than the raw id.
+// And the chip has to render the name off that list rather than the raw id. The card is
+// @gryt/ui's now (GRYT-1640), so this checks the wrapper hands chips through untouched.
 const VIEW = "src/packages/socket/src/components/memberCard/MemberCardView.tsx";
 const view = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", VIEW), "utf8");
 assert.match(card, /const chips = \[\s*\.\.\.rolePills,/, `${SOURCE} no longer hands rolePills to the card as chips`);
 assert.match(card, /chips=\{chips\}/, `${SOURCE} no longer passes the chips to MemberCardView`);
-assert.match(
-  view,
-  /\{chips\.map\(\(chip\) => \([\s\S]{0,200}?\{chip\.name\}/,
-  `${VIEW} no longer renders chip.name, so the pills are showing ids again`,
-);
+assert.match(view, /<MemberCard \{\.\.\.props\}/, `${VIEW} no longer passes every prop, chips included, to the card`);
 
 console.log("role pills: ok, names not ids, joiner defaults hidden, order kept");

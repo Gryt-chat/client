@@ -1,3 +1,4 @@
+import { CardIcon, CardMenu, type CardMenuItem } from "@gryt/ui";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -22,8 +23,6 @@ import { formatJoined, makeRankOf, TIER_LABEL } from "../lib/memberFacts";
 import { friendButtonSteps, type FriendStep } from "../utils/friendButtonSteps";
 import { describeChange, describePin } from "../utils/memberKeyWording";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { CardIcon } from "./memberCard/cardIcons";
-import { CardMenu, type CardMenuItem } from "./memberCard/CardMenu";
 import { useMemberCardActions } from "./memberCard/memberCardContext";
 import { MemberCardView } from "./memberCard/MemberCardView";
 import type { MemberInfo } from "./MemberSidebar";

@@ -1,5 +1,5 @@
-import { Button, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, Select, TextField, Toggle,ToggleGroup } from "@gryt/ui";
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { Button, CardIcon, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
@@ -17,9 +17,7 @@ import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import type { RichActivity } from "../../../../lib/richActivity";
-import { CardIcon } from "../../../socket/src/components/memberCard/cardIcons";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
-import { BUILTIN_CARD_STYLES, randomCardStyle, styleSwatch } from "../../../socket/src/lib/memberCard/builtinStyles";
 import {
   cardUpdatePayload,
   EMPTY_CARD,
@@ -30,17 +28,10 @@ import {
 import {
   BIO_MAX,
   type CardProfile,
-  type CardStyle,
   cardText,
-  decodeCardStyle,
-  encodeCardStyle,
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
-import { cardVars } from "../../../socket/src/lib/memberCard/cardVars";
-import { isTunable } from "../../../socket/src/lib/memberCard/patterns";
-import { seedFromId } from "../../../socket/src/lib/memberCard/scatter";
-import { PatternPicker, PatternTuning } from "./cardPatternPicker";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 /** A game for the preview when you are not playing one, so the band can be seen. */
@@ -55,9 +46,6 @@ const SAMPLE_GAME: RichActivity = {
 
 /** Wait this long after the last change before telling the servers, which rate-limit it. */
 const SEND_AFTER_MS = 700;
-
-/** The colours a Solid or Gradient pick starts from, as in the mockup's playground. */
-const START = { c1: "#7c5cff", c2: "#ff7a59", angle: 135 };
 
 async function sendBanner(host: string, file: File | null): Promise<void> {
   const token = getServerAccessToken(host);
@@ -88,15 +76,8 @@ export function CardSettings() {
   const fromServer = hosts.map((h) => serverProfiles[h]?.card).find((c) => c && !isDefaultCard(c));
   const saved = stored ?? fromServer ?? EMPTY_CARD;
   const [draft, setDraft] = useState<CardProfile>(saved);
-  const [picks, setPicks] = useState(() => ({
-    c1: saved.cardStyle.c1 ?? START.c1,
-    c2: saved.cardStyle.c2 ?? START.c2,
-    angle: saved.cardStyle.fill === "gradient" ? saved.cardStyle.angle : START.angle,
-  }));
   const [playing, setPlaying] = useState(true);
   const [stage, setStage] = useState<"light" | "dark">(resolvedAppearance);
-  const [code, setCode] = useState(() => encodeCardStyle(saved.cardStyle));
-  const [codeError, setCodeError] = useState<string | null>(null);
   const [refusals, setRefusals] = useState<Record<string, string>>({});
   const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef<CardProfile | null>(null);
@@ -134,31 +115,12 @@ export function CardSettings() {
   const commit = (next: CardProfile) => {
     setDraft(next);
     setStoredCard(next);
-    setCode(encodeCardStyle(next.cardStyle));
     pending.current = next;
     if (sendTimer.current) clearTimeout(sendTimer.current);
     sendTimer.current = setTimeout(flush, SEND_AFTER_MS);
   };
 
   const style = draft.cardStyle;
-  const withStyle = (over: Partial<CardStyle>): CardProfile => ({ ...draft, cardStyle: { ...style, ...over } });
-  const colourOf = (fill: CardStyle["fill"], p = picks): Partial<CardStyle> =>
-    fill === "owl"
-      ? { fill: "owl", c1: undefined, c2: undefined }
-      : { fill, c1: p.c1, c2: fill === "gradient" ? p.c2 : p.c1, angle: p.angle };
-
-  /* Every step of a drag saves; the send waits for the drag to stop. */
-  const commitPick = (next: typeof picks) => {
-    setPicks(next);
-    commit(withStyle(colourOf(style.fill, next)));
-  };
-
-  const applyStyle = (next: CardStyle) => {
-    if (next.fill !== "owl" && next.c1) {
-      setPicks({ c1: next.c1, c2: next.c2 ?? next.c1, angle: next.angle });
-    }
-    commit({ ...draft, cardStyle: { ...next } });
-  };
 
   const text = (key: "bio" | "pronouns" | "statusLine", max: number) => ({
     value: draft[key] ?? "",
@@ -210,7 +172,6 @@ export function CardSettings() {
   // Your id on the first server you're on seeds a scatter pattern, as it does on your card there.
   const seedKey = (connected[0] && getOwnServerUserId(connected[0])) || nickname;
   const seed = seedFromId(seedKey);
-  const drawn = useMemo(() => cardVars(style, owlHex, { appearance: stage, seed }), [style, owlHex, stage, seed]);
   const preview = (appearance: "light" | "dark") => (
     <GrytProvider
       className="flex flex-col gap-2 bg-gryt-bg p-4 text-gryt-muted"
@@ -301,226 +262,61 @@ export function CardSettings() {
                 <div className="overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border">{preview(stage)}</div>
               </figure>
               <div className="flex min-w-0 flex-col gap-6" style={{ flex: "1 1 300px", maxWidth: 380 }}>
-                <SettingGroup title="Card colour" description="Your owl's colour to start with. Gryt works out the text and buttons from it, so small text stays readable.">
-                  <ToggleGroup
-                    value={[style.fill]}
-                    onValueChange={(v) => {
-                      const fill = (v[0] as CardStyle["fill"] | undefined) ?? style.fill;
-                      commit(withStyle(colourOf(fill)));
-                    }}
-                    aria-label="Card colour"
-                  >
-                    <Toggle value="owl" size="small">Owl colour</Toggle>
-                    <Toggle value="solid" size="small">Solid</Toggle>
-                    <Toggle value="gradient" size="small">Gradient</Toggle>
-                  </ToggleGroup>
-                  {style.fill !== "owl" && (
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <input
-                        type="color"
-                        aria-label="First colour"
-                        value={picks.c1}
-                        onChange={(e) => commitPick({ ...picks, c1: e.target.value })}
-                        className="h-8 w-11 cursor-pointer rounded-(--gryt-radius-sm) border border-gryt-border bg-gryt-surface p-0.5"
-                      />
-                      {style.fill === "gradient" && (
-                        <>
-                          <input
-                            type="color"
-                            aria-label="Second colour"
-                            value={picks.c2}
-                            onChange={(e) => commitPick({ ...picks, c2: e.target.value })}
-                            className="h-8 w-11 cursor-pointer rounded-(--gryt-radius-sm) border border-gryt-border bg-gryt-surface p-0.5"
-                          />
-                          <label htmlFor="card-angle" className="text-xs font-bold text-gryt-muted">Angle</label>
-                          <input
-                            id="card-angle"
-                            type="range"
-                            min={0}
-                            max={360}
-                            step={15}
-                            value={picks.angle}
-                            onChange={(e) => commitPick({ ...picks, angle: Number(e.target.value) })}
-                            style={{ flex: 1, minWidth: 120, accentColor: "var(--gryt-accent)" }}
-                          />
-                          <output className="min-w-[3.5em] font-mono text-xs text-gryt-muted">{picks.angle}°</output>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </SettingGroup>
-
-                <SettingGroup title="Pattern" description="Drawn from your colour, so there's nothing to upload.">
-                  <PatternPicker
-                    style={style}
-                    owlHex={owlHex}
-                    nickname={nickname}
-                    worn={worn}
-                    seed={seed}
-                    appearance={stage}
-                    onPick={(over) => commit(withStyle(over))}
-                  />
-                </SettingGroup>
-
-                {isTunable(style.pattern) && (
-                  <SettingGroup title="Customise pattern" description="Size, turn, strength and colour. Gryt turns the strength down if it would make small text hard to read.">
-                    <PatternTuning
-                      style={style}
-                      effectiveInk={drawn.patternInk}
-                      effectiveAlpha={drawn.patternAlpha}
-                      onChange={(over) => commit(withStyle(over))}
-                    />
+                <MemberCardEditor
+                  value={style}
+                  onChange={(next) => commit({ ...draft, cardStyle: next })}
+                  owlHex={owlHex}
+                  nickname={nickname}
+                  worn={worn}
+                  seed={seed}
+                  appearance={stage}
+                  shareLink={(code) => `https://ui.gryt.chat/card${code ? `?${code}` : ""}`}
+                >
+                  <SettingGroup title="Pronouns" description="Shown under your name.">
+                    <TextField placeholder="she/her, they/them…" {...text("pronouns", PRONOUNS_MAX)} />
                   </SettingGroup>
-                )}
 
-                <SettingGroup title="Colour fills" description="The whole card, or only the banner and the band under it.">
-                  <Select
-                    value={style.colours}
-                    onValueChange={(v) => commit(withStyle({ colours: v === "banner" ? "banner" : "card" }))}
-                    options={[
-                      { value: "card", label: "The whole card" },
-                      { value: "banner", label: "The banner and band" },
-                    ]}
-                  />
-                </SettingGroup>
-
-                {style.colours === "card" && (
-                  <>
-                    <SettingGroup title="Pattern covers" description="Just the banner, or the whole card behind everything.">
-                      <Select
-                        value={style.cover}
-                        onValueChange={(v) => commit(withStyle({ cover: v === "card" ? "card" : "banner" }))}
-                        options={[
-                          { value: "banner", label: "The banner" },
-                          { value: "card", label: "The whole card" },
-                        ]}
-                      />
-                    </SettingGroup>
-                    <SettingGroup title="Banner fade" description="Fade only the bottom of the banner into the card, or all of it so there's no edge.">
-                      <Select
-                        value={style.fade}
-                        onValueChange={(v) => commit(withStyle({ fade: v === "banner" ? "banner" : "bottom" }))}
-                        options={[
-                          { value: "bottom", label: "Bottom" },
-                          { value: "banner", label: "Whole banner" },
-                        ]}
-                      />
-                    </SettingGroup>
-                  </>
-                )}
-
-                <SettingGroup title="Pronouns" description="Shown under your name.">
-                  <TextField placeholder="she/her, they/them…" {...text("pronouns", PRONOUNS_MAX)} />
-                </SettingGroup>
-
-                <SettingGroup title="Bio" description={`A line or two about you. Up to ${BIO_MAX} characters.`}>
-                  <TextField multiline minRows={2} placeholder="Mostly on after nine." {...text("bio", BIO_MAX)} />
-                </SettingGroup>
-
-                <SettingGroup title="Status line" description="Shown in the band on your card when you aren't playing anything.">
-                  <TextField placeholder="Around tonight for co-op." {...text("statusLine", STATUS_LINE_MAX)} />
-                </SettingGroup>
-
-                {bannerHosts.length > 0 && (
-                  <SettingGroup
-                    title="Banner"
-                    description={
-                      bannerHosts.length === connected.length
-                        ? "A picture across the top of your card. Everywhere else your pattern shows instead."
-                        : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
-                    }
-                  >
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="small" disabled={bannerBusy} onClick={() => bannerInput.current?.click()}>
-                        {bannerUrl ? "Change banner" : "Upload a banner"}
-                      </Button>
-                      {bannerUrl && (
-                        <Button size="small" tone="neutral" disabled={bannerBusy} onClick={() => void changeBanner(null)}>
-                          Remove banner
-                        </Button>
-                      )}
-                    </div>
-                    <input
-                      ref={bannerInput}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = "";
-                        if (file) void changeBanner(file);
-                      }}
-                    />
+                  <SettingGroup title="Bio" description={`A line or two about you. Up to ${BIO_MAX} characters.`}>
+                    <TextField multiline minRows={2} placeholder="Mostly on after nine." {...text("bio", BIO_MAX)} />
                   </SettingGroup>
-                )}
 
-                <SettingGroup title="Card styles" description="A style is your card's colours and pattern. It never carries your banner, bio or pronouns.">
-                  <div className="flex flex-wrap gap-1.5">
-                    {BUILTIN_CARD_STYLES.map((b) => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => applyStyle(b.style)}
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-gryt-border bg-gryt-surface-raised py-1 pr-2.5 pl-1 text-[12.5px] font-bold text-gryt-text hover:bg-gryt-surface-hover"
-                      >
-                        <i
-                          className="h-[18px] w-[18px] rounded-full border border-gryt-border"
-                          style={{ background: styleSwatch(b.style) } as CSSProperties}
-                        />
-                        {b.name}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => applyStyle(randomCardStyle())}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-gryt-border bg-gryt-surface-raised py-1 px-2.5 text-[12.5px] font-bold text-gryt-text hover:bg-gryt-surface-hover"
-                    >
-                      Surprise me
-                    </button>
-                  </div>
-                  <TextField
-                    aria-label="Style code"
-                    spellCheck={false}
-                    autoComplete="off"
-                    value={code}
-                    placeholder="card=b4b&colour=solid&c1=ffd400"
-                    onChange={(e) => {
-                      setCode(e.target.value);
-                      setCodeError(null);
-                    }}
-                    className="font-mono"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="small"
-                      tone="neutral"
-                      onClick={() =>
-                        void navigator.clipboard.writeText(encodeCardStyle(style)).then(
-                          () => toast.success("Card style copied"),
-                          () => toast.error("Couldn't copy. The code is in the box above."),
-                        )
+                  <SettingGroup title="Status line" description="Shown in the band on your card when you aren't playing anything.">
+                    <TextField placeholder="Around tonight for co-op." {...text("statusLine", STATUS_LINE_MAX)} />
+                  </SettingGroup>
+
+                  {bannerHosts.length > 0 && (
+                    <SettingGroup
+                      title="Banner"
+                      description={
+                        bannerHosts.length === connected.length
+                          ? "A picture across the top of your card. Everywhere else your pattern shows instead."
+                          : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
                       }
                     >
-                      Copy style
-                    </Button>
-                    <Button
-                      size="small"
-                      tone="neutral"
-                      onClick={() => {
-                        const next = decodeCardStyle(code);
-                        if (!next) {
-                          setCodeError("There's no card style in that. Copy one with Copy style, or Copy card style on somebody's card.");
-                          return;
-                        }
-                        applyStyle(next);
-                        toast.success("Card style applied");
-                      }}
-                    >
-                      Use this style
-                    </Button>
-                  </div>
-                  {codeError && <span className="text-xs text-gryt-danger">{codeError}</span>}
-                </SettingGroup>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="small" disabled={bannerBusy} onClick={() => bannerInput.current?.click()}>
+                          {bannerUrl ? "Change banner" : "Upload a banner"}
+                        </Button>
+                        {bannerUrl && (
+                          <Button size="small" tone="neutral" disabled={bannerBusy} onClick={() => void changeBanner(null)}>
+                            Remove banner
+                          </Button>
+                        )}
+                      </div>
+                      <input
+                        ref={bannerInput}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (file) void changeBanner(file);
+                        }}
+                      />
+                    </SettingGroup>
+                  )}
+                </MemberCardEditor>
 
                 {refused.length > 0 && (
                   <div className="flex flex-col gap-1 text-xs text-gryt-danger">
