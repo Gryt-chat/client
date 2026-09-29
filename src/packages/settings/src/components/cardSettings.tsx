@@ -251,7 +251,7 @@ export function CardSettings() {
       <div className="gcs-row-wrap">
       <div className="gcs-row flex flex-wrap items-start gap-8">
         {/* One app at a time. Above the controls in a narrow pane, beside them and pinned in a wide one. */}
-        <figure className="gcs-preview m-0 flex min-w-0 flex-col gap-2" style={{ flex: "0 0 auto" }}>
+        <figure className="gcs-preview m-0 flex min-w-0 flex-col gap-2" style={{ flex: "0 1 352px", maxWidth: "100%" }}>
           <figcaption className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-gryt-muted">
             <ToggleGroup
               value={[stage]}
