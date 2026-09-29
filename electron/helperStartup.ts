@@ -127,7 +127,8 @@ export async function register(deps: StartupDeps, binary: string): Promise<Regis
     deps.setLoginItem({ openAtLogin: true, type: "agentService", serviceName: AGENT_PLIST });
     const status = deps.getLoginItem({ type: "agentService", serviceName: AGENT_PLIST }).status;
     if (status === "requires-approval") return "needs-approval";
-    if (status !== "enabled") throw new Error(`login item is ${status ?? "unknown"}`);
+    if (status === "not-found") throw new Error("macOS can't find its login item in this copy of Gryt.");
+    if (status !== "enabled") throw new Error(`macOS reports its login item as ${status ?? "unknown"}.`);
     return "ok";
   }
   const target = linuxHelperPath(deps, binary);
