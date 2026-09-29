@@ -11,6 +11,8 @@ export interface GameEntry {
   discord: string[];
   /** Lowercase file names. On macOS an `.app` bundle name. */
   exe: Partial<Record<GameOs, string[]>>;
+  /** "app" for something like Figma, which reads "Using" rather than "Playing". */
+  kind?: "game" | "app";
 }
 
 const OSES: readonly GameOs[] = ["win32", "darwin", "linux"];
@@ -40,7 +42,9 @@ export function readGameList(value: unknown): GameEntry[] {
         .map((n) => n.trim().toLowerCase());
       if (names.length) exe[os] = names;
     }
-    out.push({ name, discord, exe });
+    const game: GameEntry = { name, discord, exe };
+    if (entry?.kind === "app") game.kind = "app";
+    out.push(game);
   }
   return out;
 }
@@ -52,7 +56,7 @@ export interface GameIndex {
 }
 
 /** What a running process is called, for comparing: the last path segment, lowercased. */
-function processKeys(raw: string, platform: NodeJS.Platform): string[] {
+export function processKeys(raw: string, platform: NodeJS.Platform): string[] {
   const path = raw.trim().replace(/\\/g, "/").toLowerCase();
   if (!path) return [];
   const segments = path.split("/").filter(Boolean);

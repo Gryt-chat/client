@@ -3,7 +3,7 @@
  * on a member). The server drops every other field, so a card never draws one.
  */
 export interface RichActivity {
-  type: "playing" | "listening" | "watching" | "competing";
+  type: "playing" | "listening" | "watching" | "competing" | "using";
   /** Always there. A card with no name isn't sent at all. */
   name: string;
   details?: string;
