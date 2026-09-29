@@ -93,10 +93,14 @@ assert.deepEqual(named({ role: "admin" }), ["Admin"], "the fallback from roles t
 assert.deepEqual(named({}), [], "a member with no role at all throws or draws something");
 
 // And the chip has to render the name off that list rather than the raw id.
+const VIEW = "src/packages/socket/src/components/memberCard/MemberCardView.tsx";
+const view = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", VIEW), "utf8");
+assert.match(card, /const chips = \[\s*\.\.\.rolePills,/, `${SOURCE} no longer hands rolePills to the card as chips`);
+assert.match(card, /chips=\{chips\}/, `${SOURCE} no longer passes the chips to MemberCardView`);
 assert.match(
-  card,
-  /\{rolePills\.map\(\(role\) => \([\s\S]{0,200}?\{role\.name\}/,
-  `${SOURCE} no longer renders role.name, so the pills are showing ids again`,
+  view,
+  /\{chips\.map\(\(chip\) => \([\s\S]{0,200}?\{chip\.name\}/,
+  `${VIEW} no longer renders chip.name, so the pills are showing ids again`,
 );
 
 console.log("role pills: ok, names not ids, joiner defaults hidden, order kept");

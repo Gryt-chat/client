@@ -11,6 +11,7 @@ import { useServerPermissions } from "../hooks/usePermissions";
 import { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
 import { GameIcon } from "./GameIcon";
+import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
 import { groupMembersByRole, readableRoleColor } from "./memberGroups";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { statusConfig } from "./memberStatus";
@@ -77,6 +78,14 @@ export interface MemberInfo {
    */
   nicknameChangeCount?: number;
   nicknameChangedAt?: string | null;
+  /** Their card's colours and pattern, unchecked until `normalizeCardStyle` (GRYT-1610). */
+  cardStyle?: unknown;
+  bio?: string | null;
+  pronouns?: string | null;
+  /** Shown in the card's band when they are not playing anything. */
+  statusLine?: string | null;
+  /** An uploaded banner's file id, signed like an avatar. Only members who may upload have one. */
+  bannerFileId?: string | null;
   isMuted: boolean;
   isDeafened: boolean;
   isServerMuted?: boolean;
@@ -289,7 +298,7 @@ const MemberItem = ({
         </PreviewCard.Trigger>
         <PreviewCard.Portal>
           <PreviewCard.Positioner side="left" align="start">
-            <PreviewCard.Popup>
+            <PreviewCard.Popup className={MEMBER_CARD_POPUP}>
           <MemberIdentityCard member={member} serverHost={serverHost} />
         </PreviewCard.Popup>
           </PreviewCard.Positioner>

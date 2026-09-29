@@ -19,6 +19,7 @@ import { EmojiText } from "./EmojiText";
 import { MessageEmbeds } from "./LinkEmbed";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
+import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import type { MemberInfo } from "./MemberSidebar";
 import { MessageAttachment } from "./MessageAttachment";
@@ -291,7 +292,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 </PreviewCard.Trigger>
                 <PreviewCard.Portal>
                   <PreviewCard.Positioner side="right" align="start">
-                    <PreviewCard.Popup>
+                    <PreviewCard.Popup className={MEMBER_CARD_POPUP}>
                       <MemberIdentityCard member={meta.sender} serverHost={serverHost} />
                     </PreviewCard.Popup>
                   </PreviewCard.Positioner>

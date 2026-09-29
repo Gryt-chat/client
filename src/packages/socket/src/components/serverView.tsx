@@ -55,6 +55,7 @@ import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
 import { GroupDialog } from "./GroupDialog";
 import { IncomingCallCard } from "./IncomingCallCard";
+import { type MemberCardActions, MemberCardActionsContext } from "./memberCard/memberCardContext";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { statusConfig } from "./memberStatus";
 import { MobileServerView } from "./MobileServerView";
@@ -783,6 +784,21 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     everySeconds: devFakeChatSeconds,
   });
 
+  /* Everything a member card can do here, for every card on this server at once. */
+  const cardRole = serverDetailsList[currentlyViewingServer?.host ?? ""]?.server_info?.role;
+  const memberCardActions = useMemo<MemberCardActions>(
+    () => ({
+      currentServerUserId,
+      currentUserRole: cardRole,
+      adminActions: currentAdminActions,
+      onOpenDm: requestOpenDm,
+      isBlocked,
+      onToggleBlock: (id: string) => (isBlocked(id) ? unblock : blockAndHide)(id),
+      onReport: setReportTarget,
+    }),
+    [currentServerUserId, cardRole, currentAdminActions, requestOpenDm, isBlocked, unblock, blockAndHide],
+  );
+
   if (!currentlyViewingServer) return null;
 
   const serverDetails = serverDetailsList[currentlyViewingServer.host];
@@ -930,7 +946,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
   );
 
   return (
-    <>
+    <MemberCardActionsContext.Provider value={memberCardActions}>
       {/* min-w-0, or a header's one-line name sets the narrowest this can get. */}
       <div className="flex w-full h-full min-w-0 gap-4 flex-col" data-gryt="server-view">
         {isServerUnreachable && (
@@ -1317,6 +1333,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         confirmLabel="Send unencrypted"
       />
 
-    </>
+    </MemberCardActionsContext.Provider>
   );
 };
