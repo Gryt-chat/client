@@ -1,7 +1,7 @@
 import { Button } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
-import { isMacAppStoreBuild, type RichPresenceApp, type RichPresenceLogEntry } from "../../../../lib/electron";
+import { getElectronAPI, isMacAppStoreBuild, type RichPresenceApp, type RichPresenceLogEntry } from "../../../../lib/electron";
 import { GameIcon } from "../../../socket/src/components/GameIcon";
 import { useGameDetection } from "../hooks/useGameDetection";
 import { usePresenceHelper } from "../hooks/usePresenceHelper";
@@ -114,9 +114,12 @@ export function RichPresenceSettings() {
               style={{ background: "var(--gryt-neutral-3)" }}
             >
               <span className="text-sm font-medium" style={{ flex: 1, minWidth: 0 }}>
-                {app.name ?? `Unknown app ${app.id}`}
+                {rp.names?.[app.id] ?? app.name ?? `Unknown app ${app.id}`}
               </span>
               {hiddenIds.has(app.id) && <span className="text-xs text-gryt-muted">hidden</span>}
+              {(!app.name || rp.names?.[app.id]) && (
+                <NameGame id={app.id} current={rp.names?.[app.id] ?? ""} onSave={(name) => void rp.setName(app.id, name)} />
+              )}
               <Button size="xsmall" tone="neutral" onClick={() => toggle(app)}>
                 {hiddenIds.has(app.id) ? "Show" : "Hide"}
               </Button>
@@ -228,5 +231,50 @@ function GameDetection() {
         </ul>
       )}
     </div>
+  );
+}
+
+/** A name for a game no list knows. Kept on this device, with a way to add it for everyone. */
+function NameGame({ id, current, onSave }: { id: string; current: string; onSave: (name: string | null) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(current);
+  const suggest = () => {
+    const title = encodeURIComponent(`Add a game: ${value || current}`);
+    const body = encodeURIComponent(`Discord application id: ${id}\nName: ${value || current}\n\nFound through Gryt's Rich Presence, where it showed as an unknown app.`);
+    void getElectronAPI()?.openExternal?.(`https://github.com/Gryt-chat/rich-presence/issues/new?title=${title}&body=${body}`);
+  };
+  if (!editing) {
+    return (
+      <>
+        <Button size="xsmall" tone="neutral" onClick={() => setEditing(true)}>
+          {current ? "Rename" : "Name it"}
+        </Button>
+        {current && (
+          <Button size="xsmall" tone="neutral" onClick={suggest}>
+            Suggest for everyone
+          </Button>
+        )}
+      </>
+    );
+  }
+  const save = () => {
+    onSave(value.trim() || null);
+    setEditing(false);
+  };
+  return (
+    <input
+      autoFocus
+      aria-label="Game name"
+      value={value}
+      maxLength={64}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") save();
+        if (e.key === "Escape") setEditing(false);
+      }}
+      className="rounded-md border border-gryt-border bg-gryt-surface px-2 py-0.5 text-sm text-gryt-text"
+      style={{ width: 140 }}
+    />
   );
 }

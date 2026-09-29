@@ -248,7 +248,19 @@ const bundledDetectableIndex = createDetectableIndex(readDetectableList(bundledD
 let downloadedDetectableIndex = new Map<string, DetectableEntry>();
 
 /** Overrides first, then whatever was last fetched from the repo, then the snapshot shipped with this build. */
+/** Names people gave games that no list knows (GRYT-1638), kept on this device. */
+function readLocalNames(value: unknown = loadGlobalStore()["richPresenceNames"]): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return out;
+  for (const [id, name] of Object.entries(value as Record<string, unknown>).slice(0, 500)) {
+    if (/^\d{1,32}$/.test(id) && typeof name === "string" && name.trim()) out[id] = name.trim().slice(0, 64);
+  }
+  return out;
+}
+
 function nameForApp(appId: string): string | null {
+  const own = readLocalNames()[appId];
+  if (own) return own;
   return resolveGameName(
     { overrides: gameIndex.nameForApp, downloaded: downloadedDetectableIndex, bundled: bundledDetectableIndex },
     appId,
@@ -3097,6 +3109,7 @@ if (!gotSingleInstanceLock) {
         seen: presenceBoard?.seen() ?? [],
         current: presenceBoard?.current() ?? null,
         log: presenceBoard?.log() ?? [],
+        names: readLocalNames(),
       }));
 
       /* Off lets go of the socket at once, so Discord can have it back when it next starts. */
@@ -3147,6 +3160,16 @@ if (!gotSingleInstanceLock) {
         const status = detectStatus();
         mainWindow?.webContents.send("game-detect-changed", status);
         return status;
+      });
+
+      /* A name for a game no list knows, or null to forget it. Only on this device. */
+      ipcMain.handle("rich-presence-set-name", (_event, appId: unknown, name: unknown) => {
+        if (typeof appId !== "string" || !/^\d{1,32}$/.test(appId)) return;
+        const names = readLocalNames();
+        const clean = typeof name === "string" ? name.trim().slice(0, 64) : "";
+        if (clean) names[appId] = clean;
+        else delete names[appId];
+        setGlobalValue("richPresenceNames", names);
       });
 
       ipcMain.handle("rich-presence-set-hidden", (_event, apps: unknown) => {

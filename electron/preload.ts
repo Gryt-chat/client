@@ -188,6 +188,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("rich-presence-set-consent", allow);
   },
 
+  setRichPresenceName(appId: string, name: string | null): Promise<void> {
+    return ipcRenderer.invoke("rich-presence-set-name", appId, name);
+  },
+
   setRichPresenceHidden(apps: { id: string; name: string | null }[]): Promise<unknown> {
     return ipcRenderer.invoke("rich-presence-set-hidden", apps);
   },
