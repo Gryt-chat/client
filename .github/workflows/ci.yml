@@ -182,6 +182,7 @@ jobs:
       - run: yarn test:presence-helper
       - run: yarn test:helper-startup
       - run: yarn test:game-list
+      - run: yarn test:game-list-cache
       # Sign-in leaves for the browser and comes back through gryt://. If the
       # AppImage moved, it cannot — and nothing else here would notice.
       - run: yarn test:appimage-location
