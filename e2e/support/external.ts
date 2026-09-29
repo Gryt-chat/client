@@ -12,6 +12,11 @@ const OFF_MACHINE = /^https?:\/\/(?!127\.0\.0\.1[:/]|localhost[:/]|e2e\.gryt\.ch
 
 const CORS = { "access-control-allow-origin": "*" };
 
+const TRANSPARENT_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
+
 function json(route: Route, body: unknown) {
   return route.fulfill({ status: 200, contentType: "application/json", headers: CORS, body: JSON.stringify(body) });
 }
@@ -48,6 +53,12 @@ function fixtureFor(route: Route, url: URL) {
         return route.fulfill({ status: 200, contentType: "application/json", headers: CORS, body: changelog() });
       }
       return url.pathname === "/" ? route.fulfill({ status: 200, body: "" }) : null;
+    case "cdn.jsdelivr.net":
+      // Game icons from the rich-presence mirror: a transparent pixel, so nothing logs an error.
+      if (url.pathname.startsWith("/gh/Gryt-chat/rich-presence@")) {
+        return route.fulfill({ status: 200, contentType: "image/png", headers: CORS, body: TRANSPARENT_PNG });
+      }
+      return null;
     case "status.gryt.chat":
       if (url.pathname === "/api/v1/config") return json(route, { announcements: [] });
       return url.pathname === "/" ? route.fulfill({ status: 200, body: "" }) : null;
@@ -89,6 +100,10 @@ export async function routeExternal(
     report(`Request to a live site with no fixture: ${route.request().method()} ${url.href}`);
     return route.abort("blockedbyclient");
   });
+  // Game art comes from the test server, which may predate the route; a missing one would log a 404.
+  await context.route(/\/api\/game-art\/\d+$/, (route) =>
+    route.fulfill({ status: 200, contentType: "image/png", headers: CORS, body: TRANSPARENT_PNG }),
+  );
 }
 
 export { APP_VERSION };
