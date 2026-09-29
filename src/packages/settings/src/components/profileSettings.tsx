@@ -751,8 +751,16 @@ export function ProfileSettings() {
       </h2>
 
       <ActivityField />
-      <WatchedPrograms />
-      <RichPresenceSettings />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-base font-bold">What you&rsquo;re playing</span>
+          <span className="text-xs text-gryt-muted">
+            Two ways to show it: games that report it themselves, and programs you add by hand.
+          </span>
+        </div>
+        <RichPresenceSettings />
+        <WatchedPrograms />
+      </div>
 
       {serverHosts.length > 0 && (
         <div className="flex justify-center" style={{ paddingTop: 4, paddingBottom: 4 }}>
