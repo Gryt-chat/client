@@ -165,6 +165,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("rich-presence-get");
   },
 
+  /* Known games spotted by their program, each asked about once (GRYT-1636). */
+  getGameDetection(): Promise<unknown> {
+    return ipcRenderer.invoke("game-detect-get");
+  },
+
+  setGameDetection(allow: boolean): Promise<unknown> {
+    return ipcRenderer.invoke("game-detect-set-enabled", allow);
+  },
+
+  answerGameDetection(appId: string, answer: "show" | "hide" | null): Promise<unknown> {
+    return ipcRenderer.invoke("game-detect-answer", appId, answer);
+  },
+
+  onGameDetectionChanged(callback: (status: unknown) => void): () => void {
+    const handler = (_event: unknown, status: unknown) => callback(status);
+    ipcRenderer.on("game-detect-changed", handler);
+    return () => ipcRenderer.removeListener("game-detect-changed", handler);
+  },
+
   setRichPresenceConsent(allow: boolean): Promise<string | null> {
     return ipcRenderer.invoke("rich-presence-set-consent", allow);
   },

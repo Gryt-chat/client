@@ -171,6 +171,12 @@ export interface RichPresenceStatus extends RichPresenceSocketStatus {
   log?: RichPresenceLogEntry[];
 }
 
+export interface GameDetectionStatus {
+  enabled: boolean;
+  answers: { id: string; name: string | null; answer: "show" | "hide" }[];
+  pending: { id: string; name: string | null }[];
+}
+
 export interface RichPresenceLogEntry {
   at: number;
   appId: string | null;
@@ -233,6 +239,11 @@ export interface ElectronAPI {
   setRichPresenceHidden?(apps: RichPresenceApp[]): Promise<RichPresenceApp[]>;
   onRichPresenceChanged?(callback: (card: RichPresenceCard | null) => void): () => void;
   onRichPresenceState?(callback: (status: RichPresenceSocketStatus) => void): () => void;
+  /** Known games spotted by their program, each asked about once (GRYT-1636). */
+  getGameDetection?(): Promise<GameDetectionStatus>;
+  setGameDetection?(allow: boolean): Promise<GameDetectionStatus>;
+  answerGameDetection?(appId: string, answer: "show" | "hide" | null): Promise<GameDetectionStatus>;
+  onGameDetectionChanged?(callback: (status: GameDetectionStatus) => void): () => void;
   /** gryt-helper, which starts at login once turned on (GRYT-1605). */
   getPresenceHelper?(): Promise<PresenceHelperStatus>;
   setPresenceHelper?(on: boolean): Promise<PresenceHelperStatus>;
