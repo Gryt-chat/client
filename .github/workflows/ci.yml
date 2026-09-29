@@ -327,11 +327,8 @@ jobs:
           done <<< "$files"
           echo "web=$web" >> "$GITHUB_OUTPUT"
 
-  # The client in a real browser against a real server. e2e/README.md has the how and the rules.
-  # Split across runners by --shard: 26 spec files at ~2m10s warm took one runner 13-14
-  # minutes end to end, almost all of it in the test step itself (setup is under a minute).
-  # Four shards land the wall clock near 5 minutes. Each shard starts its own server
-  # containers (the `gryt` fixture is worker-scoped), so shards share no state.
+  # The client in a real browser against a real server, split across --shard runners.
+  # Each shard's own server containers (`gryt` fixture is worker-scoped) share no state.
   e2e-shard:
     needs: changes
     if: needs.changes.outputs.web == 'true'
@@ -379,9 +376,8 @@ jobs:
             e2e/test-results
           retention-days: 14
 
-  # The required check the branch ruleset names. Waits on every shard, merges their blob
-  # reports into one HTML report, and fails if any shard did. Keep the name "e2e" — this is
-  # the check merges wait on, and renaming it would need a matching ruleset change.
+  # The required check the branch ruleset names. Waits on every shard, merges their
+  # reports, and fails if any shard did. Keep this name — renaming needs a ruleset change.
   e2e:
     needs: [changes, e2e-shard]
     if: always() && needs.changes.outputs.web == 'true'
