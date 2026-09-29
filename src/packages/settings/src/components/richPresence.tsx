@@ -1,9 +1,11 @@
 import { Button } from "@gryt/ui";
+import { useEffect, useState } from "react";
 
-import { isMacAppStoreBuild, type RichPresenceApp } from "../../../../lib/electron";
+import { isMacAppStoreBuild, type RichPresenceApp, type RichPresenceLogEntry } from "../../../../lib/electron";
 import { GameIcon } from "../../../socket/src/components/GameIcon";
 import { usePresenceHelper } from "../hooks/usePresenceHelper";
 import { useRichPresence } from "../hooks/useRichPresence";
+import { HowItWorks } from "./howItWorks";
 import { PresenceHelperSettings } from "./presenceHelper";
 import { helperCopy } from "./presenceHelperCopy";
 import { socketLine } from "./richPresenceCopy";
@@ -37,15 +39,17 @@ export function RichPresenceSettings() {
           Lots of games tell Discord what you&rsquo;re up to, like the map you&rsquo;re on or how
           full your party is. Gryt can pick that up and show it under your name.
         </span>
-        <span className="text-xs text-gryt-muted">
-          To do it, Gryt opens the same local connection Discord listens on. While Gryt has it,
-          games report to Gryt instead of Discord. Any program on this computer can talk to that
-          connection, not only games, so you can hide one here once it shows up.
-        </span>
-        <span className="text-xs text-gryt-muted">
-          People on your servers see the game&rsquo;s name and what it says about your game.
-          Nothing else leaves this computer.
-        </span>
+        <HowItWorks>
+          <span className="text-xs text-gryt-muted">
+            To do it, Gryt opens the same local connection Discord listens on. While Gryt has it,
+            games report to Gryt instead of Discord. Any program on this computer can talk to that
+            connection, not only games, so you can hide one here once it shows up.
+          </span>
+          <span className="text-xs text-gryt-muted">
+            People on your servers see the game&rsquo;s name and what it says about your game.
+            Nothing else leaves this computer.
+          </span>
+        </HowItWorks>
         <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
           <Button size="small" onClick={() => void rp.setConsent(true)}>
             Turn on
@@ -120,6 +124,8 @@ export function RichPresenceSettings() {
         </ul>
       )}
 
+      <ReceivedLog log={rp.log ?? []} refresh={rp.refresh} />
+
       <PresenceHelperSettings helper={helper} />
 
       <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
@@ -131,5 +137,49 @@ export function RichPresenceSettings() {
         </span>
       </div>
     </div>
+  );
+}
+
+const time = (at: number) => new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+/** What games actually sent, so it's clear whether a game talks to Gryt at all. */
+function ReceivedLog({ log, refresh }: { log: RichPresenceLogEntry[]; refresh: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => void refresh(), 2000);
+    return () => clearInterval(timer);
+  }, [open, refresh]);
+
+  return (
+    <details onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="text-xs text-gryt-muted" style={{ cursor: "pointer", width: "fit-content" }}>
+        What Gryt receives
+      </summary>
+      <div className="flex flex-col gap-1" style={{ marginTop: 4 }}>
+        {log.length === 0 ? (
+          <span className="text-xs text-gryt-muted">
+            Nothing yet. Start a game that has Discord Rich Presence and it shows up here within a
+            few seconds. Games that don&rsquo;t have it, like CS2, never connect: add those under
+            Programs you add instead.
+          </span>
+        ) : (
+          <ol
+            className="flex flex-col gap-0.5 m-0 p-2 list-none rounded-md"
+            style={{ background: "var(--gryt-neutral-3)", fontFamily: "var(--font-mono, ui-monospace, monospace)", maxHeight: 220, overflowY: "auto" }}
+          >
+            {[...log].reverse().map((entry, i) => (
+              <li key={`${entry.at}-${i}`} className="text-xs">
+                <span className="text-gryt-muted">{time(entry.at)}</span>{" "}
+                {entry.appId ? <strong>{entry.name ?? `Unknown app ${entry.appId}`}</strong> : null}
+                {entry.appId ? " " : ""}
+                {entry.text}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </details>
   );
 }

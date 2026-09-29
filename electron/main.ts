@@ -304,6 +304,7 @@ function startRichPresence(): void {
       rpcHolder = holder;
       rpcVia = via;
       if (state !== "holding") board.reset();
+      board.note(`connection: ${state}${via ? ` via ${via}` : ""}${holder ? `, held by ${holder.name}` : ""}`);
       mainWindow?.webContents.send("rich-presence-state", socketStatus());
     },
     createHost: createRpcHost,
@@ -3011,6 +3012,7 @@ if (!gotSingleInstanceLock) {
         hidden: readHiddenApps(),
         seen: presenceBoard?.seen() ?? [],
         current: presenceBoard?.current() ?? null,
+        log: presenceBoard?.log() ?? [],
       }));
 
       /* Off lets go of the socket at once, so Discord can have it back when it next starts. */

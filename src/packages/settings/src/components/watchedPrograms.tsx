@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { isMacAppStoreBuild, type WatchedProgram } from "../../../../lib/electron";
 import { useWatchedPrograms } from "../hooks/useWatchedPrograms";
+import { HowItWorks } from "./howItWorks";
 
 /**
  * The programs you want seen, under the line you type yourself. Gryt looks at
@@ -73,15 +74,19 @@ export function WatchedPrograms() {
       <div className="flex flex-col gap-2">
         <span className="text-sm font-bold">Programs you add</span>
         <span className="text-xs text-gryt-muted">
-          Gryt can show other people what you&rsquo;re playing. To do that it
-          reads which programs are running on this machine, every ten seconds,
-          and checks them against a list you pick.
+          For games that don&rsquo;t report themselves, like CS2. Allow it, then add the game.
         </span>
-        <span className="text-xs text-gryt-muted">
-          That list of running programs never leaves this machine. Other people
-          only ever see the name of something you added yourself. If you add
-          nothing, Gryt doesn&rsquo;t look at all.
-        </span>
+        <HowItWorks>
+          <span className="text-xs text-gryt-muted">
+            Gryt reads which programs are running on this machine, every ten seconds,
+            and checks them against a list you pick.
+          </span>
+          <span className="text-xs text-gryt-muted">
+            That list of running programs never leaves this machine. Other people
+            only ever see the name of something you added yourself. If you add
+            nothing, Gryt doesn&rsquo;t look at all.
+          </span>
+        </HowItWorks>
         <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
           <Button size="small" onClick={() => void setConsent(true)}>
             Allow

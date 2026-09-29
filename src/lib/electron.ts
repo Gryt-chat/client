@@ -167,6 +167,15 @@ export interface RichPresenceStatus extends RichPresenceSocketStatus {
   hidden: RichPresenceApp[];
   seen: RichPresenceApp[];
   current: RichPresenceCard | null;
+  /** What came in, newest last. Older builds of the main process don't send it. */
+  log?: RichPresenceLogEntry[];
+}
+
+export interface RichPresenceLogEntry {
+  at: number;
+  appId: string | null;
+  name: string | null;
+  text: string;
 }
 
 /** One entry in the watch list: an executable, and what to call it. */
