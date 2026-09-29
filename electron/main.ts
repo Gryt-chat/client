@@ -89,6 +89,7 @@ import {
   type GameDetector,
   loadExecutablesList,
   type Platform,
+  type ProgramIndex,
   readAnswers,
 } from "./gameDetector";
 import { createGameIndex, readGameList } from "./gameList";
@@ -259,7 +260,12 @@ let presenceBoard: PresenceBoard | null = null;
 /* ── Spotting known games by their program (GRYT-1636) ─────────────── */
 
 let gameDetector: GameDetector | null = null;
-let programIndex: ReadonlyMap<string, string> = new Map();
+let programIndex: ProgramIndex = { byProgram: new Map(), known: new Map() };
+
+/** A detected key's name: ours for `app:` keys, the usual lookup for Discord ids. */
+function detectedName(key: string): string | null {
+  return programIndex.known.get(key)?.name ?? (key.startsWith("app:") ? null : nameForApp(key));
+}
 /** Asked about and not answered yet. Kept until answered, even after the game closes. */
 const pendingAsks = new Set<string>();
 
@@ -276,8 +282,8 @@ function detectStatus() {
   const answers = detectAnswers();
   return {
     enabled: detectionOn(),
-    answers: Object.entries(answers).map(([id, answer]) => ({ id, name: nameForApp(id), answer })),
-    pending: [...pendingAsks].map((id) => ({ id, name: nameForApp(id) })),
+    answers: Object.entries(answers).map(([id, answer]) => ({ id, name: detectedName(id), answer })),
+    pending: [...pendingAsks].map((id) => ({ id, name: detectedName(id) })),
   };
 }
 
@@ -286,18 +292,32 @@ function startGameDetection(): void {
   if (gameDetector || !presenceBoard || !canListProcesses || !detectionOn()) return;
   const platform = process.platform as Platform;
   void loadExecutablesList(app.getPath("userData"))
-    .then((entries) => { programIndex = buildProgramIndex(entries, platform); })
+    .then((entries) => { programIndex = buildProgramIndex(entries, platform, readGameList(bundledGames)); })
     .catch((err: unknown) => console.error("game detection: program list failed", err));
   gameDetector = createGameDetector({
     list: listRunningExecutables,
-    index: () => programIndex,
+    index: () => programIndex.byProgram,
     answers: detectAnswers,
+    platform,
+    reporting: () => {
+      const live = presenceBoard?.liveAppIds() ?? new Set<string>();
+      const out = new Set<string>();
+      for (const [key, known] of programIndex.known) if (known.rpcIds.some((id) => live.has(id))) out.add(key);
+      return out;
+    },
     onAsk: (appId) => {
       if (pendingAsks.has(appId)) return;
       pendingAsks.add(appId);
       mainWindow?.webContents.send("game-detect-changed", detectStatus());
     },
-    onChange: (shown) => presenceBoard?.setDetected(shown),
+    onChange: (shown) =>
+      presenceBoard?.setDetected(
+        shown.map((app) => ({
+          ...app,
+          name: detectedName(app.appId),
+          type: programIndex.known.get(app.appId)?.kind === "app" ? "using" : undefined,
+        })),
+      ),
   });
   gameDetector.start();
 }
@@ -3117,7 +3137,7 @@ if (!gotSingleInstanceLock) {
 
       /* "show", "hide", or null to forget the answer and be asked again. */
       ipcMain.handle("game-detect-answer", (_event, appId: unknown, answer: unknown) => {
-        if (typeof appId !== "string" || !/^\d{1,32}$/.test(appId)) return detectStatus();
+        if (typeof appId !== "string" || !/^(\d{1,32}|app:[a-z0-9-]{1,40})$/.test(appId)) return detectStatus();
         const answers = detectAnswers();
         if (answer === "show" || answer === "hide") answers[appId] = answer;
         else delete answers[appId];

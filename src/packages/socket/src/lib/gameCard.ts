@@ -10,6 +10,7 @@ const VERB: Record<RichActivity["type"], string> = {
   listening: "Listening to",
   watching: "Watching",
   competing: "Competing in",
+  using: "Using",
 };
 
 export function cardHeading(card: RichActivity): string {

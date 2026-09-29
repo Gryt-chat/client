@@ -5,7 +5,7 @@
 
 import type { ActivityEvent } from "./discordIpc";
 
-export type CardType = "playing" | "listening" | "watching" | "competing";
+export type CardType = "playing" | "listening" | "watching" | "competing" | "using";
 
 /** The server's shape (`richActivity`). It checks everything again; this keeps the upload small. */
 export interface RichCard {
@@ -93,14 +93,20 @@ export interface PresenceLogEntry {
 export const LOG_MAX = 50;
 
 export interface DetectedApp {
+  /** A Discord id, or `app:figma` for something without one. */
   appId: string;
   since: number;
+  name?: string | null;
+  /** "using" for an app like Figma. */
+  type?: CardType;
 }
 
 export interface PresenceBoard {
   update(event: ActivityEvent): void;
   /** Known games spotted by their program. Rich Presence from any app wins over these. */
   setDetected(apps: readonly DetectedApp[]): void;
+  /** App ids reporting over Rich Presence right now, so detection can step aside for them. */
+  liveAppIds(): Set<string>;
   /** A line that isn't an activity, like the connection changing hands. */
   note(text: string): void;
   log(): PresenceLogEntry[];
@@ -140,7 +146,13 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
     // Only when no game is reporting for itself, since what it says beats "it's running".
     const found = detected.find((app) => !hidden.has(app.appId));
     if (!found) return null;
-    return cardFromActivity({ timestamps: { start: found.since } }, options.nameForApp(found.appId) ?? UNKNOWN_GAME, found.appId);
+    const card = cardFromActivity(
+      { timestamps: { start: found.since } },
+      found.name ?? options.nameForApp(found.appId) ?? UNKNOWN_GAME,
+      found.appId,
+    );
+    if (found.type) card.type = found.type;
+    return card;
   };
 
   const same = (a: RichCard | null, b: RichCard | null) => JSON.stringify(a) === JSON.stringify(b);
@@ -201,10 +213,13 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
       const before = new Set(detected.map((app) => app.appId));
       detected = [...apps];
       for (const app of detected) {
-        if (!before.has(app.appId)) add({ at: now(), appId: app.appId, name: options.nameForApp(app.appId), text: "is running (spotted by its program)" });
+        if (!before.has(app.appId)) {
+          add({ at: now(), appId: app.appId, name: app.name ?? options.nameForApp(app.appId), text: "is running (spotted by its program)" });
+        }
       }
       schedule();
     },
+    liveAppIds: () => new Set([...live.values()].map((entry) => entry.appId)),
     note(text) {
       add({ at: now(), appId: null, name: null, text });
     },

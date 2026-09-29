@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 
-import { buildProgramIndex, createGameDetector, readAnswers, readExecutablesList, runningApps } from "../electron/gameDetector.ts";
+import { appKey, buildProgramIndex, createGameDetector, readAnswers, readExecutablesList, runningApps } from "../electron/gameDetector.ts";
 import { createPresenceBoard } from "../electron/richPresence.ts";
 
 let failures = 0;
@@ -36,18 +36,16 @@ await check("the list keeps only well-formed entries", () => {
 });
 
 await check("a program name matches whatever path and case it runs from", () => {
-  const index = buildProgramIndex(list, "win32");
-  assert.deepEqual(runningApps(["C:\\Steam\\game\\bin\\win64\\CS2.EXE", "explorer.exe"], index), [CS2]);
+  const { byProgram } = buildProgramIndex(list, "win32");
+  assert.deepEqual(runningApps(["C:\\Steam\\game\\bin\\win64\\CS2.EXE", "explorer.exe"], byProgram), [CS2]);
 });
 
 await check("a generic name like game.exe never matches", () => {
-  const index = buildProgramIndex(list, "win32");
-  assert.equal(index.has("game"), false);
+  assert.equal(buildProgramIndex(list, "win32").byProgram.has("game"), false);
 });
 
 await check("a name two games share is dropped rather than guessed", () => {
-  const index = buildProgramIndex(list, "linux");
-  assert.equal(index.has("shared"), false);
+  assert.equal(buildProgramIndex(list, "linux").byProgram.has("shared"), false);
 });
 
 await check("stored answers drop anything that isn't an id and show or hide", () => {
@@ -55,7 +53,7 @@ await check("stored answers drop anything that isn't an id and show or hide", ()
   assert.deepEqual(readAnswers(["x"]), {});
 });
 
-const index = buildProgramIndex(list, "win32");
+const index = buildProgramIndex(list, "win32").byProgram;
 
 await check("an unanswered game is asked about and not shown", async () => {
   const asked = [];
@@ -121,6 +119,66 @@ await check("hiding a detected game in Rich Presence hides it here too", () => {
   board.setHidden([CS2]);
   board.setDetected([{ appId: CS2, since: 1 }]);
   assert.equal(cards.length, 0);
+  board.stop();
+});
+
+const FIGMA = appKey("Figma");
+const curated = [
+  { name: "Figma", kind: "app", discord: [], exe: { win32: ["figma.exe"], darwin: ["figma.app"] } },
+  { name: "VS Code", kind: "app", discord: ["383226320970055681"], exe: { win32: ["code.exe"] } },
+];
+
+await check("an app with no Discord id gets an app: key, a name and the app kind", () => {
+  const { byProgram, known } = buildProgramIndex(list, "win32", curated);
+  assert.equal(FIGMA, "app:figma");
+  assert.deepEqual(runningApps(["C:\\Figma\\Figma.exe"], byProgram), [FIGMA]);
+  assert.deepEqual(known.get(FIGMA), { name: "Figma", kind: "app", rpcIds: [] });
+});
+
+await check("on macOS an app is known by its .app bundle", () => {
+  const { byProgram } = buildProgramIndex(list, "darwin", curated);
+  assert.deepEqual(runningApps(["/Applications/Figma.app/Contents/MacOS/Figma"], byProgram, "darwin"), [FIGMA]);
+});
+
+await check("on Linux a Windows game under Proton is still spotted", () => {
+  const { byProgram } = buildProgramIndex(list, "linux");
+  assert.deepEqual(runningApps(["cs2.exe"], byProgram, "linux"), [CS2]);
+});
+
+await check("an answer for an app key is kept", () => {
+  assert.deepEqual(readAnswers({ [FIGMA]: "show", "app:": "show" }), { [FIGMA]: "show" });
+});
+
+await check("an app whose plugin is reporting isn't asked about or shown", async () => {
+  const { byProgram } = buildProgramIndex(list, "win32", curated);
+  let shown = null;
+  const d = createGameDetector({
+    list: async () => ["code.exe"],
+    index: () => byProgram,
+    answers: () => ({}),
+    reporting: () => new Set(["383226320970055681"]),
+    onAsk: () => assert.fail("asked while the plugin reports"),
+    onChange: (s) => (shown = s),
+  });
+  await d.poll();
+  d.stop();
+  assert.deepEqual(shown, []);
+});
+
+await check("a detected app reads using, with our name", () => {
+  const cards = [];
+  const board = createPresenceBoard({ nameForApp: () => null, onChange: (c) => cards.push(c), minIntervalMs: 0 });
+  board.setDetected([{ appId: FIGMA, since: 1_700_000_000_000, name: "Figma", type: "using" }]);
+  assert.equal(cards.at(-1)?.name, "Figma");
+  assert.equal(cards.at(-1)?.type, "using");
+  assert.equal(cards.at(-1)?.appId, undefined);
+  board.stop();
+});
+
+await check("the board says which apps are reporting", () => {
+  const board = createPresenceBoard({ nameForApp: () => "x", onChange: () => {}, minIntervalMs: 0 });
+  board.update({ connection: 3, clientId: "383226320970055681", activity: { details: "Editing" } });
+  assert.deepEqual([...board.liveAppIds()], ["383226320970055681"]);
   board.stop();
 });
 
