@@ -59,6 +59,7 @@ import {
   stopNativeAudioCapture,
   supportsPerApplicationAudio,
 } from "./audioCaptureManager";
+import { createRpcHost, type Holder, type RpcHost, type RpcHostState } from "./discordIpc";
 import {
   autoStartIfNeeded,
   cleanupOnQuit,
@@ -80,6 +81,8 @@ import {
   updateServerAdvertisedAddresses,
   updateServerPortsFor,
 } from "./embeddedServerManager";
+import { createGameIndex, readGameList } from "./gameList";
+import bundledGames from "./games.json";
 import {
   deleteGlobalValue,
   flushGlobalStore,
@@ -105,6 +108,7 @@ import {
   type ProcessWatcher,
   readWatchList,
 } from "./processWatcher";
+import { createPresenceBoard, type PresenceBoard } from "./richPresence";
 import {
   isNativeScreenCaptureAvailable,
   startNativeScreenCapture,
@@ -206,6 +210,81 @@ function readScanConsent(): string | null {
 
 function processScanAllowed(): boolean {
   return readScanConsent() !== null;
+}
+
+/* ── Rich Presence (GRYT-1310) ───────────────────────────────────────── */
+
+/** A sandboxed Mac App Store build has its own temp folder, where no game would look. */
+const canHostRichPresence = !process.mas;
+const gameIndex = createGameIndex(readGameList(bundledGames));
+let rpcHost: RpcHost | null = null;
+let presenceBoard: PresenceBoard | null = null;
+let rpcState: RpcHostState = "off";
+let rpcHolder: Holder | null = null;
+
+/** What settings shows about the socket. The pid stays in the main process. */
+function socketStatus() {
+  return {
+    state: rpcState,
+    holder: rpcHolder ? { name: rpcHolder.name, isDiscord: rpcHolder.isDiscord } : null,
+  };
+}
+
+interface HiddenApp {
+  id: string;
+  name: string | null;
+}
+
+function readRichPresenceConsent(): string | null {
+  const at = loadGlobalStore()["richPresenceConsent"];
+  return typeof at === "string" && at ? at : null;
+}
+
+/** Off disk or from the renderer, so checked either way. */
+function readHiddenApps(value: unknown = loadGlobalStore()["richPresenceHidden"]): HiddenApp[] {
+  if (!Array.isArray(value)) return [];
+  const out: HiddenApp[] = [];
+  for (const entry of value.slice(0, 64)) {
+    const record = entry as Record<string, unknown> | null;
+    const id = typeof record?.id === "string" && /^\d{1,32}$/.test(record.id) ? record.id : "";
+    if (!id || out.some((app) => app.id === id)) continue;
+    const name = typeof record?.name === "string" ? record.name.slice(0, 64) : null;
+    out.push({ id, name });
+  }
+  return out;
+}
+
+/** As early as the app can, since whichever of Gryt and Discord binds first gets the games. */
+function startRichPresence(): void {
+  if (!canHostRichPresence || rpcHost || !readRichPresenceConsent()) return;
+  const board = createPresenceBoard({
+    nameForApp: gameIndex.nameForApp,
+    onChange: (card) => mainWindow?.webContents.send("rich-presence-changed", card),
+  });
+  board.setHidden(readHiddenApps().map((app) => app.id));
+  presenceBoard = board;
+  rpcHost = createRpcHost({
+    onActivity: (event) => board.update(event),
+    onState: (state, holder) => {
+      rpcState = state;
+      rpcHolder = holder;
+      if (state !== "holding") board.reset();
+      mainWindow?.webContents.send("rich-presence-state", socketStatus());
+    },
+  });
+  void rpcHost.start();
+}
+
+async function stopRichPresence(): Promise<void> {
+  const host = rpcHost;
+  rpcHost = null;
+  await host?.stop();
+  presenceBoard?.reset();
+  presenceBoard?.stop();
+  presenceBoard = null;
+  rpcState = "off";
+  rpcHolder = null;
+  mainWindow?.webContents.send("rich-presence-state", socketStatus());
 }
 
 type VoiceState = {
@@ -2635,6 +2714,8 @@ if (!gotSingleInstanceLock) {
   app
     .whenReady()
     .then(async () => {
+      startRichPresence();
+
       // macOS will not prompt for getUserMedia alone, so without this the renderer
       // gets NotAllowedError forever. Safe every launch; a decision sticks.
       if (process.platform === "darwin") {
@@ -2802,6 +2883,34 @@ if (!gotSingleInstanceLock) {
 
       /** What is running right now, out of the list. Never the whole list. */
       ipcMain.handle("processes-running", () => processWatcher?.current() ?? []);
+
+      ipcMain.handle("rich-presence-get", () => ({
+        supported: canHostRichPresence,
+        consentedAt: readRichPresenceConsent(),
+        ...socketStatus(),
+        hidden: readHiddenApps(),
+        seen: presenceBoard?.seen() ?? [],
+        current: presenceBoard?.current() ?? null,
+      }));
+
+      /* Off lets go of the socket at once, so Discord can have it back when it next starts. */
+      ipcMain.handle("rich-presence-set-consent", async (_event, allow: unknown) => {
+        if (allow === true && canHostRichPresence) {
+          setGlobalValue("richPresenceConsent", new Date().toISOString());
+          startRichPresence();
+        } else {
+          setGlobalValue("richPresenceConsent", null);
+          await stopRichPresence();
+        }
+        return readRichPresenceConsent();
+      });
+
+      ipcMain.handle("rich-presence-set-hidden", (_event, apps: unknown) => {
+        const list = readHiddenApps(apps);
+        setGlobalValue("richPresenceHidden", list);
+        presenceBoard?.setHidden(list.map((app) => app.id));
+        return list;
+      });
 
       ipcMain.handle(
         "get-close-to-tray",
@@ -4259,6 +4368,9 @@ if (!gotSingleInstanceLock) {
 
       localServer?.close();
       localServer = null;
+
+      // Removes the socket file before this returns; the close finishes on its own.
+      void rpcHost?.stop();
 
       cleanupOnQuit();
     }

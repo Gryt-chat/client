@@ -160,6 +160,31 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("processes-changed", handler);
   },
 
+  /* Rich Presence: games talking to the Discord socket, which Gryt holds while this is on. */
+  getRichPresence(): Promise<unknown> {
+    return ipcRenderer.invoke("rich-presence-get");
+  },
+
+  setRichPresenceConsent(allow: boolean): Promise<string | null> {
+    return ipcRenderer.invoke("rich-presence-set-consent", allow);
+  },
+
+  setRichPresenceHidden(apps: { id: string; name: string | null }[]): Promise<unknown> {
+    return ipcRenderer.invoke("rich-presence-set-hidden", apps);
+  },
+
+  onRichPresenceChanged(callback: (card: unknown) => void) {
+    const handler = (_event: unknown, card: unknown) => callback(card);
+    ipcRenderer.on("rich-presence-changed", handler);
+    return () => ipcRenderer.removeListener("rich-presence-changed", handler);
+  },
+
+  onRichPresenceState(callback: (state: unknown) => void) {
+    const handler = (_event: unknown, state: unknown) => callback(state);
+    ipcRenderer.on("rich-presence-state", handler);
+    return () => ipcRenderer.removeListener("rich-presence-state", handler);
+  },
+
   getCloseToTray(): Promise<boolean> {
     return ipcRenderer.invoke("get-close-to-tray");
   },

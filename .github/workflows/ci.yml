@@ -170,6 +170,11 @@ jobs:
       # The claim is that only the programs somebody listed leave the main
       # process. Nothing else here would notice that stopping being true.
       - run: yarn test:watched-programs
+      # Games talk to Gryt over Discord's Rich Presence socket. Whoever else holds it
+      # is named without connecting, since Discord takes a connection for a game.
+      - run: yarn test:discord-ipc
+      - run: yarn test:rich-presence
+      - run: yarn test:game-list
       # Sign-in leaves for the browser and comes back through gryt://. If the
       # AppImage moved, it cannot — and nothing else here would notice.
       - run: yarn test:appimage-location
