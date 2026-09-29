@@ -1,10 +1,5 @@
 #!/usr/bin/env node
-/**
- * The bigger game list Gryt fetches from Gryt-chat/rich-presence, cached in
- * userData and refreshed at most once a day. Checked here: lookup order, the
- * cache's own expiry, a bad or huge response not crashing or wiping a good
- * cache, and no fetch happening while Rich Presence is off.
- */
+/** Lookup order, cache expiry, a bad/huge response, and no fetch while Rich Presence is off. */
 
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";

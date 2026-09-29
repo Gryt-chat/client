@@ -1,12 +1,6 @@
 /**
- * The bigger list of Discord-detectable games, mirrored at
- * https://github.com/Gryt-chat/rich-presence and fetched by the client so a
- * game outside our curated `games.json` still gets a real name. `games.json`
- * (read by `gameList.ts`) always wins; this only fills in names it doesn't have.
- *
- * Only ids and names come from here. Icons are mirrored in that repo too, but
- * nothing in the client loads or shows one yet: Rich Presence cards are text
- * only, on purpose (client#726), and wiring images through is GRYT-1602.
+ * The bigger game list mirrored at github.com/Gryt-chat/rich-presence, fetched
+ * so a game outside our curated `games.json` still gets a real name.
  */
 
 import { readFileSync, writeFileSync } from "fs";
@@ -131,12 +125,7 @@ export interface RefreshDeps {
   now?: () => number;
 }
 
-/**
- * Refetches only when the cache is missing or a day old. Any failure along the
- * way - no network, a bad body, too few entries - leaves the existing cache
- * alone and just logs it, since a broken fetch should never mean losing names
- * the last good fetch already had.
- */
+/** Refetches only when the cache is missing or a day old. A bad fetch just logs and keeps the old cache. */
 export async function maybeRefreshDetectableList(deps: RefreshDeps): Promise<Map<string, DetectableEntry>> {
   const now = deps.now ?? Date.now;
   const cache = readCache(deps.userDataDir);

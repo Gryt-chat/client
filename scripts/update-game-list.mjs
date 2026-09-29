@@ -1,12 +1,5 @@
 #!/usr/bin/env node
-/**
- * Refreshes the two files this client bundles from
- * https://github.com/Gryt-chat/rich-presence: `electron/games.json` (our
- * curated overrides) and `electron/detectable-snapshot.json` (the offline
- * fallback for everything else). Run this before cutting a release; there's
- * no CI step for it. If a fetch fails or looks broken, the committed file is
- * left alone rather than overwritten with something worse.
- */
+/** Refreshes games.json and detectable-snapshot.json from the rich-presence repo. Run before a release. */
 
 const SOURCES = {
   overrides: [
