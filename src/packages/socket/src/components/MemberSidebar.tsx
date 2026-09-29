@@ -10,6 +10,7 @@ import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
+import { GameIcon } from "./GameIcon";
 import { groupMembersByRole, readableRoleColor } from "./memberGroups";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { statusConfig } from "./memberStatus";
@@ -267,17 +268,16 @@ const MemberItem = ({
                 sidebar can still run out of width before that. */}
             {member.activity && (
               <span
-                className="text-xs"
-                style={{
-                  color: "var(--gryt-neutral-11)",
-                  lineHeight: 1.2,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
+                className="flex min-w-0 items-center gap-1 text-xs"
+                style={{ color: "var(--gryt-neutral-11)", lineHeight: 1.2 }}
                 title={member.activity}
               >
-                {member.activity}
+                {member.richActivity?.appId && (
+                  <GameIcon appId={member.richActivity.appId} name={member.richActivity.name} size={14} />
+                )}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {member.activity}
+                </span>
               </span>
             )}
           </div>

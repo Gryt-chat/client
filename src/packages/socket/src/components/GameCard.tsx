@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 
 import type { RichActivity } from "../../../../lib/richActivity";
 import { buttonLink, cardHeading, elapsed, partyText } from "../lib/gameCard";
+import { GameIcon } from "./GameIcon";
 
-/**
- * A game's Rich Presence on somebody's member card: what, where, for how long.
- * Text only for now, so opening a card loads nothing from Discord or Steam (GRYT-1310).
- */
+/** A game's Rich Presence on somebody's member card: what, where, for how long, and its icon. */
 export function GameCard({ card }: { card: RichActivity }) {
   const [now, setNow] = useState(() => Date.now());
 
@@ -29,9 +27,12 @@ export function GameCard({ card }: { card: RichActivity }) {
       className="flex min-w-0 flex-col gap-1 rounded-(--gryt-radius-sm) border border-gryt-border bg-gryt-bg px-2.5 py-2"
     >
       <span className="text-xs font-semibold text-gryt-muted">{cardHeading(card)}</span>
-      <span className="text-sm font-bold text-gryt-text" style={{ overflowWrap: "anywhere" }}>
-        {card.name}
-      </span>
+      <div className="flex min-w-0 items-center gap-2">
+        <GameIcon appId={card.appId} name={card.name} size={32} />
+        <span className="min-w-0 text-sm font-bold text-gryt-text" style={{ overflowWrap: "anywhere" }}>
+          {card.name}
+        </span>
+      </div>
       {card.details && (
         <span className="text-xs text-gryt-text" style={{ overflowWrap: "anywhere" }}>
           {card.details}

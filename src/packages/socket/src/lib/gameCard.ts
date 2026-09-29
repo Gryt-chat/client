@@ -32,6 +32,12 @@ export function partyText(party: RichActivity["party"]): string | null {
   return party.max ? `${party.size} of ${party.max}` : `${party.size} in party`;
 }
 
+/** Mirrored icons, never Discord's CDN. Null with no id, so nothing is drawn. */
+export function gameIconUrl(appId: string | undefined): string | null {
+  if (!appId || !/^\d{1,32}$/.test(appId)) return null;
+  return `https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/icons/${appId}.avif`;
+}
+
 /**
  * A button's link and the host to show beside it. Checked again here, so a card
  * from an older or modified server still can't hand over a script or a file.

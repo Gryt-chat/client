@@ -13,4 +13,6 @@ export interface RichActivity {
   party?: { size: number; max?: number };
   /** Two at most, each an http or https link to a public host. */
   buttons?: { label: string; url: string }[];
+  /** The game's Discord application id, checked as a snowflake. For an icon. */
+  appId?: string;
 }

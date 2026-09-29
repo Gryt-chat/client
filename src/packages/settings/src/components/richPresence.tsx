@@ -1,6 +1,7 @@
 import { Button } from "@gryt/ui";
 
 import { isMacAppStoreBuild, type RichPresenceApp } from "../../../../lib/electron";
+import { GameIcon } from "../../../socket/src/components/GameIcon";
 import { usePresenceHelper } from "../hooks/usePresenceHelper";
 import { useRichPresence } from "../hooks/useRichPresence";
 import { PresenceHelperSettings } from "./presenceHelper";
@@ -92,7 +93,8 @@ export function RichPresenceSettings() {
       )}
 
       {rp.current && (
-        <span className="text-xs text-gryt-muted">
+        <span className="flex items-center gap-1.5 text-xs text-gryt-muted">
+          <GameIcon appId={rp.current.appId} name={rp.current.name} size={16} />
           Showing now: <strong>{rp.current.name}</strong>
           {rp.current.details ? `, ${rp.current.details}` : ""}
         </span>

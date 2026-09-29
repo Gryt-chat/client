@@ -16,6 +16,8 @@ export interface RichCard {
   startedAt?: number;
   party?: { size: number; max?: number };
   buttons?: { label: string; url: string }[];
+  /** The game's Discord application id, for an icon. The server checks it again. */
+  appId?: string;
 }
 
 /** What a card is called when the game isn't in `games.json` and didn't say. */
@@ -42,8 +44,9 @@ function toMs(value: unknown): number | undefined {
   return value < 1e12 ? Math.floor(value * 1000) : Math.floor(value);
 }
 
-export function cardFromActivity(activity: Record<string, unknown>, name: string): RichCard {
+export function cardFromActivity(activity: Record<string, unknown>, name: string, appId?: string): RichCard {
   const card: RichCard = { type: TYPES[activity.type as number] ?? "playing", name: name.slice(0, 64) };
+  if (appId && /^\d{1,32}$/.test(appId)) card.appId = appId;
   const details = line(activity.details, 128);
   if (details) card.details = details;
   const state = line(activity.state, 128);
@@ -148,7 +151,7 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
         const listed = options.nameForApp(event.clientId);
         const given = line(event.activity.name, 64);
         seenApps.set(event.clientId, listed ?? given ?? null);
-        const card = cardFromActivity(event.activity, listed ?? given ?? UNKNOWN_GAME);
+        const card = cardFromActivity(event.activity, listed ?? given ?? UNKNOWN_GAME, event.clientId);
         const previous = live.get(event.connection);
         // A repeat keeps its place, so a game resending the same card doesn't jump ahead of the other.
         const at = previous && same(previous.card, card) ? previous.at : now();
