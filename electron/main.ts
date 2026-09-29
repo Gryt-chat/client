@@ -82,6 +82,15 @@ import {
   updateServerAdvertisedAddresses,
   updateServerPortsFor,
 } from "./embeddedServerManager";
+import {
+  type Answer,
+  buildProgramIndex,
+  createGameDetector,
+  type GameDetector,
+  loadExecutablesList,
+  type Platform,
+  readAnswers,
+} from "./gameDetector";
 import { createGameIndex, readGameList } from "./gameList";
 import { createDetectableIndex, type DetectableEntry, maybeRefreshDetectableList, readDetectableList, resolveGameName } from "./gameListCache";
 import bundledGames from "./games.json";
@@ -119,6 +128,7 @@ import { createPresenceSource, type PresenceSource, type PresenceVia } from "./p
 import {
   canListProcesses,
   createProcessWatcher,
+  listRunningExecutables,
   listRunningPrograms,
   type ProcessWatcher,
   readWatchList,
@@ -245,6 +255,58 @@ function nameForApp(appId: string): string | null {
 }
 let presenceSource: PresenceSource | null = null;
 let presenceBoard: PresenceBoard | null = null;
+
+/* ── Spotting known games by their program (GRYT-1636) ─────────────── */
+
+let gameDetector: GameDetector | null = null;
+let programIndex: ReadonlyMap<string, string> = new Map();
+/** Asked about and not answered yet. Kept until answered, even after the game closes. */
+const pendingAsks = new Set<string>();
+
+function detectionOn(): boolean {
+  const at = loadGlobalStore()["gameDetection"];
+  return typeof at === "string" && at.length > 0;
+}
+
+function detectAnswers(): Record<string, Answer> {
+  return readAnswers(loadGlobalStore()["gameDetectAnswers"]);
+}
+
+function detectStatus() {
+  const answers = detectAnswers();
+  return {
+    enabled: detectionOn(),
+    answers: Object.entries(answers).map(([id, answer]) => ({ id, name: nameForApp(id), answer })),
+    pending: [...pendingAsks].map((id) => ({ id, name: nameForApp(id) })),
+  };
+}
+
+/** Needs Rich Presence on as well, since the card goes out through the same board. */
+function startGameDetection(): void {
+  if (gameDetector || !presenceBoard || !canListProcesses || !detectionOn()) return;
+  const platform = process.platform as Platform;
+  void loadExecutablesList(app.getPath("userData"))
+    .then((entries) => { programIndex = buildProgramIndex(entries, platform); })
+    .catch((err: unknown) => console.error("game detection: program list failed", err));
+  gameDetector = createGameDetector({
+    list: listRunningExecutables,
+    index: () => programIndex,
+    answers: detectAnswers,
+    onAsk: (appId) => {
+      if (pendingAsks.has(appId)) return;
+      pendingAsks.add(appId);
+      mainWindow?.webContents.send("game-detect-changed", detectStatus());
+    },
+    onChange: (shown) => presenceBoard?.setDetected(shown),
+  });
+  gameDetector.start();
+}
+
+function stopGameDetection(): void {
+  gameDetector?.stop();
+  gameDetector = null;
+  presenceBoard?.setDetected([]);
+}
 let rpcState: RpcHostState = "off";
 let rpcHolder: Holder | null = null;
 let rpcVia: PresenceVia | null = null;
@@ -312,6 +374,7 @@ function startRichPresence(): void {
     findHolder: () => findHolder(ipcPath(0, ipcDir())),
   });
   void presenceSource.start();
+  startGameDetection();
 }
 
 /** Turning it off stops a running helper as well, so nothing keeps the socket. */
@@ -319,6 +382,7 @@ async function stopRichPresence(): Promise<void> {
   const source = presenceSource;
   presenceSource = null;
   await source?.stopAll();
+  stopGameDetection();
   presenceBoard?.reset();
   presenceBoard?.stop();
   presenceBoard = null;
@@ -3035,6 +3099,34 @@ if (!gotSingleInstanceLock) {
         if (on === true) await turnHelperOn();
         else await turnHelperOff();
         return presenceHelperStatus();
+      });
+
+      ipcMain.handle("game-detect-get", () => detectStatus());
+
+      ipcMain.handle("game-detect-set-enabled", (_event, allow: unknown) => {
+        if (allow === true) {
+          setGlobalValue("gameDetection", new Date().toISOString());
+          startGameDetection();
+        } else {
+          deleteGlobalValue("gameDetection");
+          stopGameDetection();
+          pendingAsks.clear();
+        }
+        return detectStatus();
+      });
+
+      /* "show", "hide", or null to forget the answer and be asked again. */
+      ipcMain.handle("game-detect-answer", (_event, appId: unknown, answer: unknown) => {
+        if (typeof appId !== "string" || !/^\d{1,32}$/.test(appId)) return detectStatus();
+        const answers = detectAnswers();
+        if (answer === "show" || answer === "hide") answers[appId] = answer;
+        else delete answers[appId];
+        setGlobalValue("gameDetectAnswers", answers);
+        pendingAsks.delete(appId);
+        void gameDetector?.poll();
+        const status = detectStatus();
+        mainWindow?.webContents.send("game-detect-changed", status);
+        return status;
       });
 
       ipcMain.handle("rich-presence-set-hidden", (_event, apps: unknown) => {

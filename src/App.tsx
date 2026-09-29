@@ -31,6 +31,7 @@ import { useVoiceSounds } from "@/webRTC";
 import { ApproveDeviceDialog } from "./components/approveDevice";
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { GameDetectPrompt } from "./components/gameDetectPrompt";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
 import { LinkDeviceDialog } from "./components/linkDevice";
@@ -150,6 +151,7 @@ export function App() {
           />
           <IdentityClaimPrompt />
           <VaultUpgradePrompt />
+          <GameDetectPrompt />
           <ReportDialog />
           <TermsPrompt />
           <PushToTalkModal />

@@ -92,8 +92,15 @@ export interface PresenceLogEntry {
 
 export const LOG_MAX = 50;
 
+export interface DetectedApp {
+  appId: string;
+  since: number;
+}
+
 export interface PresenceBoard {
   update(event: ActivityEvent): void;
+  /** Known games spotted by their program. Rich Presence from any app wins over these. */
+  setDetected(apps: readonly DetectedApp[]): void;
   /** A line that isn't an activity, like the connection changing hands. */
   note(text: string): void;
   log(): PresenceLogEntry[];
@@ -111,6 +118,7 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
   const now = options.now ?? Date.now;
   const live = new Map<number, { appId: string; card: RichCard; at: number }>();
   const seenApps = new Map<string, string | null>();
+  let detected: DetectedApp[] = [];
   let hidden = new Set<string>();
   let sent: RichCard | null = null;
   let sentAt = -Infinity;
@@ -128,7 +136,11 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
       if (hidden.has(entry.appId)) continue;
       if (!best || entry.at >= best.at) best = entry;
     }
-    return best?.card ?? null;
+    if (best) return best.card;
+    // Only when no game is reporting for itself, since what it says beats "it's running".
+    const found = detected.find((app) => !hidden.has(app.appId));
+    if (!found) return null;
+    return cardFromActivity({ timestamps: { start: found.since } }, options.nameForApp(found.appId) ?? UNKNOWN_GAME, found.appId);
   };
 
   const same = (a: RichCard | null, b: RichCard | null) => JSON.stringify(a) === JSON.stringify(b);
@@ -183,6 +195,14 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
     },
     setHidden(appIds) {
       hidden = new Set(appIds);
+      schedule();
+    },
+    setDetected(apps) {
+      const before = new Set(detected.map((app) => app.appId));
+      detected = [...apps];
+      for (const app of detected) {
+        if (!before.has(app.appId)) add({ at: now(), appId: app.appId, name: options.nameForApp(app.appId), text: "is running (spotted by its program)" });
+      }
       schedule();
     },
     note(text) {

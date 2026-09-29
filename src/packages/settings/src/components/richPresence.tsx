@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { isMacAppStoreBuild, type RichPresenceApp, type RichPresenceLogEntry } from "../../../../lib/electron";
 import { GameIcon } from "../../../socket/src/components/GameIcon";
+import { useGameDetection } from "../hooks/useGameDetection";
 import { usePresenceHelper } from "../hooks/usePresenceHelper";
 import { useRichPresence } from "../hooks/useRichPresence";
 import { HowItWorks } from "./howItWorks";
@@ -126,6 +127,8 @@ export function RichPresenceSettings() {
 
       <ReceivedLog log={rp.log ?? []} refresh={rp.refresh} />
 
+      <GameDetection />
+
       <PresenceHelperSettings helper={helper} />
 
       <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
@@ -181,5 +184,49 @@ function ReceivedLog({ log, refresh }: { log: RichPresenceLogEntry[]; refresh: (
         )}
       </div>
     </details>
+  );
+}
+
+/** Known games spotted by their program. Off until turned on, and asks once per game. */
+function GameDetection() {
+  const detect = useGameDetection();
+  if (!detect.supported) return null;
+
+  return (
+    <div className="flex flex-col gap-1 rounded-md px-2 py-2" style={{ background: "var(--gryt-neutral-3)" }}>
+      <span className="text-sm font-medium">Spot games that don&rsquo;t report themselves</span>
+      <span className="text-xs text-gryt-muted">
+        For games like CS2. Gryt asks once per game before it shows anything.
+      </span>
+      <HowItWorks>
+        <span className="text-xs text-gryt-muted">
+          Every ten seconds Gryt checks which programs are running against a public list of about
+          10,000 games. The list of what you have running never leaves this computer.
+        </span>
+        <span className="text-xs text-gryt-muted">
+          The first time it spots a game it asks whether to show it. Say no and it never shows or asks
+          again. A game that reports for itself always wins, since it says more.
+        </span>
+      </HowItWorks>
+      <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+        <Button size="xsmall" tone={detect.enabled ? "neutral" : undefined} onClick={() => void detect.setEnabled(!detect.enabled)}>
+          {detect.enabled ? "Turn off" : "Turn on"}
+        </Button>
+      </div>
+      {detect.answers.length > 0 && (
+        <ul className="flex flex-col gap-1 m-0 p-0 list-none" style={{ marginTop: 6 }}>
+          {detect.answers.map((game) => (
+            <li key={game.id} className="flex items-center gap-2 rounded-md px-2 py-1" style={{ background: "var(--gryt-neutral-4)" }}>
+              <GameIcon appId={game.id} name={game.name ?? "A game"} size={16} />
+              <span className="text-sm" style={{ flex: 1, minWidth: 0 }}>{game.name ?? `Unknown app ${game.id}`}</span>
+              <span className="text-xs text-gryt-muted">{game.answer === "show" ? "shown" : "never shown"}</span>
+              <Button size="xsmall" tone="neutral" onClick={() => void detect.answer(game.id, game.answer === "show" ? "hide" : "show")}>
+                {game.answer === "show" ? "Don't show" : "Show"}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
