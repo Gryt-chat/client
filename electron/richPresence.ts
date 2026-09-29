@@ -82,8 +82,21 @@ export interface PresenceBoardOptions {
   now?: () => number;
 }
 
+/** One line in Settings' "What Gryt receives", newest last. */
+export interface PresenceLogEntry {
+  at: number;
+  appId: string | null;
+  name: string | null;
+  text: string;
+}
+
+export const LOG_MAX = 50;
+
 export interface PresenceBoard {
   update(event: ActivityEvent): void;
+  /** A line that isn't an activity, like the connection changing hands. */
+  note(text: string): void;
+  log(): PresenceLogEntry[];
   setHidden(appIds: readonly string[]): void;
   /** Every app that has connected since start, for the list somebody hides apps from. */
   seen(): SeenApp[];
@@ -102,6 +115,11 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
   let sent: RichCard | null = null;
   let sentAt = -Infinity;
   let timer: NodeJS.Timeout | null = null;
+  const entries: PresenceLogEntry[] = [];
+  const add = (entry: PresenceLogEntry) => {
+    entries.push(entry);
+    if (entries.length > LOG_MAX) entries.shift();
+  };
 
   /** The newest card from an app that isn't hidden. Two games at once is rare, and the newer one is what's on screen. */
   const pick = (): RichCard | null => {
@@ -147,6 +165,7 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
     update(event) {
       if (event.activity === null) {
         live.delete(event.connection);
+        add({ at: now(), appId: event.clientId, name: seenApps.get(event.clientId) ?? null, text: "cleared its activity" });
       } else {
         const listed = options.nameForApp(event.clientId);
         const given = line(event.activity.name, 64);
@@ -156,6 +175,9 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
         // A repeat keeps its place, so a game resending the same card doesn't jump ahead of the other.
         const at = previous && same(previous.card, card) ? previous.at : now();
         live.set(event.connection, { appId: event.clientId, card, at });
+        const parts = [card.details, card.state].filter(Boolean).join(" · ");
+        const hide = hidden.has(event.clientId) ? " (hidden by you)" : "";
+        add({ at: now(), appId: event.clientId, name: card.name, text: (parts || "sent an activity with no details") + hide });
       }
       schedule();
     },
@@ -163,6 +185,10 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
       hidden = new Set(appIds);
       schedule();
     },
+    note(text) {
+      add({ at: now(), appId: null, name: null, text });
+    },
+    log: () => [...entries],
     seen: () => [...seenApps].map(([id, name]) => ({ id, name })),
     current: () => sent,
     reset() {

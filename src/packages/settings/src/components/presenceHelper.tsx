@@ -1,6 +1,7 @@
 import { Button } from "@gryt/ui";
 
 import type { usePresenceHelper } from "../hooks/usePresenceHelper";
+import { HowItWorks } from "./howItWorks";
 import { helperCopy, helperStateLine } from "./presenceHelperCopy";
 
 /** Off until somebody turns it on here. Nothing else registers it (GRYT-1605). */
@@ -11,8 +12,10 @@ export function PresenceHelperSettings({ helper }: { helper: ReturnType<typeof u
   return (
     <div id="gryt-helper" className="flex flex-col gap-1 rounded-md px-2 py-2" style={{ background: "var(--gryt-neutral-3)" }}>
       <span className="text-sm font-medium">{helperCopy.title}</span>
-      <span className="text-xs text-gryt-muted">{helperCopy.about}</span>
-      <span className="text-xs text-gryt-muted">{helperCopy.cost}</span>
+      <HowItWorks>
+        <span className="text-xs text-gryt-muted">{helperCopy.about}</span>
+        <span className="text-xs text-gryt-muted">{helperCopy.cost}</span>
+      </HowItWorks>
       {line && (
         <span
           className="text-xs"

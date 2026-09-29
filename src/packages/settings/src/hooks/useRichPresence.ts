@@ -55,5 +55,5 @@ export function useRichPresence() {
     [api, refresh],
   );
 
-  return { ...status, setConsent, setHidden };
+  return { ...status, setConsent, setHidden, refresh };
 }
