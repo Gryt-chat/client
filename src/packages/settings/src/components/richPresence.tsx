@@ -2,6 +2,7 @@ import { Button } from "@gryt/ui";
 
 import { isMacAppStoreBuild, type RichPresenceApp } from "../../../../lib/electron";
 import { useRichPresence } from "../hooks/useRichPresence";
+import { PresenceHelperSettings } from "./presenceHelper";
 import { socketLine } from "./richPresenceCopy";
 
 /**
@@ -99,6 +100,8 @@ export function RichPresenceSettings() {
           ))}
         </ul>
       )}
+
+      <PresenceHelperSettings />
 
       <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
         <Button size="xsmall" tone="neutral" onClick={() => void rp.setConsent(false)}>

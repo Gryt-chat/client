@@ -150,6 +150,17 @@ export interface RichPresenceSocketStatus {
   helper?: boolean;
 }
 
+export interface PresenceHelperStatus {
+  /** False in the store builds, Flatpak and Snap, and in a build without the helper. */
+  offered: boolean;
+  enabledAt: string | null;
+  /** Whether the OS has the startup entry right now. */
+  registered: boolean;
+  /** macOS wants the login item allowed in System Settings. */
+  needsApproval: boolean;
+  error: string | null;
+}
+
 export interface RichPresenceStatus extends RichPresenceSocketStatus {
   supported: boolean;
   consentedAt: string | null;
@@ -213,6 +224,9 @@ export interface ElectronAPI {
   setRichPresenceHidden?(apps: RichPresenceApp[]): Promise<RichPresenceApp[]>;
   onRichPresenceChanged?(callback: (card: RichPresenceCard | null) => void): () => void;
   onRichPresenceState?(callback: (status: RichPresenceSocketStatus) => void): () => void;
+  /** gryt-helper, which starts at login once turned on (GRYT-1605). */
+  getPresenceHelper?(): Promise<PresenceHelperStatus>;
+  setPresenceHelper?(on: boolean): Promise<PresenceHelperStatus>;
 
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;

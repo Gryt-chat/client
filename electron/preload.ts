@@ -173,6 +173,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("rich-presence-set-hidden", apps);
   },
 
+  getPresenceHelper(): Promise<unknown> {
+    return ipcRenderer.invoke("presence-helper-get");
+  },
+
+  setPresenceHelper(on: boolean): Promise<unknown> {
+    return ipcRenderer.invoke("presence-helper-set", on);
+  },
+
   onRichPresenceChanged(callback: (card: unknown) => void) {
     const handler = (_event: unknown, card: unknown) => callback(card);
     ipcRenderer.on("rich-presence-changed", handler);

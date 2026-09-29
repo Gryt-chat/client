@@ -179,6 +179,7 @@ jobs:
       - run: yarn test:discord-ipc
       - run: yarn test:rich-presence
       - run: yarn test:presence-helper
+      - run: yarn test:helper-startup
       - run: yarn test:game-list
       # Sign-in leaves for the browser and comes back through gryt://. If the
       # AppImage moved, it cannot — and nothing else here would notice.

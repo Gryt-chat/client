@@ -93,6 +93,17 @@ import {
 } from "./globalStore";
 import { connectHelper } from "./helperChannel";
 import {
+  helperOffer,
+  isRegistered,
+  register as registerHelper,
+  runQuietly,
+  spawnDetachedHelper,
+  startNow as startHelperNow,
+  type StartupDeps,
+  syncAtLaunch as syncHelperStartup,
+  unregister as unregisterHelper,
+} from "./helperStartup";
+import {
   getDiscoveredLanServers,
   rescanLanServers,
   startLanDiscovery,
@@ -297,6 +308,84 @@ async function stopRichPresence(): Promise<void> {
   rpcHolder = null;
   rpcVia = null;
   mainWindow?.webContents.send("rich-presence-state", socketStatus());
+}
+
+/* ── gryt-helper at login (GRYT-1605) ─────────────────────────────── */
+
+function helperDeps(): StartupDeps {
+  return {
+    platform: process.platform,
+    env: process.env,
+    home: app.getPath("home"),
+    resourcesPath: process.resourcesPath,
+    isPackaged: app.isPackaged,
+    devRoot: join(__dirname, ".."),
+    mas: Boolean(process.mas),
+    run: runQuietly,
+    setLoginItem: (options) => app.setLoginItemSettings(options),
+    getLoginItem: (options) => app.getLoginItemSettings(options),
+    spawnDetached: spawnDetachedHelper,
+  };
+}
+
+function readHelperOptIn(): string | null {
+  const at = loadGlobalStore()["presenceHelper"];
+  return typeof at === "string" && at ? at : null;
+}
+
+let helperNeedsApproval = false;
+let helperError: string | null = null;
+
+async function helperRunning(): Promise<boolean> {
+  const link = await connectHelper({ onActivity: () => {}, onStatus: () => {}, onClose: () => {} });
+  link?.close();
+  return link !== null;
+}
+
+async function quitHelper(): Promise<void> {
+  const link = await connectHelper({ onActivity: () => {}, onStatus: () => {}, onClose: () => {} });
+  link?.quit();
+}
+
+async function presenceHelperStatus() {
+  const deps = helperDeps();
+  const offer = helperOffer(deps);
+  return {
+    offered: offer.offered,
+    enabledAt: readHelperOptIn(),
+    registered: offer.offered ? await isRegistered(deps).catch(() => false) : false,
+    needsApproval: helperNeedsApproval,
+    error: helperError,
+  };
+}
+
+async function turnHelperOn(): Promise<void> {
+  const deps = helperDeps();
+  const offer = helperOffer(deps);
+  if (!offer.offered || !readRichPresenceConsent()) return;
+  helperError = null;
+  try {
+    helperNeedsApproval = (await registerHelper(deps, offer.binary)) === "needs-approval";
+    setGlobalValue("presenceHelper", new Date().toISOString());
+    await startHelperNow(deps, offer.binary, helperRunning);
+  } catch (err) {
+    helperError = err instanceof Error ? err.message : String(err);
+    await unregisterHelper(deps).catch(() => {});
+    setGlobalValue("presenceHelper", null);
+  }
+}
+
+/** Removes the startup entry and stops the helper straight away. */
+async function turnHelperOff(): Promise<void> {
+  setGlobalValue("presenceHelper", null);
+  helperNeedsApproval = false;
+  helperError = null;
+  await unregisterHelper(helperDeps()).catch(() => {});
+  await quitHelper();
+}
+
+function syncHelperAtLaunch(): Promise<void> {
+  return syncHelperStartup(helperDeps(), Boolean(readHelperOptIn() && readRichPresenceConsent()), helperRunning);
 }
 
 type VoiceState = {
@@ -2727,6 +2816,7 @@ if (!gotSingleInstanceLock) {
     .whenReady()
     .then(async () => {
       startRichPresence();
+      void syncHelperAtLaunch();
 
       // macOS will not prompt for getUserMedia alone, so without this the renderer
       // gets NotAllowedError forever. Safe every launch; a decision sticks.
@@ -2913,8 +3003,18 @@ if (!gotSingleInstanceLock) {
         } else {
           setGlobalValue("richPresenceConsent", null);
           await stopRichPresence();
+          await turnHelperOff();
         }
         return readRichPresenceConsent();
+      });
+
+      ipcMain.handle("presence-helper-get", () => presenceHelperStatus());
+
+      /* The only place the helper gets registered. Install, first launch and updates never do. */
+      ipcMain.handle("presence-helper-set", async (_event, on: unknown) => {
+        if (on === true) await turnHelperOn();
+        else await turnHelperOff();
+        return presenceHelperStatus();
       });
 
       ipcMain.handle("rich-presence-set-hidden", (_event, apps: unknown) => {
