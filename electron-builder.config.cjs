@@ -27,6 +27,9 @@ const { prunePrebuilds } = require("./scripts/prune-prebuilds.cjs");
  */
 const SLIM = process.env.GRYT_VARIANT === "slim";
 
+/** Kept in step with HELPER_RESOURCE_PREFIX in scripts/variant.mjs. */
+const HELPER_RESOURCE_PREFIX = "build/helper/";
+
 /** Kept in step with EMBEDDED_RESOURCE_PREFIX in scripts/variant.mjs. */
 const EMBEDDED_RESOURCE_PREFIX = "build/embedded-";
 
@@ -75,8 +78,12 @@ if (MAS) {
   );
   if (!SLIM) config.extraResources.push(MAS_RUNTIME);
 
+  // The sandbox can't start anything at login, so the store build leaves the helper out.
+  config.extraResources = config.extraResources.filter((entry) => !String(entry.from).startsWith(HELPER_RESOURCE_PREFIX));
+
   config.mac = {
     ...config.mac,
+    extraFiles: [],
     // arm64 only: build/embedded-server holds one arch's SFU and sharp.
     target: [{ target: "mas", arch: ["arm64"] }],
     // Read off `mac`, not `mas`: electron-builder writes Info.plist from the mac options.

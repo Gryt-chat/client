@@ -95,6 +95,11 @@ extraResources:
     to: native/
     filter:
       - "**/*"
+  # gryt-helper (GRYT-1605), built for each arch by the beforeBuild hook.
+  - from: build/helper/${arch}/
+    to: helper/
+    filter:
+      - "**/*"
   # Kept as one archive so Squirrel.Mac stages one signed resource instead of
   # traversing roughly 14,000 server/worker dependency files. The client
   # extracts it into its private app-data runtime on first launch.
@@ -180,6 +185,10 @@ mac:
   # Windows and for anything the platform masks itself; the Dock masks nothing,
   # so it wants Apple's rounded rectangle with its margin. See generate-icons.
   icon: build/icon-macos.png
+  # Where SMAppService finds the agent that starts gryt-helper at login, once turned on.
+  extraFiles:
+    - from: build/chat.gryt.helper.plist
+      to: Library/LaunchAgents/chat.gryt.helper.plist
   # Both arches, from one arm64 runner. GitHub retired every Intel macOS image,
   # so x64 is cross-compiled -- which works because Electron ships prebuilt
   # binaries for both and uiohook-napi carries every prebuild in one package,
