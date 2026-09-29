@@ -44,6 +44,40 @@ export function setPluginApiActivitySetter(setter: ActivitySetter | null): void 
 let runningPrograms: string[] = [];
 const processListeners = new Set<string>();
 
+/* ── Media and activity, desktop only (GRYT-1637) ──────────────────────── */
+
+const mediaListeners = new Set<string>();
+let mediaTimer: ReturnType<typeof setInterval> | null = null;
+let lastMedia = "null";
+
+const desktop = () => (typeof window !== "undefined" ? window.electronAPI : undefined);
+
+/** Asked every fifteen seconds while an addon listens, and only then. */
+async function pollMedia(): Promise<void> {
+  const playing = (await desktop()?.getNowPlaying?.().catch(() => null)) ?? null;
+  const key = JSON.stringify(playing);
+  if (key === lastMedia) return;
+  lastMedia = key;
+  for (const addonId of mediaListeners) {
+    running.get(addonId)?.worker.postMessage({ kind: "event", event: "media", payload: playing } satisfies HostMessage);
+  }
+}
+
+function listenForMedia(addonId: string): void {
+  mediaListeners.add(addonId);
+  if (mediaTimer) return;
+  void pollMedia();
+  mediaTimer = setInterval(() => void pollMedia(), 15_000);
+}
+
+function stopMediaFor(addonId: string): void {
+  mediaListeners.delete(addonId);
+  if (mediaListeners.size || !mediaTimer) return;
+  clearInterval(mediaTimer);
+  mediaTimer = null;
+  lastMedia = "null";
+}
+
 /** Called by the app whenever the answer changes. */
 export function setPluginApiRunningPrograms(running: string[]): void {
   if (running.length === runningPrograms.length && running.every((n, i) => n === runningPrograms[i])) {
@@ -185,6 +219,25 @@ async function serve(
       return undefined;
     }
 
+    case "media.current": {
+      return (await desktop()?.getNowPlaying?.().catch(() => null)) ?? null;
+    }
+
+    case "media.subscribe": {
+      listenForMedia(addonId);
+      return undefined;
+    }
+
+    case "activity.set": {
+      await desktop()?.setAddonActivity?.(addonId, (args[0] ?? null) as never);
+      return undefined;
+    }
+
+    case "activity.clear": {
+      await desktop()?.setAddonActivity?.(addonId, null);
+      return undefined;
+    }
+
     default:
       /* Unreachable: `mayCall` refuses anything not in METHOD_CAPABILITY. Here so
          adding an entry and forgetting the branch is a refusal, not undefined. */
@@ -274,6 +327,9 @@ export function stopPlugin(addonId: string): void {
 
   for (const drop of entry.unsubscribes) drop();
   processListeners.delete(addonId);
+  stopMediaFor(addonId);
+  // An addon that's off shouldn't leave its card on your profile.
+  void desktop()?.setAddonActivity?.(addonId, null);
 
   /* Before the worker is asked to stop rather than after. A panel outliving its
      plugin is the failure people notice: off in Settings, still on screen. */

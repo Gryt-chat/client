@@ -171,6 +171,24 @@ export interface RichPresenceStatus extends RichPresenceSocketStatus {
   log?: RichPresenceLogEntry[];
 }
 
+/** What the OS media controls say is playing. */
+export interface NowPlaying {
+  key: string;
+  player: string;
+  title: string;
+  artist?: string;
+  album?: string;
+}
+
+/** The card an addon may put on your profile. */
+export interface AddonActivityCard {
+  type?: "playing" | "listening" | "watching" | "using";
+  name: string;
+  details?: string;
+  state?: string;
+  startedAt?: number;
+}
+
 export interface GameDetectionStatus {
   enabled: boolean;
   answers: { id: string; name: string | null; answer: "show" | "hide" }[];
@@ -239,6 +257,9 @@ export interface ElectronAPI {
   setRichPresenceHidden?(apps: RichPresenceApp[]): Promise<RichPresenceApp[]>;
   onRichPresenceChanged?(callback: (card: RichPresenceCard | null) => void): () => void;
   onRichPresenceState?(callback: (status: RichPresenceSocketStatus) => void): () => void;
+  /** For addons with `media` and `activity` (GRYT-1637). Desktop only. */
+  getNowPlaying?(): Promise<NowPlaying | null>;
+  setAddonActivity?(addonId: string, card: AddonActivityCard | null): Promise<void>;
   /** Known games spotted by their program, each asked about once (GRYT-1636). */
   getGameDetection?(): Promise<GameDetectionStatus>;
   setGameDetection?(allow: boolean): Promise<GameDetectionStatus>;

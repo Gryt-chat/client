@@ -142,6 +142,27 @@ const gryt = {
       return on("processes", handler as Handler);
     },
   },
+  media: {
+    /** What the media controls say is playing, or null. Needs `media`. Desktop only. */
+    current(): Promise<unknown> {
+      return call("media.current", []);
+    },
+    /** Hear when it changes, checked every fifteen seconds. Needs `media`. */
+    on(handler: (playing: unknown) => void): () => void {
+      void call("media.subscribe", []);
+      return on("media", handler as Handler);
+    },
+  },
+  activity: {
+    /** Put a card on your profile: `{ type: "listening", name, details, state, startedAt }`. Needs `activity`. */
+    set(card: { type?: string; name: string; details?: string; state?: string; startedAt?: number }): Promise<unknown> {
+      return call("activity.set", [card]);
+    },
+    /** Take the card down. Needs `activity`. */
+    clear(): Promise<unknown> {
+      return call("activity.clear", []);
+    },
+  },
   ui: {
     /**
      * Draw a panel beside the member list. Needs `display`. A title and rows of

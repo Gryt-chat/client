@@ -4,7 +4,7 @@
  */
 
 /** Everything a plugin can ask for. Adding one means adding it here first. */
-export const ADDON_CAPABILITIES = ["status", "messaging", "display", "processes"] as const;
+export const ADDON_CAPABILITIES = ["status", "messaging", "display", "processes", "media", "activity"] as const;
 
 export type AddonCapability = (typeof ADDON_CAPABILITIES)[number];
 
@@ -26,6 +26,9 @@ export const CAPABILITY_LABELS: Record<AddonCapability, string> = {
    * programs *you listed* are running, and nothing else you have open (GRYT-931).
    */
   processes: "See which of your listed programs are running",
+  /* The track, artist and player your media controls show, not anything else you have open (GRYT-1637). */
+  media: "See what your computer's media controls say is playing",
+  activity: "Put a card on your profile, like \"Listening to\", on every server you are on",
 };
 
 function isCapability(value: unknown): value is AddonCapability {

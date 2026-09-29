@@ -97,8 +97,11 @@ export interface DetectedApp {
   appId: string;
   since: number;
   name?: string | null;
-  /** "using" for an app like Figma. */
+  /** "using" for an app like Figma, "listening" for music. */
   type?: CardType;
+  /** For music: the track, and who it's by. */
+  details?: string;
+  state?: string;
 }
 
 export interface PresenceBoard {
@@ -147,7 +150,7 @@ export function createPresenceBoard(options: PresenceBoardOptions): PresenceBoar
     const found = detected.find((app) => !hidden.has(app.appId));
     if (!found) return null;
     const card = cardFromActivity(
-      { timestamps: { start: found.since } },
+      { timestamps: { start: found.since }, details: found.details, state: found.state },
       found.name ?? options.nameForApp(found.appId) ?? UNKNOWN_GAME,
       found.appId,
     );

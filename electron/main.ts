@@ -120,6 +120,7 @@ import {
   rescanLanServers,
   startLanDiscovery,
 } from "./lanDiscovery";
+import { readNowPlaying } from "./nowPlaying";
 import {
   createPendingUpdate,
   type DownloadOptions,
@@ -134,7 +135,7 @@ import {
   type ProcessWatcher,
   readWatchList,
 } from "./processWatcher";
-import { createPresenceBoard, type PresenceBoard } from "./richPresence";
+import { createPresenceBoard, type DetectedApp, type PresenceBoard } from "./richPresence";
 import {
   isNativeScreenCaptureAvailable,
   startNativeScreenCapture,
@@ -266,6 +267,48 @@ let programIndex: ProgramIndex = { byProgram: new Map(), known: new Map() };
 function detectedName(key: string): string | null {
   return programIndex.known.get(key)?.name ?? (key.startsWith("app:") ? null : nameForApp(key));
 }
+
+/* Games and apps from the detector, and cards addons set, go to the board together. */
+let detectedShown: DetectedApp[] = [];
+/** One card per addon that holds the `activity` permission (GRYT-1637). */
+const addonCards = new Map<string, DetectedApp>();
+
+/** The one board every card goes through. An addon's card needs it even with Rich Presence off. */
+function ensurePresenceBoard(): PresenceBoard {
+  if (presenceBoard) return presenceBoard;
+  const board = createPresenceBoard({
+    nameForApp,
+    onChange: (card) => mainWindow?.webContents.send("rich-presence-changed", card),
+  });
+  board.setHidden(readHiddenApps().map((app) => app.id));
+  presenceBoard = board;
+  return board;
+}
+
+function pushDetected(): void {
+  const cards = [...detectedShown, ...addonCards.values()];
+  (cards.length ? ensurePresenceBoard() : presenceBoard)?.setDetected(cards);
+}
+
+const ADDON_CARD_TYPES = new Set(["playing", "listening", "watching", "using"]);
+const cardLine = (value: unknown, max: number) =>
+  typeof value === "string" ? [...value].map((c) => (c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 ? " " : c)).join("").trim().slice(0, max) || undefined : undefined;
+
+/** An addon's card, off the renderer and so not trusted: bad fields are dropped, a bad card is none. */
+function readAddonCard(addonId: string, raw: unknown): DetectedApp | null {
+  const r = raw as Record<string, unknown> | null;
+  const name = cardLine(r?.name, 64);
+  if (!r || !name) return null;
+  const since = typeof r.startedAt === "number" && Number.isFinite(r.startedAt) ? r.startedAt : Date.now();
+  return {
+    appId: `addon:${addonId.replace(/[^a-z0-9._-]/gi, "").slice(0, 40)}`,
+    since,
+    name,
+    type: ADDON_CARD_TYPES.has(r.type as string) ? (r.type as DetectedApp["type"]) : "playing",
+    details: cardLine(r.details, 128),
+    state: cardLine(r.state, 128),
+  };
+}
 /** Asked about and not answered yet. Kept until answered, even after the game closes. */
 const pendingAsks = new Set<string>();
 
@@ -310,14 +353,14 @@ function startGameDetection(): void {
       pendingAsks.add(appId);
       mainWindow?.webContents.send("game-detect-changed", detectStatus());
     },
-    onChange: (shown) =>
-      presenceBoard?.setDetected(
-        shown.map((app) => ({
-          ...app,
-          name: detectedName(app.appId),
-          type: programIndex.known.get(app.appId)?.kind === "app" ? "using" : undefined,
-        })),
-      ),
+    onChange: (shown) => {
+      detectedShown = shown.map((app) => ({
+        ...app,
+        name: detectedName(app.appId),
+        type: programIndex.known.get(app.appId)?.kind === "app" ? "using" : undefined,
+      }));
+      pushDetected();
+    },
   });
   gameDetector.start();
 }
@@ -325,7 +368,8 @@ function startGameDetection(): void {
 function stopGameDetection(): void {
   gameDetector?.stop();
   gameDetector = null;
-  presenceBoard?.setDetected([]);
+  detectedShown = [];
+  pushDetected();
 }
 let rpcState: RpcHostState = "off";
 let rpcHolder: Holder | null = null;
@@ -371,12 +415,7 @@ function startRichPresence(): void {
   void maybeRefreshDetectableList({ userDataDir: app.getPath("userData") })
     .then((index) => { downloadedDetectableIndex = index; })
     .catch((err: unknown) => console.error("rich presence: game list refresh failed", err));
-  const board = createPresenceBoard({
-    nameForApp,
-    onChange: (card) => mainWindow?.webContents.send("rich-presence-changed", card),
-  });
-  board.setHidden(readHiddenApps().map((app) => app.id));
-  presenceBoard = board;
+  const board = ensurePresenceBoard();
   // gryt-helper when it runs, since it got to the socket at login; the in-app socket otherwise.
   presenceSource = createPresenceSource({
     onActivity: (event) => board.update(event),
@@ -406,6 +445,8 @@ async function stopRichPresence(): Promise<void> {
   presenceBoard?.reset();
   presenceBoard?.stop();
   presenceBoard = null;
+  // An addon's card outlives Rich Presence being turned off.
+  if (addonCards.size) pushDetected();
   rpcState = "off";
   rpcHolder = null;
   rpcVia = null;
@@ -3119,6 +3160,21 @@ if (!gotSingleInstanceLock) {
         if (on === true) await turnHelperOn();
         else await turnHelperOff();
         return presenceHelperStatus();
+      });
+
+      /* Addons with `media`: what the OS media controls say is playing, or null. */
+      ipcMain.handle("now-playing-get", async () => {
+        const running = process.platform === "darwin" ? await listRunningExecutables() : [];
+        return readNowPlaying(running).catch(() => null);
+      });
+
+      /* Addons with `activity`: their card, or null to take it down. */
+      ipcMain.handle("addon-activity-set", (_event, addonId: unknown, card: unknown) => {
+        if (typeof addonId !== "string" || !addonId) return;
+        const next = card === null ? null : readAddonCard(addonId, card);
+        if (next) addonCards.set(addonId, next);
+        else addonCards.delete(addonId);
+        pushDetected();
       });
 
       ipcMain.handle("game-detect-get", () => detectStatus());

@@ -25,7 +25,7 @@ export function GameDetectPrompt() {
               Show {name} on your card?
             </span>
             <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.5 }}>
-              Gryt spotted it running. People on your servers see its name while you play.
+              Gryt spotted it. People on your servers see it on your card while it&rsquo;s on.
             </span>
             <div className="flex gap-2 justify-end">
               <Button tone="ghost" size="xsmall" onClick={() => void answer(game.id, "hide")}>

@@ -181,6 +181,7 @@ jobs:
       - run: yarn test:discord-ipc
       - run: yarn test:rich-presence
       - run: yarn test:game-detect
+      - run: yarn test:now-playing
       - run: yarn test:presence-helper
       - run: yarn test:helper-startup
       - run: yarn test:game-list

@@ -52,6 +52,10 @@ export const METHOD_CAPABILITY: Record<string, string> = {
   "ui.clear": "display",
   "processes.running": "processes",
   "processes.subscribe": "processes",
+  "media.current": "media",
+  "media.subscribe": "media",
+  "activity.set": "activity",
+  "activity.clear": "activity",
 };
 
 export type CallVerdict =
