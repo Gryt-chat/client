@@ -9,6 +9,7 @@ import { useServerManagement, useSockets } from "@/socket";
 
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "../../../../lib/icons";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
+import { RichPresenceSettings } from "./richPresence";
 import { SettingsContainer } from "./settingsComponents";
 import { WatchedPrograms } from "./watchedPrograms";
 
@@ -751,6 +752,7 @@ export function ProfileSettings() {
 
       <ActivityField />
       <WatchedPrograms />
+      <RichPresenceSettings />
 
       {serverHosts.length > 0 && (
         <div className="flex justify-center" style={{ paddingTop: 4, paddingBottom: 4 }}>

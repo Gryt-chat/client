@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
 import { singletonHook } from "@/common";
 import {
@@ -9,11 +10,16 @@ import {
   useUserId,
 } from "@/common";
 
-import { getElectronAPI, isElectron } from "../../../../lib/electron";
+import { getElectronAPI, isElectron, type RichPresenceSocketStatus } from "../../../../lib/electron";
+import type { RichActivity } from "../../../../lib/richActivity";
+import { heldNotice } from "../components/richPresenceCopy";
 import type { VoiceTileLayout, VoiceTwoPersonLayout } from "./settingsStorage";
 import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCodec } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
 import { getUserValue, loadForUser, setUserValue } from "./userStorage";
+
+/** Which turn-on the "Discord got there first" notice was last shown for. */
+const HELD_NOTICE_KEY = "gryt:rich-presence-held-notice";
 
 /**
  * Per device, which is also what it means. `setUserValue` returns without
@@ -66,6 +72,8 @@ function useSettingsHook() {
   /* Pushed from the main process, the only side that can look. Empty until
      somebody lists something: the watcher does not poll for nothing. */
   const [playingNow, setPlayingNow] = useState<string[]>([]);
+  /* What a game said over the Rich Presence socket, once the main process let it through. */
+  const [gameCard, setGameCard] = useState<RichActivity | null>(null);
   const [showPeerLatency, setShowPeerLatency] = useState(true);
   /* Off, and the default is the decision: a toggle that starts on is not consent,
      it is something somebody has to find out about and turn off. */
@@ -250,6 +258,47 @@ function useSettingsHook() {
     return () => {
       cancelled = true;
       drop();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isElectron()) return;
+    const api = getElectronAPI();
+    if (!api?.onRichPresenceChanged) return;
+
+    let cancelled = false;
+    let consentedAt: string | null = null;
+    /* Once per time it's turned on, so it's news rather than a nag. Settings keeps saying it. */
+    const noticeIfHeld = (status: RichPresenceSocketStatus) => {
+      if (status.state !== "yielded" || !status.holder?.isDiscord || !consentedAt) return;
+      try {
+        if (localStorage.getItem(HELD_NOTICE_KEY) === consentedAt) return;
+        localStorage.setItem(HELD_NOTICE_KEY, consentedAt);
+      } catch {
+        return;
+      }
+      toast(heldNotice(status.holder.name), { duration: 12_000, id: "rich-presence-held" });
+    };
+    void api.getRichPresence?.().then((status) => {
+      if (cancelled) return;
+      setGameCard(status.current);
+      consentedAt = status.consentedAt;
+      noticeIfHeld(status);
+    });
+    const drop = api.onRichPresenceChanged((card) => {
+      if (!cancelled) setGameCard(card);
+    });
+    const dropState = api.onRichPresenceState?.((status) => {
+      if (cancelled) return;
+      void api.getRichPresence?.().then((full) => {
+        consentedAt = full.consentedAt;
+        noticeIfHeld(status);
+      });
+    });
+    return () => {
+      cancelled = true;
+      drop();
+      dropState?.();
     };
   }, []);
 
@@ -522,7 +571,8 @@ function useSettingsHook() {
     setActivity: updateActivity,
     /* A game wins while running and hands the line back when it stops. Only the
        first: a member list row is one line. */
-    effectiveActivity: playingNow[0] ?? activity,
+    effectiveActivity: gameCard?.name ?? playingNow[0] ?? activity,
+    gameCard,
     playingNow,
     avatarDataUrl,
     setAvatarDataUrl: updateAvatarDataUrl,

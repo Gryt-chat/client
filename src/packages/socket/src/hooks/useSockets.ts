@@ -58,6 +58,8 @@ function useSocketsHook() {
     /* `activity` is the typed line the settings field edits; this is the one
        servers are told. */
     effectiveActivity: activity,
+    /* Beside the line while a game's card is what the line comes from. */
+    gameCard,
     connectSoundEnabled,
     disconnectSoundEnabled,
     connectSoundVolume,
@@ -151,7 +153,7 @@ function useSocketsHook() {
 
   /* The server keeps the status on the connection, so every reconnect starts
      with nothing and this is what puts it back. */
-  const activityRef = useRef(activity);
+  const activityRef = useRef({ activity, rich: gameCard ?? undefined });
 
   useEffect(() => {
     voiceSelfStateRef.current = { isMuted, isDeafened, isAFK };
@@ -168,11 +170,12 @@ function useSocketsHook() {
   /* Every server, since it is one line about you rather than per room. A refusal
      surfaces in settings, so this loop does not have to know. */
   useEffect(() => {
-    activityRef.current = activity;
+    const presence = { activity, rich: gameCard ?? undefined };
+    activityRef.current = presence;
     Object.keys(sockets).forEach((host) => {
-      sockets[host]?.emit("presence:activity", { activity });
+      sockets[host]?.emit("presence:activity", presence);
     });
-  }, [activity, sockets]);
+  }, [activity, gameCard, sockets]);
 
   /* Here because this is where the sockets and tokens are. A server running no
      plugin with this id drops it, so every server is the right default. */
@@ -381,8 +384,8 @@ function useSocketsHook() {
            Here rather than on `connect`: this event says the stash was applied. */
         socket.on("voice:state:restored", () => {
           socket.emit("voice:state:update", voiceSelfStateRef.current);
-          if (activityRef.current) {
-            socket.emit("presence:activity", { activity: activityRef.current });
+          if (activityRef.current.activity) {
+            socket.emit("presence:activity", activityRef.current);
           }
         });
 
@@ -403,8 +406,8 @@ function useSocketsHook() {
             socket.emit("voice:state:update", voiceSelfStateRef.current);
             /* The status lives on the connection, so a reconnect is blank until
                this. Only when there is one, or it is a round trip for nothing. */
-            if (activityRef.current) {
-              socket.emit("presence:activity", { activity: activityRef.current });
+            if (activityRef.current.activity) {
+              socket.emit("presence:activity", activityRef.current);
             }
             window.dispatchEvent(new CustomEvent("server_socket_reconnected", {
               detail: { host },

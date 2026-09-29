@@ -1,3 +1,4 @@
+import type { RichActivity } from "../../../../lib/richActivity";
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
 /**
@@ -73,6 +74,8 @@ export interface Settings {
    * watched program takes precedence; `activity` stays what you wrote (GRYT-931).
    */
   effectiveActivity: string;
+  /** A game's Rich Presence card, sent beside `effectiveActivity` while it is the one shown. */
+  gameCard: RichActivity | null;
   /** The watched programs running now. Empty in the browser, and usually. */
   playingNow: string[];
 
@@ -292,6 +295,7 @@ export const settingsInit: Settings = {
   activity: "",
   setActivity: noop,
   effectiveActivity: "",
+  gameCard: null,
   playingNow: [],
   avatarDataUrl: null,
   setAvatarDataUrl: noop,

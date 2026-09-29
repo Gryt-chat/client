@@ -1,6 +1,7 @@
 import { AddonManifest, AddonUpdate } from "@/addons";
 
 import type { HotkeyAction, HotkeyBindings } from "./hotkeys";
+import type { RichActivity } from "./richActivity";
 import type { ScreenAudioProblem } from "./screenShareAudio";
 
 /** One thing a screen share is taking audio from. */
@@ -132,6 +133,29 @@ export interface EmbeddedServerInfo {
   bundled?: { server?: string; sfu?: string; worker?: string };
 }
 
+/** An app that has talked to the Rich Presence socket. Named when it is in the games list. */
+export interface RichPresenceApp {
+  id: string;
+  name: string | null;
+}
+
+export type RichPresenceCard = RichActivity;
+
+/** Off, holding the socket, or leaving it to whatever got there first. */
+export interface RichPresenceSocketStatus {
+  state: "off" | "holding" | "yielded";
+  /** Who has the socket while Gryt yields it, when that could be found out. */
+  holder: { name: string; isDiscord: boolean } | null;
+}
+
+export interface RichPresenceStatus extends RichPresenceSocketStatus {
+  supported: boolean;
+  consentedAt: string | null;
+  hidden: RichPresenceApp[];
+  seen: RichPresenceApp[];
+  current: RichPresenceCard | null;
+}
+
 /** One entry in the watch list: an executable, and what to call it. */
 export interface WatchedProgram {
   match: string;
@@ -181,6 +205,12 @@ export interface ElectronAPI {
   setWatchedPrograms?(programs: WatchedProgram[]): Promise<WatchedProgram[]>;
   getRunningWatched?(): Promise<string[]>;
   onWatchedProgramsChanged?(callback: (running: string[]) => void): () => void;
+  /** Games reporting through the Discord Rich Presence socket (GRYT-1310). Desktop only. */
+  getRichPresence?(): Promise<RichPresenceStatus>;
+  setRichPresenceConsent?(allow: boolean): Promise<string | null>;
+  setRichPresenceHidden?(apps: RichPresenceApp[]): Promise<RichPresenceApp[]>;
+  onRichPresenceChanged?(callback: (card: RichPresenceCard | null) => void): () => void;
+  onRichPresenceState?(callback: (status: RichPresenceSocketStatus) => void): () => void;
 
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;
