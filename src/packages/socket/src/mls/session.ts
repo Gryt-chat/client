@@ -2,12 +2,15 @@ import {
   createMlsDmDriver,
   type DmSealingMode,
   encodeMlsDmContent,
+  type MlsAddOwnDeviceOptions,
   type MlsDecryptedMessage,
   type MlsDeviceRecord,
   type MlsDmContent,
   type MlsDmDriver,
+  type MlsGroupPosition,
   type MlsLogEntry,
   type MlsOwnDevice,
+  type MlsOwnDeviceAdd,
   mlsPinsFromPeerPins,
   type MlsServerCapability,
   type MlsStateStore,
@@ -16,7 +19,7 @@ import {
 } from "@gryt/core";
 import { generateMlsKeyPackage, type PeerPinStore } from "@gryt/crypto";
 
-import type { MessageArchive } from "@/common";
+import type { ArchivedMessage, MessageArchive } from "@/common";
 
 import { applyMlsContent } from "./applyContent.ts";
 import type { SeenOnMls } from "./seenOnMls.ts";
@@ -46,6 +49,13 @@ const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
 /** Hand the UI a turn every few messages, so a long catch-up doesn't freeze it. */
 const YIELD_EVERY = 8;
 
+export interface ArchivedMlsMessage {
+  conversationId: string;
+  seq: number;
+  epoch: number;
+  record: ArchivedMessage;
+}
+
 export interface MlsSessionOptions {
   socket: SessionSocket;
   /** What the archive and the state store are keyed by: `identityScopeFor`. */
@@ -65,6 +75,11 @@ export interface MlsSessionOptions {
   onDelivered?: (message: { conversationId: string; senderId: string; content: MlsDmContent }) => void;
   /** The server removed this device here. The driver has stopped; the caller wipes and gates. */
   onDeviceRemoved?: () => void;
+  /** Who wants each MLS write to the archive right now: a running pairing's history tail. A
+      send's epoch isn't known here, so it comes as -1. */
+  archiveListener?: () => ((message: ArchivedMlsMessage) => void) | null;
+  /** Your own device list on this server may have changed. */
+  onOwnDevicesChanged?: () => void;
 }
 
 export interface MlsSession {
@@ -86,6 +101,10 @@ export interface MlsSession {
   removeOwnDevice(deviceId: string): Promise<void>;
   /** This device's MLS device id here, once it has one. */
   ownDeviceId(): Promise<string | null>;
+  /** A device of yours that was just linked, into every DM here now rather than on the next send. */
+  addOwnDevice(deviceId: string, options?: MlsAddOwnDeviceOptions): Promise<MlsOwnDeviceAdd[]>;
+  /** Where each group's log stands now, which is what a pairing's history snapshot covers. */
+  groupPositions(): Promise<MlsGroupPosition[]>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
   onChange(listener: (conversationId: string | null) => void): () => void;
   /** Stops taking work. Resolves once what was running is done, so the next session can't overlap it. */
@@ -182,10 +201,18 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       return;
     }
     await apply(m.conversationId, m.senderServerUserId, m.senderDeviceId, content, Date.parse(m.createdAt) || Date.now());
+    await archived(m.conversationId, content.id, m.seq, m.epoch);
     if (pushed.delete(`${m.conversationId}:${m.seq}`) && content.type === "message" && m.senderServerUserId !== self) {
       options.onDelivered?.({ conversationId: m.conversationId, senderId: m.senderServerUserId, content });
     }
     if (++handled % YIELD_EVERY === 0) await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  async function archived(conversationId: string, messageId: string, seq: number, epoch: number) {
+    const listener = options.archiveListener?.();
+    if (!listener) return;
+    const record = await messages.get(storeScope, conversationId, messageId);
+    if (record) listener({ conversationId, seq, epoch, record });
   }
 
   const apply = (conversationId: string, senderId: string, senderDeviceId: string | undefined, content: MlsDmContent, at: number) =>
@@ -259,6 +286,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     safely("A device change", async () => {
       await driver.handleDevicesChanged(push);
       changed(null);
+      if (push?.serverUserId === self) options.onOwnDevicesChanged?.();
     });
   const onOpened = (conversation: { conversation_id: string; members: { server_user_id: string }[] }) => {
     if (!conversation?.conversation_id) return;
@@ -289,13 +317,15 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
         // Only a new message leaves a line for apps from before MLS (GRYT-1517).
         placeholders.set(conversationId, content.type === "message");
         const attachmentIds = content.type === "message" ? Object.keys(content.attachments ?? {}) : [];
+        let seq: number;
         try {
-          await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds });
+          ({ seq } = await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds }));
         } finally {
           placeholders.delete(conversationId);
         }
         // Our own sends never come back to this device, so this is the only copy here.
         await apply(conversationId, self, undefined, content, Date.now());
+        await archived(conversationId, content.id, seq, -1);
       });
       sending.set(conversationId, job);
       return track(job);
@@ -316,6 +346,15 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       return track(driver.removeOwnDevice(deviceId).then(() => changed(null)));
     },
     ownDeviceId: async () => (await store.loadDevice())?.deviceId ?? null,
+    addOwnDevice(deviceId, options) {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      // Most recently active first, so the conversations somebody opens next are ready soonest.
+      return track(driver.addOwnDevice(deviceId, { order: recency, ...options }));
+    },
+    groupPositions() {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      return track(driver.groupPositions());
+    },
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

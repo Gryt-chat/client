@@ -710,6 +710,31 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
   };
 }
 
+/**
+ * What linking a device hands over (GRYT-1484): the seed, made if there isn't one, and the
+ * stored local keys it can't derive. Only ever sealed to a device that passed the emoji.
+ */
+export async function readIdentityForLinking(): Promise<{ seed: Uint8Array; keys: IdentityBackupEntry[] }> {
+  const db = await openDB();
+  try {
+    const seed = await getOrCreateSeed(db);
+    const keys: IdentityBackupEntry[] = [];
+    for (const scope of await listLocalIdentityScopes(db)) {
+      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
+      if (!pair?.privateKey || !pair?.publicKey) continue;
+      keys.push({
+        scope,
+        ...(pair.host ? { host: pair.host } : {}),
+        privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
+        publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
+      });
+    }
+    return { seed, keys };
+  } finally {
+    db.close();
+  }
+}
+
 type AnyIdentityBackup = IdentityBackup | IdentityBackupV1;
 
 function isBackup(value: unknown): value is AnyIdentityBackup {

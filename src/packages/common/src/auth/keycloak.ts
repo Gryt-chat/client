@@ -476,6 +476,28 @@ export async function adoptLinkedSession(tokens: {
   if (!authenticated) throw new Error("Signing in with the linked session didn't work.");
 }
 
+/**
+ * An access token refreshed just now, for approving a linked device's sign-in (GRYT-1484).
+ * The Keycloak extension refuses one older than 60 seconds.
+ */
+export async function freshAccessToken(): Promise<string> {
+  // A browser signed in by linking keeps its own tokens too, so the refresh gets stored.
+  if (keepsOwnTokens()) {
+    const stored = await getStoredTokens();
+    if (!stored) throw new SessionExpiredError();
+    return (await refreshTokens(stored.refresh_token)).access_token;
+  }
+  const { keycloak, authenticated } = await initKeycloak();
+  if (!authenticated) throw new SessionExpiredError();
+  try {
+    await keycloak.updateToken(-1);
+  } catch {
+    throw new SessionExpiredError();
+  }
+  if (!keycloak.token) throw new SessionExpiredError();
+  return keycloak.token;
+}
+
 export async function fetchRegistrationAllowed(): Promise<boolean> {
   const cfg = getGrytConfig();
   try {

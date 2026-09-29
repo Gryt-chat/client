@@ -53,6 +53,8 @@
     "test:guest-history": "node scripts/check-guest-history.mjs",
     "test:identity-claim": "node scripts/check-identity-claim.mjs",
     "test:pairing-new-device": "node --disable-warning=ExperimentalWarning scripts/check-pairing-new-device.mjs",
+    "test:linked-devices": "node --disable-warning=ExperimentalWarning scripts/check-linked-devices.mjs",
+    "test:pairing-approver": "node --disable-warning=ExperimentalWarning scripts/check-pairing-approver.mjs",
     "test:whats-new": "node --disable-warning=ExperimentalWarning scripts/check-whats-new.mjs",
     "test:whats-new-since": "node scripts/check-whats-new-since.mjs",
     "test:whats-new-reachable": "node scripts/check-whats-new-reachable.mjs",
