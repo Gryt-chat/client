@@ -19,6 +19,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc -b && vite build",
+    "helper:build": "node scripts/build-helper.mjs",
     "typecheck": "tsc -b",
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test:updater-bridge": "node scripts/check-updater-bridge.mjs",

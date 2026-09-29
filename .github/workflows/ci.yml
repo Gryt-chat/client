@@ -259,6 +259,27 @@ jobs:
             Write-Host "$exe $((Get-Item $path).Length) bytes"
           }
 
+  # The Rich Presence helper talks to sockets and pipes that differ on every OS, so it runs on all three.
+  helper:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: helper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: helper/go.sum
+      - run: test -z "$(gofmt -l .)"
+        shell: bash
+      - run: go vet ./...
+      - run: go test -count=1 ./...
+
   # Whether a pull request can change what the web client does. A skipped job still
   # reports, so a required check doesn't wait on it. Pushes to main always run.
   changes:
