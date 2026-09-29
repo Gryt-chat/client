@@ -3,9 +3,10 @@
  * so the card and the main bundle only ever carry the icons somebody picked.
  */
 
+import type { CardIconModule } from "@gryt/ui";
 import type { ReactElement, ReactNode } from "react";
 
-import type { PatternMark } from "../../lib/memberCard/patternSvg";
+type PatternMark = NonNullable<Awaited<ReturnType<CardIconModule["loadIconMark"]>>>;
 
 const DEFS = import.meta.glob<{ default: Map<string, ReactElement> }>("/node_modules/@phosphor-icons/react/dist/defs/*.es.js");
 

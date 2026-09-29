@@ -45,6 +45,7 @@
  * nothing failed. components.css is the same rules with no utilities layer
  * attached. */
 @import "@gryt/ui/components.css";
+@import "@gryt/ui/member-card.css";
 
 @font-face {
   font-family: "Atkinson Hyperlegible Next";
