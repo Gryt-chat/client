@@ -38,6 +38,7 @@ import { SettingGroup, SettingsContainer } from "./settingsComponents";
 const SAMPLE_GAME: RichActivity = {
   type: "playing",
   name: "Minecraft",
+  appId: "1402418491272986635",
   details: "Harbourtown SMP",
   state: "Survival",
   party: { size: 2, max: 8 },
@@ -185,6 +186,7 @@ export function CardSettings() {
         owlHex={owlHex}
         bannerUrl={bannerUrl}
         game={playing ? gameCard ?? SAMPLE_GAME : null}
+        gameArtUrl={playing && (gameCard ?? SAMPLE_GAME).appId && connected[0] ? `${getServerHttpBase(connected[0])}/api/game-art/${(gameCard ?? SAMPLE_GAME).appId}` : null}
         appearance={appearance}
         seedKey={seedKey}
         worn={worn}
