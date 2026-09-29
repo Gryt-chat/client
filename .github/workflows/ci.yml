@@ -328,13 +328,22 @@ jobs:
           echo "web=$web" >> "$GITHUB_OUTPUT"
 
   # The client in a real browser against a real server. e2e/README.md has the how and the rules.
-  e2e:
+  # Split across runners by --shard: 26 spec files at ~2m10s warm took one runner 13-14
+  # minutes end to end, almost all of it in the test step itself (setup is under a minute).
+  # Four shards land the wall clock near 5 minutes. Each shard starts its own server
+  # containers (the `gryt` fixture is worker-scoped), so shards share no state.
+  e2e-shard:
     needs: changes
     if: needs.changes.outputs.web == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      GRYT_E2E_SHARD: ${{ matrix.shard }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -354,12 +363,48 @@ jobs:
       - run: docker pull --quiet ghcr.io/gryt-chat/server:latest
       - run: yarn tsc -p e2e
       - run: yarn vite build
-      - run: yarn playwright test --config e2e/playwright.config.ts
+      - run: yarn playwright test --config e2e/playwright.config.ts --shard=${{ matrix.shard }}/4
+      - if: '!cancelled()'
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: e2e/blob-report
+          retention-days: 3
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-report
+          name: e2e-results-${{ matrix.shard }}
           path: |
             e2e/playwright-report
             e2e/test-results
           retention-days: 14
+
+  # The required check the branch ruleset names. Waits on every shard, merges their blob
+  # reports into one HTML report, and fails if any shard did. Keep the name "e2e" — this is
+  # the check merges wait on, and renaming it would need a matching ruleset change.
+  e2e:
+    needs: [changes, e2e-shard]
+    if: always() && needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: e2e/all-blob-reports
+          merge-multiple: true
+      - run: yarn playwright merge-reports --reporter=html e2e/all-blob-reports
+        env:
+          PLAYWRIGHT_HTML_REPORT: e2e/playwright-report
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: e2e/playwright-report
+          retention-days: 14
+      - if: needs.e2e-shard.result != 'success'
+        run: exit 1

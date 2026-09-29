@@ -1,10 +1,11 @@
 # End-to-end tests
 
 These run the web client in headless Chromium against a real Gryt server. Each worker
-gets its own server, started from the published Docker image. CI runs them as the `e2e`
-job in `.github/workflows/ci.yml` on pull requests that can change the web client. A pull
-request that only touches `docs/`, Markdown, `electron/`, `build/`, `appimagehub/`, the
-electron-builder config or `scripts/check-*.mjs` skips the job.
+gets its own server, started from the published Docker image. CI splits the suite across
+four `e2e-shard` runners (`--shard`) in `.github/workflows/ci.yml`, on pull requests that can
+change the web client; `e2e` waits on all four, merges their reports and is the check that's
+actually required. A pull request that only touches `docs/`, Markdown, `electron/`,
+`build/`, `appimagehub/`, the electron-builder config or `scripts/check-*.mjs` skips both.
 
 ## Running them
 
@@ -36,7 +37,7 @@ log. Open the report with:
 yarn playwright show-report e2e/playwright-report
 ```
 
-CI uploads both folders as the `e2e-report` artifact when the job fails.
+CI uploads both folders per shard as `e2e-results-<shard>` when a shard fails, and the `e2e` job always merges every shard's blob report into one `e2e-report` HTML artifact.
 
 ### Against a server you started
 

@@ -12,8 +12,10 @@ export default defineConfig({
   workers: process.env.GRYT_E2E_SERVER ? 1 : CI ? 2 : 3,
   timeout: 60_000,
   expect: { timeout: 15_000 },
+  // CI shards the suite across several runners (see ci.yml); each writes its own blob file,
+  // which the e2e gate job downloads from every shard and merges into one HTML report.
   reporter: CI
-    ? [["list"], ["github"], ["html", { outputFolder: "playwright-report", open: "never" }]]
+    ? [["list"], ["github"], ["blob", { outputFile: `blob-report/report-${process.env.GRYT_E2E_SHARD ?? "0"}.zip` }]]
     : [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     ...devices["Desktop Chrome"],
