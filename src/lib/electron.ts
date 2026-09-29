@@ -146,6 +146,8 @@ export interface RichPresenceSocketStatus {
   state: "off" | "holding" | "yielded";
   /** Who has the socket while Gryt yields it, when that could be found out. */
   holder: { name: string; isDiscord: boolean } | null;
+  /** True while gryt-helper holds the socket for the app, rather than the app itself. */
+  helper?: boolean;
 }
 
 export interface RichPresenceStatus extends RichPresenceSocketStatus {

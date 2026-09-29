@@ -160,9 +160,11 @@ const main = readFileSync(new URL("../electron/main.ts", import.meta.url), "utf8
 
 await check("nothing opens the socket before somebody turns it on", () => {
   const start = main.match(/function startRichPresence\(\): void \{[\s\S]*?\n\}/)?.[0] ?? "";
-  assert.match(start, /if \(!canHostRichPresence \|\| rpcHost \|\| !readRichPresenceConsent\(\)\) return;/);
+  assert.match(start, /if \(!canHostRichPresence \|\| presenceSource \|\| !readRichPresenceConsent\(\)\) return;/);
   const setConsent = main.match(/ipcMain\.handle\("rich-presence-set-consent"[\s\S]*?\n {6}\}\);/)?.[0] ?? "";
   assert.match(setConsent, /await stopRichPresence\(\)/, "turning it off doesn't let go of the socket");
+  const stop = main.match(/async function stopRichPresence\(\): Promise<void> \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.match(stop, /await source\?\.stopAll\(\)/, "turning it off leaves gryt-helper holding the socket");
 });
 
 await check("when Discord has the connection, settings says it's Discord and how to fix it", () => {
@@ -177,6 +179,7 @@ await check("another holder is named as itself, and an unknown one isn't called 
   assert.match(socketLine({ state: "yielded", holder: { name: "SomeLauncher", isDiscord: false } }).text, /^SomeLauncher is holding/);
   assert.doesNotMatch(socketLine({ state: "yielded", holder: null }).text, /Discord/);
   assert.equal(socketLine({ state: "holding", holder: null }).warn, false);
+  assert.match(socketLine({ state: "holding", holder: null, helper: true }).text, /^The Gryt helper has the game connection\./);
 });
 
 console.log(failures === 0 ? "\nrich presence: ok" : `\nrich presence: ${failures} failed.`);

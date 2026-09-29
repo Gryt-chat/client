@@ -59,7 +59,7 @@ import {
   stopNativeAudioCapture,
   supportsPerApplicationAudio,
 } from "./audioCaptureManager";
-import { createRpcHost, type Holder, type RpcHost, type RpcHostState } from "./discordIpc";
+import { createRpcHost, findHolder, type Holder, ipcDir, ipcPath, type RpcHostState } from "./discordIpc";
 import {
   autoStartIfNeeded,
   cleanupOnQuit,
@@ -101,6 +101,7 @@ import {
   type DownloadOptions,
   type UpdateCheck,
 } from "./pendingUpdate";
+import { createPresenceSource, type PresenceSource, type PresenceVia } from "./presenceHelper";
 import {
   canListProcesses,
   createProcessWatcher,
@@ -217,16 +218,18 @@ function processScanAllowed(): boolean {
 /** A sandboxed Mac App Store build has its own temp folder, where no game would look. */
 const canHostRichPresence = !process.mas;
 const gameIndex = createGameIndex(readGameList(bundledGames));
-let rpcHost: RpcHost | null = null;
+let presenceSource: PresenceSource | null = null;
 let presenceBoard: PresenceBoard | null = null;
 let rpcState: RpcHostState = "off";
 let rpcHolder: Holder | null = null;
+let rpcVia: PresenceVia | null = null;
 
 /** What settings shows about the socket. The pid stays in the main process. */
 function socketStatus() {
   return {
     state: rpcState,
     holder: rpcHolder ? { name: rpcHolder.name, isDiscord: rpcHolder.isDiscord } : null,
+    helper: rpcVia === "helper",
   };
 }
 
@@ -256,34 +259,41 @@ function readHiddenApps(value: unknown = loadGlobalStore()["richPresenceHidden"]
 
 /** As early as the app can, since whichever of Gryt and Discord binds first gets the games. */
 function startRichPresence(): void {
-  if (!canHostRichPresence || rpcHost || !readRichPresenceConsent()) return;
+  if (!canHostRichPresence || presenceSource || !readRichPresenceConsent()) return;
   const board = createPresenceBoard({
     nameForApp: gameIndex.nameForApp,
     onChange: (card) => mainWindow?.webContents.send("rich-presence-changed", card),
   });
   board.setHidden(readHiddenApps().map((app) => app.id));
   presenceBoard = board;
-  rpcHost = createRpcHost({
+  // gryt-helper when it runs, since it got to the socket at login; the in-app socket otherwise.
+  presenceSource = createPresenceSource({
     onActivity: (event) => board.update(event),
-    onState: (state, holder) => {
+    onReset: () => board.reset(),
+    onState: (state, holder, via) => {
       rpcState = state;
       rpcHolder = holder;
+      rpcVia = via;
       if (state !== "holding") board.reset();
       mainWindow?.webContents.send("rich-presence-state", socketStatus());
     },
+    createHost: createRpcHost,
+    findHolder: () => findHolder(ipcPath(0, ipcDir())),
   });
-  void rpcHost.start();
+  void presenceSource.start();
 }
 
+/** Turning it off stops a running helper as well, so nothing keeps the socket. */
 async function stopRichPresence(): Promise<void> {
-  const host = rpcHost;
-  rpcHost = null;
-  await host?.stop();
+  const source = presenceSource;
+  presenceSource = null;
+  await source?.stopAll();
   presenceBoard?.reset();
   presenceBoard?.stop();
   presenceBoard = null;
   rpcState = "off";
   rpcHolder = null;
+  rpcVia = null;
   mainWindow?.webContents.send("rich-presence-state", socketStatus());
 }
 
@@ -4370,7 +4380,7 @@ if (!gotSingleInstanceLock) {
       localServer = null;
 
       // Removes the socket file before this returns; the close finishes on its own.
-      void rpcHost?.stop();
+      void presenceSource?.stop();
 
       cleanupOnQuit();
     }
