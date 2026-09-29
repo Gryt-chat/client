@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-import { composer, type Member, membersPanel, messageRow, unique } from "../support/app";
+import { composer, type Member, membersPanel, messageRow, ringCancel, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 /* GRYT-1471. Friends per server, made by a request the other person accepts. The
@@ -68,7 +68,7 @@ async function watchForRing(member: Member, caller: string): Promise<() => Promi
 }
 
 test("a request, accepted: friends on both sides, and a friend's ring rings", async ({ newMember }) => {
-  const alice = await newMember();
+  const alice = await newMember({ dropSent: ringCancel });
   const bob = await newMember();
 
   await addFriend(alice, bob);
