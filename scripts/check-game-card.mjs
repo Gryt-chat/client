@@ -61,7 +61,7 @@ check("a button that isn't a plain web link is not drawn", () => {
 
 check("the member card only draws the card for somebody who's here", () => {
   const source = readFileSync(new URL("../src/packages/socket/src/components/MemberIdentityCard.tsx", import.meta.url), "utf8");
-  assert.match(source, /\{!offline && member\.richActivity && <GameCard card=\{member\.richActivity\} \/>\}/);
+  assert.match(source, /game=\{offline \? null : member\.richActivity\}/);
 });
 
 check("the icon URL is the mirrored repo, never Discord's CDN", () => {

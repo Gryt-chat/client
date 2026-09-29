@@ -1,36 +1,37 @@
-import { Avatar, Button, Chip, Collapsible } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
   comparisonCode,
+  generatedAvatarColor,
+  getOwnServerUserId,
   getUploadsFileUrl,
   identityScopeFor,
   markPeerCompared,
   ownComparisonSide,
   resolveAvatarSrc,
+  useTheme,
 } from "@/common";
+import { useSettings } from "@/settings";
 
-import { PiCaretDownBold, PiCopySimpleBold } from "../../../../lib/icons";
+import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
-import { formatJoined, TIER_LABEL } from "../lib/memberFacts";
+import { cardProfileOf, encodeCardStyle } from "../lib/memberCard/cardStyle";
+import { formatJoined, makeRankOf, TIER_LABEL } from "../lib/memberFacts";
+import { friendButtonSteps, type FriendStep } from "../utils/friendButtonSteps";
 import { describeChange, describePin } from "../utils/memberKeyWording";
-import { BotTag } from "./BotTag";
-import { FriendButton } from "./FriendButton";
-import { GameCard } from "./GameCard";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { CardIcon } from "./memberCard/cardIcons";
+import { CardMenu, type CardMenuItem } from "./memberCard/CardMenu";
+import { useMemberCardActions } from "./memberCard/memberCardContext";
+import { MemberCardView } from "./memberCard/MemberCardView";
 import type { MemberInfo } from "./MemberSidebar";
-import { statusConfig } from "./memberStatus";
 
-/**
- * What a member list can say about somebody beyond their chosen name. Nicknames
- * are not unique, so these are the parts nobody can pick.
- */
+/** The colour a card starts from when the owl cannot be drawn: Gryt's own violet. */
+const FALLBACK_OWL = "#7c5cff";
 
-/**
- * A rename described by when and how often, never by what it used to say. Past
- * names answer a question nobody is asking, at somebody else's cost.
- */
+/** A rename by when and how often, never by what it used to say. */
 function describeRenames(count?: number, at?: string | null): string | null {
   if (!count || count < 1) return null;
 
@@ -58,29 +59,24 @@ function describeRenames(count?: number, at?: string | null): string | null {
   })}`;
 }
 
-/**
- * Grouped in fours, and never shortened. A few characters could be ground out to
- * match somebody worth impersonating; the full value is what makes it mean anything.
- */
+/** Grouped in fours and never shortened: a few characters could be ground out to match. */
 function Fingerprint({ value }: { value: string }) {
-  return (
-    <code
-      className="block rounded-(--gryt-radius-sm) border border-gryt-border bg-gryt-bg px-2 py-1.5 font-mono text-xs text-gryt-text"
-      style={{ wordSpacing: "0.35em", overflowWrap: "anywhere", userSelect: "all" }}
-    >
-      {value.replace(/(.{4})(?=.)/g, "$1 ")}
-    </code>
-  );
+  return <code className="gmc-code">{value.replace(/(.{4})(?=.)/g, "$1 ")}</code>;
 }
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <>
-      <dt className="text-xs text-gryt-muted">{label}</dt>
-      <dd className="m-0 text-right text-sm text-gryt-text">{children}</dd>
-    </>
+const copy = (text: string, done: string) =>
+  void navigator.clipboard.writeText(text).then(
+    () => toast.success(done),
+    () => toast.error("Could not copy"),
   );
-}
+
+const STEP_ICON: Record<FriendStep["icon"], () => ReactElement> = {
+  add: CardIcon.friend,
+  clock: CardIcon.clock,
+  check: CardIcon.check,
+  close: CardIcon.close,
+  confirm: CardIcon.friend,
+};
 
 export function MemberIdentityCard({
   member,
@@ -88,40 +84,28 @@ export function MemberIdentityCard({
   voiceChannelName,
 }: {
   member: MemberInfo;
-  /**
-   * Which server this member is shown on, so their key state can be looked up.
-   * Without it the key section is absent, as on a server too old for bindings.
-   */
+  /** Which server this member is shown on, for their key state, roles and uploads. */
   serverHost?: string;
-  /**
-   * Optional, because neither caller has channels in reach. Without it the status
-   * reads "In Voice" rather than "In Voice · General".
-   */
+  /** Looked up from the member's channel when a caller does not pass it. */
   voiceChannelName?: string;
 }) {
-  const { memberKeyStates } = useSockets();
-  const { roles: roleSummaries } = useServerPermissions(serverHost ?? "");
+  const actions = useMemberCardActions();
+  const { memberKeyStates, serverDetailsList } = useSockets();
+  const { roles: roleSummaries, has, can } = useServerPermissions(serverHost ?? "");
+  const { resolvedAppearance } = useTheme();
+  const { openSettings } = useSettings();
 
-  // Every role, not only the one their name is coloured by. `roles` absent is an
-  // older server with no opinion, so it falls back to `role` (GRYT-748).
+  // Every role, not only the one their name is coloured by; `roles` absent is an older server.
   const rolePills = (member.roles ?? (member.role ? [member.role] : []))
-    // `member` and `guest` are the two joiner defaults, so a pill for either
-    // says only that nobody has given them anything. GRYT-1076.
+    // The two joiner defaults say only that nobody has given them anything. GRYT-1076.
     .filter((role) => role && role !== "member" && role !== "guest")
-    // The id is what the server sends; the name is what the rest of the app
-    // shows. Falls back to the id where the server sent no definitions.
+    // The name the rest of the app shows, or the id where the server sent none.
     .map((role) => ({ id: role, name: roleSummaries.find((r) => r.id === role)?.name ?? role }));
-  // Only to redraw after marking one; the pin itself is the record.
   const [, setCompared] = useState(false);
   const [ownKeys, setOwnKeys] = useState<{ thumbprint: string; dmPublicKey: string } | null>(null);
-  const keyState = serverHost
-    ? memberKeyStates[serverHost]?.[member.serverUserId]
-    : undefined;
+  const keyState = serverHost ? memberKeyStates[serverHost]?.[member.serverUserId] : undefined;
 
-  /*
-   * Our own half of the code. Both sides go into it, so the card cannot draw one
-   * until it knows what we published here.
-   */
+  /* Our own half of the comparison code, which needs what we published here. */
   useEffect(() => {
     if (!serverHost) {
       setOwnKeys(null);
@@ -148,307 +132,343 @@ export function MemberIdentityCard({
         })
       : null;
 
+  const profile = useMemo(
+    () => cardProfileOf(member),
+    // The fields, not the member object, which is new on every list update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [member.cardStyle, member.bio, member.pronouns, member.statusLine],
+  );
   const joined = formatJoined(member.createdAt);
   const tier = member.identityTier ? TIER_LABEL[member.identityTier] : undefined;
-  const renames = describeRenames(
-    member.nicknameChangeCount,
-    member.nicknameChangedAt,
-  );
-  const status = statusConfig[member.status];
+  const renames = describeRenames(member.nicknameChangeCount, member.nicknameChangedAt);
   const offline = member.status === "offline";
+  const isSelf =
+    member.serverUserId === (actions.currentServerUserId ?? getOwnServerUserId(serverHost));
 
-  /*
-   * Only a designed owl can be copied. Copying somebody's uploaded photograph
-   * would be impersonation, on the card that exists to tell people apart.
-   */
+  // Only a designed owl can be copied; copying somebody's photograph would be impersonation.
   const worn = member.avatarWorn;
+  const owlHex = generatedAvatarColor(member.nickname, member.avatarWorn) ?? member.avatarColor ?? FALLBACK_OWL;
+  const channelName =
+    voiceChannelName ??
+    (serverHost && member.voiceChannelId
+      ? serverDetailsList[serverHost]?.channels?.find((c) => c.id === member.voiceChannelId)?.name
+      : undefined);
 
-  /*
-   * The whole fingerprint on the face of the card when there is no account behind
-   * the name, in the drawer when there is.
-   */
   const [open, setOpen] = useState(false);
-
-  /*
-   * The key drawer inside the identity drawer. Shut whenever the outer one shuts,
-   * so reopening "Who they are" does not bring back the block of numbers.
-   */
   const [verifyOpen, setVerifyOpen] = useState(false);
-
+  const [menuOpen, setMenuOpen] = useState(false);
   const identityIsTheQuestion = member.identityTier === "local";
   const fingerprint = member.identityFingerprint;
 
-  const caution = (
-    <span className="text-xs leading-snug text-gryt-muted">
-      Names are not unique. Check the fingerprint if it matters.
-    </span>
-  );
+  /* The friend step, as the sidebar's FriendButton works it out, drawn as icon buttons. */
+  const friendState = useFriendState(serverHost, isSelf || member.isBot ? undefined : member.serverUserId);
+  const allFriends = useAllFriends();
+  const [pendingStep, setPendingStep] = useState<FriendStep | null>(null);
+  const hostFriends = allFriends.find((h) => h.host === serverHost);
+  const person =
+    hostFriends?.friends.find((p) => p.serverUserId === member.serverUserId) ??
+    hostFriends?.incoming.find((p) => p.serverUserId === member.serverUserId) ??
+    hostFriends?.outgoing.find((p) => p.serverUserId === member.serverUserId);
+  const friendSteps = serverHost && friendState ? friendButtonSteps(friendState, member.nickname) : [];
+  const runStep = (step: FriendStep) => {
+    if (!serverHost) return;
+    if (step.action === "confirm") {
+      if (person) confirmServerFriend(serverHost, person);
+    } else {
+      friendAction(serverHost, step.action, member.serverUserId);
+    }
+  };
+
+  /* Moderation, gated exactly as UserContextMenu gates it: rank decides who, permission what. */
+  const admin = actions.adminActions;
+  const rankOf = makeRankOf(roleSummaries);
+  const myRole = actions.currentUserRole;
+  const outranksTarget = !!myRole && !!member.role && rankOf(myRole) > rankOf(member.role);
+  const canMute = has("mute_members") && outranksTarget && !!admin?.onServerMuteUser;
+  const canDeafen = has("deafen_members") && outranksTarget && !!admin?.onServerDeafenUser;
+  const canKick = has("kick_members") && outranksTarget && !!admin?.onKickUser;
+  const canBan = has("ban_members") && outranksTarget && !!admin?.onBanUser;
+  const heldRoles = member.roles ?? (member.role ? [member.role] : []);
+  const assignableRoles = roleSummaries
+    .filter((r) => r.id !== "owner" && r.rank < rankOf(myRole))
+    .sort((a, b) => b.rank - a.rank);
+  const canAssignRoles =
+    has("manage_roles") && outranksTarget && !!admin?.onToggleRole && assignableRoles.length > 0;
+  const inVoice = member.hasJoinedChannel;
+  const canDisconnect = !!admin?.onDisconnectUser && inVoice;
+  const showMod = !isSelf && (canMute || canDeafen || canKick || canBan || canAssignRoles || canDisconnect);
+
+  const blocked = actions.isBlocked?.(member.serverUserId) ?? false;
+  const moreItems: CardMenuItem[] = [
+    { key: "id", label: "Copy ID", onSelect: () => copy(member.serverUserId, "Copied user ID") },
+    ...(!isSelf && actions.onToggleBlock
+      ? [{ key: "block", label: blocked ? "Unblock" : "Block", danger: !blocked, onSelect: () => actions.onToggleBlock!(member.serverUserId) }]
+      : []),
+    {
+      key: "style",
+      label: "Copy card style",
+      divider: true,
+      onSelect: () => copy(encodeCardStyle(profile.cardStyle), "Card style copied. Paste it in Edit my card to use it."),
+    },
+  ];
+
+  const chips = [
+    ...rolePills,
+    // Amber marks "no account" and nothing else, so it keeps meaning something.
+    ...(tier?.amber ? [{ id: "tier", name: tier.label, amber: true }] : []),
+  ];
 
   return (
-    /* Full width of whatever it is dropped into, not a number of its own. A card
-       that sets its own width has to know padding of a container it cannot see. */
-    <div className="flex w-full min-w-0 flex-col gap-3">
-      <div className="flex min-w-0 items-center gap-2.5">
-        {/*
-          The ring is the presence rather than a dot beside it, so it reads
-          before you have finished looking at the name. Offline gets no ring at
-          all instead of a grey one — an absent person should be quiet, not
-          marked.
-        */}
-        <span
-          className="shrink-0 rounded-(--gryt-radius-full) p-[3px]"
-          style={{ background: offline ? "transparent" : status.color }}
-        >
-          {/*
-            The picture they actually have, at the size this card can afford.
-
-            The uploaded one used to be left out: `resolveAvatarSrc` was handed
-            `undefined` where the URL goes, so anybody with a photograph and no
-            designed owl fell through to a *generated* owl. Their face on the
-            message, an owl on the card hovering over it, and no reading of that
-            except that the card belongs to somebody else.
-
-            `large` rather than the sidebar's `small`, and the full file rather
-            than the thumbnail. This card exists to answer "is this who I think
-            it is" and the picture is the fastest part of that answer; a
-            thumbnail scaled up to 48px would be the same data drawn worse.
-          */}
-          <Avatar
-            alt=""
-            size="large"
-            fallback={member.nickname[0]}
-            src={resolveAvatarSrc(
-              member.avatarFileId && serverHost
-                ? getUploadsFileUrl(serverHost, member.avatarFileId)
-                : undefined,
-              member.nickname,
-              member.avatarWorn,
-            )}
-          />
-        </span>
-
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span
-            className="flex items-center gap-1.5 text-base font-bold"
-            style={{ overflowWrap: "anywhere" }}
-          >
-            {member.nickname}
-            {member.isBot && <BotTag size="small" />}
-          </span>
-          <span className="text-xs" style={{ color: status.color }}>
-            {status.label}
-            {member.status === "in_voice" && voiceChannelName && (
-              <span className="text-gryt-muted"> · {voiceChannelName}</span>
-            )}
-          </span>
+    <MemberCardView
+      name={member.nickname}
+      avatarSrc={resolveAvatarSrc(
+        member.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined,
+        member.nickname,
+        member.avatarWorn,
+      )}
+      status={member.status}
+      channelName={channelName}
+      isBot={member.isBot}
+      profile={profile}
+      owlHex={owlHex}
+      bannerUrl={member.bannerFileId && serverHost ? getUploadsFileUrl(serverHost, member.bannerFileId) : null}
+      game={offline ? null : member.richActivity}
+      chips={chips}
+      appearance={resolvedAppearance}
+      menuOpen={menuOpen}
+    >
+      {identityIsTheQuestion && fingerprint && (
+        <div className="gmc-sub" style={{ marginTop: 0 }}>
+          <span className="gmc-note">Fingerprint</span>
+          <Fingerprint value={fingerprint} />
+          <span className="gmc-note">Names are not unique. Check the fingerprint if it matters.</span>
         </div>
+      )}
+
+      <div className="gmc-acts">
+        {!isSelf && actions.onOpenDm && can("send_direct_messages") && (
+          <button type="button" className="gmc-ib" aria-label="Message" data-tip="Message" onClick={() => actions.onOpenDm!(member.serverUserId)}>
+            <CardIcon.chat />
+          </button>
+        )}
+        {friendSteps.map((step, i) => {
+          const Icon = STEP_ICON[step.icon];
+          return (
+            <button
+              key={step.action}
+              type="button"
+              className={i === 0 ? "gmc-ib" : "gmc-ib quiet"}
+              aria-label={step.hint}
+              data-tip={step.label}
+              data-gryt="friend-button"
+              data-state={step.action}
+              onClick={() => (step.confirm ? setPendingStep(step) : runStep(step))}
+            >
+              <Icon />
+            </button>
+          );
+        })}
+        {!isSelf && (
+          <button
+            type="button"
+            className="gmc-ib quiet"
+            aria-label="Mention"
+            data-tip="Mention"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("mention_user", { detail: { serverUserId: member.serverUserId, nickname: member.nickname } }),
+              )
+            }
+          >
+            <CardIcon.at />
+          </button>
+        )}
+        {worn && (
+          <button type="button" className="gmc-ib quiet" aria-label="Copy avatar" data-tip="Copy avatar" onClick={() => copy(worn, "Avatar code copied")}>
+            <CardIcon.copy />
+          </button>
+        )}
+        {isSelf && (
+          <button type="button" className="gmc-ib quiet" aria-label="Edit my card" data-tip="Edit my card" onClick={() => openSettings("profile/card")}>
+            <CardIcon.pen />
+          </button>
+        )}
+        <span className="sp" />
+        {!isSelf && actions.onReport && has("report_messages") && (
+          <button
+            type="button"
+            className="gmc-ib danger"
+            aria-label="Report"
+            data-tip="Report"
+            onClick={() => actions.onReport!({ serverUserId: member.serverUserId, nickname: member.nickname })}
+          >
+            <CardIcon.flag />
+          </button>
+        )}
+        <CardMenu className="gmc-ib quiet more" tip="More" icon={<CardIcon.more />} items={moreItems} onOpenChange={setMenuOpen} />
       </div>
 
-      {!offline && member.richActivity && <GameCard card={member.richActivity} />}
-
-      {(rolePills.length > 0 || tier?.amber) && (
-        <div className="flex flex-wrap gap-1.5">
-          {rolePills.map((role) => (
-            <Chip key={role.id} tone="primary">
-              {role.name}
-            </Chip>
-          ))}
-          {/*
-            Amber marks "no account" and nothing else. Spend it anywhere
-            decorative and it stops meaning anything.
-          */}
-          {tier?.amber && <Chip tone="warning">{tier.label}</Chip>}
+      {showMod && admin && (
+        <div className="gmc-mod">
+          <div className="gmc-mod-h">
+            <span>Moderation</span>
+            {outranksTarget && <span>You outrank them</span>}
+          </div>
+          <div className="gmc-acts">
+            {canAssignRoles && (
+              <CardMenu
+                className="gmc-ib text"
+                tip="Give or take roles"
+                icon={<CardIcon.roles />}
+                label={<> Roles <CardIcon.caret /></>}
+                align="left"
+                onOpenChange={setMenuOpen}
+                items={assignableRoles.map((r) => {
+                  const holds = heldRoles.includes(r.id);
+                  return { key: r.id, label: r.name, checked: holds, onSelect: () => admin.onToggleRole!(member.serverUserId, r.id, !holds) };
+                })}
+              />
+            )}
+            {inVoice && canMute && (
+              <button
+                type="button"
+                className={member.isServerMuted ? "gmc-ib on" : "gmc-ib"}
+                aria-label={member.isServerMuted ? "Remove server mute" : "Server mute"}
+                aria-pressed={!!member.isServerMuted}
+                data-tip={member.isServerMuted ? "Remove server mute" : "Server mute"}
+                onClick={() => admin.onServerMuteUser!(member.serverUserId, !member.isServerMuted)}
+              >
+                <CardIcon.mic />
+              </button>
+            )}
+            {inVoice && canDeafen && (
+              <button
+                type="button"
+                className={member.isServerDeafened ? "gmc-ib on" : "gmc-ib"}
+                aria-label={member.isServerDeafened ? "Remove server deafen" : "Server deafen"}
+                aria-pressed={!!member.isServerDeafened}
+                data-tip={member.isServerDeafened ? "Remove server deafen" : "Server deafen"}
+                onClick={() => admin.onServerDeafenUser!(member.serverUserId, !member.isServerDeafened)}
+              >
+                <CardIcon.deaf />
+              </button>
+            )}
+            {canDisconnect && (
+              <button type="button" className="gmc-ib" aria-label="Disconnect from voice" data-tip="Disconnect from voice" onClick={() => admin.onDisconnectUser!(member.serverUserId)}>
+                <CardIcon.disc />
+              </button>
+            )}
+            <span className="sp" />
+            {canKick && (
+              <button type="button" className="gmc-ib danger" aria-label="Kick from server" data-tip="Kick from server" onClick={() => admin.onKickUser!(member.serverUserId)}>
+                <CardIcon.kick />
+              </button>
+            )}
+            {canBan && (
+              <button type="button" className="gmc-ib danger" aria-label="Ban from server" data-tip="Ban from server" onClick={() => admin.onBanUser!(member.serverUserId)}>
+                <CardIcon.ban />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {!member.isBot && <FriendButton host={serverHost} serverUserId={member.serverUserId} />}
-
-      {worn && (
-        <Button
-          onClick={() => {
-            void navigator.clipboard
-              .writeText(worn)
-              .then(() => toast.success("Avatar code copied"))
-              .catch(() => toast.error("Could not copy"));
-          }}
-          size="small"
-          startIcon={<PiCopySimpleBold size={14} />}
-        >
-          Copy avatar
-        </Button>
-      )}
-
-      {identityIsTheQuestion && fingerprint && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs text-gryt-muted">Fingerprint</span>
-          <Fingerprint value={fingerprint} />
-          {caution}
-        </div>
-      )}
-
-      <Collapsible.Root
-        onOpenChange={(next) => {
+      <details
+        className="gmc-who"
+        open={open}
+        onToggle={(e) => {
+          const next = (e.currentTarget as HTMLDetailsElement).open;
           setOpen(next);
           if (!next) setVerifyOpen(false);
         }}
-        open={open}
       >
-        <Collapsible.Trigger className="cursor-pointer border-t border-gryt-border !px-0 pt-2.5 text-xs font-semibold text-gryt-muted hover:!bg-transparent hover:text-gryt-text">
-          Who they are
-          {/*
-            Turned from state rather than a data-attribute variant. Base UI does
-            put data-panel-open on the trigger, but the Tailwind variant for it
-            compiled to nothing here and a caret that silently never turns is
-            exactly the kind of thing that ships.
-          */}
-          <PiCaretDownBold
-            className="transition-transform"
-            size={10}
-            style={{ transform: open ? "rotate(180deg)" : undefined }}
-          />
-        </Collapsible.Trigger>
-        <Collapsible.Panel>
-          <div className="flex flex-col gap-2.5 pt-2.5">
-            {/* Who they are, in the sense a person means it: whether there is
-                an account behind the name, when they turned up, and whether
-                they have been called something else. The key material moved a
-                level down — see the note on the second drawer below. */}
-            <dl className="m-0 grid grid-cols-[auto_1fr] items-baseline gap-x-3.5 gap-y-1.5">
-              {tier && <Fact label="Account">{tier.label}</Fact>}
-              {joined && <Fact label="Joined">{joined}</Fact>}
-              {renames && <Fact label="Name">{renames}</Fact>}
-            </dl>
-            {keyState?.decision.kind === "changed" && (
-              /*
-               * Inside the drawer, deliberately not a toast: a toast would be
-               * gone before the person it concerns said anything.
-               */
-              <div
-                className="flex flex-col gap-1.5 rounded p-2.5 text-xs leading-snug"
-                style={{
-                  background: "var(--gryt-amber-3, var(--gryt-neutral-4))",
-                  color: "var(--gryt-text)",
-                }}
-              >
-                <span className="font-semibold">Their key changed</span>
-                <span className="text-gryt-muted">
-                  {describeChange(
-                    keyState.decision.changedIdentity,
-                    keyState.decision.changedKey,
-                  )}
-                </span>
-                <span className="text-gryt-muted">
-                  {/*
-                    Both causes, neither picked. Saying "they probably got a new
-                    device" would be a guess this client cannot make, and it is
-                    the reassuring one of the two.
-                  */}
-                  That happens when somebody restores their identity on another
-                  device. It is also what a server substituting a key looks
-                  like. Ask them somewhere other than here before treating
-                  messages as private.
-                </span>
-              </div>
-            )}
-            {/*
-              A second drawer, for the part that is about keys rather than
-              about a person.
-
-              Everything below answers "prove nobody is in the middle": a
-              twelve-group number to read aloud, a button recording that you
-              did, and a fingerprint. All of it correct, none of it meaningful
-              to somebody who has not been told what a key comparison is — and
-              it was the bulk of the card, so the two useful lines above it read
-              as a preamble to a cryptography lesson.
-
-              Shut by default, and shut again on the next hover: this is
-              deliberately not remembered, because a card that stays expanded
-              turns the thing we just moved out of the way back into the
-              default view.
-
-              Not shift-click. That would hide it from anybody who has not been
-              told the gesture exists, from touch entirely, and from a keyboard
-              — and the people most likely to need a key comparison are the
-              least likely to be told about a hidden modifier. A row that says
-              what it opens costs one line and asks nothing of anybody.
-
-              The "their key changed" warning stays above this, outside the
-              drawer. That one is not detail: it is the case where somebody
-              needs to stop and ask, and it has to be visible without a click.
-            */}
-            <Collapsible.Root onOpenChange={setVerifyOpen} open={verifyOpen}>
-              <Collapsible.Trigger className="cursor-pointer !px-0 text-xs font-semibold text-gryt-muted hover:!bg-transparent hover:text-gryt-text">
-                Check this is really them
-                <PiCaretDownBold
-                  className="transition-transform"
-                  size={10}
-                  style={{ transform: verifyOpen ? "rotate(180deg)" : undefined }}
-                />
-              </Collapsible.Trigger>
-              <Collapsible.Panel>
-                <div className="flex flex-col gap-2.5 pt-2.5">
-                  <dl className="m-0 grid grid-cols-[auto_1fr] items-baseline gap-x-3.5 gap-y-1.5">
-                    {keyState?.decision.kind === "known" && (
-                      <Fact label="Message key">
-                        {keyState.decision.pin.comparedAt
-                          ? "Compared and matched"
-                          : describePin(keyState.decision.pin.firstSeenAt)}
-                      </Fact>
-                    )}
-                    {keyState?.decision.kind === "first" && (
-                      <Fact label="Message key">Seen for the first time</Fact>
-                    )}
-                  </dl>
+        <summary>
+          Who they are <CardIcon.caret />
+        </summary>
+        <dl>
+          {tier && (
+            <>
+              <dt>Account</dt>
+              <dd>{tier.label}</dd>
+            </>
+          )}
+          {joined && (
+            <>
+              <dt>Joined</dt>
+              <dd>{joined}</dd>
+            </>
+          )}
+          {renames && (
+            <>
+              <dt>Name</dt>
+              <dd>{renames}</dd>
+            </>
+          )}
+          {keyState?.decision.kind === "known" && (
+            <>
+              <dt>Message key</dt>
+              <dd>{keyState.decision.pin.comparedAt ? "Compared and matched" : describePin(keyState.decision.pin.firstSeenAt)}</dd>
+            </>
+          )}
+          {keyState?.decision.kind === "first" && (
+            <>
+              <dt>Message key</dt>
+              <dd>Seen for the first time</dd>
+            </>
+          )}
+        </dl>
+        {keyState?.decision.kind === "changed" && (
+          // In the drawer and not a toast, which would be gone before anybody asked them.
+          <div className="gmc-warn" style={{ marginTop: 10 }}>
+            <b>Their key changed</b>
+            <span className="gmc-note">{describeChange(keyState.decision.changedIdentity, keyState.decision.changedKey)}</span>
+            <span className="gmc-note">
+              That happens when somebody restores their identity on another device. It is also what a server
+              substituting a key looks like. Ask them somewhere other than here before treating messages as private.
+            </span>
+          </div>
+        )}
+        {(code || (!identityIsTheQuestion && fingerprint)) && (
+          <details
+            className="gmc-who gmc-sub"
+            open={verifyOpen}
+            onToggle={(e) => setVerifyOpen((e.currentTarget as HTMLDetailsElement).open)}
+          >
+            <summary>
+              Check this is really them <CardIcon.caret />
+            </summary>
             {code && keyState?.decision.kind === "known" && (
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs text-gryt-muted">
-                  {/*
-                    "Read this to them" rather than "verify". Nothing here is
-                    verified by looking at it — the check happens somewhere this
-                    server is not, and the wording has to point at that rather
-                    than imply the card did it.
-                  */}
-                  Read this to them, somewhere other than Gryt
-                </span>
-                <code
-                  className="select-all rounded p-2 text-center text-xs leading-relaxed tracking-wider"
-                  style={{ background: "var(--gryt-neutral-4)", color: "var(--gryt-text)" }}
-                >
-                  {code}
-                </code>
-                <span className="text-xs leading-snug text-gryt-muted">
-                  If they read back the same numbers, nobody is in the middle.
-                  It does not say who they are — only that you both hold the
-                  keys you think you do.
+              <>
+                <span className="gmc-note">Read this to them, somewhere other than Gryt</span>
+                <code className="gmc-code" style={{ textAlign: "center", letterSpacing: ".06em" }}>{code}</code>
+                <span className="gmc-note">
+                  If they read back the same numbers, nobody is in the middle. It does not say who they are, only that
+                  you both hold the keys you think you do.
                 </span>
                 {keyState.decision.pin.comparedAt ? (
-                  <span className="text-xs text-gryt-muted">
+                  <span className="gmc-note">
                     Compared on{" "}
-                    {new Date(keyState.decision.pin.comparedAt).toLocaleDateString(
-                      undefined,
-                      { year: "numeric", month: "short", day: "numeric" },
-                    )}
+                    {new Date(keyState.decision.pin.comparedAt).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
                     .
                   </span>
                 ) : (
-                  <Button
-                    tone="neutral"
-                    size="xsmall"
+                  <button
+                    type="button"
+                    className="gmc-btn"
                     onClick={() => {
                       if (
                         !serverHost ||
                         keyState.decision.kind !== "known" ||
-                        !markPeerCompared(
-                          identityScopeFor(serverHost),
-                          member.serverUserId,
-                          {
-                            thumbprint: keyState.decision.pin.thumbprint,
-                            dmPublicKey: keyState.decision.pin.dmPublicKey,
-                          },
-                        )
+                        !markPeerCompared(identityScopeFor(serverHost), member.serverUserId, {
+                          thumbprint: keyState.decision.pin.thumbprint,
+                          dmPublicKey: keyState.decision.pin.dmPublicKey,
+                        })
                       ) {
-                        // The pin moved between reading the code out and pressing
-                        // this, so say it is stale rather than record a false match.
+                        // The pin moved while they were reading, so say so rather than record a false match.
                         toast.error("Their key changed while you were checking. Read the new code.");
                         return;
                       }
@@ -457,23 +477,35 @@ export function MemberIdentityCard({
                     }}
                   >
                     They read back the same
-                  </Button>
+                  </button>
                 )}
-              </div>
+              </>
             )}
-                  {!identityIsTheQuestion && fingerprint && (
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs text-gryt-muted">Fingerprint</span>
-                      <Fingerprint value={fingerprint} />
-                    </div>
-                  )}
-                  {!identityIsTheQuestion && caution}
-                </div>
-              </Collapsible.Panel>
-            </Collapsible.Root>
-          </div>
-        </Collapsible.Panel>
-      </Collapsible.Root>
-    </div>
+            {!identityIsTheQuestion && fingerprint && (
+              <>
+                <span className="gmc-note">Fingerprint</span>
+                <Fingerprint value={fingerprint} />
+                <span className="gmc-note">Names are not unique. Check the fingerprint if it matters.</span>
+              </>
+            )}
+          </details>
+        )}
+      </details>
+
+      <ConfirmDialog
+        open={!!pendingStep}
+        onOpenChange={(next) => {
+          if (!next) setPendingStep(null);
+        }}
+        title={pendingStep?.confirm?.title ?? ""}
+        description={pendingStep?.confirm?.description}
+        confirmLabel={pendingStep?.confirm?.confirmLabel ?? "Confirm"}
+        cancelLabel={pendingStep?.confirm?.cancelLabel ?? "Cancel"}
+        confirmTone="primary"
+        onConfirm={() => {
+          if (pendingStep) runStep(pendingStep);
+        }}
+      />
+    </MemberCardView>
   );
 }
