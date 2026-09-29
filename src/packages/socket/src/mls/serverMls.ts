@@ -33,11 +33,13 @@ import { type ConversationProblems, createMlsSession, type MlsSession, type Sess
  */
 
 /** What a DM view needs, whether the driver is in this tab or another one. */
-export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "onChange">;
+export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "waiting" | "onChange">;
 
 /** How long to wait for the member list's pins before starting anyway. */
 const MEMBERS_WAIT_MS = 5000;
 const RELAY_TIMEOUT_MS = 20_000;
+/** A send waits up to five minutes for the server in the other tab, so this outlasts it. */
+const RELAY_SEND_TIMEOUT_MS = 6 * 60_000;
 const RELAY_CHANNEL = "gryt-mls-relay";
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
 
@@ -281,6 +283,7 @@ function removedSource(base: MlsSource): MlsSource {
     send: () =>
       Promise.reject(Object.assign(new Error("This device was removed from encrypted DMs on this server."), { code: "device_removed" })),
     problems: () => ({ undecryptable: 0, lost: "device_removed" }),
+    waiting: () => false,
     onChange: base.onChange,
   };
 }
@@ -412,7 +415,8 @@ function askRelay(req: Omit<RelayRequest, "id">): Promise<RelayReply> {
   return new Promise<RelayReply>((resolve, reject) => {
     if (!relayChannel) return reject(new Error("No other tab to send through."));
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => done(new Error("The tab sending encrypted messages didn't answer.")), RELAY_TIMEOUT_MS);
+    const wait = req.op === "send" ? RELAY_SEND_TIMEOUT_MS : RELAY_TIMEOUT_MS;
+    const timer = setTimeout(() => done(new Error("The tab sending encrypted messages didn't answer.")), wait);
     const onReply = (event: MessageEvent<RelayReply>) => {
       if (event.data?.id !== id) return;
       if (!event.data.error) return done(null, event.data);
@@ -442,6 +446,7 @@ function relaySource(host: string): MlsSource {
     },
     send: async (conversationId, peer, content) => void (await ask({ op: "send", conversationId, peer, content })),
     problems: (conversationId) => problems.get(conversationId) ?? NO_PROBLEMS,
+    waiting: () => false,
     onChange(listener) {
       const onMessage = (event: MessageEvent<RelayChanged>) => {
         if (event.data?.changed === host) listener(event.data.conversationId);

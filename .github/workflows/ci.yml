@@ -134,6 +134,7 @@ jobs:
       - run: yarn test:sealed-save
       - run: yarn test:local-archive
       - run: yarn test:mls-dm
+      - run: yarn test:mls-restart
       - run: yarn test:clear-local-history
       - run: yarn test:member-key-wording
       - run: yarn test:owl-export

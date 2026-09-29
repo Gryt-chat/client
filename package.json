@@ -140,6 +140,7 @@
     "test:sealed-save": "node --disable-warning=ExperimentalWarning scripts/check-sealed-save.mjs",
     "test:local-archive": "node --disable-warning=ExperimentalWarning scripts/check-local-archive.mjs",
     "test:mls-dm": "node --disable-warning=ExperimentalWarning scripts/check-mls-dm.mjs",
+    "test:mls-restart": "node --disable-warning=ExperimentalWarning scripts/check-mls-restart.mjs",
     "test:clear-local-history": "node --disable-warning=ExperimentalWarning scripts/check-clear-local-history.mjs",
     "test:channel-permissions": "node scripts/check-channel-permissions.mjs",
     "test:report-user": "node scripts/check-report-user.mjs",
@@ -198,8 +199,8 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@gryt/core": "0.13.0",
-    "@gryt/crypto": "0.7.1",
+    "@gryt/core": "0.15.0",
+    "@gryt/crypto": "0.9.0",
     "@gryt/owl": "^0.6.0",
     "@gryt/ui": "^0.34.3",
     "@gryt/voice": "0.6.1",
@@ -261,6 +262,6 @@
     "dmg-license": "1.0.11"
   },
   "resolutions": {
-    "@gryt/core/@gryt/crypto": "0.7.1"
+    "@gryt/core/@gryt/crypto": "0.9.0"
   }
 }

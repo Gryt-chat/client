@@ -73,6 +73,7 @@ export function useMlsConversation({
   const [hasMore, setHasMore] = useState(false);
   const [drafts, setDrafts] = useState<ChatMessage[]>([]);
   const [problems, setProblems] = useState<ConversationProblems>(NO_PROBLEMS);
+  const [serverWaiting, setServerWaiting] = useState(false);
   const [archiveFacts, setArchiveFacts] = useState({ lostHistory: false, home: "app" as "browser" | "app" });
   const [opened, setOpened] = useState<ReadonlyMap<string, AttachmentMeta | "failed">>(new Map());
   /** Each file's key, from the archive, and the ones already being fetched. */
@@ -113,6 +114,7 @@ export function useMlsConversation({
     let retry: ReturnType<typeof setTimeout> | null = null;
     const refresh = () => {
       if (retry) clearTimeout(retry);
+      setServerWaiting(source.waiting());
       source
         .modeFor(conversationId, peer)
         .then((next) => {
@@ -295,8 +297,11 @@ export function useMlsConversation({
   const rows = useMemo(() => {
     if (!active) return [];
     const archivedIds = new Set(archived.map((m) => m.message_id));
-    return [...archived.map((m) => withOpenedFiles(m, opened)), ...drafts.filter((d) => !archivedIds.has(d.nonce ?? ""))];
-  }, [active, archived, drafts, opened]);
+    const unsent = drafts
+      .filter((d) => !archivedIds.has(d.nonce ?? ""))
+      .map((d) => (d.pending && serverWaiting ? { ...d, waiting: true } : d));
+    return [...archived.map((m) => withOpenedFiles(m, opened)), ...unsent];
+  }, [active, archived, drafts, opened, serverWaiting]);
 
   useEffect(() => {
     const archivedIds = new Set(archived.map((m) => m.message_id));
