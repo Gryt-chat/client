@@ -18,6 +18,7 @@ import { formatJoined, TIER_LABEL } from "../lib/memberFacts";
 import { describeChange, describePin } from "../utils/memberKeyWording";
 import { BotTag } from "./BotTag";
 import { FriendButton } from "./FriendButton";
+import { GameCard } from "./GameCard";
 import type { MemberInfo } from "./MemberSidebar";
 import { statusConfig } from "./memberStatus";
 
@@ -242,6 +243,8 @@ export function MemberIdentityCard({
           </span>
         </div>
       </div>
+
+      {!offline && member.richActivity && <GameCard card={member.richActivity} />}
 
       {(rolePills.length > 0 || tier?.amber) && (
         <div className="flex flex-wrap gap-1.5">
