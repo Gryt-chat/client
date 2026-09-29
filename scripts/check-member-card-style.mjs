@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 
 import { EGG_PATTERNS } from "@gryt/owl";
 
-import { BUILTIN_CARD_STYLES } from "../src/packages/socket/src/lib/memberCard/builtinStyles.ts";
+import { BUILTIN_CARD_STYLES, randomCardStyle } from "../src/packages/socket/src/lib/memberCard/builtinStyles.ts";
 import {
   BIO_MAX,
   cardProfileOf,
@@ -87,6 +87,17 @@ check("whole-card colours keep small text at 4.5:1 or better, for every pick swe
   }
   assert.ok(worst.worst >= AA, `${JSON.stringify(worst.pick)} gives ${worst.worst.toFixed(2)}:1`);
   console.log(`        worst of ${everyPick().length}: ${worst.worst.toFixed(2)}:1`);
+});
+
+check("Surprise me always gives a readable card, with a pattern it knows", () => {
+  let seed = 7;
+  const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  for (let i = 0; i < 500; i++) {
+    const style = randomCardStyle(random);
+    const { worst } = worstOnCard({ mode: style.fill, c1: style.c1, c2: style.c2 ?? style.c1, angle: style.angle });
+    assert.ok(worst >= AA, `${JSON.stringify(style)} gives ${worst.toFixed(2)}:1`);
+    assert.notEqual(style.pattern, "icon");
+  }
 });
 
 check("every built-in style keeps small text at 4.5:1 or better", () => {

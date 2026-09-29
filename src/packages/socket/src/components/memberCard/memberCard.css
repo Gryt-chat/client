@@ -114,6 +114,8 @@
 .gmc-banner { position: relative; height: 164px; background-color: var(--owl); background-position: center;
   background-image: var(--pat-img, linear-gradient(transparent, transparent)), var(--base); background-size: var(--pat-size, auto), cover;
   border-radius: var(--r-lg) var(--r-lg) 0 0; }
+.gmc-banner.short { height: 96px; }
+.gmc .gmc-banner.short .gmc-over { padding-top: 12px; }
 .gmc:not([data-fc]) .gmc-banner.img { background-image: var(--img) !important; background-size: cover !important; }
 .gmc-body { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
 .gmc .gmc-over { position: absolute; inset: auto 0 0 0; padding: 36px 14px 12px; display: flex; align-items: flex-end; gap: 12px;
@@ -179,7 +181,11 @@
 
 /* Edit my card: the preview pins beside the controls only when there is room for both. */
 .gcs-row-wrap { container-type: inline-size; }
-@container (min-width: 720px) { .gcs-preview { position: sticky; top: 0; } }
+@container (min-width: 720px) {
+  .gcs-preview { position: sticky; top: 0; }
+  /* In the editor window the card sits on the right, next to the controls it follows. */
+  .gcs-dialog .gcs-row { flex-direction: row-reverse; justify-content: flex-end; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .gmc, .gmc * { transition-duration: 0ms !important; transition-delay: 0ms !important; }
