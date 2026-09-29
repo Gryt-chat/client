@@ -2,10 +2,13 @@ export type { AddonCapability } from "./src/capabilities";
 export {
   ADDON_CAPABILITIES,
   addonMay,
+  addonRisk,
   CAPABILITY_LABELS,
+  CAPABILITY_RISK,
   declaredCapabilities,
   grantedCapabilities,
   pruneGrants,
+  RISK_LABELS,
   setGrantedCapabilities,
 } from "./src/capabilities";
 export {

@@ -165,6 +165,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("rich-presence-get");
   },
 
+  /* For addons: what the media controls say is playing, and an addon's own card (GRYT-1637). */
+  getNowPlaying(): Promise<unknown> {
+    return ipcRenderer.invoke("now-playing-get");
+  },
+
+  setAddonActivity(addonId: string, card: unknown): Promise<void> {
+    return ipcRenderer.invoke("addon-activity-set", addonId, card);
+  },
+
   /* Known games spotted by their program, each asked about once (GRYT-1636). */
   getGameDetection(): Promise<unknown> {
     return ipcRenderer.invoke("game-detect-get");

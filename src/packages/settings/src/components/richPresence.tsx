@@ -197,14 +197,14 @@ function GameDetection() {
 
   return (
     <div className="flex flex-col gap-1 rounded-md px-2 py-2" style={{ background: "var(--gryt-neutral-3)" }}>
-      <span className="text-sm font-medium">Spot games that don&rsquo;t report themselves</span>
+      <span className="text-sm font-medium">Spot games and apps</span>
       <span className="text-xs text-gryt-muted">
-        For games like CS2. Gryt asks once per game before it shows anything.
+        For games like CS2 and apps like Figma. Gryt asks once for each before it shows anything.
       </span>
       <HowItWorks>
         <span className="text-xs text-gryt-muted">
           Every ten seconds Gryt checks which programs are running against a public list of about
-          10,000 games. The list of what you have running never leaves this computer.
+          10,000 games and a few apps. The list of what you have running never leaves this computer.
         </span>
         <span className="text-xs text-gryt-muted">
           The first time it spots a game it asks whether to show it. Say no and it never shows or asks
