@@ -158,6 +158,9 @@ jobs:
       - run: yarn test:group-picture-upload
       - run: yarn test:webhook-avatar-upload
       - run: yarn test:webhook-cards
+      # Somebody's game card. The fields come from a game on their machine, so the
+      # links are checked again before they're drawn.
+      - run: yarn test:game-card
       - run: yarn test:member-invite
       # A link to an open server names only the host. Pasting one, arriving on one, the
       # address a shared one names, and what the invite dialog offers for each.

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
 import { PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
+import type { RichActivity } from "../../../../lib/richActivity";
 import { useDirectory } from "../hooks/dmDirectory";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -46,6 +47,8 @@ export interface MemberInfo {
    * connection, so somebody offline never has one (GRYT-929).
    */
   activity?: string;
+  /** A game's Rich Presence, checked by the server. Only ever beside `activity` (GRYT-1310). */
+  richActivity?: RichActivity;
   lastSeen?: Date;
   createdAt?: string | Date;
   /** Whether there is a Gryt account behind this member, or only a device key. */
