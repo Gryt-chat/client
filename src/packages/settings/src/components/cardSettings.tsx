@@ -37,7 +37,10 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
-import { CARD_PATTERNS } from "../../../socket/src/lib/memberCard/patterns";
+import { cardVars } from "../../../socket/src/lib/memberCard/cardVars";
+import { isTunable } from "../../../socket/src/lib/memberCard/patterns";
+import { seedFromId } from "../../../socket/src/lib/memberCard/scatter";
+import { PatternPicker, PatternTuning } from "./cardPatternPicker";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 /** A game for the preview when you are not playing one, so the band can be seen. */
@@ -203,6 +206,10 @@ export function CardSettings() {
 
   const worn = getStoredWorn();
   const owlHex = generatedAvatarColor(nickname, worn) ?? "#7c5cff";
+  // Your id on the first server you're on seeds a scatter pattern, as it does on your card there.
+  const seedKey = (connected[0] && getOwnServerUserId(connected[0])) || nickname;
+  const seed = seedFromId(seedKey);
+  const drawn = useMemo(() => cardVars(style, owlHex, { appearance: stage, seed }), [style, owlHex, stage, seed]);
   const preview = (appearance: "light" | "dark") => (
     <GrytProvider
       className="flex flex-col gap-2 bg-gryt-bg p-4 text-gryt-muted"
@@ -217,6 +224,8 @@ export function CardSettings() {
         bannerUrl={bannerUrl}
         game={playing ? gameCard ?? SAMPLE_GAME : null}
         appearance={appearance}
+        seedKey={seedKey}
+        worn={worn}
       >
         {/* What other people get, drawn but not pressable: this card is yours. */}
         <div className="gmc-acts" aria-hidden="true">
@@ -319,12 +328,27 @@ export function CardSettings() {
           </SettingGroup>
 
           <SettingGroup title="Pattern" description="Drawn from your colour, so there's nothing to upload.">
-            <Select
-              value={style.pattern}
-              onValueChange={(v) => commit(withStyle({ pattern: String(v) }))}
-              options={CARD_PATTERNS.map((p) => ({ value: p.id, label: p.name }))}
+            <PatternPicker
+              style={style}
+              owlHex={owlHex}
+              nickname={nickname}
+              worn={worn}
+              seed={seed}
+              appearance={stage}
+              onPick={(over) => commit(withStyle(over))}
             />
           </SettingGroup>
+
+          {isTunable(style.pattern) && (
+            <SettingGroup title="Customise pattern" description="Size, turn, strength and colour. Gryt turns the strength down if it would make small text hard to read.">
+              <PatternTuning
+                style={style}
+                effectiveInk={drawn.patternInk}
+                effectiveAlpha={drawn.patternAlpha}
+                onChange={(over) => commit(withStyle(over))}
+              />
+            </SettingGroup>
+          )}
 
           <SettingGroup title="Colour fills" description="The whole card, or only the banner and the band under it.">
             <Select

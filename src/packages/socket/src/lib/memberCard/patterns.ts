@@ -3,71 +3,36 @@
  * changes; a new pattern is a new entry. Unknown ids read as "none".
  */
 
-/** CSS colours a pattern draws with. The card passes its own variables in. */
-export interface PatternInputs {
-  /** The member's own colour. */
-  owl: string;
-  /** Their colour at the theme's lightness. */
-  accent: string;
-  /** The card's surface. */
-  surface: string;
-  /** The line colour, already contrast-checked against the card. */
-  line: string;
-}
+import { TILE_INDEX } from "./patterns/tileIndex.generated.ts";
 
-/** Background layers. `base` replaces the plain fill, `image` goes over it. */
-export interface PatternLayers {
-  base?: string;
-  image?: string;
-  size?: string;
-}
+/**
+ * How a pattern is drawn. `base` replaces the banner's fill, `svg` and `tile` lay lines
+ * over it, and `scatter` strews a mark across it.
+ */
+export type PatternKind = "none" | "base" | "svg" | "tile" | "scatter";
 
 export interface CardPattern {
   id: string;
   name: string;
-  render: (c: PatternInputs) => PatternLayers;
+  /** The heading it sits under in Edit my card. */
+  group: string;
+  kind: PatternKind;
 }
 
+/** The headings, in the order Edit my card shows them. */
+export const PATTERN_GROUPS = ["Classic", "Gryt", "Lines", "Waves", "Grids", "Shapes", "Decorative"] as const;
+
 export const CARD_PATTERNS: readonly CardPattern[] = [
-  { id: "none", name: "None", render: () => ({}) },
-  {
-    id: "gradient",
-    name: "Gradient",
-    render: (c) => ({
-      base: `linear-gradient(135deg, ${c.owl} 10%, color-mix(in oklch, ${c.accent} 60%, ${c.surface}))`,
-    }),
-  },
-  {
-    id: "dots",
-    name: "Dots",
-    render: (c) => ({ image: `radial-gradient(${c.line} 1.5px, transparent 1.9px)`, size: "11px 11px" }),
-  },
-  {
-    id: "contours",
-    name: "Contours",
-    render: (c) => ({
-      image: `repeating-radial-gradient(circle at 78% 130%, transparent 0 9px, ${c.line} 9px 10.5px)`,
-    }),
-  },
-  {
-    id: "weave",
-    name: "Weave",
-    render: (c) => ({
-      image:
-        `repeating-linear-gradient(45deg, ${c.line} 0 2px, transparent 2px 12px), ` +
-        `repeating-linear-gradient(-45deg, ${c.line} 0 2px, transparent 2px 12px)`,
-      size: "auto, auto",
-    }),
-  },
-  {
-    id: "dusk",
-    name: "Dusk",
-    render: (c) => ({
-      base:
-        `linear-gradient(180deg, ${c.owl} 0%, color-mix(in oklch, ${c.owl} 45%, ${c.surface}) 72%, ` +
-        `${c.surface} 100%)`,
-    }),
-  },
+  { id: "none", name: "None", group: "Classic", kind: "none" },
+  { id: "gradient", name: "Gradient", group: "Classic", kind: "base" },
+  { id: "dots", name: "Dots", group: "Classic", kind: "svg" },
+  { id: "contours", name: "Contours", group: "Classic", kind: "svg" },
+  { id: "weave", name: "Weave", group: "Classic", kind: "svg" },
+  { id: "dusk", name: "Dusk", group: "Classic", kind: "base" },
+  { id: "gryt-faces", name: "Gryt faces", group: "Gryt", kind: "scatter" },
+  { id: "my-owl", name: "My owl", group: "Gryt", kind: "scatter" },
+  { id: "icon", name: "An icon", group: "Gryt", kind: "scatter" },
+  ...TILE_INDEX.map((t) => ({ id: t.id, name: t.name, group: t.group, kind: "tile" as const })),
 ];
 
 const BY_ID = new Map(CARD_PATTERNS.map((p) => [p.id, p]));
@@ -79,4 +44,10 @@ export function patternId(value: unknown): string {
 
 export function cardPattern(id: unknown): CardPattern {
   return BY_ID.get(patternId(id)) ?? CARD_PATTERNS[0];
+}
+
+/** Whether size, rotation, strength and the rest mean anything for this pattern. */
+export function isTunable(id: unknown): boolean {
+  const kind = cardPattern(id).kind;
+  return kind === "svg" || kind === "tile" || kind === "scatter";
 }

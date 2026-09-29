@@ -6,6 +6,8 @@
 
 import assert from "node:assert/strict";
 
+import { EGG_PATTERNS } from "@gryt/owl";
+
 import { BUILTIN_CARD_STYLES } from "../src/packages/socket/src/lib/memberCard/builtinStyles.ts";
 import {
   BIO_MAX,
@@ -20,8 +22,11 @@ import {
   STATUS_LINE_MAX,
 } from "../src/packages/socket/src/lib/memberCard/cardStyle.ts";
 import { cardVars } from "../src/packages/socket/src/lib/memberCard/cardVars.ts";
-import { bandColours, contrast, fullColours, lum, oklch, okToRgb, owlGradient } from "../src/packages/socket/src/lib/memberCard/colour.ts";
+import { bandColours, blend, contrast, fullColours, lum, lumOf, oklch, okToRgb, owlGradient } from "../src/packages/socket/src/lib/memberCard/colour.ts";
 import { CARD_PATTERNS, patternId } from "../src/packages/socket/src/lib/memberCard/patterns.ts";
+import { TILES } from "../src/packages/socket/src/lib/memberCard/patterns/tiles.generated.ts";
+import { patternLayers } from "../src/packages/socket/src/lib/memberCard/patternSvg.ts";
+import { scatter, seedFromId } from "../src/packages/socket/src/lib/memberCard/scatter.ts";
 
 let failures = 0;
 function check(name, run) {
@@ -94,7 +99,7 @@ check("every built-in style keeps small text at 4.5:1 or better", () => {
 
 check("the card's contrast figure is the muted text's, and never under the target the mockup set", () => {
   for (const hex of EXTREMES) {
-    const { attrs, contrast: figure } = cardVars({ ...DEFAULT_CARD_STYLE, fill: "solid", c1: hex, c2: hex }, "#d06274");
+    const { attrs, contrast: figure } = cardVars({ ...DEFAULT_CARD_STYLE, fill: "solid", c1: hex, c2: hex }, "#d06274", { appearance: "dark", seed: 1 });
     assert.equal(attrs["data-fc"], "1");
     assert.ok(figure >= 5, `${hex}: ${figure}`);
   }
@@ -219,13 +224,69 @@ check("a member from before cards has the default card and no words", () => {
 check("pattern ids are unique, stable, and an unknown one draws as none", () => {
   const ids = CARD_PATTERNS.map((p) => p.id);
   assert.equal(new Set(ids).size, ids.length);
-  for (const id of ["none", "gradient", "dots", "contours", "weave", "dusk"]) assert.ok(ids.includes(id), id);
+  for (const id of ["none", "gradient", "dots", "contours", "weave", "dusk", "gryt-faces", "my-owl", "icon"]) assert.ok(ids.includes(id), id);
+  for (const id of ids) assert.match(id, /^[a-z0-9-]{1,32}$/, `${id} is not an id the server keeps`);
   assert.equal(patternId("sparkles"), "none");
   assert.equal(patternId(7), "none");
-  for (const p of CARD_PATTERNS) {
-    const layers = p.render({ owl: "red", accent: "blue", surface: "white", line: "black" });
-    for (const v of Object.values(layers)) assert.equal(typeof v, "string", p.id);
+});
+
+check("every egg pattern in @gryt/owl is a card pattern under the same id", () => {
+  const ids = new Set(CARD_PATTERNS.map((p) => p.id));
+  assert.deepEqual(EGG_PATTERNS.map((p) => p.name).filter((name) => !ids.has(name)), []);
+});
+
+check("every tile draws, and a drawing is plain SVG with the ink in it", () => {
+  const draw = { ink: "#123456", alpha: 0.2, scale: 1, rotate: 0, fade: "none", seed: 7 };
+  for (const t of TILES) {
+    const { image } = patternLayers(t.id, { ...draw, tile: t }, { owl: "red", accent: "blue", surface: "white" });
+    assert.ok(image?.startsWith('url("data:image/svg+xml,'), t.id);
+    const svg = decodeURIComponent(image.slice(26, -2));
+    assert.ok(svg.includes("#123456"), `${t.id} lost its ink`);
+    assert.ok(!/<script|on[a-z]+=|href='http/i.test(svg), `${t.id} carries something that is not a drawing`);
   }
+});
+
+check("a scatter is the same for the same seed and spreads its marks out", () => {
+  const a = scatter(4242, 34, 0);
+  assert.deepEqual(scatter(4242, 34, 0), a);
+  assert.notDeepEqual(scatter(4243, 34, 0), a);
+  assert.ok(a.length > 30, `only ${a.length} marks`);
+  for (let i = 0; i < a.length; i++)
+    for (let j = i + 1; j < a.length; j++)
+      assert.ok(Math.hypot(a[i].x - a[j].x, a[i].y - a[j].y) > (a[i].size + a[j].size) * 0.5, "two marks overlap");
+  assert.equal(seedFromId("user_1"), seedFromId("user_1"));
+  assert.ok(seedFromId("user_1") >= 0 && seedFromId("user_1") <= 65535);
+});
+
+check("a pattern colour and strength never take small text under 4.5:1", () => {
+  for (const hex of ["#ffff00", "#0b0b0f", "#808080", "#d06274", "#ffffff"]) {
+    for (const pInk of ["#000000", "#ffffff", "#ff0000"]) {
+      for (const cover of ["banner", "card"]) {
+        const style = { ...DEFAULT_CARD_STYLE, fill: "solid", c1: hex, c2: hex, pattern: "dots", pOpacity: 40, pInk, cover };
+        const v = cardVars(style, "#d06274", { appearance: "light", seed: 1 });
+        const f = fullColours({ mode: "solid", c1: hex, c2: hex, angle: 135 });
+        for (const end of [...f.ends, f.mid]) {
+          const r = contrast(lumOf(blend(end, v.patternInk, v.patternAlpha)), lumOf(f.mutedHex));
+          assert.ok(r >= 4.5, `${hex} with ${pInk} at ${v.patternAlpha}: ${r.toFixed(2)}:1`);
+        }
+      }
+    }
+  }
+});
+
+check("tuning is read key by key and only what differs is kept", () => {
+  const s = normalizeCardStyle({ pattern: "waves-1", pScale: 250, pRotate: 400, pOpacity: 12, pFade: "radial", pSeed: 70000, pInk: "#ABCDEF", pIcon: "coffee" });
+  assert.equal(s.pScale, 250);
+  assert.equal(s.pRotate, 0);
+  assert.equal(s.pOpacity, 12);
+  assert.equal(s.pFade, "radial");
+  assert.equal(s.pSeed, undefined);
+  assert.equal(s.pInk, "#abcdef");
+  assert.equal(s.pIcon, "coffee");
+  assert.deepEqual(cardStyleForWire(s), { pattern: "waves-1", pScale: 250, pOpacity: 12, pFade: "radial", pInk: "#abcdef", pIcon: "coffee" });
+  const code = encodeCardStyle(s);
+  assert.equal(code, "card=b4b&pattern=waves-1&pScale=250&pOpacity=12&pFade=radial&pInk=abcdef&pIcon=coffee");
+  assert.deepEqual(decodeCardStyle(code), s);
 });
 
 check("built-in style ids are unique and each is already a valid style", () => {
