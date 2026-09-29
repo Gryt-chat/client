@@ -31,4 +31,4 @@ node scripts/build-helper.mjs          # helper/dist/gryt-helper for this machin
 cd helper && go test ./...
 ```
 
-It needs Go 1.22, the same version the release workflow uses for the SFU.
+`build-helper.mjs` pins Go 1.26.5 through `GOTOOLCHAIN`, and Go downloads it if a different one is installed. The release workflow sets up Go 1.22 for the SFU. Go 1.22 leaves `LC_UUID` out of Mac binaries, and on the macOS CI runner dyld refused to load its test binary because of that.

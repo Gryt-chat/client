@@ -13,6 +13,8 @@ import { fileURLToPath } from "url";
 const CLIENT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const GOOS = { darwin: "darwin", linux: "linux", win32: "windows" };
 const GOARCH = { x64: "amd64", arm64: "arm64" };
+/** Go fetches this toolchain if the one on PATH differs. The release sets up 1.22, whose Mac binaries lack LC_UUID. */
+export const GO_TOOLCHAIN = "go1.26.5";
 
 export function helperFileName(platform = process.platform) {
   return platform === "win32" ? "gryt-helper.exe" : "gryt-helper";
@@ -31,7 +33,7 @@ export function buildHelper({ platform = process.platform, arch = process.arch, 
     {
       cwd: join(CLIENT_DIR, "helper"),
       stdio: "inherit",
-      env: { ...process.env, GOOS: GOOS[platform], GOARCH: GOARCH[arch], CGO_ENABLED: "0" },
+      env: { ...process.env, GOTOOLCHAIN: GO_TOOLCHAIN, GOOS: GOOS[platform], GOARCH: GOARCH[arch], CGO_ENABLED: "0" },
     },
   );
   return file;

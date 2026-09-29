@@ -271,12 +271,14 @@ jobs:
         working-directory: helper
     steps:
       - uses: actions/checkout@v4
+      # Kept in step with GO_TOOLCHAIN in scripts/build-helper.mjs. On macos-latest, dyld aborts Go 1.22 test binaries (missing LC_UUID).
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.26.5"
           cache-dependency-path: helper/go.sum
-      - run: test -z "$(gofmt -l .)"
-        shell: bash
+      # Windows checks the files out with CRLF, which gofmt reports.
+      - if: runner.os == 'Linux'
+        run: test -z "$(gofmt -l .)"
       - run: go vet ./...
       - run: go test -count=1 ./...
 
