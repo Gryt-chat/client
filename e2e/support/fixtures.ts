@@ -31,6 +31,8 @@ export interface MemberOptions {
   label?: string;
   /** In place of the generated one. Pass it through `uniqueName` to keep it unique. */
   nickname?: string;
+  /** Frames this page sends that never reach the server. */
+  dropSent?: (frame: string) => boolean;
 }
 
 const PHONE: BrowserContextOptions = {
@@ -43,6 +45,20 @@ const PHONE: BrowserContextOptions = {
 /** Digits only: the server's profanity filter is on, and a random run of letters can spell something. */
 export function uniqueName(prefix: string): string {
   return `${prefix}-${Math.floor(Math.random() * 1e6)}`;
+}
+
+/** Routed, so the page's own WebSocket events (and `frames`) no longer fire for the socket. */
+async function dropSent(context: BrowserContext, drop: (frame: string) => boolean): Promise<void> {
+  await context.routeWebSocket(
+    (url) => url.pathname.startsWith("/socket.io/"),
+    (page) => {
+      const server = page.connectToServer();
+      page.onMessage((message) => {
+        if (typeof message === "string" && drop(message)) return;
+        server.send(message);
+      });
+    },
+  );
 }
 
 /** The app picks from 152 names, so members of one worker's server would soon share one. */
@@ -163,6 +179,7 @@ export const test = base.extend<
       const context = await browser.newContext(options.phone ? PHONE : {});
       contexts.push(context);
       await prepare(context, problems.report, { nickname: name, welcome: options.welcome, agreed: options.agreed });
+      if (options.dropSent) await dropSent(context, options.dropSent);
       const page = await context.newPage();
       problems.watch(page, label, server.httpBase);
       const frames = recordFrames(page);

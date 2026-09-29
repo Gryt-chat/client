@@ -5,7 +5,11 @@ type Wire = Record<string, unknown>;
 
 /** The part of a socket.io socket the transport uses. */
 export interface AckSocket {
+  /** socket.io's. Absent on a stand-in, which counts as connected. */
+  connected?: boolean;
   emit(event: string, payload: unknown, ack: (reply: unknown) => void): unknown;
+  on?(event: "disconnect", listener: () => void): unknown;
+  off?(event: "disconnect", listener: () => void): unknown;
 }
 
 /** Long enough for a commit carrying a Welcome on a slow connection. */
@@ -40,13 +44,22 @@ export function socketMlsTransport(options: TransportOptions): MlsTransport {
   const { socket, getAccessToken, timeoutMs = ACK_TIMEOUT_MS } = options;
 
   async function request<T>(event: string, payload: Record<string, unknown>): Promise<MlsReply<T>> {
+    // Kept out of socket.io's buffer: the driver waits, catches up after the reconnect, then sends.
+    if (socket.connected === false) return refusal("offline", "Not connected to this server.");
     const accessToken = await getAccessToken();
     if (!accessToken) return refusal("unauthenticated", "Not signed in to this server.");
     return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(refusal("timeout", `No answer to ${event}.`)), timeoutMs);
-      socket.emit(event, { accessToken, ...payload }, (reply) => {
+      // A dropped connection never acks, so there's no point waiting out the timer.
+      const dropped = () => settle(refusal("timeout", `The connection dropped before ${event} was answered.`));
+      const timer = setTimeout(() => settle(refusal("timeout", `No answer to ${event}.`)), timeoutMs);
+      const settle = (reply: MlsReply<T>) => {
         clearTimeout(timer);
-        resolve(
+        socket.off?.("disconnect", dropped);
+        resolve(reply);
+      };
+      socket.on?.("disconnect", dropped);
+      socket.emit(event, { accessToken, ...payload }, (reply) => {
+        settle(
           reply && typeof reply === "object" && "ok" in reply
             ? (reply as MlsReply<T>)
             : refusal("invalid_reply", `${event} answered with something unreadable.`),

@@ -1,10 +1,13 @@
 import type { MlsOwnDevice } from "@gryt/core";
-import { Avatar, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
-import { useCallback, useEffect, useState } from "react";
+import { Alert, Avatar, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import toast from "react-hot-toast";
 
 import { GeneratedServerIcon, serverIconSrc, useAccount } from "@/common";
 import {
+  linkedDeviceLine,
+  type LinkedDeviceNotice,
+  linkedDeviceNotices,
   orderOwnDevices,
   ownDeviceAdded,
   ownDeviceLabel,
@@ -132,16 +135,65 @@ function ServerDevices({ host, name, icon }: { host: string; name: string; icon:
   );
 }
 
+/** Stays until dismissed or the device is removed (GRYT-1583). */
+function LinkedDeviceNoticeRow({ notice, serverName }: { notice: LinkedDeviceNotice; serverName: string }) {
+  const [confirming, setConfirming] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  const remove = async () => {
+    setRemoving(true);
+    try {
+      await removeOwnMlsDevice(notice.host, notice.deviceId);
+      linkedDeviceNotices.dismiss(notice.deviceId);
+      toast.success("Device removed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't remove the device");
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <Alert severity="warning">
+      <div className="flex flex-col gap-2">
+        <span>
+          {linkedDeviceLine(notice, true)} It&rsquo;s on {serverName}.
+        </span>
+        <div className="flex flex-wrap gap-2">
+          <Button size="xsmall" tone="danger" disabled={removing} onClick={() => setConfirming(true)}>
+            Remove
+          </Button>
+          <Button size="xsmall" tone="neutral" onClick={() => linkedDeviceNotices.dismiss(notice.deviceId)}>
+            It was me
+          </Button>
+        </div>
+      </div>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Remove device?"
+        description={removeOwnDeviceWarning(notice, serverName)}
+        confirmLabel="Remove"
+        onConfirm={() => void remove()}
+      />
+    </Alert>
+  );
+}
+
 /** GRYT-1526. Your MLS devices on each server, and removing one you don't use anymore. */
 export function OwnDevicesSection() {
   const { servers, orderedServerHosts } = useServerManagement();
   const { serverDetailsList } = useSockets();
+  const notices = useSyncExternalStore(linkedDeviceNotices.subscribe, linkedDeviceNotices.get);
 
   return (
     <SettingGroup
       title="Your devices"
       description="Each app or browser you use for encrypted DMs is a device. Every server has its own list."
     >
+      {notices.map((n) => (
+        <LinkedDeviceNoticeRow key={n.deviceId} notice={n} serverName={servers[n.host]?.name || n.host} />
+      ))}
       {orderedServerHosts.length === 0 ? (
         <span className="text-xs text-gryt-muted">No servers yet. Join one and it will show up here.</span>
       ) : (

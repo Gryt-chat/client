@@ -20,12 +20,20 @@ import {
 } from "@/common";
 
 import { isElectron } from "../../../../lib/electron";
+import { showLinkedDeviceToast } from "../components/linkedDeviceToast";
 import { readMlsCapability, readMlsReports } from "./capability";
+import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
 import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
 import { authTimeOf, clearRemovedHere, markRemovedHere, removedHereAt, stillRemoved } from "./removedHere";
 import { seenOnMlsFor } from "./seenOnMls";
-import { type ConversationProblems, createMlsSession, type MlsSession, type SessionSocket } from "./session";
+import {
+  type ArchivedMlsMessage,
+  type ConversationProblems,
+  createMlsSession,
+  type MlsSession,
+  type SessionSocket,
+} from "./session";
 
 /**
  * MLS for every connected server. Only the tab holding the Web Lock runs a driver; the
@@ -33,11 +41,13 @@ import { type ConversationProblems, createMlsSession, type MlsSession, type Sess
  */
 
 /** What a DM view needs, whether the driver is in this tab or another one. */
-export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "onChange">;
+export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "waiting" | "onChange">;
 
 /** How long to wait for the member list's pins before starting anyway. */
 const MEMBERS_WAIT_MS = 5000;
 const RELAY_TIMEOUT_MS = 20_000;
+/** A send waits up to five minutes for the server in the other tab, so this outlasts it. */
+const RELAY_SEND_TIMEOUT_MS = 6 * 60_000;
 const RELAY_CHANNEL = "gryt-mls-relay";
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
 
@@ -122,6 +132,84 @@ function deferred() {
   return { promise, resolve };
 }
 
+const startedDevices = new Map<string, string>();
+const deviceWaiters = new Map<string, Set<(deviceId: string) => void>>();
+
+function announceDevice(host: string, deviceId: string): void {
+  startedDevices.set(host, deviceId);
+  for (const resolve of deviceWaiters.get(host) ?? []) resolve(deviceId);
+  deviceWaiters.delete(host);
+}
+
+/** This device's MLS device on a server once a start has run there, or null after `timeoutMs`. For linking. */
+export function whenOwnMlsDevice(host: string, timeoutMs: number): Promise<string | null> {
+  const known = startedDevices.get(host);
+  if (known) return Promise.resolve(known);
+  return new Promise((resolve) => {
+    const waiters = deviceWaiters.get(host) ?? new Set();
+    const done = (deviceId: string | null) => {
+      clearTimeout(timer);
+      waiters.delete(done);
+      resolve(deviceId);
+    };
+    const timer = setTimeout(() => done(null), timeoutMs);
+    waiters.add(done);
+    deviceWaiters.set(host, waiters);
+  });
+}
+
+/** Linking replaced this device's identity, so device ids from before it mean nothing. */
+export function forgetOwnMlsDevices(): void {
+  startedDevices.clear();
+}
+
+/** This tab's MLS session on a server, for adding a device that was just linked. Undefined when there's none here. */
+export function ownDeviceAdder(host: string): Pick<MlsSession, "addOwnDevice" | "groupPositions"> | undefined {
+  const session = hosts.get(host)?.session;
+  if (!session?.capability) return undefined;
+  return {
+    addOwnDevice(deviceId, options) {
+      expectOwnDevice(session.storeScope, deviceId);
+      return session.addOwnDevice(deviceId, options);
+    },
+    groupPositions: () => session.groupPositions(),
+  };
+}
+
+// ── Linking: the history tail, and holding "New device linked" while this device links one ──
+
+let archiveListener: ((host: string, message: ArchivedMlsMessage) => void) | null = null;
+
+/** Every MLS archive write in this tab goes here while set, for a pairing's history tail. */
+export function setMlsArchiveListener(listener: ((host: string, message: ArchivedMlsMessage) => void) | null): void {
+  archiveListener = listener;
+}
+
+let noticesHeld = 0;
+
+/** While this device approves a link, its new device shows up before it's known here. */
+export function holdLinkedDeviceNotices(): () => void {
+  noticesHeld++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (--noticesHeld === 0) for (const host of hosts.keys()) void checkOwnDevices(host);
+  };
+}
+
+async function checkOwnDevices(host: string): Promise<void> {
+  const session = hosts.get(host)?.session;
+  if (noticesHeld || !session?.capability) return;
+  try {
+    const devices = await session.ownDevices();
+    if (noticesHeld || hosts.get(host)?.session !== session) return;
+    for (const notice of noteOwnDevices(host, session.storeScope, devices)) showLinkedDeviceToast(notice);
+  } catch (e) {
+    console.warn("[MLS] Couldn't check for new devices on", host, e);
+  }
+}
+
 /** Once per socket, from `registerServerSocketEvents`. */
 export function attachServerMls(socket: Socket, host: string): void {
   const previous = hosts.get(host);
@@ -190,6 +278,7 @@ async function refresh(host: string): Promise<void> {
     if (state.sessionKey !== key) {
       state.sessionKey = key;
       state.removed = false;
+      startedDevices.delete(host);
       const scope = identityScopeFor(host);
       // Version 1 needs no archive, so DMs that don't need MLS go on while it opens or if it won't.
       state.local = createModeOnlySource({
@@ -234,6 +323,8 @@ async function refresh(host: string): Promise<void> {
           state.sessionKey = null;
           void refresh(host);
         },
+        archiveListener: () => (archiveListener ? (m) => archiveListener?.(host, m) : null),
+        onOwnDevicesChanged: () => void checkOwnDevices(host),
       });
       state.session.onChange((conversationId) => relayChannel?.postMessage({ changed: host, conversationId }));
       state.local = state.session;
@@ -248,7 +339,11 @@ async function refresh(host: string): Promise<void> {
     // Never holds up the start: a device left behind is tried again on the next connect.
     await retireOldDevices(session).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
     await Promise.race([state.pinned.promise, new Promise((r) => setTimeout(r, MEMBERS_WAIT_MS))]);
-    if (state.session === session) await session.start();
+    if (state.session !== session) return;
+    await session.start();
+    const deviceId = await session.ownDeviceId();
+    if (deviceId && state.session === session) announceDevice(host, deviceId);
+    if (state.session === session) void checkOwnDevices(host);
   } catch (e) {
     // Tried again on the next connect rather than left without a session for good.
     if (!state.session) state.sessionKey = null;
@@ -281,6 +376,7 @@ function removedSource(base: MlsSource): MlsSource {
     send: () =>
       Promise.reject(Object.assign(new Error("This device was removed from encrypted DMs on this server."), { code: "device_removed" })),
     problems: () => ({ undecryptable: 0, lost: "device_removed" }),
+    waiting: () => false,
     onChange: base.onChange,
   };
 }
@@ -412,7 +508,8 @@ function askRelay(req: Omit<RelayRequest, "id">): Promise<RelayReply> {
   return new Promise<RelayReply>((resolve, reject) => {
     if (!relayChannel) return reject(new Error("No other tab to send through."));
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => done(new Error("The tab sending encrypted messages didn't answer.")), RELAY_TIMEOUT_MS);
+    const wait = req.op === "send" ? RELAY_SEND_TIMEOUT_MS : RELAY_TIMEOUT_MS;
+    const timer = setTimeout(() => done(new Error("The tab sending encrypted messages didn't answer.")), wait);
     const onReply = (event: MessageEvent<RelayReply>) => {
       if (event.data?.id !== id) return;
       if (!event.data.error) return done(null, event.data);
@@ -442,6 +539,7 @@ function relaySource(host: string): MlsSource {
     },
     send: async (conversationId, peer, content) => void (await ask({ op: "send", conversationId, peer, content })),
     problems: (conversationId) => problems.get(conversationId) ?? NO_PROBLEMS,
+    waiting: () => false,
     onChange(listener) {
       const onMessage = (event: MessageEvent<RelayChanged>) => {
         if (event.data?.changed === host) listener(event.data.conversationId);

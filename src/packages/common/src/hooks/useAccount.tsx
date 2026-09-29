@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import type { Account } from "@/common";
+import type { Account, LinkedSessionTokens } from "@/common";
 import { clearClaimDecisions, signOut } from "@/common";
 import { clearUserCache } from "@/settings/src/hooks/userStorage";
 
@@ -13,6 +13,7 @@ import {
   LOGIN_CANCELLED,
 } from "../auth/electron-auth";
 import {
+  adoptLinkedSession as adoptTokens,
   doLogout,
   fetchRegistrationAllowed,
   initKeycloak,
@@ -201,6 +202,12 @@ function useAccountHook(): Account {
     }
   }
 
+  async function adoptLinkedSession(tokens: LinkedSessionTokens) {
+    retryDone.current = true;
+    await adoptTokens(tokens);
+    setIsSignedIn(true);
+  }
+
   return {
     isSignedIn,
     loginInProgress,
@@ -209,6 +216,7 @@ function useAccountHook(): Account {
     register,
     logout,
     cancelLogin,
+    adoptLinkedSession,
   };
 }
 
@@ -220,6 +228,7 @@ const init: Account = {
   register: async () => {},
   logout: async () => {},
   cancelLogin: () => {},
+  adoptLinkedSession: async () => {},
 };
 
 export const useAccount = singletonHook(init, useAccountHook);

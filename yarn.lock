@@ -542,22 +542,24 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
-"@gryt/core@0.13.0":
-  version "0.13.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.13.0.tgz#ecc9b27931b5a75dc24f294f0f66c862845b825e"
-  integrity sha512-s/+500PM7IiwH7Eo+HpsTjskX2OIcTavJ4VGInyNsjMFWd1rJeT14NN7Td1ombUBCGXuESPIh8ORhUt/dmduvQ==
+"@gryt/core@0.16.0":
+  version "0.16.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.16.0.tgz#fbfcb1b66612d196fcb001a483ba0baaf350c6a7"
+  integrity sha512-5dBjlccnIIREMyrxkXo81yQZVgbm7MCGAoQ4dGmTHFNvfurGPS44Bu6jzIGyEKTDIDAV0x5efKO3nLYnFiPncQ==
   dependencies:
-    "@gryt/crypto" "0.7.0"
+    "@gryt/crypto" "0.9.0"
+    "@noble/hashes" "^2.3.0"
 
-"@gryt/crypto@0.7.0", "@gryt/crypto@0.7.1":
-  version "0.7.1"
-  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.7.1.tgz#c39ddc05ccd8927fa4ca5c2dfeb777a6cc93a66c"
-  integrity sha512-WolssRwDKpWZYHF/9SaSp/Pnqp4j/TAn1dQOkHkK7+vr92HD0PmMfAU2EeJaJUtTTX5FAigjEGQKH2cKHqAhVQ==
+"@gryt/crypto@0.9.0":
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.9.0.tgz#78db8ab960e1491e346b9e6678e989864be23e8d"
+  integrity sha512-F3jBlnvQdG3sJkcI8dvuFFNBWrz49/0jvmNGjFdMLwFMflBKQWLfrlw9M5VKsjU/svN334PYpuIPzyZBz2YpEw==
   dependencies:
     "@noble/ciphers" "^2"
     "@noble/curves" "^2.3.0"
     "@noble/hashes" "^2.3.0"
     "@scure/bip39" "^2.3.0"
+    fflate "0.8.3"
     ts-mls "1.6.4"
 
 "@gryt/owl@^0.6.0":
@@ -2438,6 +2440,11 @@ fdir@^6.5.0:
   version "6.5.0"
   resolved "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz"
   integrity sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==
+
+fflate@0.8.3:
+  version "0.8.3"
+  resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.8.3.tgz#bc27d8eb30343d4d512abb03480202ce65d825fc"
+  integrity sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==
 
 fflate@^0.8.2:
   version "0.8.2"
@@ -4814,6 +4821,11 @@ update-browserslist-db@^1.2.0:
   dependencies:
     escalade "^3.2.0"
     picocolors "^1.1.1"
+
+uqr@^0.1.3:
+  version "0.1.3"
+  resolved "https://registry.yarnpkg.com/uqr/-/uqr-0.1.3.tgz#43b5b27508cd28ccc42401ea75b92a39bd8cd510"
+  integrity sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA==
 
 uri-js@^4.2.2:
   version "4.4.1"

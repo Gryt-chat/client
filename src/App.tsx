@@ -28,10 +28,12 @@ import {
 import type { InviteJoinRequest } from "@/socket/src/components/InviteAcceptModal";
 import { useVoiceSounds } from "@/webRTC";
 
+import { ApproveDeviceDialog } from "./components/approveDevice";
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
+import { LinkDeviceDialog } from "./components/linkDevice";
 import { MainApp } from "./components/mainApp";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
 import { ReportDialog } from "./components/reportDialog";
@@ -130,6 +132,8 @@ export function App() {
           <MainApp />
           <Settings />
           <Welcome />
+          <LinkDeviceDialog />
+          <ApproveDeviceDialog />
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
           <LeaveServer />
           <DeviceSwitchModal />

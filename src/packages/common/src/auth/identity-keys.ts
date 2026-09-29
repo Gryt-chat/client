@@ -23,6 +23,7 @@ import {
 } from "./guest-history";
 import {
   asIdentityScope,
+  assertUsableSeed,
   deriveLocalKeyPair,
   generateSeed,
   type IdentityScope,
@@ -709,6 +710,31 @@ export async function exportLocalIdentities(): Promise<ExportResult> {
   };
 }
 
+/**
+ * What linking a device hands over (GRYT-1484): the seed, made if there isn't one, and the
+ * stored local keys it can't derive. Only ever sealed to a device that passed the emoji.
+ */
+export async function readIdentityForLinking(): Promise<{ seed: Uint8Array; keys: IdentityBackupEntry[] }> {
+  const db = await openDB();
+  try {
+    const seed = await getOrCreateSeed(db);
+    const keys: IdentityBackupEntry[] = [];
+    for (const scope of await listLocalIdentityScopes(db)) {
+      const pair = await idbGet<StoredKeyPair>(db, `${LOCAL_PREFIX}${scope}`);
+      if (!pair?.privateKey || !pair?.publicKey) continue;
+      keys.push({
+        scope,
+        ...(pair.host ? { host: pair.host } : {}),
+        privateJwk: await crypto.subtle.exportKey("jwk", pair.privateKey),
+        publicJwk: await crypto.subtle.exportKey("jwk", pair.publicKey),
+      });
+    }
+    return { seed, keys };
+  } finally {
+    db.close();
+  }
+}
+
 type AnyIdentityBackup = IdentityBackup | IdentityBackupV1;
 
 function isBackup(value: unknown): value is AnyIdentityBackup {
@@ -761,6 +787,18 @@ export function parseIdentityBackup(raw: string): ParsedIdentityBackup {
   };
 }
 
+/** One stored key from a backup entry. False when the entry is missing a part. */
+async function putStoredKey(db: IDBDatabase, entry: IdentityBackupEntry): Promise<boolean> {
+  if (!entry?.scope || !entry.privateJwk || !entry.publicJwk) return false;
+
+  // Imported extractable, so a restored identity can be saved again. A
+  // backup that could only be restored once would be a trap.
+  const privateKey = await crypto.subtle.importKey("jwk", entry.privateJwk, ALGO, true, ["sign"]);
+  const publicKey = await crypto.subtle.importKey("jwk", entry.publicJwk, ALGO, true, ["verify"]);
+  await idbPut(db, `${LOCAL_PREFIX}${entry.scope}`, { privateKey, publicKey, host: entry.host });
+  return true;
+}
+
 /**
  * Put saved identities back, and report which hosts were restored. Existing keys
  * for the same host are replaced, so the UI asks before importing.
@@ -780,31 +818,7 @@ export async function importLocalIdentities(raw: string): Promise<string[]> {
     }
 
     for (const entry of identities) {
-      if (!entry?.scope || !entry.privateJwk || !entry.publicJwk) continue;
-
-      // Imported extractable, so a restored identity can be saved again. A
-      // backup that could only be restored once would be a trap.
-      const privateKey = await crypto.subtle.importKey(
-        "jwk",
-        entry.privateJwk,
-        ALGO,
-        true,
-        ["sign"],
-      );
-      const publicKey = await crypto.subtle.importKey(
-        "jwk",
-        entry.publicJwk,
-        ALGO,
-        true,
-        ["verify"],
-      );
-
-      await idbPut(db, `${LOCAL_PREFIX}${entry.scope}`, {
-        privateKey,
-        publicKey,
-        host: entry.host,
-      });
-      restored.push(entry.host ?? entry.scope);
+      if (await putStoredKey(db, entry)) restored.push(entry.host ?? entry.scope);
     }
   } finally {
     db.close();
@@ -861,6 +875,32 @@ export async function restoreIdentityFromWords(phrase: string): Promise<void> {
 
   cachedKeyPairs.clear();
   discardServerSessions();
+}
+
+/**
+ * Become the identity another device handed over when linking (GRYT-1484): its seed and
+ * the stored keys it can't derive. Old local keys go, as on the phrase path.
+ */
+export async function installPairedIdentity(
+  seed: Uint8Array,
+  keys: readonly IdentityBackupEntry[],
+): Promise<void> {
+  assertUsableSeed(seed);
+
+  const db = await openDB();
+  try {
+    await writeSeed(db, seed);
+    for (const scope of await listLocalIdentityScopes(db)) {
+      await idbDelete(db, `${LOCAL_PREFIX}${scope}`);
+    }
+    for (const entry of keys) await putStoredKey(db, entry);
+  } finally {
+    db.close();
+  }
+
+  cachedKeyPairs.clear();
+  discardServerSessions();
+  rememberGuestScopes(keys.map((e) => e.scope));
 }
 
 /**

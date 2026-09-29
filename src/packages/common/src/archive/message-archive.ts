@@ -132,6 +132,31 @@ export class MessageArchive {
     return opened.filter((m): m is ArchivedMessage => m !== null);
   }
 
+  /** Every conversation with anything in it, and how many messages it holds. For pairing's history. */
+  async conversations(): Promise<{ scope: string; conversationId: string; count: number }[]> {
+    const tx = this.db.transaction(MESSAGE_STORE, "readonly");
+    const store = tx.objectStore(MESSAGE_STORE);
+    const found: { scope: string; conversationId: string; count: number }[] = [];
+
+    await new Promise<void>((resolve, reject) => {
+      const cursor = store.openKeyCursor();
+      cursor.onerror = () => reject(cursor.error);
+      cursor.onsuccess = () => {
+        const at = cursor.result;
+        if (!at) return resolve();
+        const [scope, conversationId] = at.key as [string, string, string];
+        const entry = { scope, conversationId, count: 0 };
+        found.push(entry);
+        const counted = store.count(IDBKeyRange.bound([scope, conversationId], [scope, conversationId, []]));
+        counted.onsuccess = () => void (entry.count = counted.result);
+        // Skip the rest of this conversation: an empty array sorts after every message id.
+        at.continue([scope, conversationId, []]);
+      };
+    });
+    // Requests in one transaction run in order, so every count is in before the cursor ends.
+    return found;
+  }
+
   async remove(scope: string, conversationId: string, messageId: string): Promise<void> {
     const tx = this.db.transaction(MESSAGE_STORE, "readwrite");
     tx.objectStore(MESSAGE_STORE).delete([scope, conversationId, messageId]);

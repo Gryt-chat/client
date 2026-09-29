@@ -68,6 +68,13 @@ jobs:
       - run: yarn test:reset-warning
       - run: yarn test:guest-history
       - run: yarn test:identity-claim
+      # Linking a device: what the new one writes, in what order, and that a wrong
+      # account or a mismatch writes nothing. Both of core's machines, one relay in memory.
+      - run: yarn test:pairing-new-device
+      # Linking a device from the side that approves: what the envelope carries, that the
+      # access token is fetched only once the new device's code is in, and the adds after.
+      - run: yarn test:pairing-approver
+      - run: yarn test:linked-devices
 
       # Fires once per version, so a mistake is a modal nobody sees again or one
       # that greets a fresh install. Neither shows up in a build.
@@ -135,6 +142,7 @@ jobs:
       - run: yarn test:sealed-save
       - run: yarn test:local-archive
       - run: yarn test:mls-dm
+      - run: yarn test:mls-restart
       - run: yarn test:clear-local-history
       - run: yarn test:member-key-wording
       - run: yarn test:owl-export

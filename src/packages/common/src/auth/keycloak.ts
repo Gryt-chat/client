@@ -31,6 +31,19 @@ function deriveKeycloakBaseUrl(issuer: string): string {
   return idx === -1 ? i : i.slice(0, idx);
 }
 
+/* Set in a browser signed in by linking a device (GRYT-1484). It has no Keycloak cookie,
+   so it keeps its own tokens the way Electron does. */
+const LINKED_SESSION_KEY = 'gryt_linked_session';
+
+function keepsOwnTokens(): boolean {
+  if (isElectron()) return true;
+  try {
+    return localStorage.getItem(LINKED_SESSION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 let keycloakInstance: Keycloak | null = null;
 let initPromise: Promise<KeycloakInitResult> | null = null;
 let handlersInstalled = false;
@@ -86,7 +99,7 @@ let refreshFailures = 0;
 async function doProactiveRefresh(keycloak: Keycloak): Promise<void> {
   console.log("[Auth:KC] Proactive token refresh triggered");
   try {
-    if (isElectron()) {
+    if (keepsOwnTokens()) {
       await refreshElectronKeycloakToken(keycloak);
     } else {
       await keycloak.updateToken(70);
@@ -138,7 +151,7 @@ function installKeycloakEventHandlers(keycloak: Keycloak, context: string): void
   keycloak.onTokenExpired = async () => {
     console.warn("[Auth:KC] onTokenExpired fired — attempting refresh");
     try {
-      if (isElectron()) {
+      if (keepsOwnTokens()) {
         await refreshElectronKeycloakToken(keycloak);
         scheduleProactiveRefresh(keycloak);
       } else {
@@ -289,9 +302,9 @@ export async function initKeycloak(): Promise<KeycloakInitResult> {
     return initPromise;
   }
 
-  const env = isElectron() ? 'electron' : 'browser';
+  const env = isElectron() ? 'electron' : keepsOwnTokens() ? 'browser, linked' : 'browser';
   console.log("[Auth:KC] initKeycloak: first call, env:", env);
-  initPromise = isElectron() ? initKeycloakForElectron() : initKeycloakForBrowser();
+  initPromise = keepsOwnTokens() ? initKeycloakForElectron() : initKeycloakForBrowser();
 
   return initPromise;
 }
@@ -315,7 +328,7 @@ export function resetKeycloakInit(): void {
  * login page, and only a rejected grant clears the tokens.
  */
 export async function retrySignIn(): Promise<SignInAttempt> {
-  if (isElectron()) {
+  if (keepsOwnTokens()) {
     const stored = await getStoredTokens();
     if (!stored) return "signed-out";
     try {
@@ -424,14 +437,65 @@ export async function startAccountDeletion(redirectUri?: string): Promise<void> 
 }
 
 export async function doLogout(): Promise<void> {
-  if (isElectron()) {
+  if (keepsOwnTokens()) {
     await electronLogout();
+    try {
+      localStorage.removeItem(LINKED_SESSION_KEY);
+    } catch {
+      // Nothing to clear.
+    }
     resetKeycloakInit();
     return;
   }
 
   const { keycloak } = await initKeycloak();
   await keycloak.logout({ redirectUri: window.location.origin });
+}
+
+/**
+ * Sign in with the tokens a device grant returned while linking (GRYT-1484). The caller
+ * has checked the ID token is for the account the other device named.
+ */
+export async function adoptLinkedSession(tokens: {
+  accessToken: string;
+  idToken: string;
+  refreshToken?: string;
+  expiresIn?: number;
+}): Promise<void> {
+  if (!tokens.refreshToken) throw new Error('The sign-in came back without a refresh token.');
+  await storeTokens({
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    id_token: tokens.idToken,
+    expires_at: Date.now() + (tokens.expiresIn ?? 60) * 1000,
+  });
+  if (!isElectron()) localStorage.setItem(LINKED_SESSION_KEY, '1');
+
+  resetKeycloakInit();
+  const { authenticated } = await initKeycloak();
+  if (!authenticated) throw new Error("Signing in with the linked session didn't work.");
+}
+
+/**
+ * An access token refreshed just now, for approving a linked device's sign-in (GRYT-1484).
+ * The Keycloak extension refuses one older than 60 seconds.
+ */
+export async function freshAccessToken(): Promise<string> {
+  // A browser signed in by linking keeps its own tokens too, so the refresh gets stored.
+  if (keepsOwnTokens()) {
+    const stored = await getStoredTokens();
+    if (!stored) throw new SessionExpiredError();
+    return (await refreshTokens(stored.refresh_token)).access_token;
+  }
+  const { keycloak, authenticated } = await initKeycloak();
+  if (!authenticated) throw new SessionExpiredError();
+  try {
+    await keycloak.updateToken(-1);
+  } catch {
+    throw new SessionExpiredError();
+  }
+  if (!keycloak.token) throw new SessionExpiredError();
+  return keycloak.token;
 }
 
 export async function fetchRegistrationAllowed(): Promise<boolean> {
@@ -451,7 +515,7 @@ export async function fetchRegistrationAllowed(): Promise<boolean> {
 }
 
 export async function getValidIdentityToken(minValiditySeconds: number = 30): Promise<string | undefined> {
-  if (isElectron()) {
+  if (keepsOwnTokens()) {
     return getValidElectronToken();
   }
 

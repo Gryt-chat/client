@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 
-import { composer, type Member, membersPanel, messageRow, unique } from "../support/app";
+import { composer, type Member, membersPanel, messageRow, ringCancel, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 import { settled } from "../support/overflow";
 
@@ -109,8 +109,8 @@ async function reply(from: Member, to: Member, text: string): Promise<void> {
   await expect(messageRow(from.page, text)).toBeVisible();
 }
 
-/** Whether a ringing card for this caller was ever drawn. The e2e server has no SFU, so
-    the caller's join fails and the ring is withdrawn after a moment. */
+/** Whether a ringing card for this caller was ever drawn. Give the caller `dropSent: ringCancel`,
+    or its failed join withdraws the ring before the card is drawn. */
 async function watchForRing(member: Member, caller: string): Promise<() => Promise<boolean>> {
   await member.page.evaluate((label) => {
     const w = window as unknown as { __rang?: boolean };
@@ -124,7 +124,7 @@ async function watchForRing(member: Member, caller: string): Promise<() => Promi
 }
 
 test("calls from friends by default: a stranger's ring never rings, and writing back lets it through", async ({ newMember }) => {
-  const alice = await newMember();
+  const alice = await newMember({ dropSent: ringCancel });
   const bob = await newMember();
   await write(alice, bob, unique("hello"));
   await bob.page.getByRole("button", { name: "Direct messages" }).click();
