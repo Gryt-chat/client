@@ -31,6 +31,34 @@ export const CAPABILITY_LABELS: Record<AddonCapability, string> = {
   activity: "Put a card on your profile, like \"Listening to\", on every server you are on",
 };
 
+export type AddonRisk = "low" | "medium" | "high";
+
+/**
+ * How much each one could hurt if the addon is badly meant. Low only changes what you
+ * see; medium shows something about you to others; high sends data somewhere else.
+ */
+export const CAPABILITY_RISK: Record<AddonCapability, AddonRisk> = {
+  display: "low",
+  status: "medium",
+  activity: "medium",
+  processes: "medium",
+  media: "medium",
+  messaging: "high",
+};
+
+export const RISK_LABELS: Record<AddonRisk, string> = {
+  low: "Low: only changes what you see",
+  medium: "Medium: can show things about you to others",
+  high: "High: can send data to the servers you're on",
+};
+
+/** The addon's overall risk: its riskiest permission, or null when it asks for none. */
+export function addonRisk(capabilities: readonly AddonCapability[]): AddonRisk | null {
+  if (capabilities.length === 0) return null;
+  const order: AddonRisk[] = ["low", "medium", "high"];
+  return capabilities.reduce<AddonRisk>((worst, c) => (order.indexOf(CAPABILITY_RISK[c]) > order.indexOf(worst) ? CAPABILITY_RISK[c] : worst), "low");
+}
+
 function isCapability(value: unknown): value is AddonCapability {
   return (
     typeof value === "string" &&

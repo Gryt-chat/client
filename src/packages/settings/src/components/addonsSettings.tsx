@@ -3,9 +3,12 @@ import { useEffect, useState } from "react";
 
 import type { AddonManifest, AddonUpdate } from "@/addons";
 import {
+  addonRisk,
   CAPABILITY_LABELS,
+  CAPABILITY_RISK,
   declaredCapabilities,
   grantedCapabilities,
+  RISK_LABELS,
   setGrantedCapabilities,
 } from "@/addons";
 import { useAddons } from "@/addons";
@@ -201,6 +204,23 @@ function AddonCard({
   );
 }
 
+const RISK_TONES = {
+  low: { bg: "var(--gryt-success-3)", fg: "var(--gryt-success-11)" },
+  medium: { bg: "var(--gryt-warning-3)", fg: "var(--gryt-warning-11)" },
+  high: { bg: "var(--gryt-danger-3)", fg: "var(--gryt-danger-11)" },
+} as const;
+
+/** How much an addon could do, going by the riskiest thing it asks for. */
+function RiskBadge({ risk }: { risk: ReturnType<typeof addonRisk> }) {
+  if (!risk) return null;
+  const tone = RISK_TONES[risk];
+  return (
+    <span className="self-start rounded-md px-2 py-0.5 text-xs font-bold" style={{ background: tone.bg, color: tone.fg }}>
+      Risk: {RISK_LABELS[risk]}
+    </span>
+  );
+}
+
 /**
  * What a plugin asked for, and whether it may have it. Drawn only for a plugin
  * that asks for something; most do not (GRYT-928).
@@ -221,10 +241,14 @@ function AddonCapabilities({ addon }: { addon: AddonManifest }) {
 
   return (
     <div className="flex flex-col gap-1" style={{ marginTop: 4 }}>
+      <RiskBadge risk={addonRisk(declared)} />
       <span className="text-xs font-bold text-gryt-muted">This addon asks to</span>
       {declared.map((capability) => (
         <label key={capability} className="flex items-center justify-between gap-2 text-sm">
-          <span>{CAPABILITY_LABELS[capability]}</span>
+          <span>
+            {CAPABILITY_LABELS[capability]}{" "}
+            <span className="text-xs text-gryt-muted">({CAPABILITY_RISK[capability]})</span>
+          </span>
           <Switch
             checked={granted.includes(capability)}
             onCheckedChange={() => toggle(capability)}
