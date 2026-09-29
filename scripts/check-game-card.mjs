@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { buttonLink, cardHeading, elapsed, partyText } from "../src/packages/socket/src/lib/gameCard.ts";
+import { buttonLink, cardHeading, elapsed, gameIconUrl, partyText } from "../src/packages/socket/src/lib/gameCard.ts";
 
 let failures = 0;
 function check(name, run) {
@@ -62,6 +62,14 @@ check("a button that isn't a plain web link is not drawn", () => {
 check("the member card only draws the card for somebody who's here", () => {
   const source = readFileSync(new URL("../src/packages/socket/src/components/MemberIdentityCard.tsx", import.meta.url), "utf8");
   assert.match(source, /\{!offline && member\.richActivity && <GameCard card=\{member\.richActivity\} \/>\}/);
+});
+
+check("the icon URL is the mirrored repo, never Discord's CDN", () => {
+  assert.equal(gameIconUrl("1137125502985961543"), "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/icons/1137125502985961543.avif");
+});
+
+check("no URL without a usable id", () => {
+  for (const bad of [undefined, "", "not-digits", "1".repeat(33)]) assert.equal(gameIconUrl(bad), null, JSON.stringify(bad));
 });
 
 console.log(failures === 0 ? "\ngame card: ok" : `\ngame card: ${failures} failed.`);

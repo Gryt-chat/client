@@ -62,6 +62,12 @@ await check("listening and watching keep their type", () => {
   assert.equal(cardFromActivity({ type: 1 }, "x").type, "playing");
 });
 
+await check("the application id rides along for an icon, when it looks like one", () => {
+  assert.equal(cardFromActivity({}, "x", "1137125502985961543").appId, "1137125502985961543");
+  assert.equal(cardFromActivity({}, "x", undefined).appId, undefined);
+  assert.equal(cardFromActivity({}, "x", "not-an-id").appId, undefined);
+});
+
 /* ── The board ───────────────────────────────────────────────────────── */
 
 function harness(names = { "100": "Factorio" }) {
@@ -92,6 +98,13 @@ await check("the name comes from the list, then from the game, then a placeholde
   other.board.update(ev(1, "300", { state: "c" }));
   assert.equal(other.sent.at(-1).name, UNKNOWN_GAME);
   other.board.stop();
+});
+
+await check("the board's card carries the sender's own client id as the appId", () => {
+  const { board, sent } = harness();
+  board.update(ev(1, "100", { state: "a" }));
+  assert.equal(sent.at(-1).appId, "100");
+  board.stop();
 });
 
 await check("a game resending the same card sends nothing", () => {
