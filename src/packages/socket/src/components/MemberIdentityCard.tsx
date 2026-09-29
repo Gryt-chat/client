@@ -235,6 +235,8 @@ export function MemberIdentityCard({
       game={offline ? null : member.richActivity}
       chips={chips}
       appearance={resolvedAppearance}
+      seedKey={member.serverUserId}
+      worn={member.avatarWorn}
       menuOpen={menuOpen}
     >
       {identityIsTheQuestion && fingerprint && (

@@ -6,9 +6,11 @@ import type { RichActivity } from "../../../../../lib/richActivity";
 import { buttonLink, cardHeading, elapsed, gameIconUrl } from "../../lib/gameCard";
 import type { CardProfile } from "../../lib/memberCard/cardStyle";
 import { cardVars } from "../../lib/memberCard/cardVars";
+import { seedFromId } from "../../lib/memberCard/scatter";
 import type { UserStatus } from "../../types/clients";
 import { BotTag } from "../BotTag";
 import { CardIcon } from "./cardIcons";
+import { usePatternAssets } from "./patternAssets";
 
 /** Presence as the ring and the status line draw it. Offline gets no ring at all. */
 const STATUS: Record<UserStatus, { label: string; ring: string }> = {
@@ -40,6 +42,10 @@ export interface MemberCardViewProps {
   game?: RichActivity | null;
   chips?: CardChip[];
   appearance: "light" | "dark";
+  /** Seeds a scatter pattern, so everybody sees the same one: the member's id. */
+  seedKey: string;
+  /** Their designed look, for the my-owl pattern. */
+  worn?: string | null;
   /** Lets a menu hang out of the card instead of being cut off at its edge. */
   menuOpen?: boolean;
   /** The actions row, the moderation row and the drawer. */
@@ -58,10 +64,16 @@ export function MemberCardView({
   game,
   chips = [],
   appearance,
+  seedKey,
+  worn,
   menuOpen,
   children,
 }: MemberCardViewProps) {
-  const { attrs, vars } = useMemo(() => cardVars(profile.cardStyle, owlHex), [profile.cardStyle, owlHex]);
+  const assets = usePatternAssets(profile.cardStyle, { nickname: name, worn });
+  const { attrs, vars } = useMemo(
+    () => cardVars(profile.cardStyle, owlHex, { appearance, seed: seedFromId(seedKey), ...assets }),
+    [profile.cardStyle, owlHex, appearance, seedKey, assets],
+  );
   const presence = STATUS[status] ?? STATUS.online;
   const playing = !!game && status !== "offline";
   const line = !playing && profile.statusLine ? profile.statusLine : null;

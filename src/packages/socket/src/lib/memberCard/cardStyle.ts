@@ -18,6 +18,38 @@ export interface CardStyle {
   fade: "bottom" | "banner";
   /** Whether the colour fills the whole card or only the banner and band. */
   colours: "card" | "banner";
+  /** Pattern size, percent of its own. */
+  pScale: number;
+  /** Pattern rotation, degrees. */
+  pRotate: number;
+  /** Pattern strength, percent. Absent is the card's own, which depends on where it is drawn. */
+  pOpacity?: number;
+  /** Which edge the pattern fades out towards. */
+  pFade: PatternFade;
+  /** Shuffles a scatter pattern. Absent is one worked out from the member's id. */
+  pSeed?: number;
+  /** Pattern colour. Absent is the ink worked out from the card. */
+  pInk?: string;
+  /** A Phosphor icon, kebab-case, for the `icon` pattern. */
+  pIcon?: string;
+}
+
+export const PATTERN_FADES = ["none", "top", "bottom", "left", "right", "radial"] as const;
+export type PatternFade = (typeof PATTERN_FADES)[number];
+
+/** The ranges the server keeps; a value outside one is dropped there, and here. */
+export const TUNING = {
+  pScale: { min: 50, max: 300, default: 100 },
+  pRotate: { min: 0, max: 359, default: 0 },
+  pOpacity: { min: 3, max: 40 },
+  pSeed: { min: 0, max: 65535 },
+} as const;
+
+const ICON_NAME = /^[a-z0-9-]{1,48}$/;
+
+function intIn(value: unknown, min: number, max: number): number | undefined {
+  const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  return typeof n === "number" && Number.isFinite(n) && Math.round(n) >= min && Math.round(n) <= max ? Math.round(n) : undefined;
 }
 
 export const DEFAULT_ANGLE = 135;
@@ -29,6 +61,9 @@ export const DEFAULT_CARD_STYLE: CardStyle = {
   cover: "banner",
   fade: "bottom",
   colours: "card",
+  pScale: 100,
+  pRotate: 0,
+  pFade: "none",
 };
 
 export const BIO_MAX = 190;
@@ -59,7 +94,22 @@ export function normalizeCardStyle(raw: unknown): CardStyle {
   if (r.cover === "card") out.cover = "card";
   if (r.fade === "banner") out.fade = "banner";
   if (r.colours === "banner") out.colours = "banner";
+  readTuning(r, out);
   return out;
+}
+
+/** The pattern tuning keys, each read on its own so one bad value drops only itself. */
+function readTuning(r: Record<string, unknown>, out: CardStyle): void {
+  out.pScale = intIn(r.pScale, TUNING.pScale.min, TUNING.pScale.max) ?? TUNING.pScale.default;
+  out.pRotate = intIn(r.pRotate, TUNING.pRotate.min, TUNING.pRotate.max) ?? TUNING.pRotate.default;
+  const opacity = intIn(r.pOpacity, TUNING.pOpacity.min, TUNING.pOpacity.max);
+  if (opacity !== undefined) out.pOpacity = opacity;
+  out.pFade = PATTERN_FADES.includes(r.pFade as PatternFade) ? (r.pFade as PatternFade) : "none";
+  const seed = intIn(r.pSeed, TUNING.pSeed.min, TUNING.pSeed.max);
+  if (seed !== undefined) out.pSeed = seed;
+  const ink = hexColour(r.pInk);
+  if (ink) out.pInk = ink;
+  if (typeof r.pIcon === "string" && ICON_NAME.test(r.pIcon)) out.pIcon = r.pIcon;
 }
 
 /** The style as the server stores it: defaults left out, so the default card is null. */
@@ -78,6 +128,13 @@ export function cardStyleForWire(style: CardStyle): Partial<CardStyle> | null {
   if (s.cover === "card") out.cover = "card";
   if (s.fade === "banner") out.fade = "banner";
   if (s.colours === "banner") out.colours = "banner";
+  if (s.pScale !== TUNING.pScale.default) out.pScale = s.pScale;
+  if (s.pRotate !== TUNING.pRotate.default) out.pRotate = s.pRotate;
+  if (s.pOpacity !== undefined) out.pOpacity = s.pOpacity;
+  if (s.pFade !== "none") out.pFade = s.pFade;
+  if (s.pSeed !== undefined) out.pSeed = s.pSeed;
+  if (s.pInk) out.pInk = s.pInk;
+  if (s.pIcon) out.pIcon = s.pIcon;
   return Object.keys(out).length ? out : null;
 }
 
@@ -145,6 +202,13 @@ export function encodeCardStyle(style: CardStyle): string {
   if (st.colours !== "card") q.set("fill", st.colours);
   if (st.colours === "card" && st.cover === "card") q.set("cover", "card");
   if (st.colours === "card" && st.fade === "banner") q.set("fade", "full");
+  if (st.pScale !== TUNING.pScale.default) q.set("pScale", String(st.pScale));
+  if (st.pRotate !== TUNING.pRotate.default) q.set("pRotate", String(st.pRotate));
+  if (st.pOpacity !== undefined) q.set("pOpacity", String(st.pOpacity));
+  if (st.pFade !== "none") q.set("pFade", st.pFade);
+  if (st.pSeed !== undefined) q.set("pSeed", String(st.pSeed));
+  if (st.pInk) q.set("pInk", st.pInk.replace("#", ""));
+  if (st.pIcon) q.set("pIcon", st.pIcon);
   return q.toString();
 }
 
@@ -185,5 +249,6 @@ export function decodeCardStyle(input: unknown): CardStyle | null {
   if (raw.fill === "banner") out.colours = "banner";
   if (raw.cover === "card") out.cover = "card";
   if (raw.fade === "full") out.fade = "banner";
+  readTuning(raw, out);
   return present ? out : null;
 }
