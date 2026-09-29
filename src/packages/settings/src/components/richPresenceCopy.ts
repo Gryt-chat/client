@@ -1,7 +1,10 @@
 import type { RichPresenceSocketStatus } from "../../../../lib/electron";
 
 /** What settings says about the game connection. Kept apart so a test can read every case. */
-export function socketLine({ state, holder }: RichPresenceSocketStatus): { text: string; warn: boolean; fix?: string } {
+export function socketLine({ state, holder, helper }: RichPresenceSocketStatus): { text: string; warn: boolean; fix?: string } {
+  if (state === "holding" && helper) {
+    return { text: "The Gryt helper has the game connection. Games you start now report to Gryt instead of Discord.", warn: false };
+  }
   if (state === "holding") {
     return { text: "Gryt has the game connection. Games you start now report to Gryt instead of Discord.", warn: false };
   }
