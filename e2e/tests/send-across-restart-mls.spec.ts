@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import type { BrowserContext, Locator, Page } from "@playwright/test";
+import type { BrowserContext, Locator, Page, WebSocketRoute } from "@playwright/test";
 
 import { composer, joinServer, type Member, membersPanel, messageRow, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
@@ -11,6 +11,7 @@ import type { GrytServer } from "../support/server";
    A send with no answer holds up the next one in its DM, so each run has one of those. */
 
 const run = promisify(execFile);
+test.describe.configure({ mode: "parallel" });
 
 /* What Chrome logs for a redial while the server is down or still booting. Allowed only
    between the kill and the moment every message is through. */
@@ -26,19 +27,19 @@ interface Wire {
   loseNextSend: boolean;
   sendsLost: number;
   mlsSends: number;
-  open: number;
+  /** Open sockets that have carried an mls:send. */
+  mlsSockets: Set<WebSocketRoute>;
 }
 
 async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wire> {
   const port = new URL(server.httpBase).port;
-  const wire: Wire = { swallowNextAck: false, acksSwallowed: 0, loseNextSend: false, sendsLost: 0, mlsSends: 0, open: 0 };
+  const wire: Wire = { swallowNextAck: false, acksSwallowed: 0, loseNextSend: false, sendsLost: 0, mlsSends: 0, mlsSockets: new Set() };
   await context.routeWebSocket(
     (url) => url.port === port && url.pathname.startsWith("/socket.io/"),
     (page) => {
       const toServer = page.connectToServer();
-      wire.open++;
       toServer.onClose(() => {
-        wire.open--;
+        wire.mlsSockets.delete(toServer);
         void page.close();
       });
       const swallowAcks = new Set<string>();
@@ -55,6 +56,7 @@ async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wir
         }
         const send = /^45(\d+)-(\d+)\["mls:send"/.exec(message);
         if (send) {
+          wire.mlsSockets.add(toServer);
           wire.mlsSends++;
           if (wire.swallowNextAck) {
             wire.swallowNextAck = false;
@@ -132,6 +134,8 @@ async function healthy(server: GrytServer): Promise<boolean> {
 async function openDm(from: Member, to: Member): Promise<Locator> {
   const box = composer(from.page, `Message ${to.name}`);
   await membersPanel(from.page).getByRole("button", { name: to.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await from.page.getByRole("button", { name: "Message", exact: true }).click();
   // Drawn before the DM knows how to send, and read-only until it does.
   await expect(from.page.getByText("This conversation is encrypted.")).toBeVisible();
   await expect(box).toBeEditable();
@@ -203,7 +207,7 @@ for (const kind of ["unacked", "lost"] as const) {
 
     const stopTolerating = problems.tolerate([REDIAL_FAILED]);
     await run("docker", ["kill", container]);
-    await expect.poll(() => wire.open, { message: "the page should have lost its socket" }).toBe(0);
+    await expect.poll(() => wire.mlsSockets.size, { message: "the page should have lost its MLS socket" }).toBe(0);
 
     const whileDown = unique("typed while the server was down");
     await type(alice.page, box, whileDown);
@@ -227,8 +231,13 @@ for (const kind of ["unacked", "lost"] as const) {
 
     // Bob's copy, read back from his archive: each message once, in the order it was typed.
     await bob.page.reload();
-    await bob.page.getByRole("button", { name: "Direct messages" }).click();
-    await bob.page.getByRole("button", { name: alice.name }).click();
+    const dmList = bob.page.locator('[data-gryt="dm-list"]');
+    await expect.poll(async () => {
+      if (await dmList.isVisible()) return true;
+      await bob.page.getByRole("button", { name: "Direct messages" }).click({ timeout: 5_000 });
+      return dmList.isVisible();
+    }).toBe(true);
+    await dmList.getByRole("button", { name: alice.name }).click({ timeout: 15_000 });
     for (const text of [before, ...texts]) await expect.soft(messageRow(bob.page, text), `"${text}" once for bob`).toHaveCount(1);
     const order = await bob.page
       .locator("[data-message-id]")

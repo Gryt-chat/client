@@ -32,8 +32,8 @@ assert.match(
 // The card is controlled, and the state that controls it sits in the list.
 assert.match(
   sidebar,
-  /<PreviewCard\.Root\s+open=\{cardOpen\}\s+onOpenChange=\{onCardOpenChange\}>/,
-  `${SIDEBAR}'s PreviewCard is uncontrolled again, so a member changing group closes ` +
+  /<Popover\.Root\s+open=\{cardOpen\}\s+onOpenChange=\{\(open\) => onCardOpenChange\(open\)\}>/,
+  `${SIDEBAR}'s card popover is uncontrolled again, so a member changing group closes ` +
     "an open card",
 );
 

@@ -13,6 +13,8 @@ const ENCRYPTED = "This conversation is encrypted.";
 
 async function openDmFromMembers(from: Member, to: Member) {
   await membersPanel(from.page).getByRole("button", { name: to.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await from.page.getByRole("button", { name: "Message", exact: true }).click();
   await expect(composer(from.page, `Message ${to.name}`)).toBeVisible();
 }
 

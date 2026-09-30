@@ -32,6 +32,7 @@ import { ApproveDeviceDialog } from "./components/approveDevice";
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GameDetectPrompt } from "./components/gameDetectPrompt";
+import { GlobalLightbox } from "./components/GlobalLightbox";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
 import { LinkDeviceDialog } from "./components/linkDevice";
@@ -43,6 +44,7 @@ import { TrayVoiceState } from "./components/trayVoiceState";
 import { VaultUpgradePrompt } from "./components/vaultUpgradePrompt";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
+import { offerSharedLook } from "./lib/sharedLook";
 
 export function App() {
   const { isSignedIn, login, loginInProgress } = useAccount();
@@ -52,7 +54,7 @@ export function App() {
   const ready = isSignedIn !== undefined;
   const { showAddServer, setShowAddServer, hasServer, switchToServer } =
     useServerManagement();
-  const { showDebugOverlay, showVideoDebugOverlay } = useSettings();
+  const { showDebugOverlay, showVideoDebugOverlay, openSettings } = useSettings();
   const { join } = useServerJoin();
 
   useSettingsShortcut();
@@ -75,6 +77,14 @@ export function App() {
   useEffect(() => {
     capturePendingInviteFromUrl({ defaultLegacyHost: "app.gryt.chat" });
   }, []);
+
+  // A shared card or owl (gryt://card, gryt://owl) opens the settings page that shows it before it's used.
+  useEffect(() => {
+    return window.electronAPI?.onDeepLinkLook?.((look) => {
+      offerSharedLook(look);
+      openSettings(look.card ? "card" : "profile");
+    });
+  }, [openSettings]);
 
   // Listen for invite deep links from the Electron main process (gryt://invite?...).
   useEffect(() => {
@@ -152,6 +162,7 @@ export function App() {
           <IdentityClaimPrompt />
           <VaultUpgradePrompt />
           <GameDetectPrompt />
+          <GlobalLightbox />
           <ReportDialog />
           <TermsPrompt />
           <PushToTalkModal />

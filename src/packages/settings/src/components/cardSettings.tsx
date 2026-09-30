@@ -1,4 +1,4 @@
-import { Button, CardIcon, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
+import { Button, CardIcon, Checkbox, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, styleSwatch, TextField, Toggle, ToggleGroup } from "@gryt/ui";
 import { UserCircle } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -18,18 +18,23 @@ import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import type { RichActivity } from "../../../../lib/richActivity";
+import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
 import {
   cardUpdatePayload,
   EMPTY_CARD,
+  forgetCardStyle,
   isDefaultCard,
+  rememberCardStyle,
   setStoredCard,
+  useCardHistory,
   useStoredCard,
 } from "../../../socket/src/lib/memberCard/cardStore";
 import {
   BIO_MAX,
   type CardProfile,
   cardText,
+  decodeCardStyle,
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
@@ -102,6 +107,7 @@ export function CardSettings() {
 
   const save = () => {
     setStoredCard(draft);
+    rememberCardStyle(draft.cardStyle);
     setRefusals({});
     const payload = cardUpdatePayload(draft);
     for (const host of Object.keys(sockets)) {
@@ -111,6 +117,30 @@ export function CardSettings() {
   };
 
   const style = draft.cardStyle;
+  const used = useCardHistory();
+
+  /* A link from somebody, or from the card builder: shown in the editor, and only kept on Save. */
+  const showShared = (text: string): boolean => {
+    const next = decodeCardStyle(text);
+    if (!next) return false;
+    setDraft((d) => ({ ...d, cardStyle: next }));
+    setEditing(true);
+    return true;
+  };
+  const pasteLink = () => {
+    void navigator.clipboard.readText().then(
+      (text) => {
+        if (!showShared(text)) toast.error("There's no card in what you copied. Copy a card link first.");
+      },
+      () => toast.error("Gryt couldn't read the clipboard."),
+    );
+  };
+  const shared = useSharedLook().card;
+  useEffect(() => {
+    if (!shared) return;
+    const text = takeSharedLook("card");
+    if (text && !showShared(text)) toast.error("That link had no card in it.");
+  }, [shared]);
 
   const text = (key: "bio" | "pronouns" | "statusLine", max: number) => ({
     value: draft[key] ?? "",
@@ -272,12 +302,15 @@ export function CardSettings() {
         <Dialog.Portal>
           <Dialog.Backdrop />
           {/* Laid out like the owl designer: panes on the left, the card on the right, nothing long to scroll. */}
-          <Dialog.Popup className="flex max-h-[min(46rem,calc(100dvh-2rem))] w-[64rem] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden p-0">
+          <Dialog.Popup className="flex h-[min(46rem,calc(100dvh-2rem))] w-[64rem] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden p-0">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gryt-border px-4 py-3">
               <Dialog.Title className="text-lg">Edit my card</Dialog.Title>
               <div className="flex flex-wrap items-center gap-2">
                 {dirty && <span className="text-xs text-gryt-muted">Not saved yet</span>}
                 <CopyCardLink style={style} link={(code) => `https://ui.gryt.chat/card${code ? `?${code}` : ""}`} />
+                <Button size="small" tone="neutral" onClick={pasteLink}>
+                  Paste link
+                </Button>
                 <Button size="small" tone="neutral" disabled={!dirty} onClick={() => setDraft(saved)}>
                   Undo changes
                 </Button>
@@ -311,11 +344,37 @@ export function CardSettings() {
                       <Toggle value="dark" size="small">Dark app</Toggle>
                     </ToggleGroup>
                     <label className="flex items-center gap-2 font-normal text-gryt-text">
-                      <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
+                      <Checkbox checked={playing} onCheckedChange={(on) => setPlaying(on === true)} />
                       {gameCard ? "Show your game" : "With a game"}
                     </label>
                   </figcaption>
                   <div className="overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border">{preview(stage)}</div>
+                  {used.length > 0 && (
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[0.65rem] font-semibold tracking-wider text-gryt-muted uppercase">Used before</span>
+                      <div className="flex flex-wrap gap-2">
+                        {used.map((past, i) => (
+                          <div key={i} className="group relative">
+                            <button
+                              type="button"
+                              aria-label="Show this card again"
+                              onClick={() => setDraft({ ...draft, cardStyle: past })}
+                              className="block size-9 cursor-pointer rounded-(--gryt-radius-md) border border-gryt-border hover:border-gryt-accent"
+                              style={{ background: styleSwatch(past) }}
+                            />
+                            <button
+                              type="button"
+                              aria-label="Forget this card"
+                              onClick={() => forgetCardStyle(past)}
+                              className="absolute -top-1.5 -right-1.5 hidden size-4 cursor-pointer items-center justify-center rounded-full border border-gryt-border bg-gryt-surface-raised text-[10px] leading-none text-gryt-muted group-hover:flex hover:text-gryt-text"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {refused.length > 0 && (
                     <div className="flex flex-col gap-1 text-xs text-gryt-danger">
                       {refused.map(([host, message]) => (

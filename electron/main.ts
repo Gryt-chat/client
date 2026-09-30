@@ -772,6 +772,21 @@ function ensureLinuxAppImageProtocolHandler(appImagePath: string): void {
   }
 }
 
+/** gryt://card?<style> or gryt://owl?worn=<look>, from the card builder or the owl designer. Only plain, short values pass. */
+function parseLookLink(url: string): { card?: string; owl?: string } | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "card") {
+      const query = parsed.search.replace(/^\?/, "");
+      return query.length > 0 && query.length <= 600 && /^[A-Za-z0-9=&%._-]+$/.test(query) ? { card: query } : null;
+    }
+    const worn = parsed.searchParams.get("worn") ?? "";
+    return /^[A-Za-z0-9_-]{1,200}$/.test(worn) ? { owl: worn } : null;
+  } catch {
+    return null;
+  }
+}
+
 function handleDeepLink(url: string): void {
   if (!url.startsWith(`${PROTOCOL}://`)) return;
 
@@ -785,6 +800,9 @@ function handleDeepLink(url: string): void {
       if (host) {
         mainWindow.webContents.send("deep-link-invite", { host, code });
       }
+    } else if (url.startsWith(`${PROTOCOL}://card`) || url.startsWith(`${PROTOCOL}://owl`)) {
+      const look = parseLookLink(url);
+      if (look) mainWindow.webContents.send("deep-link-look", look);
     } else {
       mainWindow.webContents.send("auth-callback", url);
     }

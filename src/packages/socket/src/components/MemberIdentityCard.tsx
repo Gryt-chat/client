@@ -1,4 +1,4 @@
-import { CardIcon, CardMenu, type CardMenuItem } from "@gryt/ui";
+import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -15,10 +15,12 @@ import {
 } from "@/common";
 import { useSettings } from "@/settings";
 
+import { openLightbox } from "../../../../lib/lightboxStore";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
-import { cardProfileOf, encodeCardStyle } from "../lib/memberCard/cardStyle";
+import { encodeCardStyle } from "../lib/memberCard/cardStyle";
+import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { formatJoined, makeRankOf, TIER_LABEL } from "../lib/memberFacts";
 import { friendButtonSteps, type FriendStep } from "../utils/friendButtonSteps";
 import { describeChange, describePin } from "../utils/memberKeyWording";
@@ -132,10 +134,10 @@ export function MemberIdentityCard({
       : null;
 
   const profile = useMemo(
-    () => cardProfileOf(member),
+    () => cardProfileFor(member, member.nickname),
     // The fields, not the member object, which is new on every list update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [member.cardStyle, member.bio, member.pronouns, member.statusLine],
+    [member.cardStyle, member.bio, member.pronouns, member.statusLine, member.nickname],
   );
   const joined = formatJoined(member.createdAt);
   const tier = member.identityTier ? TIER_LABEL[member.identityTier] : undefined;
@@ -217,14 +219,17 @@ export function MemberIdentityCard({
     ...(tier?.amber ? [{ id: "tier", name: tier.label, amber: true }] : []),
   ];
 
+  const avatarSrc = resolveAvatarSrc(
+    member.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined,
+    member.nickname,
+    member.avatarWorn,
+  );
+
   return (
     <MemberCardView
       name={member.nickname}
-      avatarSrc={resolveAvatarSrc(
-        member.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined,
-        member.nickname,
-        member.avatarWorn,
-      )}
+      avatarSrc={avatarSrc}
+      onAvatarClick={avatarSrc ? () => openLightbox({ src: avatarSrc, alt: member.nickname }) : undefined}
       status={member.status}
       channelName={channelName}
       isBot={member.isBot}
@@ -248,9 +253,12 @@ export function MemberIdentityCard({
 
       <div className="gmc-acts">
         {!isSelf && actions.onOpenDm && can("send_direct_messages") && (
-          <button type="button" className="gmc-ib" aria-label="Message" data-tip="Message" onClick={() => actions.onOpenDm!(member.serverUserId)}>
+          <Popover.Close
+            render={<button type="button" className="gmc-ib" aria-label="Message" data-tip="Message" />}
+            onClick={() => actions.onOpenDm!(member.serverUserId)}
+          >
             <CardIcon.chat />
-          </button>
+          </Popover.Close>
         )}
         {friendSteps.map((step, i) => {
           const Icon = STEP_ICON[step.icon];
@@ -270,11 +278,8 @@ export function MemberIdentityCard({
           );
         })}
         {!isSelf && (
-          <button
-            type="button"
-            className="gmc-ib quiet"
-            aria-label="Mention"
-            data-tip="Mention"
+          <Popover.Close
+            render={<button type="button" className="gmc-ib quiet" aria-label="Mention" data-tip="Mention" />}
             onClick={() =>
               window.dispatchEvent(
                 new CustomEvent("mention_user", { detail: { serverUserId: member.serverUserId, nickname: member.nickname } }),
@@ -282,7 +287,7 @@ export function MemberIdentityCard({
             }
           >
             <CardIcon.at />
-          </button>
+          </Popover.Close>
         )}
         {worn && (
           <button type="button" className="gmc-ib quiet" aria-label="Copy avatar" data-tip="Copy avatar" onClick={() => copy(worn, "Avatar code copied")}>
@@ -290,9 +295,12 @@ export function MemberIdentityCard({
           </button>
         )}
         {isSelf && (
-          <button type="button" className="gmc-ib quiet" aria-label="Edit my card" data-tip="Edit my card" onClick={() => openSettings("profile/card")}>
+          <Popover.Close
+            render={<button type="button" className="gmc-ib quiet" aria-label="Edit my card" data-tip="Edit my card" />}
+            onClick={() => openSettings("profile/card")}
+          >
             <CardIcon.pen />
-          </button>
+          </Popover.Close>
         )}
         <span className="sp" />
         {!isSelf && actions.onReport && has("report_messages") && (

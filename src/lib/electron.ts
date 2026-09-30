@@ -375,6 +375,9 @@ export interface ElectronAPI {
   onDeepLinkInvite(
     callback: (data: { host: string; code: string }) => void
   ): () => void;
+  onDeepLinkLook(
+    callback: (data: { card?: string; owl?: string }) => void
+  ): () => void;
   isEmbeddedServerAvailable(): Promise<boolean>;
   getEmbeddedServerInfo(): Promise<EmbeddedServerInfo>;
   createEmbeddedServer(
