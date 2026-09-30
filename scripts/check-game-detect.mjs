@@ -6,7 +6,8 @@
 
 import assert from "node:assert/strict";
 
-import { appKey, buildProgramIndex, createGameDetector, readAnswers, readExecutablesList, runningApps } from "../electron/gameDetector.ts";
+import { appKey, buildProgramIndex, createGameDetector, readAnswers, runningApps } from "../electron/gameDetector.ts";
+import { readGamesFile } from "../electron/gameListCache.ts";
 import { createPresenceBoard } from "../electron/richPresence.ts";
 
 let failures = 0;
@@ -23,12 +24,12 @@ async function check(name, run) {
 console.log("game detection");
 
 const CS2 = "1158877933042143272";
-const list = readExecutablesList([
-  { id: CS2, programs: { win32: ["win64/cs2.exe"] } },
-  { id: "111111111111111111", programs: { win32: ["bin/game.exe"], linux: ["shared"] } },
-  { id: "222222222222222222", programs: { win32: ["x/shared.exe"], linux: ["shared"] } },
-  { id: "bad", programs: { win32: ["x.exe"] } },
-  { id: "333333333333333333", programs: "nope" },
+const list = readGamesFile([
+  { id: CS2, name: "Counter-Strike 2", programs: { win32: ["win64/cs2.exe"] } },
+  { id: "111111111111111111", name: "One", programs: { win32: ["bin/game.exe"], linux: ["shared"] } },
+  { id: "222222222222222222", name: "Two", programs: { win32: ["x/shared.exe"], linux: ["shared"] } },
+  { id: "bad", name: "Bad id", programs: { win32: ["x.exe"] } },
+  { id: "333333333333333333", programs: { win32: ["no-name.exe"] } },
 ]);
 
 await check("the list keeps only well-formed entries", () => {
@@ -124,8 +125,8 @@ await check("hiding a detected game in Rich Presence hides it here too", () => {
 
 const FIGMA = appKey("Figma");
 const curated = [
-  { name: "Figma", kind: "app", discord: [], exe: { win32: ["figma.exe"], darwin: ["figma.app"] } },
-  { name: "VS Code", kind: "app", discord: ["383226320970055681"], exe: { win32: ["code.exe"] } },
+  { name: "Figma", kind: "app", ids: [], exe: { win32: ["figma.exe"], darwin: ["figma.app"] } },
+  { name: "VS Code", kind: "app", ids: ["383226320970055681"], exe: { win32: ["code.exe"] } },
 ];
 
 await check("an app with no Discord id gets an app: key, a name and the app kind", () => {

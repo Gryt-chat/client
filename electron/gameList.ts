@@ -7,8 +7,8 @@ export type GameOs = "win32" | "darwin" | "linux";
 
 export interface GameEntry {
   name: string;
-  /** Application ids the game sends over the Rich Presence socket. */
-  discord: string[];
+  /** App ids the game sends over the Rich Presence socket. */
+  ids: string[];
   /** Lowercase file names. On macOS an `.app` bundle name. */
   exe: Partial<Record<GameOs, string[]>>;
   /** "app" for something like Figma, which reads "Using" rather than "Playing". */
@@ -29,8 +29,8 @@ export function readGameList(value: unknown): GameEntry[] {
     const entry = raw as Record<string, unknown> | null;
     const name = typeof entry?.name === "string" ? entry.name.trim().slice(0, 64) : "";
     if (!name) continue;
-    const discord = Array.isArray(entry?.discord)
-      ? entry.discord.filter((id): id is string => typeof id === "string" && /^\d{1,32}$/.test(id))
+    const ids = Array.isArray(entry?.ids)
+      ? entry.ids.filter((id): id is string => typeof id === "string" && /^\d{1,32}$/.test(id))
       : [];
     const exe: GameEntry["exe"] = {};
     const exeRecord = (entry?.exe ?? {}) as Record<string, unknown>;
@@ -42,7 +42,7 @@ export function readGameList(value: unknown): GameEntry[] {
         .map((n) => n.trim().toLowerCase());
       if (names.length) exe[os] = names;
     }
-    const game: GameEntry = { name, discord, exe };
+    const game: GameEntry = { name, ids, exe };
     if (entry?.kind === "app") game.kind = "app";
     out.push(game);
   }
@@ -75,7 +75,7 @@ export function createGameIndex(games: readonly GameEntry[], platform: NodeJS.Pl
   const oses: GameOs[] = platform === "linux" ? ["linux", "win32"] : platform === "darwin" ? ["darwin"] : ["win32"];
 
   for (const game of games) {
-    for (const id of game.discord) if (!byApp.has(id)) byApp.set(id, game.name);
+    for (const id of game.ids) if (!byApp.has(id)) byApp.set(id, game.name);
     for (const os of oses) {
       for (const exe of game.exe[os] ?? []) {
         if (!byExe.has(exe)) byExe.set(exe, game.name);

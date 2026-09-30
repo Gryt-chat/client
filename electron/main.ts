@@ -59,7 +59,7 @@ import {
   stopNativeAudioCapture,
   supportsPerApplicationAudio,
 } from "./audioCaptureManager";
-import bundledDetectable from "./detectable-snapshot.json";
+import curatedGames from "./curated-games.json";
 import { createRpcHost, findHolder, type Holder, ipcDir, ipcPath, type RpcHostState } from "./discordIpc";
 import {
   autoStartIfNeeded,
@@ -87,14 +87,13 @@ import {
   buildProgramIndex,
   createGameDetector,
   type GameDetector,
-  loadExecutablesList,
   type Platform,
   type ProgramIndex,
   readAnswers,
 } from "./gameDetector";
 import { createGameIndex, readGameList } from "./gameList";
-import { createDetectableIndex, type DetectableEntry, maybeRefreshDetectableList, readDetectableList, resolveGameName } from "./gameListCache";
-import bundledGames from "./games.json";
+import { createGameLookup, type ListedGame, maybeRefreshGames, readGamesFile, resolveGameName } from "./gameListCache";
+import gamesSnapshot from "./games-snapshot.json";
 import {
   deleteGlobalValue,
   flushGlobalStore,
@@ -243,10 +242,10 @@ function processScanAllowed(): boolean {
 
 /** A sandboxed Mac App Store build has its own temp folder, where no game would look. */
 const canHostRichPresence = !process.mas;
-const gameIndex = createGameIndex(readGameList(bundledGames));
+const gameIndex = createGameIndex(readGameList(curatedGames));
 /* The bigger list from Gryt-chat/rich-presence: our own games.json still wins. */
-const bundledDetectableIndex = createDetectableIndex(readDetectableList(bundledDetectable));
-let downloadedDetectableIndex = new Map<string, DetectableEntry>();
+const bundledGames = createGameLookup(readGamesFile(gamesSnapshot));
+let downloadedGames = new Map<string, ListedGame>();
 
 /** Overrides first, then whatever was last fetched from the repo, then the snapshot shipped with this build. */
 /** Names people gave games that no list knows (GRYT-1638), kept on this device. */
@@ -263,7 +262,7 @@ function nameForApp(appId: string): string | null {
   const own = readLocalNames()[appId];
   if (own) return own;
   return resolveGameName(
-    { overrides: gameIndex.nameForApp, downloaded: downloadedDetectableIndex, bundled: bundledDetectableIndex },
+    { overrides: gameIndex.nameForApp, downloaded: downloadedGames, bundled: bundledGames },
     appId,
   );
 }
@@ -346,9 +345,13 @@ function detectStatus() {
 function startGameDetection(): void {
   if (gameDetector || !presenceBoard || !canListProcesses || !detectionOn()) return;
   const platform = process.platform as Platform;
-  void loadExecutablesList(app.getPath("userData"))
-    .then((entries) => { programIndex = buildProgramIndex(entries, platform, readGameList(bundledGames)); })
-    .catch((err: unknown) => console.error("game detection: program list failed", err));
+  // Program names come with the game list; the snapshot shipped in the app has names only.
+  void maybeRefreshGames({ userDataDir: app.getPath("userData") })
+    .then((games) => {
+      downloadedGames = games;
+      programIndex = buildProgramIndex([...games.values()], platform, readGameList(curatedGames));
+    })
+    .catch((err: unknown) => console.error("game detection: game list failed", err));
   gameDetector = createGameDetector({
     list: listRunningExecutables,
     index: () => programIndex.byProgram,
@@ -424,8 +427,8 @@ function readHiddenApps(value: unknown = loadGlobalStore()["richPresenceHidden"]
 function startRichPresence(): void {
   if (!canHostRichPresence || presenceSource || !readRichPresenceConsent()) return;
   // Only while this is on, and never more than once a day (GRYT-1603).
-  void maybeRefreshDetectableList({ userDataDir: app.getPath("userData") })
-    .then((index) => { downloadedDetectableIndex = index; })
+  void maybeRefreshGames({ userDataDir: app.getPath("userData") })
+    .then((index) => { downloadedGames = index; })
     .catch((err: unknown) => console.error("rich presence: game list refresh failed", err));
   const board = ensurePresenceBoard();
   // gryt-helper when it runs, since it got to the socket at login; the in-app socket otherwise.
