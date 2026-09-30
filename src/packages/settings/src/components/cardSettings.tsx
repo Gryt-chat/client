@@ -103,9 +103,9 @@ export function CardSettings() {
    * few quick picks ran into the server's limit of ten card updates in ten seconds.
    */
   const commit = (next: CardProfile) => setDraft(next);
-  const dirty = JSON.stringify(cardUpdatePayload(draft)) !== JSON.stringify(cardUpdatePayload(saved));
+  const cardDirty = JSON.stringify(cardUpdatePayload(draft)) !== JSON.stringify(cardUpdatePayload(saved));
 
-  const save = () => {
+  const saveCard = () => {
     setStoredCard(draft);
     rememberCardStyle(draft.cardStyle);
     setRefusals({});
@@ -113,7 +113,6 @@ export function CardSettings() {
     for (const host of Object.keys(sockets)) {
       if (sockets[host]?.connected) sockets[host]?.emit("profile:update", payload);
     }
-    toast.success("Card saved");
   };
 
   const style = draft.cardStyle;
@@ -149,13 +148,17 @@ export function CardSettings() {
     onBlur: () => setDraft({ ...draft, [key]: cardText(draft[key], max) }),
   });
 
-  /* Only where you hold `upload_avatar_image`; a server that doesn't say is left out. */
+  /* Only where you hold `upload_banner_image`; a server that doesn't say is left out. */
   const mayUpload = (host: string) => {
-    const permissions = serverDetailsList[host]?.server_info?.permissions;
-    return Array.isArray(permissions) && permissions.includes("upload_avatar_image");
+    const info = serverDetailsList[host]?.server_info;
+    const permissions = info?.permissions;
+    if (!Array.isArray(permissions)) return false;
+    if (permissions.includes("upload_banner_image")) return true;
+    return !info?.permission_catalogue?.includes("upload_banner_image") && permissions.includes("upload_avatar_image");
   };
   const bannerHosts = connected.filter(mayUpload);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>();
+  const [pendingBanner, setPendingBanner] = useState<File | null>();
   const [editing, setEditing] = useState(false);
   const [bannerBusy, setBannerBusy] = useState(false);
   const bannerInput = useRef<HTMLInputElement>(null);
@@ -166,21 +169,32 @@ export function CardSettings() {
     }
     return null;
   }, [connected.join(" "), memberLists]); // eslint-disable-line react-hooks/exhaustive-deps
-  const bannerUrl = bannerPreview ?? serverBanner;
+  const bannerUrl = bannerPreview === undefined ? serverBanner : bannerPreview;
+  const dirty = cardDirty || pendingBanner !== undefined;
 
-  const changeBanner = async (file: File | null) => {
+  const changeBanner = (file: File | null) => {
+    if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
+    setBannerPreview(file ? URL.createObjectURL(file) : null);
+    setPendingBanner(file);
+  };
+
+  const save = async () => {
     setBannerBusy(true);
-    const results = await Promise.allSettled(bannerHosts.map((h) => sendBanner(h, file)));
+    const results = pendingBanner === undefined
+      ? []
+      : await Promise.allSettled(bannerHosts.map((h) => sendBanner(h, pendingBanner)));
     setBannerBusy(false);
     const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
-    if (failed.length === results.length) {
-      toast.error(`Couldn't ${file ? "upload" : "remove"} the banner: ${failed[0]?.reason?.message ?? "no server took it"}`);
+    if (results.length > 0 && failed.length === results.length) {
+      toast.error(`Couldn't ${pendingBanner ? "upload" : "remove"} the banner: ${failed[0]?.reason?.message ?? "no server took it"}`);
       return;
     }
-    setBannerPreview(file ? URL.createObjectURL(file) : null);
-    // The server rebroadcasts the member list on this, so everybody sees the new banner.
-    for (const h of bannerHosts) sockets[h]?.emit("avatar:updated");
-    toast.success(failed.length ? `Banner ${file ? "set" : "removed"}, but ${failed.length} server${failed.length > 1 ? "s" : ""} refused it` : file ? "Banner set" : "Banner removed");
+    if (pendingBanner !== undefined) {
+      setPendingBanner(undefined);
+      for (const h of bannerHosts) sockets[h]?.emit("avatar:updated");
+    }
+    saveCard();
+    toast.success(failed.length ? `Card saved, but ${failed.length} server${failed.length > 1 ? "s" : ""} refused the banner` : "Card saved");
   };
 
   const worn = getStoredWorn();
@@ -254,7 +268,7 @@ export function CardSettings() {
               {bannerUrl ? "Change banner" : "Upload a banner"}
             </Button>
             {bannerUrl && (
-              <Button size="small" tone="neutral" disabled={bannerBusy} onClick={() => void changeBanner(null)}>
+            <Button size="small" tone="neutral" disabled={bannerBusy} onClick={() => changeBanner(null)}>
                 Remove banner
               </Button>
             )}
@@ -267,7 +281,7 @@ export function CardSettings() {
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
-              if (file) void changeBanner(file);
+              if (file) changeBanner(file);
             }}
           />
         </SettingGroup>
@@ -311,10 +325,15 @@ export function CardSettings() {
                 <Button size="small" tone="neutral" onClick={pasteLink}>
                   Paste link
                 </Button>
-                <Button size="small" tone="neutral" disabled={!dirty} onClick={() => setDraft(saved)}>
+                <Button size="small" tone="neutral" disabled={!dirty} onClick={() => {
+                  setDraft(saved);
+                  if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
+                  setBannerPreview(undefined);
+                  setPendingBanner(undefined);
+                }}>
                   Undo changes
                 </Button>
-                <Button size="small" disabled={!dirty} onClick={save}>
+                <Button size="small" disabled={!dirty || bannerBusy} onClick={() => void save()}>
                   Save
                 </Button>
                 <Dialog.Close render={<Button size="small" tone="neutral" />}>Close</Dialog.Close>
