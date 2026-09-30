@@ -8,8 +8,8 @@ export default defineConfig({
   globalSetup: "./global-setup.ts",
   forbidOnly: CI,
   retries: CI ? 1 : 0,
-  // Each worker starts its own server, and a server someone started by hand has one owner to give.
-  workers: process.env.GRYT_E2E_SERVER ? 1 : CI ? 2 : 3,
+  // Each worker starts its own server. CI runners on this public repo have four cores, so four workers.
+  workers: process.env.GRYT_E2E_SERVER ? 1 : CI ? 4 : 3,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   // CI shards the suite across several runners (see ci.yml); each writes its own blob file,
