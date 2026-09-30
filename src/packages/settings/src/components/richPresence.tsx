@@ -226,6 +226,10 @@ function GameDetection() {
               <Button size="xsmall" tone="neutral" onClick={() => void detect.answer(game.id, game.answer === "show" ? "hide" : "show")}>
                 {game.answer === "show" ? "Don't show" : "Show"}
               </Button>
+              {/* Takes it off the list; Gryt asks again the next time it spots the game. */}
+              <Button size="xsmall" tone="neutral" onClick={() => void detect.answer(game.id, null)}>
+                Remove
+              </Button>
             </li>
           ))}
         </ul>
