@@ -273,7 +273,7 @@ export function CardSettings() {
         <Dialog.Portal>
           <Dialog.Backdrop />
           {/* Laid out like the owl designer: panes on the left, the card on the right, nothing long to scroll. */}
-          <Dialog.Popup className="flex max-h-[min(46rem,calc(100dvh-2rem))] w-[64rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden p-0">
+          <Dialog.Popup className="flex max-h-[min(46rem,calc(100dvh-2rem))] w-[64rem] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden p-0">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gryt-border px-4 py-3">
               <Dialog.Title className="text-lg">Edit my card</Dialog.Title>
               <div className="flex flex-wrap items-center gap-2">
