@@ -229,8 +229,9 @@ for (const kind of ["unacked", "lost"] as const) {
 
     // Bob's copy, read back from his archive: each message once, in the order it was typed.
     await bob.page.reload();
-    await bob.page.getByRole("button", { name: "Direct messages" }).click();
-    await bob.page.getByRole("button", { name: alice.name }).click();
+    // He comes back on the server, so it's her row in the member list, then Message on her card.
+    await membersPanel(bob.page).getByRole("button", { name: alice.name, exact: true }).click();
+    await bob.page.getByRole("button", { name: "Message", exact: true }).click();
     for (const text of [before, ...texts]) await expect.soft(messageRow(bob.page, text), `"${text}" once for bob`).toHaveCount(1);
     const order = await bob.page
       .locator("[data-message-id]")
