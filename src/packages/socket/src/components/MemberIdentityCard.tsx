@@ -15,10 +15,12 @@ import {
 } from "@/common";
 import { useSettings } from "@/settings";
 
+import { openLightbox } from "../../../../lib/lightboxStore";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
-import { cardProfileOf, encodeCardStyle } from "../lib/memberCard/cardStyle";
+import { encodeCardStyle } from "../lib/memberCard/cardStyle";
+import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { formatJoined, makeRankOf, TIER_LABEL } from "../lib/memberFacts";
 import { friendButtonSteps, type FriendStep } from "../utils/friendButtonSteps";
 import { describeChange, describePin } from "../utils/memberKeyWording";
@@ -132,10 +134,10 @@ export function MemberIdentityCard({
       : null;
 
   const profile = useMemo(
-    () => cardProfileOf(member),
+    () => cardProfileFor(member, member.nickname),
     // The fields, not the member object, which is new on every list update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [member.cardStyle, member.bio, member.pronouns, member.statusLine],
+    [member.cardStyle, member.bio, member.pronouns, member.statusLine, member.nickname],
   );
   const joined = formatJoined(member.createdAt);
   const tier = member.identityTier ? TIER_LABEL[member.identityTier] : undefined;
@@ -217,14 +219,17 @@ export function MemberIdentityCard({
     ...(tier?.amber ? [{ id: "tier", name: tier.label, amber: true }] : []),
   ];
 
+  const avatarSrc = resolveAvatarSrc(
+    member.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined,
+    member.nickname,
+    member.avatarWorn,
+  );
+
   return (
     <MemberCardView
       name={member.nickname}
-      avatarSrc={resolveAvatarSrc(
-        member.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, member.avatarFileId) : undefined,
-        member.nickname,
-        member.avatarWorn,
-      )}
+      avatarSrc={avatarSrc}
+      onAvatarClick={avatarSrc ? () => openLightbox({ src: avatarSrc, alt: member.nickname }) : undefined}
       status={member.status}
       channelName={channelName}
       isBot={member.isBot}

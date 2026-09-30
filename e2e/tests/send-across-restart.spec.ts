@@ -131,6 +131,8 @@ function withoutMls() {
 async function dm(alice: Member, bob: Member): Promise<Conversation> {
   const box = composer(alice.page, `Message ${bob.name}`);
   await membersPanel(alice.page).getByRole("button", { name: bob.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await alice.page.getByRole("button", { name: "Message", exact: true }).click();
   // The composer is drawn before the DM knows how to send, and stays read-only until it does.
   await expect(alice.page.getByText("This conversation is encrypted.")).toBeVisible();
   await expect(box).toBeEditable();

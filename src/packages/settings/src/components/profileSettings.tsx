@@ -8,6 +8,7 @@ import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "../../../../lib/icons";
+import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { RichPresenceSettings } from "./richPresence";
 import { SettingsContainer } from "./settingsComponents";
@@ -579,9 +580,18 @@ export function ProfileSettings() {
      remembered across both dialogs, decided by whichever avatar was clicked. */
   const [choosingFor, setChoosingFor] = useState<string | null | undefined>(undefined);
   const [designingFor, setDesigningFor] = useState<string | null | undefined>(undefined);
+  /* An owl from a gryt://owl link opens in the designer, and is only worn on "Use this owl". */
+  const [sharedWorn, setSharedWorn] = useState<string | undefined>(undefined);
+  const sharedOwl = useSharedLook().owl;
+  useEffect(() => {
+    if (!sharedOwl) return;
+    setSharedWorn(takeSharedLook("owl"));
+    setDesigningFor(null);
+  }, [sharedOwl]);
 
   const handleUseOwl = async (png: Blob, worn: string, host: string | null) => {
     setDesigningFor(undefined);
+    setSharedWorn(undefined);
     setChoosingFor(undefined);
     const file = new File([png], "avatar.png", { type: "image/png" });
     await processAndUpload(file, host ? [host] : serverHosts, worn);
@@ -926,9 +936,13 @@ export function ProfileSettings() {
       />
 
       <OwlDesignerDialog
+        initialWorn={sharedWorn}
         nickname={nickname}
         onOpenChange={(next) => {
-          if (!next) setDesigningFor(undefined);
+          if (!next) {
+            setDesigningFor(undefined);
+            setSharedWorn(undefined);
+          }
         }}
         onSave={(png, worn) => void handleUseOwl(png, worn, designingFor ?? null)}
         open={designingFor !== undefined}

@@ -1,4 +1,4 @@
-import { Avatar, Chip, PreviewCard, Tooltip } from "@gryt/ui";
+import { Avatar, Chip, Popover, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
@@ -281,23 +281,25 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 and least checkable, and where nobody is going to open the
                 member list to compare fingerprints (GRYT-203). */}
             {meta.sender ? (
-              <PreviewCard.Root>
-                <PreviewCard.Trigger>
+              <Popover.Root>
+                <Popover.Trigger
+                  render={<button type="button" aria-label={`Open ${meta.senderName}'s card`} className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
+                >
                   <Avatar
                     size="large"
-                    className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
+                    className="h-[51px] w-[51px] shrink-0 text-lg"
                     fallback={meta.senderName[0]}
                     src={meta.avatarUrl}
                   />
-                </PreviewCard.Trigger>
-                <PreviewCard.Portal>
-                  <PreviewCard.Positioner side="right" align="start">
-                    <PreviewCard.Popup className={MEMBER_CARD_POPUP}>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Positioner side="right" align="start">
+                    <Popover.Popup className={MEMBER_CARD_POPUP}>
                       <MemberIdentityCard member={meta.sender} serverHost={serverHost} />
-                    </PreviewCard.Popup>
-                  </PreviewCard.Positioner>
-                </PreviewCard.Portal>
-              </PreviewCard.Root>
+                    </Popover.Popup>
+                  </Popover.Positioner>
+                </Popover.Portal>
+              </Popover.Root>
             ) : (
               <Avatar
                 size="large"

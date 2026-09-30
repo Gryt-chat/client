@@ -43,6 +43,8 @@ test("messages from nobody: a DM never surfaces, whichever side stops it", async
   const dmBadge = rail.locator("div.relative", { has: rail.getByRole("button", { name: "Direct messages" }) }).locator(".gryt-badge");
 
   await membersPanel(alice.page).getByRole("button", { name: bob.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await alice.page.getByRole("button", { name: "Message", exact: true }).click();
   const refusal = alice.page.getByText("They're not taking messages from you on this server.");
   const box = composer(alice.page, `Message ${bob.name}`);
   await expect(refusal.or(box).first()).toBeVisible();
@@ -98,6 +100,8 @@ test("a server's own answer sits over the one in settings", async ({ newMember }
 
 async function write(from: Member, to: Member, text: string): Promise<void> {
   await membersPanel(from.page).getByRole("button", { name: to.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await from.page.getByRole("button", { name: "Message", exact: true }).click();
   await reply(from, to, text);
 }
 

@@ -51,7 +51,7 @@ import {
   rememberCallMembers,
 } from "../lib/callMembers";
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
-import { cardProfileOf } from "../lib/memberCard/cardStyle";
+import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { attachServerMls, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
@@ -385,13 +385,13 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         // Undefined from a server older than the field, which reads as no
         // designed look — and that is what such a server has.
         avatarWorn: joinInfo.avatarWorn ?? null,
-        card: cardProfileOf(joinInfo),
+        card: cardProfileFor(joinInfo, joinInfo.nickname),
       },
     }));
 
     // Only when the server has no card for you, since `server:joined` fires on reconnects too.
     if (!hasCardFields(joinInfo)) {
-      const offer = cardToOffer();
+      const offer = cardToOffer(joinInfo.nickname);
       if (offer) socket.emit("profile:update", cardUpdatePayload(offer));
     }
 
@@ -429,7 +429,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         // Optional on the wire, since an older server does not send it. Undefined
         // reads as no designed look, and the uploaded PNG shows instead.
         avatarWorn: data.avatarWorn ?? null,
-        card: cardProfileOf(data),
+        card: cardProfileFor(data, data.nickname),
       },
     }));
   });
@@ -797,7 +797,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
     // A first join goes through its own socket, so the card is offered here too, once.
     if (!hasCardFields(me) && firstTimeOnThisSocket(socket, "member-card")) {
-      const offer = cardToOffer();
+      const offer = cardToOffer(me.nickname);
       if (offer) socket.emit("profile:update", cardUpdatePayload(offer));
     }
 
@@ -807,7 +807,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         existing?.nickname === me.nickname &&
         existing?.avatarFileId === (me.avatarFileId ?? null) &&
         existing?.avatarWorn === (me.avatarWorn ?? null) &&
-        JSON.stringify(existing?.card) === JSON.stringify(cardProfileOf(me))
+        JSON.stringify(existing?.card) === JSON.stringify(cardProfileFor(me, me.nickname))
       ) {
         return prev;
       }
@@ -821,7 +821,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
             ? getUploadsFileUrl(host, me.avatarFileId)
             : null,
           avatarWorn: me.avatarWorn ?? null,
-          card: cardProfileOf(me),
+          card: cardProfileFor(me, me.nickname),
         },
       };
     });

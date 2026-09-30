@@ -30,6 +30,12 @@ type EmbeddedLogLine = {
   at: number;
 };
 
+// The same for a shared card or owl (gryt://card, gryt://owl).
+let bufferedLook: { card?: string; owl?: string } | null = null;
+ipcRenderer.on("deep-link-look", (_event, data: { card?: string; owl?: string }) => {
+  bufferedLook = data;
+});
+
 // Buffer invite deep links that arrive before React mounts a listener
 // (happens when the app is cold-launched via gryt://invite?...).
 let bufferedInvite: { host: string; code: string } | null = null;
@@ -643,6 +649,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
     };
     ipcRenderer.on("deep-link-invite", handler);
     return () => ipcRenderer.removeListener("deep-link-invite", handler);
+  },
+
+  onDeepLinkLook(callback: (data: { card?: string; owl?: string }) => void) {
+    if (bufferedLook) {
+      const data = bufferedLook;
+      bufferedLook = null;
+      queueMicrotask(() => callback(data));
+    }
+    const handler = (_event: Electron.IpcRendererEvent, data: { card?: string; owl?: string }) => {
+      bufferedLook = null;
+      callback(data);
+    };
+    ipcRenderer.on("deep-link-look", handler);
+    return () => ipcRenderer.removeListener("deep-link-look", handler);
   },
 
   // ── Embedded server ─────────────────────────────────────────────

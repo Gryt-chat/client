@@ -44,6 +44,8 @@ function hiddenRow(page: Page, name: string): Locator {
 
 async function openDm(from: Member, to: Member) {
   await membersPanel(from.page).getByRole("button", { name: to.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await from.page.getByRole("button", { name: "Message", exact: true }).click();
   await expect(composer(from.page, `Message ${to.name}`)).toBeVisible();
 }
 

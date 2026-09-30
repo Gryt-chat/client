@@ -1,4 +1,4 @@
-import { Avatar, IconButton, PreviewCard, Tooltip } from "@gryt/ui";
+import { Avatar, IconButton, Popover, Tooltip } from "@gryt/ui";
 import { useCallback, useMemo, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
@@ -161,7 +161,6 @@ const MemberItem = ({
   dmUnreadFor?: (serverUserId: string) => number;
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
-  const canOpenDm = Boolean(onOpenDm) && !isSelf;
   const dmUnread = dmUnreadFor?.(member.serverUserId) ?? 0;
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
   const isOffline = member.status === "offline";
@@ -200,24 +199,11 @@ const MemberItem = ({
           : undefined
       }
     >
-      <PreviewCard.Root open={cardOpen} onOpenChange={onCardOpenChange}>
-        <PreviewCard.Trigger>
-          {/* Clicking opens the conversation. The card is still on hover and in
-              the context menu, so the fingerprint keeps its way in (GRYT-1120). */}
+      <Popover.Root open={cardOpen} onOpenChange={(open) => onCardOpenChange(open)}>
+        {/* Clicking opens the card. Messaging is a button on it, and in the context menu. */}
+        <Popover.Trigger nativeButton={false} render={<div />}>
           <div
-            role={canOpenDm ? "button" : undefined}
-            tabIndex={canOpenDm ? 0 : undefined}
-            onClick={canOpenDm ? () => onOpenDm!(member.serverUserId) : undefined}
-            onKeyDown={
-              canOpenDm
-                ? (e) => {
-                    if (e.key !== "Enter" && e.key !== " ") return;
-                    e.preventDefault();
-                    onOpenDm!(member.serverUserId);
-                  }
-                : undefined
-            }
-            className={canOpenDm ? "member-row member-row-clickable" : "member-row"}
+            className="member-row member-row-clickable"
             data-card-open={cardOpen || undefined}
           >
         <div className="flex items-center gap-2 w-full">
@@ -295,15 +281,15 @@ const MemberItem = ({
               into it now, so the count belongs where the way in is. */}
           <UnreadIndicator unread={dmUnread} />
           </div>
-        </PreviewCard.Trigger>
-        <PreviewCard.Portal>
-          <PreviewCard.Positioner side="left" align="start">
-            <PreviewCard.Popup className={MEMBER_CARD_POPUP}>
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner side="left" align="start">
+            <Popover.Popup className={MEMBER_CARD_POPUP}>
           <MemberIdentityCard member={member} serverHost={serverHost} />
-        </PreviewCard.Popup>
-          </PreviewCard.Positioner>
-        </PreviewCard.Portal>
-      </PreviewCard.Root>
+        </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
     </UserContextMenu>
   );
 };

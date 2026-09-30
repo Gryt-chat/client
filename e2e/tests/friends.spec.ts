@@ -49,6 +49,8 @@ function row(dialog: Locator, who: Member): Locator {
 async function write(from: Member, to: Member, text: string): Promise<void> {
   // Not exact: a row with unread in it carries the count in its name.
   await membersPanel(from.page).getByRole("button", { name: to.name }).first().click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await from.page.getByRole("button", { name: "Message", exact: true }).click();
   const box = composer(from.page, `Message ${to.name}`);
   await box.click();
   await from.page.keyboard.insertText(text);
@@ -92,6 +94,8 @@ test("a request, accepted: friends on both sides, and a friend's ring rings", as
   // Bob never wrote to Alice, and she can ring him because they're friends.
   const rang = await watchForRing(bob, alice.name);
   await membersPanel(alice.page).getByRole("button", { name: bob.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await alice.page.getByRole("button", { name: "Message", exact: true }).click();
   // The conversation has to exist before it can ring, or the ring is refused.
   await expect(composer(alice.page, `Message ${bob.name}`)).toBeVisible();
   await alice.page.locator('[data-gryt="chat-header"]').getByRole("button", { name: "Call", exact: true }).click();

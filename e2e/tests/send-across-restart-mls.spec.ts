@@ -132,6 +132,8 @@ async function healthy(server: GrytServer): Promise<boolean> {
 async function openDm(from: Member, to: Member): Promise<Locator> {
   const box = composer(from.page, `Message ${to.name}`);
   await membersPanel(from.page).getByRole("button", { name: to.name, exact: true }).click();
+  // The row opens their card now, and Message on the card opens the conversation.
+  await from.page.getByRole("button", { name: "Message", exact: true }).click();
   // Drawn before the DM knows how to send, and read-only until it does.
   await expect(from.page.getByText("This conversation is encrypted.")).toBeVisible();
   await expect(box).toBeEditable();
