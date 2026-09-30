@@ -284,7 +284,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
             {meta.sender ? (
               <Popover.Root open={cardOpen} onOpenChange={(open) => setCardOpen(open)}>
                 <Popover.Trigger
-                  render={<button type="button" aria-label={`Open ${meta.senderName}'s card`} className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
+                  render={<button type="button" aria-label="Open card" className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
                 >
                   <Avatar
                     size="large"
