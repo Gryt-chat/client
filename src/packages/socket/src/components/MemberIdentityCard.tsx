@@ -1,4 +1,4 @@
-import { CardIcon, CardMenu, type CardMenuItem } from "@gryt/ui";
+import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
 import { type ReactElement, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -253,9 +253,12 @@ export function MemberIdentityCard({
 
       <div className="gmc-acts">
         {!isSelf && actions.onOpenDm && can("send_direct_messages") && (
-          <button type="button" className="gmc-ib" aria-label="Message" data-tip="Message" onClick={() => actions.onOpenDm!(member.serverUserId)}>
+          <Popover.Close
+            render={<button type="button" className="gmc-ib" aria-label="Message" data-tip="Message" />}
+            onClick={() => actions.onOpenDm!(member.serverUserId)}
+          >
             <CardIcon.chat />
-          </button>
+          </Popover.Close>
         )}
         {friendSteps.map((step, i) => {
           const Icon = STEP_ICON[step.icon];
@@ -275,11 +278,8 @@ export function MemberIdentityCard({
           );
         })}
         {!isSelf && (
-          <button
-            type="button"
-            className="gmc-ib quiet"
-            aria-label="Mention"
-            data-tip="Mention"
+          <Popover.Close
+            render={<button type="button" className="gmc-ib quiet" aria-label="Mention" data-tip="Mention" />}
             onClick={() =>
               window.dispatchEvent(
                 new CustomEvent("mention_user", { detail: { serverUserId: member.serverUserId, nickname: member.nickname } }),
@@ -287,7 +287,7 @@ export function MemberIdentityCard({
             }
           >
             <CardIcon.at />
-          </button>
+          </Popover.Close>
         )}
         {worn && (
           <button type="button" className="gmc-ib quiet" aria-label="Copy avatar" data-tip="Copy avatar" onClick={() => copy(worn, "Avatar code copied")}>
@@ -295,9 +295,12 @@ export function MemberIdentityCard({
           </button>
         )}
         {isSelf && (
-          <button type="button" className="gmc-ib quiet" aria-label="Edit my card" data-tip="Edit my card" onClick={() => openSettings("profile/card")}>
+          <Popover.Close
+            render={<button type="button" className="gmc-ib quiet" aria-label="Edit my card" data-tip="Edit my card" />}
+            onClick={() => openSettings("profile/card")}
+          >
             <CardIcon.pen />
-          </button>
+          </Popover.Close>
         )}
         <span className="sp" />
         {!isSelf && actions.onReport && has("report_messages") && (
