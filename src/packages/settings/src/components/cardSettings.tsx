@@ -1,4 +1,5 @@
-import { Button, CardIcon, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
+import { Button, CardIcon, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
+import { UserCircle } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -45,8 +46,6 @@ const SAMPLE_GAME: RichActivity = {
   startedAt: Date.now() - (23 * 60 + 41) * 1000,
 };
 
-/** Wait this long after the last change before telling the servers, which rate-limit it. */
-const SEND_AFTER_MS = 700;
 
 async function sendBanner(host: string, file: File | null): Promise<void> {
   const token = getServerAccessToken(host);
@@ -80,8 +79,6 @@ export function CardSettings() {
   const [playing, setPlaying] = useState(true);
   const [stage, setStage] = useState<"light" | "dark">(resolvedAppearance);
   const [refusals, setRefusals] = useState<Record<string, string>>({});
-  const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<CardProfile | null>(null);
 
   /* Refusals come back per server, so they are shown per server rather than as a toast. */
   useEffect(() => {
@@ -96,29 +93,21 @@ export function CardSettings() {
     return () => off.forEach((fn) => fn());
   }, [connected.join(" "), sockets]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const flush = () => {
-    if (sendTimer.current) clearTimeout(sendTimer.current);
-    sendTimer.current = null;
-    const card = pending.current;
-    pending.current = null;
-    if (!card) return;
+  /*
+   * The one setting with a Save button: every change was an update to each server, and a
+   * few quick picks ran into the server's limit of ten card updates in ten seconds.
+   */
+  const commit = (next: CardProfile) => setDraft(next);
+  const dirty = JSON.stringify(cardUpdatePayload(draft)) !== JSON.stringify(cardUpdatePayload(saved));
+
+  const save = () => {
+    setStoredCard(draft);
     setRefusals({});
-    const payload = cardUpdatePayload(card);
+    const payload = cardUpdatePayload(draft);
     for (const host of Object.keys(sockets)) {
       if (sockets[host]?.connected) sockets[host]?.emit("profile:update", payload);
     }
-  };
-
-  // Leaving the page must not drop the last change on the floor.
-  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /** Saves itself: stored at once, sent to every server once the changes settle. */
-  const commit = (next: CardProfile) => {
-    setDraft(next);
-    setStoredCard(next);
-    pending.current = next;
-    if (sendTimer.current) clearTimeout(sendTimer.current);
-    sendTimer.current = setTimeout(flush, SEND_AFTER_MS);
+    toast.success("Card saved");
   };
 
   const style = draft.cardStyle;
@@ -127,11 +116,7 @@ export function CardSettings() {
     value: draft[key] ?? "",
     maxLength: max,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDraft({ ...draft, [key]: e.target.value }),
-    onBlur: () => {
-      const clean = cardText(draft[key], max);
-      if (clean !== saved[key]) commit({ ...draft, [key]: clean });
-      else setDraft({ ...draft, [key]: clean });
-    },
+    onBlur: () => setDraft({ ...draft, [key]: cardText(draft[key], max) }),
   });
 
   /* Only where you hold `upload_avatar_image`; a server that doesn't say is left out. */
@@ -212,12 +197,61 @@ export function CardSettings() {
 
   const refused = Object.entries(refusals);
 
+  const about = (
+    <>
+      <SettingGroup title="Pronouns" description="Shown under your name.">
+        <TextField placeholder="she/her, they/them…" {...text("pronouns", PRONOUNS_MAX)} />
+      </SettingGroup>
+
+      <SettingGroup title="Bio" description={`A line or two about you. Up to ${BIO_MAX} characters.`}>
+        <TextField multiline minRows={2} placeholder="Mostly on after nine." {...text("bio", BIO_MAX)} />
+      </SettingGroup>
+
+      <SettingGroup title="Status line" description="Shown in the band on your card when you aren't playing anything.">
+        <TextField placeholder="Around tonight for co-op." {...text("statusLine", STATUS_LINE_MAX)} />
+      </SettingGroup>
+
+      {bannerHosts.length > 0 && (
+        <SettingGroup
+          title="Banner"
+          description={
+            bannerHosts.length === connected.length
+              ? "A picture across the top of your card. Everywhere else your pattern shows instead."
+              : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button size="small" disabled={bannerBusy} onClick={() => bannerInput.current?.click()}>
+              {bannerUrl ? "Change banner" : "Upload a banner"}
+            </Button>
+            {bannerUrl && (
+              <Button size="small" tone="neutral" disabled={bannerBusy} onClick={() => void changeBanner(null)}>
+                Remove banner
+              </Button>
+            )}
+          </div>
+          <input
+            ref={bannerInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void changeBanner(file);
+            }}
+          />
+        </SettingGroup>
+      )}
+    </>
+  );
+
   return (
     <SettingsContainer>
       <div className="flex flex-col gap-1">
         <h2 className="text-lg">Edit my card</h2>
         <span className="text-xs text-gryt-muted">
-          The card people see when they hover your name. It's the same on every server you're on, and it saves as you go.
+          The card people see when they hover your name. It's the same on every server you're on.
         </span>
       </div>
 
@@ -238,32 +272,24 @@ export function CardSettings() {
       <Dialog.Root open={editing} onOpenChange={(open) => setEditing(open)}>
         <Dialog.Portal>
           <Dialog.Backdrop />
-          <Dialog.Popup className="gcs-dialog w-[68rem] max-w-[calc(100vw-3rem)] overflow-y-auto" style={{ maxHeight: "calc(100vh - 4rem)" }}>
-            <div className="flex items-center justify-between gap-4" style={{ marginBottom: 12 }}>
+          {/* Laid out like the owl designer: panes on the left, the card on the right, nothing long to scroll. */}
+          <Dialog.Popup className="flex max-h-[min(46rem,calc(100dvh-2rem))] w-[64rem] max-w-[calc(100vw-2rem)] flex-col overflow-x-hidden p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gryt-border px-4 py-3">
               <Dialog.Title className="text-lg">Edit my card</Dialog.Title>
-              <Dialog.Close render={<Button size="small" tone="neutral" />}>Done</Dialog.Close>
+              <div className="flex flex-wrap items-center gap-2">
+                {dirty && <span className="text-xs text-gryt-muted">Not saved yet</span>}
+                <CopyCardLink style={style} link={(code) => `https://ui.gryt.chat/card${code ? `?${code}` : ""}`} />
+                <Button size="small" tone="neutral" disabled={!dirty} onClick={() => setDraft(saved)}>
+                  Undo changes
+                </Button>
+                <Button size="small" disabled={!dirty} onClick={save}>
+                  Save
+                </Button>
+                <Dialog.Close render={<Button size="small" tone="neutral" />}>Close</Dialog.Close>
+              </div>
             </div>
-            <div className="gcs-row-wrap">
-            <div className="gcs-row flex flex-wrap items-start gap-8">
-              {/* One app at a time. Above the controls in a narrow pane, beside them and pinned in a wide one. */}
-              <figure className="gcs-preview m-0 flex min-w-0 flex-col gap-2" style={{ flex: "0 1 352px", maxWidth: "100%" }}>
-                <figcaption className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-gryt-muted">
-                  <ToggleGroup
-                    value={[stage]}
-                    onValueChange={(v) => setStage(v[0] === "light" ? "light" : v[0] === "dark" ? "dark" : stage)}
-                    aria-label="Preview on"
-                  >
-                    <Toggle value="light" size="small">Light app</Toggle>
-                    <Toggle value="dark" size="small">Dark app</Toggle>
-                  </ToggleGroup>
-                  <label className="flex items-center gap-2 font-normal text-gryt-text">
-                    <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
-                    {gameCard ? "Show your game" : "Show it with a game"}
-                  </label>
-                </figcaption>
-                <div className="overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border">{preview(stage)}</div>
-              </figure>
-              <div className="flex min-w-0 flex-col gap-6" style={{ flex: "1 1 300px", maxWidth: 380 }}>
+            <div className="@container flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <div className="flex min-h-0 flex-1 @max-3xl:flex-col">
                 <MemberCardEditor
                   value={style}
                   onChange={(next) => commit({ ...draft, cardStyle: next })}
@@ -272,66 +298,35 @@ export function CardSettings() {
                   worn={worn}
                   seed={seed}
                   appearance={stage}
-                  shareLink={(code) => `https://ui.gryt.chat/card${code ? `?${code}` : ""}`}
-                >
-                  <SettingGroup title="Pronouns" description="Shown under your name.">
-                    <TextField placeholder="she/her, they/them…" {...text("pronouns", PRONOUNS_MAX)} />
-                  </SettingGroup>
-
-                  <SettingGroup title="Bio" description={`A line or two about you. Up to ${BIO_MAX} characters.`}>
-                    <TextField multiline minRows={2} placeholder="Mostly on after nine." {...text("bio", BIO_MAX)} />
-                  </SettingGroup>
-
-                  <SettingGroup title="Status line" description="Shown in the band on your card when you aren't playing anything.">
-                    <TextField placeholder="Around tonight for co-op." {...text("statusLine", STATUS_LINE_MAX)} />
-                  </SettingGroup>
-
-                  {bannerHosts.length > 0 && (
-                    <SettingGroup
-                      title="Banner"
-                      description={
-                        bannerHosts.length === connected.length
-                          ? "A picture across the top of your card. Everywhere else your pattern shows instead."
-                          : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
-                      }
+                  panes={[{ value: "about", label: "About you", icon: <UserCircle weight="fill" size={16} />, content: about }]}
+                />
+                <figure className="m-0 flex shrink-0 flex-col gap-3 border-gryt-border bg-gryt-surface p-4 @max-3xl:border-t @3xl:w-[24rem] @3xl:border-l">
+                  <figcaption className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-gryt-muted">
+                    <ToggleGroup
+                      value={[stage]}
+                      onValueChange={(v) => setStage(v[0] === "light" ? "light" : v[0] === "dark" ? "dark" : stage)}
+                      aria-label="Preview on"
                     >
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="small" disabled={bannerBusy} onClick={() => bannerInput.current?.click()}>
-                          {bannerUrl ? "Change banner" : "Upload a banner"}
-                        </Button>
-                        {bannerUrl && (
-                          <Button size="small" tone="neutral" disabled={bannerBusy} onClick={() => void changeBanner(null)}>
-                            Remove banner
-                          </Button>
-                        )}
-                      </div>
-                      <input
-                        ref={bannerInput}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        style={{ display: "none" }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          e.target.value = "";
-                          if (file) void changeBanner(file);
-                        }}
-                      />
-                    </SettingGroup>
+                      <Toggle value="light" size="small">Light app</Toggle>
+                      <Toggle value="dark" size="small">Dark app</Toggle>
+                    </ToggleGroup>
+                    <label className="flex items-center gap-2 font-normal text-gryt-text">
+                      <input type="checkbox" checked={playing} onChange={(e) => setPlaying(e.target.checked)} />
+                      {gameCard ? "Show your game" : "With a game"}
+                    </label>
+                  </figcaption>
+                  <div className="overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border">{preview(stage)}</div>
+                  {refused.length > 0 && (
+                    <div className="flex flex-col gap-1 text-xs text-gryt-danger">
+                      {refused.map(([host, message]) => (
+                        <span key={host}>
+                          {servers[host]?.name || host}: {message}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                </MemberCardEditor>
-
-                {refused.length > 0 && (
-                  <div className="flex flex-col gap-1 text-xs text-gryt-danger">
-                    {refused.map(([host, message]) => (
-                      <span key={host}>
-                        {servers[host]?.name || host}: {message}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                </figure>
               </div>
-
-            </div>
             </div>
           </Dialog.Popup>
         </Dialog.Portal>
