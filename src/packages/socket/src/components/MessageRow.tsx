@@ -137,6 +137,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
   const [pickerPlacement, setPickerPlacement] = useState<"above" | "beside">("above");
+  const [cardOpen, setCardOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pickerAnchorRef = useRef<HTMLElement | null>(null);
@@ -281,7 +282,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 and least checkable, and where nobody is going to open the
                 member list to compare fingerprints (GRYT-203). */}
             {meta.sender ? (
-              <Popover.Root>
+              <Popover.Root open={cardOpen} onOpenChange={(open) => setCardOpen(open)}>
                 <Popover.Trigger
                   render={<button type="button" aria-label={`Open ${meta.senderName}'s card`} className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
                 >
@@ -292,13 +293,15 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                     src={meta.avatarUrl}
                   />
                 </Popover.Trigger>
-                <Popover.Portal>
-                  <Popover.Positioner side="right" align="start">
-                    <Popover.Popup className={MEMBER_CARD_POPUP}>
-                      <MemberIdentityCard member={meta.sender} serverHost={serverHost} />
-                    </Popover.Popup>
-                  </Popover.Positioner>
-                </Popover.Portal>
+                {cardOpen && (
+                  <Popover.Portal>
+                    <Popover.Positioner side="right" align="start">
+                      <Popover.Popup className={MEMBER_CARD_POPUP}>
+                        <MemberIdentityCard member={meta.sender} serverHost={serverHost} />
+                      </Popover.Popup>
+                    </Popover.Positioner>
+                  </Popover.Portal>
+                )}
               </Popover.Root>
             ) : (
               <Avatar

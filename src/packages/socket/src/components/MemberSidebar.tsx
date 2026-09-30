@@ -282,13 +282,16 @@ const MemberItem = ({
           <UnreadIndicator unread={dmUnread} />
           </div>
         </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Positioner side="left" align="start">
-            <Popover.Popup className={MEMBER_CARD_POPUP}>
-          <MemberIdentityCard member={member} serverHost={serverHost} />
-        </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
+        {/* Only while open: a closed popup otherwise stays in the page, unseen, waiting on an animation inside the card. */}
+        {cardOpen && (
+          <Popover.Portal>
+            <Popover.Positioner side="left" align="start">
+              <Popover.Popup className={MEMBER_CARD_POPUP}>
+                <MemberIdentityCard member={member} serverHost={serverHost} />
+              </Popover.Popup>
+            </Popover.Positioner>
+          </Popover.Portal>
+        )}
       </Popover.Root>
     </UserContextMenu>
   );
