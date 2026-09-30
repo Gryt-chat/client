@@ -26,19 +26,19 @@ interface Wire {
   loseNextSend: boolean;
   sendsLost: number;
   mlsSends: number;
-  open: Set<WebSocketRoute>;
+  /** Open sockets that have carried an mls:send. */
+  mlsSockets: Set<WebSocketRoute>;
 }
 
 async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wire> {
   const port = new URL(server.httpBase).port;
-  const wire: Wire = { swallowNextAck: false, acksSwallowed: 0, loseNextSend: false, sendsLost: 0, mlsSends: 0, open: new Set() };
+  const wire: Wire = { swallowNextAck: false, acksSwallowed: 0, loseNextSend: false, sendsLost: 0, mlsSends: 0, mlsSockets: new Set() };
   await context.routeWebSocket(
     (url) => url.port === port && url.pathname.startsWith("/socket.io/"),
     (page) => {
       const toServer = page.connectToServer();
-      wire.open.add(toServer);
       toServer.onClose(() => {
-        wire.open.delete(toServer);
+        wire.mlsSockets.delete(toServer);
         void page.close();
       });
       const swallowAcks = new Set<string>();
@@ -55,6 +55,7 @@ async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wir
         }
         const send = /^45(\d+)-(\d+)\["mls:send"/.exec(message);
         if (send) {
+          wire.mlsSockets.add(toServer);
           wire.mlsSends++;
           if (wire.swallowNextAck) {
             wire.swallowNextAck = false;
@@ -205,7 +206,7 @@ for (const kind of ["unacked", "lost"] as const) {
 
     const stopTolerating = problems.tolerate([REDIAL_FAILED]);
     await run("docker", ["kill", container]);
-    await expect.poll(() => wire.open.size, { message: "the page should have lost its socket" }).toBe(0);
+    await expect.poll(() => wire.mlsSockets.size, { message: "the page should have lost its MLS socket" }).toBe(0);
 
     const whileDown = unique("typed while the server was down");
     await type(alice.page, box, whileDown);
