@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
-import type { BrowserContext, Locator, Page } from "@playwright/test";
+import type { BrowserContext, Locator, Page, WebSocketRoute } from "@playwright/test";
 
 import { composer, joinServer, type Member, membersPanel, messageRow, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
@@ -26,19 +26,19 @@ interface Wire {
   loseNextSend: boolean;
   sendsLost: number;
   mlsSends: number;
-  open: number;
+  open: Set<WebSocketRoute>;
 }
 
 async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wire> {
   const port = new URL(server.httpBase).port;
-  const wire: Wire = { swallowNextAck: false, acksSwallowed: 0, loseNextSend: false, sendsLost: 0, mlsSends: 0, open: 0 };
+  const wire: Wire = { swallowNextAck: false, acksSwallowed: 0, loseNextSend: false, sendsLost: 0, mlsSends: 0, open: new Set() };
   await context.routeWebSocket(
     (url) => url.port === port && url.pathname.startsWith("/socket.io/"),
     (page) => {
       const toServer = page.connectToServer();
-      wire.open++;
+      wire.open.add(toServer);
       toServer.onClose(() => {
-        wire.open--;
+        wire.open.delete(toServer);
         void page.close();
       });
       const swallowAcks = new Set<string>();
@@ -205,7 +205,7 @@ for (const kind of ["unacked", "lost"] as const) {
 
     const stopTolerating = problems.tolerate([REDIAL_FAILED]);
     await run("docker", ["kill", container]);
-    await expect.poll(() => wire.open, { message: "the page should have lost its socket" }).toBe(0);
+    await expect.poll(() => wire.open.size, { message: "the page should have lost its socket" }).toBe(0);
 
     const whileDown = unique("typed while the server was down");
     await type(alice.page, box, whileDown);
