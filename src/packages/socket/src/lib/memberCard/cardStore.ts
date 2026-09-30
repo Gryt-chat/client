@@ -3,6 +3,7 @@
  * designed owl does. One card for every server, like the status line under your name.
  */
 
+import { randomCardStyle } from "@gryt/ui";
 import { useSyncExternalStore } from "react";
 
 import { type CardProfile, cardProfileOf, cardStyleForWire, DEFAULT_CARD_STYLE } from "./cardStyle";
@@ -66,3 +67,29 @@ export function isDefaultCard(card: CardProfile): boolean {
 }
 
 export const EMPTY_CARD: CardProfile = { cardStyle: DEFAULT_CARD_STYLE, bio: null, pronouns: null, statusLine: null };
+
+const RANDOMISED_KEY = "memberCardRandomised";
+
+/**
+ * The card to offer a server that has none for you. Somebody still on the plain default
+ * card gets a random style once, kept like any card they made, so every server shows it.
+ */
+export function cardToOffer(): CardProfile | null {
+  let card = getStoredCard();
+  let done = false;
+  try {
+    done = localStorage.getItem(RANDOMISED_KEY) === "1";
+  } catch {
+    done = true;
+  }
+  if ((!card || isDefaultCard(card)) && !done) {
+    card = { ...(card ?? EMPTY_CARD), cardStyle: randomCardStyle() };
+    setStoredCard(card);
+    try {
+      localStorage.setItem(RANDOMISED_KEY, "1");
+    } catch {
+      // Without storage this could randomise again next launch; the stored card above wins then.
+    }
+  }
+  return card && !isDefaultCard(card) ? card : null;
+}

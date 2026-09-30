@@ -50,7 +50,7 @@ import {
   type CallMemberships,
   rememberCallMembers,
 } from "../lib/callMembers";
-import { cardUpdatePayload, getStoredCard, hasCardFields, isDefaultCard } from "../lib/memberCard/cardStore";
+import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileOf } from "../lib/memberCard/cardStyle";
 import { attachServerMls, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import { Clients, ServerProfile } from "../types/clients";
@@ -390,9 +390,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }));
 
     // Only when the server has no card for you, since `server:joined` fires on reconnects too.
-    const storedCard = getStoredCard();
-    if (storedCard && !isDefaultCard(storedCard) && !hasCardFields(joinInfo)) {
-      socket.emit("profile:update", cardUpdatePayload(storedCard));
+    if (!hasCardFields(joinInfo)) {
+      const offer = cardToOffer();
+      if (offer) socket.emit("profile:update", cardUpdatePayload(offer));
     }
 
     // Only when the server has none: the look is per-server once set, and
@@ -796,9 +796,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     if (!me) return;
 
     // A first join goes through its own socket, so the card is offered here too, once.
-    const storedCard = getStoredCard();
-    if (storedCard && !isDefaultCard(storedCard) && !hasCardFields(me) && firstTimeOnThisSocket(socket, "member-card")) {
-      socket.emit("profile:update", cardUpdatePayload(storedCard));
+    if (!hasCardFields(me) && firstTimeOnThisSocket(socket, "member-card")) {
+      const offer = cardToOffer();
+      if (offer) socket.emit("profile:update", cardUpdatePayload(offer));
     }
 
     setServerProfiles((prev) => {
