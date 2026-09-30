@@ -2158,6 +2158,3 @@ body {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
-
-/* The card's icon buttons name themselves quickly: the library waits 700ms, which read as no tooltip at all. */
-.gmc-ib[data-tip]:hover::after { transition-delay: 120ms; }
