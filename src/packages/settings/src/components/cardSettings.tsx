@@ -171,7 +171,6 @@ export function CardSettings() {
         owlHex={owlHex}
         bannerUrl={bannerUrl}
         game={playing ? gameCard ?? SAMPLE_GAME : null}
-        gameArtUrl={playing && (gameCard ?? SAMPLE_GAME).appId && connected[0] ? `${getServerHttpBase(connected[0])}/api/game-art/${(gameCard ?? SAMPLE_GAME).appId}` : null}
         appearance={appearance}
         seedKey={seedKey}
         worn={worn}

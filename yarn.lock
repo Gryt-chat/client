@@ -572,10 +572,10 @@
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.12.1.tgz#9a21b6a4d0ec0f5139828b99bd86a9d9893472c4"
   integrity sha512-oAMaBq/xF1YdR1AcBgqIRhN3CvkPW+Ifx7FgN6hC0xQ37SMp+g3WG34VNHInp5xVA5ahITUHkdRzDUq4Hb67uQ==
 
-"@gryt/ui@^0.36.0":
-  version "0.36.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.36.0.tgz#0a65b5d176297f5fc4dd3d6766eb0a273bcd059a"
-  integrity sha512-uBjJbJ/JnCwWeEI/ifrsvSznPXULEuPM8+tKsQ7/KM/HWmrotyGb/emenYso8w1erK9ZTd0lW/nNfFN859gNEA==
+"@gryt/ui@^0.36.2":
+  version "0.36.2"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.36.2.tgz#57c6d72d079cf951060a256311f063a35840ee69"
+  integrity sha512-MK8qYflfggs6PNiQVH+qWmzy1ZqqmVxZPOD4ZJsR/LDp041/qf56Tflc/wuGzimjQuxZVUA29iOe9jnh6ySZpQ==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
