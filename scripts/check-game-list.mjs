@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 
-import games from "../electron/games.json" with { type: "json" };
+import games from "../electron/curated-games.json" with { type: "json" };
 import { createGameIndex, readGameList } from "../electron/gameList.ts";
 
 let failures = 0;
@@ -57,7 +57,7 @@ check("no two games share a name or an application id", () => {
   for (const game of shipped) {
     assert.ok(!names.has(game.name), `${game.name} twice`);
     names.add(game.name);
-    for (const id of game.discord) {
+    for (const id of game.ids) {
       assert.ok(!ids.has(id), `${id} twice`);
       ids.add(id);
     }
@@ -68,16 +68,16 @@ check("a hand-edited file can't break anything", () => {
   for (const junk of [null, 42, "x", { games: "x" }, { games: [null, 7, { name: "" }, { name: 5 }] }]) {
     assert.deepEqual(readGameList(junk), []);
   }
-  const [entry] = readGameList({ games: [{ name: "Ok", discord: ["12", "abc", 3], exe: { win32: ["OK.EXE", 4], beos: ["x"] } }] });
-  assert.deepEqual(entry, { name: "Ok", discord: ["12"], exe: { win32: ["ok.exe"] } });
+  const [entry] = readGameList({ games: [{ name: "Ok", ids: ["12", "abc", 3], exe: { win32: ["OK.EXE", 4], beos: ["x"] } }] });
+  assert.deepEqual(entry, { name: "Ok", ids: ["12"], exe: { win32: ["ok.exe"] } });
 });
 
 /* ── Matching ────────────────────────────────────────────────────────── */
 
 const list = [
-  { name: "Factorio", discord: ["358422126602223616"], exe: { win32: ["factorio.exe"], darwin: ["factorio.app"], linux: ["factorio"] } },
-  { name: "Terraria", discord: ["1"], exe: { win32: ["terraria.exe"], linux: ["terraria.bin.x86"] } },
-  { name: "Cyberpunk 2077", discord: ["2"], exe: { win32: ["cyberpunk2077.exe"] } },
+  { name: "Factorio", ids: ["358422126602223616"], exe: { win32: ["factorio.exe"], darwin: ["factorio.app"], linux: ["factorio"] } },
+  { name: "Terraria", ids: ["1"], exe: { win32: ["terraria.exe"], linux: ["terraria.bin.x86"] } },
+  { name: "Cyberpunk 2077", ids: ["2"], exe: { win32: ["cyberpunk2077.exe"] } },
 ];
 
 check("a Rich Presence application id gives the game's name", () => {

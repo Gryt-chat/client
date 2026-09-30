@@ -1,8 +1,7 @@
 /** Known games spotted by their program, for the ones that don't send Rich Presence (GRYT-1636).
     Asks once per game, and only "this app id is running" ever leaves this module. */
 
-import { readFileSync, writeFileSync } from "fs";
-import { basename, join } from "path";
+import { basename } from "path";
 
 /** Same rule as processWatcher's, here so the checks can load this file on its own. */
 export function normaliseExecutable(raw: string): string {
@@ -13,33 +12,10 @@ export function normaliseExecutable(raw: string): string {
 
 export type Platform = "win32" | "darwin" | "linux";
 
+/** A listed game's program names; the game list's entries fit this. */
 export interface ExecutablesEntry {
   id: string;
-  programs: Partial<Record<Platform, string[]>>;
-}
-
-const PLATFORMS: readonly Platform[] = ["win32", "darwin", "linux"];
-const MAX_ENTRIES = 50_000;
-
-/** Off the wire or off disk, so anything odd is dropped rather than trusted. */
-export function readExecutablesList(value: unknown): ExecutablesEntry[] {
-  if (!Array.isArray(value) || value.length > MAX_ENTRIES) return [];
-  const out: ExecutablesEntry[] = [];
-  for (const raw of value) {
-    const entry = raw as Record<string, unknown> | null;
-    const id = typeof entry?.id === "string" && /^\d{1,32}$/.test(entry.id) ? entry.id : "";
-    const programs = entry?.programs as Record<string, unknown> | undefined;
-    if (!id || !programs || typeof programs !== "object") continue;
-    const parsed: ExecutablesEntry = { id, programs: {} };
-    for (const os of PLATFORMS) {
-      const list = programs[os];
-      if (!Array.isArray(list)) continue;
-      const names = list.filter((n): n is string => typeof n === "string" && n.length <= 128).slice(0, 8);
-      if (names.length) parsed.programs[os] = names;
-    }
-    if (Object.keys(parsed.programs).length) out.push(parsed);
-  }
-  return out;
+  programs?: Partial<Record<Platform, string[]>>;
 }
 
 /*
@@ -88,7 +64,7 @@ export interface ProgramIndex {
 
 export interface CuratedEntry {
   name: string;
-  discord: string[];
+  ids: string[];
   exe: Partial<Record<Platform, string[]>>;
   kind?: "game" | "app";
 }
@@ -113,15 +89,15 @@ export function buildProgramIndex(
 
   const ours = new Map<string, Set<string>>();
   for (const entry of curated) {
-    const key = entry.discord[0] ?? appKey(entry.name);
+    const key = entry.ids[0] ?? appKey(entry.name);
     if (!KEY.test(key)) continue;
-    known.set(key, { name: entry.name, kind: entry.kind ?? "game", rpcIds: [...entry.discord] });
+    known.set(key, { name: entry.name, kind: entry.kind ?? "game", rpcIds: [...entry.ids] });
     for (const os of osesFor(platform)) for (const raw of entry.exe[os] ?? []) claim(ours, raw, key);
   }
 
   const theirs = new Map<string, Set<string>>();
   for (const entry of entries) {
-    for (const os of osesFor(platform)) for (const raw of entry.programs[os] ?? []) claim(theirs, raw, entry.id);
+    for (const os of osesFor(platform)) for (const raw of entry.programs?.[os] ?? []) claim(theirs, raw, entry.id);
   }
 
   const byProgram = new Map<string, string>();
@@ -245,44 +221,4 @@ export function createGameDetector(options: GameDetectorOptions): GameDetector {
       timer = null;
     },
   };
-}
-
-/* ── The program list from Gryt-chat/rich-presence, cached a day ─────── */
-
-const SOURCES = [
-  "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/executables.json",
-  "https://raw.githubusercontent.com/Gryt-chat/rich-presence/main/executables.json",
-];
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MIN_ACCEPTABLE = 100;
-
-function cacheFile(userDataDir: string): string {
-  return join(userDataDir, "rich-presence-executables.json");
-}
-
-/** Only called while detection is on. A failed fetch keeps whatever was cached. */
-export async function loadExecutablesList(userDataDir: string, fetchImpl: typeof fetch = fetch): Promise<ExecutablesEntry[]> {
-  let cached: { fetchedAt: number; entries: ExecutablesEntry[] } | null = null;
-  try {
-    const raw = JSON.parse(readFileSync(cacheFile(userDataDir), "utf8")) as Record<string, unknown>;
-    const entries = readExecutablesList(raw.entries);
-    if (typeof raw.fetchedAt === "number" && entries.length) cached = { fetchedAt: raw.fetchedAt, entries };
-  } catch {
-    // No cache yet.
-  }
-  if (cached && Date.now() - cached.fetchedAt < DAY_MS) return cached.entries;
-
-  for (const url of SOURCES) {
-    try {
-      const res = await fetchImpl(url, { signal: AbortSignal.timeout(20_000) });
-      if (!res.ok) continue;
-      const entries = readExecutablesList((await res.json()) as unknown);
-      if (entries.length < MIN_ACCEPTABLE) continue;
-      writeFileSync(cacheFile(userDataDir), JSON.stringify({ fetchedAt: Date.now(), entries }));
-      return entries;
-    } catch {
-      // Next source.
-    }
-  }
-  return cached?.entries ?? [];
 }

@@ -7,12 +7,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  createDetectableIndex,
-  fetchDetectableList,
+  createGameLookup,
+  fetchGamesFile,
   isStale,
-  maybeRefreshDetectableList,
+  maybeRefreshGames,
   readCache,
-  readDetectableList,
+  readGamesFile,
   REFRESH_INTERVAL_MS,
   resolveGameName,
   writeCache,
@@ -45,25 +45,26 @@ console.log("game list cache");
 
 check("a bad response is an empty list, not a crash", () => {
   for (const junk of [null, 42, "x", {}, { id: "1" }]) {
-    assert.deepEqual(readDetectableList(junk), []);
+    assert.deepEqual(readGamesFile(junk), []);
   }
-  assert.deepEqual(readDetectableList([null, 7, { name: "no id" }, { id: "abc", name: "not a snowflake" }]), []);
+  assert.deepEqual(readGamesFile([null, 7, { name: "no id" }, { id: "abc", name: "not a snowflake" }]), []);
 });
 
 check("a huge array is refused outright", () => {
   const huge = Array.from({ length: 50_001 }, (_, i) => ({ id: String(i + 1), name: `Game ${i}` }));
-  assert.deepEqual(readDetectableList(huge), []);
+  assert.deepEqual(readGamesFile(huge), []);
 });
 
-check("a valid entry survives, trimmed and with its icon hash", () => {
-  const [entry] = readDetectableList([{ id: "123", name: "  Ok  ".padEnd(80, "x"), icon_hash: "abc", extra: "dropped" }]);
+check("a valid entry survives, trimmed and with its program names", () => {
+  const [entry] = readGamesFile({ version: 1, games: [{ id: "123", name: "  Ok  ".padEnd(80, "x"), programs: { win32: ["ok.exe"], beos: ["x"] }, extra: "dropped" }] });
   assert.equal(entry.id, "123");
   assert.equal(entry.name.length, 64);
-  assert.equal(entry.icon_hash, "abc");
+  assert.deepEqual(entry.programs, { win32: ["ok.exe"] });
+  assert.equal("extra" in entry, false);
 });
 
 check("the first entry for an id wins", () => {
-  const index = createDetectableIndex([
+  const index = createGameLookup([
     { id: "1", name: "First" },
     { id: "1", name: "Second" },
   ]);
@@ -72,8 +73,8 @@ check("the first entry for an id wins", () => {
 
 check("lookup order: overrides, then downloaded, then bundled, then unknown", () => {
   const overrides = (id) => (id === "1" ? "Override Game" : null);
-  const downloaded = createDetectableIndex([{ id: "1", name: "Downloaded Game" }, { id: "2", name: "Downloaded Only" }]);
-  const bundled = createDetectableIndex([{ id: "1", name: "Bundled Game" }, { id: "2", name: "Bundled Fallback" }, { id: "3", name: "Bundled Only" }]);
+  const downloaded = createGameLookup([{ id: "1", name: "Downloaded Game" }, { id: "2", name: "Downloaded Only" }]);
+  const bundled = createGameLookup([{ id: "1", name: "Bundled Game" }, { id: "2", name: "Bundled Fallback" }, { id: "3", name: "Bundled Only" }]);
   const sources = { overrides, downloaded, bundled };
   assert.equal(resolveGameName(sources, "1"), "Override Game");
   assert.equal(resolveGameName(sources, "2"), "Downloaded Only");
@@ -126,7 +127,7 @@ function fakeFetch(script) {
 
 await checkAsync("the first source that answers with enough entries wins", async () => {
   const fetchImpl = fakeFetch([() => ({ ok: true, json: async () => okBody })]);
-  const entries = await fetchDetectableList(fetchImpl, ["https://a.example/detectable.json"]);
+  const entries = await fetchGamesFile(fetchImpl, ["https://a.example/detectable.json"]);
   assert.equal(entries.length, 150);
 });
 
@@ -137,13 +138,13 @@ await checkAsync("a failing first source falls back to the second", async () => 
     },
     () => ({ ok: true, json: async () => okBody }),
   ]);
-  const entries = await fetchDetectableList(fetchImpl, ["https://a.example/x", "https://b.example/x"]);
+  const entries = await fetchGamesFile(fetchImpl, ["https://a.example/x", "https://b.example/x"]);
   assert.equal(entries.length, 150);
 });
 
 await checkAsync("a non-array or too-small body is rejected, not treated as the list shrinking", async () => {
   const fetchImpl = fakeFetch([() => ({ ok: true, json: async () => ({ not: "an array" }) })]);
-  const entries = await fetchDetectableList(fetchImpl, ["https://a.example/x"]);
+  const entries = await fetchGamesFile(fetchImpl, ["https://a.example/x"]);
   assert.equal(entries, null);
 });
 
@@ -153,7 +154,7 @@ await checkAsync("every source failing gives null, not a throw", async () => {
       throw new Error("dns");
     },
   ]);
-  const entries = await fetchDetectableList(fetchImpl, ["https://a.example/x", "https://b.example/x"]);
+  const entries = await fetchGamesFile(fetchImpl, ["https://a.example/x", "https://b.example/x"]);
   assert.equal(entries, null);
 });
 
@@ -163,7 +164,7 @@ const dir2 = mkdtempSync(join(tmpdir(), "gryt-game-list-cache-"));
 try {
   await checkAsync("no cache yet: fetches, and a good response is written", async () => {
     const fetchImpl = fakeFetch([() => ({ ok: true, json: async () => okBody })]);
-    const index = await maybeRefreshDetectableList({ userDataDir: dir2, fetchImpl });
+    const index = await maybeRefreshGames({ userDataDir: dir2, fetchImpl });
     assert.equal(index.get("1").name, "Game 0");
     assert.ok(readCache(dir2));
   });
@@ -174,7 +175,7 @@ try {
       called = true;
       throw new Error("should not be called");
     };
-    const index = await maybeRefreshDetectableList({ userDataDir: dir2, fetchImpl });
+    const index = await maybeRefreshGames({ userDataDir: dir2, fetchImpl });
     assert.equal(called, false);
     assert.equal(index.get("1").name, "Game 0");
   });
@@ -187,7 +188,7 @@ try {
         return { ok: true, json: async () => [{ id: "1", name: "Refreshed" }, ...okBody.slice(1)] };
       },
     ]);
-    const index = await maybeRefreshDetectableList({
+    const index = await maybeRefreshGames({
       userDataDir: dir2,
       fetchImpl,
       now: () => Date.now() + REFRESH_INTERVAL_MS + 1,
@@ -199,7 +200,7 @@ try {
   await checkAsync("a broken response on a stale cache keeps the old entries, doesn't wipe them", async () => {
     const before = readCache(dir2);
     const fetchImpl = fakeFetch([() => ({ ok: false, status: 500 })]);
-    const index = await maybeRefreshDetectableList({
+    const index = await maybeRefreshGames({
       userDataDir: dir2,
       fetchImpl,
       now: () => Date.now() + 2 * REFRESH_INTERVAL_MS,
@@ -217,7 +218,7 @@ await checkAsync("main.ts only refreshes after the consent check, not before it"
   const source = readFileSync(new URL("../electron/main.ts", import.meta.url), "utf8");
   const fn = source.slice(source.indexOf("function startRichPresence"));
   const guardAt = fn.indexOf("!readRichPresenceConsent()) return;");
-  const refreshAt = fn.indexOf("maybeRefreshDetectableList(");
+  const refreshAt = fn.indexOf("maybeRefreshGames(");
   assert.ok(guardAt !== -1 && refreshAt !== -1 && guardAt < refreshAt, "the refresh call moved ahead of the consent guard");
 });
 
