@@ -121,6 +121,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       /* Split off `change_avatar` on the server in GRYT-866 and never labelled
          here, so it landed in "Newer than this client" on a current build. */
       { id: "upload_avatar_image", label: "Upload an avatar image", description: "Use their own picture rather than an owl. Puts a file from them in front of everybody." },
+      { id: "upload_banner_image", label: "Upload a banner image", description: "Put a picture across the top of their member card." },
       { id: "view_members", label: "See the member list", description: "Know who else is here." },
       { id: "create_invite", label: "Create invites", description: "Mint an invite code." },
     ],
