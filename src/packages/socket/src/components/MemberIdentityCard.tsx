@@ -6,7 +6,6 @@ import {
   comparisonCode,
   generatedAvatarColor,
   getOwnServerUserId,
-  getServerHttpBase,
   getUploadsFileUrl,
   identityScopeFor,
   markPeerCompared,
@@ -233,7 +232,6 @@ export function MemberIdentityCard({
       owlHex={owlHex}
       bannerUrl={member.bannerFileId && serverHost ? getUploadsFileUrl(serverHost, member.bannerFileId) : null}
       game={offline ? null : member.richActivity}
-      gameArtUrl={!offline && member.richActivity?.appId && serverHost ? `${getServerHttpBase(serverHost)}/api/game-art/${member.richActivity.appId}` : null}
       chips={chips}
       appearance={resolvedAppearance}
       seedKey={member.serverUserId}

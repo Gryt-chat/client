@@ -9,7 +9,6 @@ import type { Channel } from "@/settings/src/types/server";
 import { PiCameraFill, PiTrashFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { GameArtCacheSetting } from "./GameArtCacheSetting";
 
 type ProfanityMode = "off" | "flag" | "censor" | "block";
 
@@ -809,7 +808,6 @@ export function ServerOverviewTab({
         </div>
       </div>
 
-      {canEdit && <GameArtCacheSetting host={host} accessToken={effectiveAccessToken} />}
 
       {autosaving ? (
         <div className="flex justify-end">
