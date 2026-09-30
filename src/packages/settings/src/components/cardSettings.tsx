@@ -297,6 +297,7 @@ export function CardSettings() {
                   worn={worn}
                   seed={seed}
                   appearance={stage}
+                  bannerUrl={bannerUrl}
                   panes={[{ value: "about", label: "About you", icon: <UserCircle weight="fill" size={16} />, content: about }]}
                 />
                 <figure className="m-0 flex shrink-0 flex-col gap-3 border-gryt-border bg-gryt-surface p-4 @max-3xl:border-t @3xl:w-[24rem] @3xl:border-l">
