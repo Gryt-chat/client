@@ -104,6 +104,12 @@ export async function routeExternal(
   await context.route(/\/api\/game-art\/\d+$/, (route) =>
     route.fulfill({ status: 200, contentType: "image/png", headers: CORS, body: TRANSPARENT_PNG }),
   );
+  // The same for the art cache in server settings: an older server answers 404, which the page hides.
+  await context.route(/\/api\/game-art\/cache$/, async (route) => {
+    const real = await route.fetch().catch(() => null);
+    if (real && real.status() !== 404) return route.fulfill({ response: real });
+    return route.fulfill({ status: 200, contentType: "application/json", headers: CORS, body: '{"games":0,"bytes":0}' });
+  });
 }
 
 export { APP_VERSION };
