@@ -11,6 +11,7 @@ import type { GrytServer } from "../support/server";
    A send with no answer holds up the next one in its DM, so each run has one of those. */
 
 const run = promisify(execFile);
+test.describe.configure({ mode: "parallel" });
 
 /* What Chrome logs for a redial while the server is down or still booting. Allowed only
    between the kill and the moment every message is through. */
@@ -230,8 +231,13 @@ for (const kind of ["unacked", "lost"] as const) {
 
     // Bob's copy, read back from his archive: each message once, in the order it was typed.
     await bob.page.reload();
-    await bob.page.getByRole("button", { name: "Direct messages" }).click();
-    await bob.page.locator('[data-gryt="dm-list"]').getByRole("button", { name: alice.name }).click();
+    const dmList = bob.page.locator('[data-gryt="dm-list"]');
+    await expect.poll(async () => {
+      if (await dmList.isVisible()) return true;
+      await bob.page.getByRole("button", { name: "Direct messages" }).click({ timeout: 5_000 });
+      return dmList.isVisible();
+    }).toBe(true);
+    await dmList.getByRole("button", { name: alice.name }).click({ timeout: 15_000 });
     for (const text of [before, ...texts]) await expect.soft(messageRow(bob.page, text), `"${text}" once for bob`).toHaveCount(1);
     const order = await bob.page
       .locator("[data-message-id]")
