@@ -105,10 +105,10 @@ export function isStale(cache: CacheFile | null, now: number): boolean {
 
 /* ── Fetching ────────────────────────────────────────────────────────── */
 
-/** jsdelivr first: it's a CDN in front of the repo. raw.githubusercontent.com is the fallback. */
+/** GitHub first: jsdelivr can serve a `@main` file a day old, which hid newly added games. */
 const SOURCES = [
-  "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/games.json",
   "https://raw.githubusercontent.com/Gryt-chat/rich-presence/main/games.json",
+  "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/games.json",
 ];
 
 /** Fewer entries than this reads as a broken fetch, not as the list shrinking. */
