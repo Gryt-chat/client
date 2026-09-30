@@ -3,12 +3,12 @@
 
 const SOURCES = {
   overrides: [
-    "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/overrides.json",
     "https://raw.githubusercontent.com/Gryt-chat/rich-presence/main/overrides.json",
+    "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/overrides.json",
   ],
   games: [
-    "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/games.json",
     "https://raw.githubusercontent.com/Gryt-chat/rich-presence/main/games.json",
+    "https://cdn.jsdelivr.net/gh/Gryt-chat/rich-presence@main/games.json",
   ],
 };
 
