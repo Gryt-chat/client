@@ -13,6 +13,7 @@ import {
 import { getElectronAPI, isElectron, type RichPresenceSocketStatus } from "../../../../lib/electron";
 import type { RichActivity } from "../../../../lib/richActivity";
 import { heldNotice } from "../components/richPresenceCopy";
+import { subscribeWithSnapshot } from "./liveSnapshot";
 import type { VoiceTileLayout, VoiceTwoPersonLayout } from "./settingsStorage";
 import { type ScalabilityMode, type ScreenShareCodec, settingsInit, type VideoCodec } from "./settingsStorage";
 import { loadAudioFromCache, useAudioSettings } from "./useAudioSettings";
@@ -246,19 +247,11 @@ function useSettingsHook() {
     const api = getElectronAPI();
     if (!api?.onWatchedProgramsChanged) return;
 
-    let cancelled = false;
-    void api.getRunningWatched?.().then((names) => {
-      if (!cancelled) setPlayingNow(names);
-    });
-
-    const drop = api.onWatchedProgramsChanged((names) => {
-      if (!cancelled) setPlayingNow(names);
-    });
-
-    return () => {
-      cancelled = true;
-      drop();
-    };
+    return subscribeWithSnapshot(
+      api.getRunningWatched,
+      api.onWatchedProgramsChanged,
+      setPlayingNow,
+    );
   }, []);
 
   useEffect(() => {
@@ -279,14 +272,17 @@ function useSettingsHook() {
       }
       toast(heldNotice(status.holder.name), { duration: 12_000, id: "rich-presence-held" });
     };
+    let cardRevision = 0;
+    const drop = api.onRichPresenceChanged((card) => {
+      cardRevision += 1;
+      if (!cancelled) setGameCard(card);
+    });
+    const readAt = cardRevision;
     void api.getRichPresence?.().then((status) => {
       if (cancelled) return;
-      setGameCard(status.current);
+      if (cardRevision === readAt) setGameCard(status.current);
       consentedAt = status.consentedAt;
       noticeIfHeld(status);
-    });
-    const drop = api.onRichPresenceChanged((card) => {
-      if (!cancelled) setGameCard(card);
     });
     const dropState = api.onRichPresenceState?.((status) => {
       if (cancelled) return;
