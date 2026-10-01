@@ -14,7 +14,7 @@ export interface Guest {
 export const VOICE_CHANNEL = process.env.GRYT_TEST_VOICE_CHANNEL || "Voice Chat";
 
 export function leaveVoiceButton(page: Page): Locator {
-  return page.getByRole("button", { name: "Leave voice channel" });
+  return page.locator('[data-gryt="voice-view"]').getByRole("button", { name: "Leave voice channel" });
 }
 
 /** Whether a click at the element's centre lands on it. The voice panel clips its controls to nothing while minimized. */
