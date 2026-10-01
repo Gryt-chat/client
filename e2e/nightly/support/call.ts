@@ -13,8 +13,12 @@ export interface Guest {
 /** The default server's voice channel, which test.gryt.chat still has. */
 export const VOICE_CHANNEL = process.env.GRYT_TEST_VOICE_CHANNEL || "Voice Chat";
 
+function callButton(page: Page, name: string): Locator {
+  return page.locator('[data-gryt="voice-view"]').getByRole("button", { name, exact: true });
+}
+
 export function leaveVoiceButton(page: Page): Locator {
-  return page.locator('[data-gryt="voice-view"]').getByRole("button", { name: "Leave voice channel" });
+  return callButton(page, "Leave voice channel");
 }
 
 /** Whether a click at the element's centre lands on it. The voice panel clips its controls to nothing while minimized. */
@@ -50,27 +54,29 @@ export async function leaveVoice(page: Page): Promise<void> {
 }
 
 export async function turnCameraOn(guest: Guest): Promise<void> {
-  await guest.page.getByRole("button", { name: "Turn camera on" }).click();
+  await callButton(guest.page, "Turn camera on").click();
   const start = guest.page.getByRole("button", { name: "Start Camera" });
   await expect(start, "the camera preview never got a stream").toBeEnabled();
   await start.click();
-  await expect(guest.page.getByRole("button", { name: "Turn camera off" })).toBeVisible();
+  await expect(callButton(guest.page, "Camera is on")).toBeVisible();
 }
 
 export async function turnCameraOff(guest: Guest): Promise<void> {
-  await guest.page.getByRole("button", { name: "Turn camera off" }).click();
-  await expect(guest.page.getByRole("button", { name: "Turn camera on" })).toBeVisible();
+  await callButton(guest.page, "Camera is on").click();
+  await guest.page.getByRole("menuitem", { name: "Turn camera off", exact: true }).click();
+  await expect(callButton(guest.page, "Turn camera on")).toBeVisible();
 }
 
 /** In a browser the button calls getDisplayMedia straight away, and Chrome's fake capture answers it. */
 export async function shareScreen(guest: Guest): Promise<void> {
-  await guest.page.getByRole("button", { name: "Share your screen" }).click();
-  await expect(guest.page.getByRole("button", { name: "Stop sharing your screen" })).toBeVisible();
+  await callButton(guest.page, "Share your screen").click();
+  await expect(callButton(guest.page, "Sharing your screen")).toBeVisible();
 }
 
 export async function stopSharing(guest: Guest): Promise<void> {
-  await guest.page.getByRole("button", { name: "Stop sharing your screen" }).click();
-  await expect(guest.page.getByRole("button", { name: "Share your screen" })).toBeVisible();
+  await callButton(guest.page, "Sharing your screen").click();
+  await guest.page.getByRole("menuitem", { name: "Stop sharing", exact: true }).click();
+  await expect(callButton(guest.page, "Share your screen")).toBeVisible();
 }
 
 function focusedView(page: Page): Locator {
