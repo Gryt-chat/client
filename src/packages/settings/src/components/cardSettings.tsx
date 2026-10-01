@@ -19,6 +19,7 @@ import { useServerManagement, useSockets } from "@/socket";
 
 import type { RichActivity } from "../../../../lib/richActivity";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
+import { useCardEmojiGroups } from "../../../socket/src/components/memberCard/cardEmojiGroups";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
 import {
   cardUpdatePayload,
@@ -73,6 +74,7 @@ export function CardSettings() {
   const { nickname, avatarDataUrl, gameCard } = useSettings();
   const { activeTheme } = useCustomThemes();
   const { resolvedAppearance } = useTheme();
+  const emojiGroups = useCardEmojiGroups();
 
   const hosts = Object.keys(servers);
   const connected = hosts.filter((h) => sockets[h]?.connected);
@@ -350,6 +352,7 @@ export function CardSettings() {
                   seed={seed}
                   appearance={stage}
                   bannerUrl={bannerUrl}
+                  emojiGroups={emojiGroups}
                   panes={[{ value: "about", label: "About you", icon: <UserCircle weight="fill" size={16} />, content: about }]}
                 />
                 <figure className="m-0 flex shrink-0 flex-col gap-3 border-gryt-border bg-gryt-surface p-4 @max-3xl:border-t @3xl:w-[24rem] @3xl:border-l">
