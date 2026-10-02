@@ -170,6 +170,7 @@ export function CardSettings() {
   };
   const bannerHosts = connected.filter(mayUpload);
   const [bannerPreview, setBannerPreview] = useState<string | null>();
+  const [bannerMime, setBannerMime] = useState<string>();
   const [pendingBanner, setPendingBanner] = useState<File | null>();
   const [editing, setEditing] = useState(settingsTab === "profile/card/edit");
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -189,6 +190,7 @@ export function CardSettings() {
   const changeBanner = (file: File | null) => {
     if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(file ? URL.createObjectURL(file) : null);
+    setBannerMime(file?.type || undefined);
     setPendingBanner(file);
   };
 
@@ -220,6 +222,7 @@ export function CardSettings() {
     setDraft(saved);
     if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(undefined);
+    setBannerMime(undefined);
     setPendingBanner(undefined);
   };
 
@@ -236,7 +239,20 @@ export function CardSettings() {
   };
 
   const chooseBanner = async (file: File) => {
-    if (await imageMayAnimate(file)) changeBanner(file);
+    const type = file.type.toLowerCase();
+    if (!type.startsWith("image/") && type !== "video/mp4") {
+      toast.error("Choose an image or MP4 video.");
+      return;
+    }
+    const limits = bannerHosts
+      .map((host) => serverDetailsList[host]?.server_info?.upload_max_bytes)
+      .filter((value): value is number => typeof value === "number" && value > 0);
+    const maxBytes = limits.length ? Math.min(...limits) : null;
+    if (maxBytes && file.size > maxBytes) {
+      toast.error(`Banner is too large. These servers allow up to ${(maxBytes / (1024 * 1024)).toFixed(1)}MB.`);
+      return;
+    }
+    if (type === "video/mp4" || await imageMayAnimate(file)) changeBanner(file);
     else setBannerToCrop(file);
   };
 
@@ -276,6 +292,7 @@ export function CardSettings() {
         profile={draft}
         owlHex={owlHex}
         bannerUrl={bannerUrl}
+        bannerMime={bannerMime}
         game={playing ? gameCard ?? SAMPLE_GAME : null}
         appearance={appearance}
         seedKey={seedKey}
@@ -328,8 +345,8 @@ export function CardSettings() {
           title="Banner"
           description={
             bannerHosts.length === connected.length
-              ? "A picture across the top of your card. Everywhere else your pattern shows instead."
-              : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
+              ? "An image or MP4 video across the top of your card. Everywhere else your pattern shows instead."
+              : `An image or MP4 video across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
           }
         >
           <div className="flex flex-wrap gap-2">
@@ -345,7 +362,7 @@ export function CardSettings() {
           <input
             ref={bannerInput}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
+            accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
             style={{ display: "none" }}
             onChange={(e) => {
               const file = e.target.files?.[0];
