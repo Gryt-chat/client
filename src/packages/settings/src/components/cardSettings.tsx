@@ -21,6 +21,7 @@ import type { RichActivity } from "../../../../lib/richActivity";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { useCardEmojiGroups } from "../../../socket/src/components/memberCard/cardEmojiGroups";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
+import { deleteCardBanner, getCardBanner, pruneCardBanners, setCardBanner } from "../../../socket/src/lib/memberCard/cardBannerStore";
 import {
   cardUpdatePayload,
   EMPTY_CARD,
@@ -109,9 +110,20 @@ export function CardSettings() {
   const commit = (next: CardProfile) => setDraft(next);
   const cardDirty = JSON.stringify(cardUpdatePayload(draft)) !== JSON.stringify(cardUpdatePayload(saved));
 
-  const saveCard = () => {
+  const saveCard = (bannerChange: File | null | undefined) => {
     setStoredCard(draft);
-    rememberCardStyle(draft.cardStyle);
+    const nextHistory = rememberCardStyle(draft.cardStyle);
+    void (async () => {
+      if (bannerChange !== undefined) await setCardBanner(draft.cardStyle, bannerChange);
+      else if (bannerUrl) {
+        const response = await fetch(bannerUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          await setCardBanner(draft.cardStyle, new File([blob], "banner", { type: blob.type }));
+        }
+      } else await setCardBanner(draft.cardStyle, null);
+      await pruneCardBanners(nextHistory);
+    })().catch(() => {});
     setRefusals({});
     const payload = cardUpdatePayload(draft);
     for (const host of Object.keys(sockets)) {
@@ -203,7 +215,7 @@ export function CardSettings() {
       setPendingBanner(undefined);
       for (const h of bannerHosts) sockets[h]?.emit("avatar:updated");
     }
-    saveCard();
+    saveCard(pendingBanner);
     toast.success(failed.length ? `Card saved, but ${failed.length} server${failed.length > 1 ? "s" : ""} refused the banner` : "Card saved");
   };
 
@@ -249,6 +261,13 @@ export function CardSettings() {
   );
 
   const refused = Object.entries(refusals);
+
+  const showPastCard = async (past: CardProfile["cardStyle"]) => {
+    setDraft({ ...draft, cardStyle: past });
+    const stored = await getCardBanner(past).catch(() => null);
+    if (!stored?.found) return;
+    changeBanner(stored.file);
+  };
 
   const about = (
     <>
@@ -397,14 +416,17 @@ export function CardSettings() {
                             <button
                               type="button"
                               aria-label="Show this card again"
-                              onClick={() => setDraft({ ...draft, cardStyle: past })}
+                              onClick={() => void showPastCard(past)}
                               className="block size-9 cursor-pointer rounded-(--gryt-radius-md) border border-gryt-border hover:border-gryt-accent"
                               style={{ background: styleSwatch(past) }}
                             />
                             <button
                               type="button"
                               aria-label="Forget this card"
-                              onClick={() => forgetCardStyle(past)}
+                              onClick={() => {
+                                forgetCardStyle(past);
+                                void deleteCardBanner(past).catch(() => {});
+                              }}
                               className="absolute -top-1.5 -right-1.5 hidden size-4 cursor-pointer items-center justify-center rounded-full border border-gryt-border bg-gryt-surface-raised text-[10px] leading-none text-gryt-muted group-hover:flex hover:text-gryt-text"
                             >
                               ×

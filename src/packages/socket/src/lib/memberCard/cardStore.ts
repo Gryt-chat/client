@@ -123,14 +123,18 @@ function writeHistory(next: CardStyle[]): void {
 const sameStyle = (a: CardStyle, b: CardStyle) => JSON.stringify(cardStyleForWire(a)) === JSON.stringify(cardStyleForWire(b));
 
 /** Newest first, no repeats, and the plain card is not worth remembering. */
-export function rememberCardStyle(style: CardStyle): void {
-  if (cardStyleForWire(style) === null) return;
+export function rememberCardStyle(style: CardStyle): CardStyle[] {
+  if (cardStyleForWire(style) === null) return history ?? readHistory();
   const rest = (history ?? readHistory()).filter((s) => !sameStyle(s, style));
-  writeHistory([style, ...rest].slice(0, HISTORY_MAX));
+  const next = [style, ...rest].slice(0, HISTORY_MAX);
+  writeHistory(next);
+  return next;
 }
 
-export function forgetCardStyle(style: CardStyle): void {
-  writeHistory((history ?? readHistory()).filter((s) => !sameStyle(s, style)));
+export function forgetCardStyle(style: CardStyle): CardStyle[] {
+  const next = (history ?? readHistory()).filter((s) => !sameStyle(s, style));
+  writeHistory(next);
+  return next;
 }
 
 export function useCardHistory(): CardStyle[] {
