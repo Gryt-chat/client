@@ -6,6 +6,25 @@ on:
     branches: [main]
 
 jobs:
+  desktop-media:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: COREPACK_ENABLE_STRICT=0 npx -y yarn@1.22.22 install --frozen-lockfile
+        shell: bash
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a yarn test:desktop-video-decoder
+      - if: runner.os != 'Linux'
+        run: yarn test:desktop-video-decoder
   verify:
     runs-on: ubuntu-latest
     env:

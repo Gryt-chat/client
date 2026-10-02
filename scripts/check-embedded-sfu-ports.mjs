@@ -159,7 +159,7 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
   const manager = new Function(
     "fork", "spawn", "app", "existsSync", "readFileSync", "chmod", "cp", "mkdir", "rename",
     "rm", "writeFile", "createServer", "join", "extract", "loadGlobalStore", "setGlobalValue",
-    "setTimeout", "clearTimeout", "process", "console", ...CONFIG_EXPORTS,
+    "setTimeout", "clearTimeout", "process", "console", "attachDesktopVideoDecoder", ...CONFIG_EXPORTS,
     moduleBody(MANAGER, ["createAndStartServer", "startExistingServer", "stopAllServers", "getEmbeddedServerState"]),
   )(
     fork, spawn, app, fs.existsSync, fs.readFileSync, null, null, null, null,
@@ -172,6 +172,7 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
       resourcesPath: join(scratch, "none"),
     },
     quiet,
+    (proc) => { proc.decoderAttached = true; },
     ...CONFIG_EXPORTS.map((name) => config[name]),
   );
 
@@ -201,6 +202,7 @@ async function serverStarted(spawned, count) {
 async function workerStarted(spawned, count) {
   for (let i = 0; i < 40 && spawned.worker.length < count; i++) await settle(50);
   assert.equal(spawned.worker.length, count, "the image worker was never started");
+  assert.ok(spawned.worker.every((proc) => proc.decoderAttached), "a worker has no sandboxed video decoder");
   return spawned.worker[count - 1];
 }
 

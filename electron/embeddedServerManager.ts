@@ -6,6 +6,7 @@ import { createServer } from "net";
 import { join } from "path";
 import { extract } from "tar";
 
+import { attachDesktopVideoDecoder } from "./desktopVideoDecoder";
 import { pruneEmbeddedRuntimes } from "./embeddedRuntimeCleanup";
 import {
   checkPortsAvailable,
@@ -714,12 +715,14 @@ function spawnWorker(
       // Only the server beside it reads this endpoint, and it dials 127.0.0.1.
       // Last, so neither config.env nor the Electron process can widen it.
       HEALTH_HOST: "127.0.0.1",
+      GRYT_VIDEO_DECODER: "electron-sandbox",
     },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
     cwd: getServerDir(id),
     silent: true,
   });
 
+  attachDesktopVideoDecoder(proc);
   const onOutput = (data: Buffer) => {
     const msg = data.toString().trim();
     if (msg) {
