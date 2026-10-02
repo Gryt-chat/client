@@ -12,9 +12,11 @@ test("member card opens its editor directly and Cancel restores the saved previe
   const editor = page.getByRole("dialog", { name: "Edit my card", exact: true });
   await expect(editor).toBeVisible();
   const settings = page.getByRole("dialog", { name: "Settings", exact: true });
-  const savedStyle = await editor.locator(".gmc-frame").getAttribute("style");
+  const readStyle = (element: Element) => Object.fromEntries(Array.from((element as HTMLElement).style).sort()
+    .map((property) => [property, (element as HTMLElement).style.getPropertyValue(property)]));
+  const savedStyle = await editor.locator(".gmc-frame").evaluate(readStyle);
   await editor.getByRole("button", { name: "Surprise me" }).click();
-  await expect(editor.locator(".gmc-frame")).not.toHaveAttribute("style", savedStyle ?? "");
+  await expect.poll(() => editor.locator(".gmc-frame").evaluate(readStyle)).not.toEqual(savedStyle);
   await editor.getByRole("tab", { name: "About you" }).click();
   await editor.locator('input[type="file"]').setInputFiles(fixture("gradient.png"));
   const crop = page.getByRole("dialog", { name: "Position banner" });
@@ -31,7 +33,7 @@ test("member card opens its editor directly and Cancel restores the saved previe
   await editor.getByRole("button", { name: "Cancel", exact: true }).click();
   await confirm.getByRole("button", { name: "Discard changes" }).click();
   await expect(editor).toBeHidden();
-  await expect(settings.locator(".gmc-frame")).toHaveAttribute("style", savedStyle ?? "");
+  await expect.poll(() => settings.locator(".gmc-frame").evaluate(readStyle)).toEqual(savedStyle);
   await expect(settings.locator(".gmc-banner.img")).toHaveCount(0);
   expect(uploads).toEqual([]);
 });

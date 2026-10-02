@@ -62,7 +62,8 @@ export function getStandardEmojisByCategory(): Map<string, EmojiEntryWithCategor
   return standardEmojisByCategory;
 }
 
-let customEmojisCache: EmojiEntry[] = [];
+const EMPTY_CUSTOM_EMOJIS: EmojiEntry[] = [];
+let customEmojisCache: EmojiEntry[] = EMPTY_CUSTOM_EMOJIS;
 const customEmojisByServer = new Map<string, EmojiEntry[]>();
 
 type EmojiChangeListener = () => void;
@@ -92,7 +93,7 @@ export function setCustomEmojis(emojis: { name: string; file_id: string }[], ser
 }
 
 export function getCustomEmojis(serverHost?: string): EmojiEntry[] {
-  return serverHost ? (customEmojisByServer.get(serverHost) ?? []) : customEmojisCache;
+  return serverHost ? (customEmojisByServer.get(serverHost) ?? EMPTY_CUSTOM_EMOJIS) : customEmojisCache;
 }
 
 export function getAllEmojis(serverHost?: string): EmojiEntry[] {
