@@ -1,5 +1,5 @@
 import { Button, Dialog, Slider } from "@gryt/ui";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { bannerCropGeometry, type CropPoint, type CropSize } from "./bannerCrop";
 
@@ -16,6 +16,7 @@ export function BannerCropDialog({
   onUse: (file: File) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const viewportObserver = useRef<ResizeObserver | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const dragRef = useRef<{ pointer: number; at: CropPoint; start: CropPoint } | null>(null);
   const [url, setUrl] = useState("");
@@ -35,15 +36,17 @@ export function BannerCropDialog({
     return () => URL.revokeObjectURL(next);
   }, [file]);
 
-  useEffect(() => {
-    const node = viewportRef.current;
+  const attachViewport = useCallback((node: HTMLDivElement | null) => {
+    viewportRef.current = node;
+    viewportObserver.current?.disconnect();
+    viewportObserver.current = null;
     if (!node) return;
     const observer = new ResizeObserver(([entry]) => {
       setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
     });
+    viewportObserver.current = observer;
     observer.observe(node);
-    return () => observer.disconnect();
-  }, [file]);
+  }, []);
 
   const crop = bannerCropGeometry(image, viewport, zoom, offset);
 
@@ -87,7 +90,7 @@ export function BannerCropDialog({
               <Dialog.Description>Drag to move. Scroll or use the slider to zoom.</Dialog.Description>
             </div>
             <div
-              ref={viewportRef}
+              ref={attachViewport}
               className="relative aspect-5/2 touch-none cursor-grab overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface active:cursor-grabbing"
               onWheel={(event) => {
                 event.preventDefault();
@@ -133,7 +136,7 @@ export function BannerCropDialog({
             </label>
             <div className="flex flex-wrap justify-end gap-2">
               <Button tone="neutral" onClick={onCancel}>Cancel</Button>
-              <Button disabled={busy || !image.width} onClick={() => void applyCrop()}>{busy ? "Preparing…" : "Use crop"}</Button>
+              <Button disabled={busy || !image.width || !viewport.width} onClick={() => void applyCrop()}>{busy ? "Preparing…" : "Use crop"}</Button>
             </div>
           </div>
         </Dialog.Popup>

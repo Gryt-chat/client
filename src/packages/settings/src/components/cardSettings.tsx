@@ -41,6 +41,7 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
+import { waitForMedia } from "../../../socket/src/utils/waitForMedia";
 import { imageMayAnimate } from "./bannerCrop";
 import { BannerCropDialog } from "./BannerCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
@@ -72,15 +73,7 @@ async function sendBanner(host: string, file: File | null): Promise<void> {
   if (!file) return;
   const result = await r.json() as { bannerFileId?: string; processing?: boolean };
   if (!result.processing || !result.bannerFileId) return;
-  const url = getUploadsFileUrl(host, result.bannerFileId);
-  if (!url) throw new Error("Cannot check banner processing on this server");
-  for (let attempt = 0; attempt < 90; attempt++) {
-    const ready = await fetch(url, { method: "HEAD", cache: "no-store" });
-    if (ready.ok) return;
-    if (ready.status !== 503) throw new Error("Server rejected the banner during media checks");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  throw new Error("Banner is still waiting for this server's image worker. Try again later.");
+  await waitForMedia(getUploadsFileUrl(host, result.bannerFileId));
 }
 
 export function CardSettings() {
