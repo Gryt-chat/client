@@ -16,6 +16,7 @@ import {
 import { useSettings } from "@/settings";
 
 import { openLightbox } from "../../../../lib/lightboxStore";
+import { offerSharedLook } from "../../../../lib/sharedLook";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
@@ -147,7 +148,7 @@ export function MemberIdentityCard({
     member.serverUserId === (actions.currentServerUserId ?? getOwnServerUserId(serverHost));
 
   // Only a designed owl can be copied; copying somebody's photograph would be impersonation.
-  const worn = member.avatarWorn;
+  const worn = member.avatarFileId ? null : member.avatarWorn;
   const owlHex = generatedAvatarColor(member.nickname, member.avatarWorn) ?? member.avatarColor ?? FALLBACK_OWL;
   const channelName =
     voiceChannelName ??
@@ -207,9 +208,15 @@ export function MemberIdentityCard({
       : []),
     {
       key: "style",
-      label: "Copy card style",
+      label: "Copy card",
       divider: true,
-      onSelect: () => copy(encodeCardStyle(profile.cardStyle), "Card style copied. Paste it in Edit my card to use it."),
+      onSelect: () => {
+        offerSharedLook({
+          card: encodeCardStyle(profile.cardStyle),
+          cardBanner: member.bannerFileId && serverHost ? getUploadsFileUrl(serverHost, member.bannerFileId) : null,
+        });
+        openSettings("profile/card/edit");
+      },
     },
   ];
 
@@ -290,14 +297,20 @@ export function MemberIdentityCard({
           </Popover.Close>
         )}
         {worn && (
-          <button type="button" className="gmc-ib quiet" aria-label="Copy avatar" data-tip="Copy avatar" onClick={() => copy(worn, "Avatar code copied")}>
+          <Popover.Close
+            render={<button type="button" className="gmc-ib quiet" aria-label="Copy owl" data-tip="Copy owl" />}
+            onClick={() => {
+              offerSharedLook({ owl: worn });
+              openSettings("profile");
+            }}
+          >
             <CardIcon.copy />
-          </button>
+          </Popover.Close>
         )}
         {isSelf && (
           <Popover.Close
             render={<button type="button" className="gmc-ib quiet" aria-label="Edit my card" data-tip="Edit my card" />}
-            onClick={() => openSettings("profile/card")}
+            onClick={() => openSettings("profile/card/edit")}
           >
             <CardIcon.pen />
           </Popover.Close>

@@ -19,6 +19,7 @@ import { useServerManagement, useSockets } from "@/socket";
 
 import type { RichActivity } from "../../../../lib/richActivity";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
+import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { useCardEmojiGroups } from "../../../socket/src/components/memberCard/cardEmojiGroups";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
 import { deleteCardBanner, getCardBanner, pruneCardBanners, setCardBanner } from "../../../socket/src/lib/memberCard/cardBannerStore";
@@ -74,7 +75,7 @@ export function CardSettings() {
   const stored = useStoredCard();
   const { sockets, serverProfiles, serverDetailsList, memberLists } = useSockets();
   const { servers, currentlyViewingServer } = useServerManagement();
-  const { nickname, avatarDataUrl, gameCard } = useSettings();
+  const { nickname, avatarDataUrl, gameCard, settingsTab, setSettingsTab } = useSettings();
   const { activeTheme } = useCustomThemes();
   const { resolvedAppearance } = useTheme();
   const emojiGroups = useCardEmojiGroups(currentlyViewingServer?.host);
@@ -151,11 +152,6 @@ export function CardSettings() {
     );
   };
   const shared = useSharedLook().card;
-  useEffect(() => {
-    if (!shared) return;
-    const text = takeSharedLook("card");
-    if (text && !showShared(text)) toast.error("That link had no card in it.");
-  }, [shared]);
 
   const text = (key: "bio" | "pronouns" | "statusLine", max: number) => ({
     value: draft[key] ?? "",
@@ -175,7 +171,8 @@ export function CardSettings() {
   const bannerHosts = connected.filter(mayUpload);
   const [bannerPreview, setBannerPreview] = useState<string | null>();
   const [pendingBanner, setPendingBanner] = useState<File | null>();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(settingsTab === "profile/card/edit");
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [bannerBusy, setBannerBusy] = useState(false);
   const [bannerToCrop, setBannerToCrop] = useState<File | null>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
@@ -193,6 +190,49 @@ export function CardSettings() {
     if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(file ? URL.createObjectURL(file) : null);
     setPendingBanner(file);
+  };
+
+  useEffect(() => {
+    if (!shared) return;
+    const text = takeSharedLook("card");
+    const remoteBanner = takeSharedLook("cardBanner");
+    if (!text || !showShared(text)) {
+      toast.error("That link had no card in it.");
+      return;
+    }
+    if (remoteBanner === null) changeBanner(null);
+    else if (remoteBanner) {
+      void fetch(remoteBanner)
+        .then(async (response) => {
+          if (!response.ok) throw new Error(String(response.status));
+          const blob = await response.blob();
+          changeBanner(new File([blob], "copied-banner", { type: blob.type }));
+        })
+        .catch(() => toast.error("The card was copied, but its banner could not be downloaded."));
+    }
+  }, [shared]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (settingsTab === "profile/card/edit") setEditing(true);
+  }, [settingsTab]);
+
+  const discardChanges = () => {
+    setDraft(saved);
+    if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
+    setBannerPreview(undefined);
+    setPendingBanner(undefined);
+  };
+
+  const closeEditor = () => {
+    discardChanges();
+    setEditing(false);
+    setConfirmCancel(false);
+    if (settingsTab === "profile/card/edit") setSettingsTab("profile/card");
+  };
+
+  const requestCancel = () => {
+    if (dirty) setConfirmCancel(true);
+    else closeEditor();
   };
 
   const chooseBanner = async (file: File) => {
@@ -350,7 +390,7 @@ export function CardSettings() {
         </div>
       </div>
 
-      <Dialog.Root open={editing} onOpenChange={(open) => setEditing(open)}>
+      <Dialog.Root open={editing} onOpenChange={(open) => { if (!open) requestCancel(); }}>
         <Dialog.Portal>
           <Dialog.Backdrop />
           {/* Laid out like the owl designer: panes on the left, the card on the right, nothing long to scroll. */}
@@ -364,17 +404,14 @@ export function CardSettings() {
                   Paste link
                 </Button>
                 <Button size="small" tone="neutral" disabled={!dirty} onClick={() => {
-                  setDraft(saved);
-                  if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
-                  setBannerPreview(undefined);
-                  setPendingBanner(undefined);
+                  discardChanges();
                 }}>
                   Undo changes
                 </Button>
                 <Button size="small" disabled={!dirty || bannerBusy} onClick={() => void save()}>
                   Save
                 </Button>
-                <Dialog.Close render={<Button size="small" tone="neutral" />}>Close</Dialog.Close>
+                <Button size="small" tone="neutral" onClick={requestCancel}>Cancel</Button>
               </div>
             </div>
             <div className="@container flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -451,6 +488,16 @@ export function CardSettings() {
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
+      <ConfirmDialog
+        open={confirmCancel}
+        onOpenChange={setConfirmCancel}
+        title="Discard card changes?"
+        description="Your card will go back to the last saved version."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        focusCancel
+        onConfirm={closeEditor}
+      />
     </SettingsContainer>
   );
 }
