@@ -338,9 +338,10 @@ export function CardSettings() {
   const refused = Object.entries(refusals);
 
   const showPastCard = async (past: CardProfile["cardStyle"]) => {
+    const revision = ++bannerRevision.current;
     setDraft({ ...draft, cardStyle: past });
     const stored = await getCardBanner(past).catch(() => null);
-    if (!stored?.found) return;
+    if (revision !== bannerRevision.current || !stored?.found) return;
     changeBanner(stored.file);
   };
 
