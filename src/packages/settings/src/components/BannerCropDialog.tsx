@@ -131,7 +131,7 @@ export function BannerCropDialog({
               <Slider className="flex-1" min={100} max={300} value={Math.round(zoom * 100)} onValueChange={(value) => setZoom(Number(value) / 100)} />
               <span className="w-11 text-right text-xs text-gryt-muted">{Math.round(zoom * 100)}%</span>
             </label>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button tone="neutral" onClick={onCancel}>Cancel</Button>
               <Button disabled={busy || !image.width} onClick={() => void applyCrop()}>{busy ? "Preparing…" : "Use crop"}</Button>
             </div>
