@@ -572,16 +572,18 @@
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.12.1.tgz#9a21b6a4d0ec0f5139828b99bd86a9d9893472c4"
   integrity sha512-oAMaBq/xF1YdR1AcBgqIRhN3CvkPW+Ifx7FgN6hC0xQ37SMp+g3WG34VNHInp5xVA5ahITUHkdRzDUq4Hb67uQ==
 
-"@gryt/ui@^0.37.8":
-  version "0.37.8"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.37.8.tgz#a33002566ce3efeec48704fa47c346f4156640ff"
-  integrity sha512-DGCYx4vPxQu5tK4wbv0Lt3xX1ajMwlw0nyL/tryWW3WyzpTMqeLV/lO5sIXz2xq9vYQdXySRZNMLSZswiY+Aqg==
+"@gryt/ui@^0.39.0":
+  version "0.39.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.39.0.tgz#163a87f8f0ba7a4d268e23d66d29da8e0a91ade4"
+  integrity sha512-iaYG8YeQjb1VXb6aIsQEyRK8m3Kt5OGxdy9VNZlQWVJaroWgUpnKqu4i+O8It8XWlcQpz/n8iJ3oBP902C0VMw==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.6.0"
     "@gryt/theme" "^0.12.0"
     "@phosphor-icons/react" "^2.1.10"
+    "@tanstack/react-virtual" "^3.13.12"
     clsx "^2.1.1"
+    gemoji "^8.1.0"
     tailwind-merge "^3.4.0"
 
 "@gryt/voice@0.6.1":
@@ -1152,6 +1154,18 @@
     "@tailwindcss/node" "4.3.3"
     "@tailwindcss/oxide" "4.3.3"
     tailwindcss "4.3.3"
+
+"@tanstack/react-virtual@^3.13.12":
+  version "3.14.13"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-virtual/-/react-virtual-3.14.13.tgz#b30cab7650aef2f05a70297c3861bd3a43013d0b"
+  integrity sha512-JbDTAwtzZ99aOeCrAfW5EsE5KSq5RWh6Af2dtFwyLIIk48Ja7vm6n4axu/43T3vfjFnEGJalxJ1wyYjSQD6bSg==
+  dependencies:
+    "@tanstack/virtual-core" "3.17.11"
+
+"@tanstack/virtual-core@3.17.11":
+  version "3.17.11"
+  resolved "https://registry.yarnpkg.com/@tanstack/virtual-core/-/virtual-core-3.17.11.tgz#666f2c65a4dd3467712d73b42a74076aac54db62"
+  integrity sha512-+ILjvtHup6Y2hzQ6YzwMgX1Q+oQpxEGOXCEsCNaPoIP0VxMbizIBTmYTDtkerkIQS8/CbP1BRuyt8V/8BCsy1g==
 
 "@tybys/wasm-util@^0.10.2", "@tybys/wasm-util@^0.10.3":
   version "0.10.3"
