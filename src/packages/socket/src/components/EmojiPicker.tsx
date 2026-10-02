@@ -166,7 +166,7 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
 
   const recentEntries = useMemo((): EmojiEntry[] => {
     const recent = getRecentReactions(16, serverHost);
-    const customEmojis = getCustomEmojis();
+    const customEmojis = getCustomEmojis(serverHost);
     const byCategory = getStandardEmojisByCategory();
     const allStandard: EmojiEntry[] = [];
     for (const entries of byCategory.values()) allStandard.push(...entries);
@@ -185,13 +185,13 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
   const [customVersion, setCustomVersion] = useState(0);
   useEffect(() => onCustomEmojisChange(() => setCustomVersion((v) => v + 1)), []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const customEntries = useMemo(() => getCustomEmojis(), [customVersion]);
+  const customEntries = useMemo(() => getCustomEmojis(serverHost), [customVersion, serverHost]);
   const standardCategories = useMemo(() => getStandardEmojisByCategory(), []);
 
   const searchResults = useMemo(() => {
     if (!search.trim()) return null;
-    return searchEmojis(search.trim());
-  }, [search]);
+    return searchEmojis(search.trim(), 0, serverHost);
+  }, [search, serverHost]);
 
   const categoryNames = useMemo(() => Array.from(standardCategories.keys()), [standardCategories]);
 

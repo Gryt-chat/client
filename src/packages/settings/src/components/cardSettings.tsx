@@ -73,11 +73,11 @@ async function sendBanner(host: string, file: File | null): Promise<void> {
 export function CardSettings() {
   const stored = useStoredCard();
   const { sockets, serverProfiles, serverDetailsList, memberLists } = useSockets();
-  const { servers } = useServerManagement();
+  const { servers, currentlyViewingServer } = useServerManagement();
   const { nickname, avatarDataUrl, gameCard } = useSettings();
   const { activeTheme } = useCustomThemes();
   const { resolvedAppearance } = useTheme();
-  const emojiGroups = useCardEmojiGroups();
+  const emojiGroups = useCardEmojiGroups(currentlyViewingServer?.host);
 
   const hosts = Object.keys(servers);
   const connected = hosts.filter((h) => sockets[h]?.connected);

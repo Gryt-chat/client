@@ -167,6 +167,10 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+if (!app.isPackaged && process.env.GRYT_DEV_USER_DATA) {
+  app.setPath("userData", resolve(process.env.GRYT_DEV_USER_DATA));
+}
+
 // ── Startup logging ──────────────────────────────────────────────────────
 
 const LOG_PATH = join(app.getPath("userData"), "gryt-startup.log");

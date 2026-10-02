@@ -63,6 +63,7 @@ export function getStandardEmojisByCategory(): Map<string, EmojiEntryWithCategor
 }
 
 let customEmojisCache: EmojiEntry[] = [];
+const customEmojisByServer = new Map<string, EmojiEntry[]>();
 
 type EmojiChangeListener = () => void;
 const emojiChangeListeners = new Set<EmojiChangeListener>();
@@ -77,7 +78,7 @@ export function getCustomEmojiUrl(serverHost: string, name: string): string {
 }
 
 export function setCustomEmojis(emojis: { name: string; file_id: string }[], serverHost: string): void {
-  customEmojisCache = emojis.map((e) => ({
+  const next = emojis.map((e) => ({
     name: e.name,
     emoji: null,
     isCustom: true,
@@ -85,15 +86,17 @@ export function setCustomEmojis(emojis: { name: string; file_id: string }[], ser
     tags: [],
     aliases: [],
   }));
+  customEmojisByServer.set(serverHost, next);
+  customEmojisCache = next;
   emojiChangeListeners.forEach((fn) => fn());
 }
 
-export function getCustomEmojis(): EmojiEntry[] {
-  return customEmojisCache;
+export function getCustomEmojis(serverHost?: string): EmojiEntry[] {
+  return serverHost ? (customEmojisByServer.get(serverHost) ?? []) : customEmojisCache;
 }
 
-export function getAllEmojis(): EmojiEntry[] {
-  return [...getStandardEmojis(), ...customEmojisCache];
+export function getAllEmojis(serverHost?: string): EmojiEntry[] {
+  return [...getStandardEmojis(), ...getCustomEmojis(serverHost)];
 }
 
 const enum MatchTier {
@@ -108,10 +111,10 @@ interface ScoredEntry {
   tier: MatchTier;
 }
 
-export function searchEmojis(query: string, limit = 0): EmojiEntry[] {
+export function searchEmojis(query: string, limit = 0, serverHost?: string): EmojiEntry[] {
   if (!query) return [];
   const q = query.toLowerCase();
-  const all = getAllEmojis();
+  const all = getAllEmojis(serverHost);
   const scored: ScoredEntry[] = [];
 
   for (const entry of all) {
