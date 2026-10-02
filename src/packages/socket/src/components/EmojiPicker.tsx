@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createGrytTheme, EmojiPicker as GrytEmojiPicker, type EmojiPickerGroup, type EmojiPickerItem, GrytProvider, grytTheme, grytThemeToOptions } from "@gryt/ui";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import {
-  type EmojiEntry,
-  getCustomEmojis,
-  getStandardEmojisByCategory,
-  onCustomEmojisChange,
-  searchEmojis,
-} from "../utils/emojiData";
+import { useCustomThemes, useTheme } from "@/common";
+
+import { type EmojiEntry, getCustomEmojis, getStandardEmojisByCategory, onCustomEmojisChange } from "../utils/emojiData";
 import { getRecentReactions } from "../utils/recentReactions";
 
 interface EmojiPickerProps {
@@ -23,344 +20,84 @@ export interface EmojiPickerContentProps {
   autoFocusSearch?: boolean;
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  "Recently Used": "🕒",
-  "Custom": "⭐",
-  "Smileys & Emotion": "😀",
-  "People & Body": "👋",
-  "Animals & Nature": "🐾",
-  "Food & Drink": "🍕",
-  "Travel & Places": "✈️",
-  "Activities": "⚽",
-  "Objects": "💡",
-  "Symbols": "💜",
-  "Flags": "🏁",
-};
-
-const COLS = 8;
 const PICKER_WIDTH = 340;
 const PICKER_MAX_HEIGHT = 400;
 const VIEWPORT_PAD = 8;
 const GAP = 6;
 
-function EmojiCell({ entry, onSelect }: { entry: EmojiEntry; onSelect: (src: string) => void }) {
-  const src = entry.isCustom ? `:${entry.name}:` : entry.emoji!;
-  return (
-    <button
-      onClick={() => onSelect(src)}
-      title={`:${entry.name}:`}
-      style={{
-        width: 36,
-        height: 36,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "none",
-        border: "none",
-        borderRadius: 6,
-        cursor: "pointer",
-        fontSize: 22,
-        lineHeight: 1,
-        padding: 0,
-        transition: "background 0.12s",
-        flexShrink: 0,
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-    >
-      {entry.emoji ? (
-        entry.emoji
-      ) : entry.url ? (
-        <img
-          src={entry.url}
-          alt={entry.name}
-          style={{ width: 22, height: 22, objectFit: "contain" }}
-        />
-      ) : null}
-    </button>
-  );
-}
-
-function CategorySection({
-  label,
-  entries,
-  onSelect,
-}: {
-  label: string;
-  entries: EmojiEntry[];
-  onSelect: (src: string) => void;
-}) {
-  if (entries.length === 0) return null;
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 2,
-          background: "var(--gryt-neutral-2)",
-          padding: "6px 6px 4px",
-          margin: "0 -6px",
-          fontSize: 12,
-          fontWeight: 600,
-          color: "var(--gryt-neutral-10)",
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-        }}
-      >
-        <span style={{ fontSize: 14 }}>{CATEGORY_ICONS[label] ?? ""}</span>
-        {label}
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${COLS}, 36px)`,
-          gap: 2,
-          padding: "0 2px",
-        }}
-      >
-        {entries.map((entry, idx) => (
-          <EmojiCell key={`${entry.isCustom ? "c:" : ""}${entry.name}-${idx}`} entry={entry} onSelect={onSelect} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function NavButton({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      title={label}
-      style={{
-        background: "none",
-        border: "none",
-        padding: "3px 5px",
-        fontSize: 16,
-        lineHeight: 1,
-        borderRadius: 6,
-        cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "background 0.12s",
-        flexShrink: 0,
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-    >
-      {icon}
-    </button>
-  );
+function pickerItem(entry: EmojiEntry): EmojiPickerItem {
+  const name = /^[+-]\d+$/.test(entry.name) ? entry.aliases[0] ?? entry.name : entry.name;
+  return { id: entry.isCustom ? `server:${entry.name}` : `unicode:${entry.emoji}`, name,
+    emoji: entry.emoji ?? undefined, imageUrl: entry.isCustom ? entry.url : undefined,
+    keywords: [entry.name, ...entry.aliases, ...entry.tags] };
 }
 
 export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = true }: EmojiPickerContentProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [search, setSearch] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (autoFocusSearch) inputRef.current?.focus({ preventScroll: true });
-  }, [autoFocusSearch]);
-
-  const recentEntries = useMemo((): EmojiEntry[] => {
-    const recent = getRecentReactions(16, serverHost);
-    const customEmojis = getCustomEmojis();
-    const byCategory = getStandardEmojisByCategory();
-    const allStandard: EmojiEntry[] = [];
-    for (const entries of byCategory.values()) allStandard.push(...entries);
-
-    return recent
-      .map((src): EmojiEntry | null => {
-        if (src.startsWith(":") && src.endsWith(":")) {
-          const name = src.slice(1, -1);
-          return customEmojis.find((e) => e.name === name) ?? null;
-        }
-        return allStandard.find((e) => e.emoji === src) ?? null;
-      })
-      .filter((e): e is EmojiEntry => e !== null);
-  }, [serverHost]);
-
-  const [customVersion, setCustomVersion] = useState(0);
-  useEffect(() => onCustomEmojisChange(() => setCustomVersion((v) => v + 1)), []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const customEntries = useMemo(() => getCustomEmojis(), [customVersion]);
-  const standardCategories = useMemo(() => getStandardEmojisByCategory(), []);
-
-  const searchResults = useMemo(() => {
-    if (!search.trim()) return null;
-    return searchEmojis(search.trim());
-  }, [search]);
-
-  const categoryNames = useMemo(() => Array.from(standardCategories.keys()), [standardCategories]);
-
-  const scrollToCategory = useCallback((category: string) => {
-    const container = scrollRef.current;
-    if (!container) return;
-    const el = container.querySelector(`[data-category="${CSS.escape(category)}"]`) as HTMLElement | null;
-    if (!el) return;
-    const containerRect = container.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    container.scrollTo({
-      top: container.scrollTop + elRect.top - containerRect.top,
-      behavior: "smooth",
+  const custom = useSyncExternalStore(onCustomEmojisChange, () => getCustomEmojis(serverHost));
+  const { activeTheme } = useCustomThemes();
+  const { resolvedAppearance } = useTheme();
+  const theme = useMemo(() => createGrytTheme(grytThemeToOptions(activeTheme ?? grytTheme, resolvedAppearance)), [activeTheme, resolvedAppearance]);
+  const groups = useMemo((): EmojiPickerGroup[] => {
+    const standard = getStandardEmojisByCategory();
+    const all = [...custom, ...Array.from(standard.values()).flat()];
+    const recent = getRecentReactions(16, serverHost).flatMap((src) => {
+      const entry = all.find((item) => item.isCustom ? src === `:${item.name}:` : src === item.emoji);
+      return entry ? [pickerItem(entry)] : [];
     });
-  }, []);
-
+    return [
+      { id: "server", label: "This server", items: custom.map(pickerItem) },
+      { id: "recent", label: "Recently Used", items: recent },
+      ...Array.from(standard, ([label, entries]) => ({ id: label, label, items: entries.map(pickerItem) })),
+    ];
+  }, [custom, serverHost]);
   return (
-    <>
-      <div style={{ padding: "8px 8px 4px" }}>
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="Search emojis..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          /*
-           * Base UI's MenuRoot puts useTypeahead on the popup, which
-           * preventDefaults every single-character key. Bubble phase only.
-           */
-          onKeyDown={(e) => e.stopPropagation()}
-          style={{
-            width: "100%",
-            padding: "6px 10px",
-            border: "1px solid var(--gryt-neutral-6)",
-            borderRadius: 8,
-            background: "var(--gryt-neutral-2)",
-            color: "var(--gryt-neutral-12)",
-            fontSize: 13,
-            outline: "none",
-            boxSizing: "border-box",
-          }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--gryt-accent-8)"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--gryt-neutral-6)"; }}
-        />
-      </div>
-
-      {!searchResults && (
-        <div
-          style={{
-            display: "flex",
-            gap: 1,
-            padding: "2px 6px 4px",
-            borderBottom: "1px solid var(--gryt-neutral-5)",
-            overflowX: "auto",
-            flexShrink: 0,
-          }}
-        >
-          {recentEntries.length > 0 && (
-            <NavButton icon={CATEGORY_ICONS["Recently Used"]} label="Recently Used" onClick={() => scrollToCategory("Recently Used")} />
-          )}
-          {customEntries.length > 0 && (
-            <NavButton icon={CATEGORY_ICONS["Custom"]} label="Custom" onClick={() => scrollToCategory("Custom")} />
-          )}
-          {categoryNames.map((cat) => (
-            <NavButton key={cat} icon={CATEGORY_ICONS[cat] ?? "?"} label={cat} onClick={() => scrollToCategory(cat)} />
-          ))}
-        </div>
-      )}
-
-      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "0 6px 8px" }}>
-        {searchResults ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${COLS}, 36px)`,
-              gap: 2,
-              padding: "4px 2px",
-            }}
-          >
-            {searchResults.map((entry, idx) => (
-              <EmojiCell key={`${entry.isCustom ? "c:" : ""}${entry.name}-${idx}`} entry={entry} onSelect={onSelect} />
-            ))}
-            {searchResults.length === 0 && (
-              <div style={{ gridColumn: `1 / -1`, padding: 16, textAlign: "center", color: "var(--gryt-neutral-9)", fontSize: 13 }}>
-                No emojis found
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            {recentEntries.length > 0 && (
-              <div data-category="Recently Used">
-                <CategorySection label="Recently Used" entries={recentEntries} onSelect={onSelect} />
-              </div>
-            )}
-            {customEntries.length > 0 && (
-              <div data-category="Custom">
-                <CategorySection label="Custom" entries={customEntries} onSelect={onSelect} />
-              </div>
-            )}
-            {categoryNames.map((cat) => (
-              <div key={cat} data-category={cat}>
-                <CategorySection label={cat} entries={standardCategories.get(cat) ?? []} onSelect={onSelect} />
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-    </>
+    <GrytProvider theme={theme} className="min-h-0 w-full">
+      <GrytEmojiPicker
+        groups={groups}
+        autoFocus={autoFocusSearch}
+        searchPlaceholder="Search emojis..."
+        className="max-w-none"
+        onKeyDown={(event) => { if (event.target instanceof HTMLInputElement) event.stopPropagation(); }}
+        onSelect={(item) => onSelect(item.id.startsWith("server:") ? `:${item.id.slice(7)}:` : item.emoji ?? "")}
+      />
+    </GrytProvider>
   );
 }
 
 export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", serverHost }: EmojiPickerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [fixedPos, setFixedPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
-
   useLayoutEffect(() => {
     const anchor = anchorEl ?? containerRef.current?.parentElement;
     if (!(anchor instanceof HTMLElement)) return;
-
     const compute = () => {
       const rect = anchor.getBoundingClientRect();
-
       if (placement === "beside") {
-        let top: number = rect.top;
-        if (top + PICKER_MAX_HEIGHT > window.innerHeight - VIEWPORT_PAD) {
-          top = window.innerHeight - PICKER_MAX_HEIGHT - VIEWPORT_PAD;
-        }
+        let top = rect.top;
+        if (top + PICKER_MAX_HEIGHT > window.innerHeight - VIEWPORT_PAD) top = window.innerHeight - PICKER_MAX_HEIGHT - VIEWPORT_PAD;
         if (top < VIEWPORT_PAD) top = VIEWPORT_PAD;
-
-        const spaceRight = window.innerWidth - rect.right - VIEWPORT_PAD;
-        const spaceLeft = rect.left - VIEWPORT_PAD;
+        const right = window.innerWidth - rect.right - VIEWPORT_PAD;
+        const leftSpace = rect.left - VIEWPORT_PAD;
         let left: number;
-
-        if (spaceRight >= PICKER_WIDTH + GAP) {
-          left = rect.right + GAP;
-        } else if (spaceLeft >= PICKER_WIDTH + GAP) {
-          left = rect.left - PICKER_WIDTH - GAP;
-        } else {
+        if (right >= PICKER_WIDTH + GAP) left = rect.right + GAP;
+        else if (leftSpace >= PICKER_WIDTH + GAP) left = rect.left - PICKER_WIDTH - GAP;
+        else {
           left = rect.left + rect.width / 2 - PICKER_WIDTH / 2;
           if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
-          if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) {
-            left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
-          }
+          if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
         }
-
         setFixedPos({ top, bottom: undefined, left });
       } else {
-        const spaceAbove = rect.top;
-        const spaceBelow = window.innerHeight - rect.bottom;
-
-        let top: number | undefined;
-        let bottom: number | undefined;
-        if (spaceAbove >= PICKER_MAX_HEIGHT || spaceAbove >= spaceBelow) {
-          bottom = window.innerHeight - rect.top + GAP;
-        } else {
-          top = rect.bottom + GAP;
-        }
-
+        const above = rect.top;
+        const below = window.innerHeight - rect.bottom;
+        const useAbove = above >= PICKER_MAX_HEIGHT || above >= below;
         let left = rect.right - PICKER_WIDTH;
         if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
-        if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) {
-          left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
-        }
-
-        setFixedPos({ top, bottom, left });
+        if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
+        setFixedPos({ top: useAbove ? undefined : rect.bottom + GAP,
+          bottom: useAbove ? window.innerHeight - rect.top + GAP : undefined, left });
       }
     };
-
     compute();
     window.addEventListener("resize", compute);
     window.addEventListener("scroll", compute, true);
@@ -369,64 +106,32 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
       window.removeEventListener("scroll", compute, true);
     };
   }, [anchorEl, placement]);
-
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
-      }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
     };
-    document.addEventListener("keydown", handleEscape, true);
-    return () => document.removeEventListener("keydown", handleEscape, true);
+    document.addEventListener("keydown", escape, true);
+    return () => document.removeEventListener("keydown", escape, true);
   }, [onClose]);
-
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+    const outside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) onClose();
     };
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClickOutside);
-    }, 0);
+    const timer = setTimeout(() => document.addEventListener("mousedown", outside), 0);
     return () => {
       clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("mousedown", outside);
     };
   }, [onClose]);
-
-  const handleSelect = useCallback(
-    (src: string) => {
-      onSelect(src);
-      onClose();
-    },
-    [onSelect, onClose],
-  );
-
+  const select = useCallback((src: string) => { onSelect(src); onClose(); }, [onSelect, onClose]);
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "fixed",
-        top: fixedPos.top,
-        bottom: fixedPos.bottom,
-        left: fixedPos.left,
-        width: PICKER_WIDTH,
-        maxHeight: PICKER_MAX_HEIGHT,
-        background: "var(--gryt-neutral-2)",
-        border: "1px solid var(--gryt-neutral-7)",
-        borderRadius: 12,
-        boxShadow: "0 12px 32px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.1)",
-        display: "flex",
-        flexDirection: "column",
-        zIndex: "var(--gryt-z-popover)",
-        overflow: "hidden",
-      }}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      <EmojiPickerContent onSelect={handleSelect} serverHost={serverHost} />
+    <div ref={containerRef} style={{ position: "fixed", ...fixedPos, width: PICKER_WIDTH, maxWidth: "calc(100vw - 16px)",
+      maxHeight: PICKER_MAX_HEIGHT, display: "flex", flexDirection: "column", zIndex: "var(--gryt-z-popover)" }}
+      onMouseDown={(event) => event.stopPropagation()}>
+      <EmojiPickerContent onSelect={select} serverHost={serverHost} />
     </div>
   );
 };

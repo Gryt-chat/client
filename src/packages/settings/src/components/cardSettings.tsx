@@ -19,8 +19,10 @@ import { useServerManagement, useSockets } from "@/socket";
 
 import type { RichActivity } from "../../../../lib/richActivity";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
+import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { useCardEmojiGroups } from "../../../socket/src/components/memberCard/cardEmojiGroups";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
+import { deleteCardBanner, getCardBanner, pruneCardBanners, setCardBanner } from "../../../socket/src/lib/memberCard/cardBannerStore";
 import {
   cardUpdatePayload,
   EMPTY_CARD,
@@ -39,6 +41,9 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
+import { waitForMedia } from "../../../socket/src/utils/waitForMedia";
+import { imageMayAnimate } from "./bannerCrop";
+import { BannerCropDialog } from "./BannerCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 /** A game for the preview when you are not playing one, so the band can be seen. */
@@ -65,16 +70,20 @@ async function sendBanner(host: string, file: File | null): Promise<void> {
   });
   if (r.status === 404) throw new Error("this server can't take a banner yet");
   if (!r.ok) throw new Error((await r.text().catch(() => "")) || `HTTP ${r.status}`);
+  if (!file) return;
+  const result = await r.json() as { bannerFileId?: string; processing?: boolean };
+  if (!result.processing || !result.bannerFileId) return;
+  await waitForMedia(getUploadsFileUrl(host, result.bannerFileId));
 }
 
 export function CardSettings() {
   const stored = useStoredCard();
   const { sockets, serverProfiles, serverDetailsList, memberLists } = useSockets();
-  const { servers } = useServerManagement();
-  const { nickname, avatarDataUrl, gameCard } = useSettings();
+  const { servers, currentlyViewingServer } = useServerManagement();
+  const { nickname, avatarDataUrl, gameCard, settingsTab, setSettingsTab } = useSettings();
   const { activeTheme } = useCustomThemes();
   const { resolvedAppearance } = useTheme();
-  const emojiGroups = useCardEmojiGroups();
+  const emojiGroups = useCardEmojiGroups(currentlyViewingServer?.host);
 
   const hosts = Object.keys(servers);
   const connected = hosts.filter((h) => sockets[h]?.connected);
@@ -107,9 +116,20 @@ export function CardSettings() {
   const commit = (next: CardProfile) => setDraft(next);
   const cardDirty = JSON.stringify(cardUpdatePayload(draft)) !== JSON.stringify(cardUpdatePayload(saved));
 
-  const saveCard = () => {
+  const saveCard = (bannerChange: File | null | undefined) => {
     setStoredCard(draft);
-    rememberCardStyle(draft.cardStyle);
+    const nextHistory = rememberCardStyle(draft.cardStyle);
+    void (async () => {
+      if (bannerChange !== undefined) await setCardBanner(draft.cardStyle, bannerChange);
+      else if (bannerUrl) {
+        const response = await fetch(bannerUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          await setCardBanner(draft.cardStyle, new File([blob], "banner", { type: blob.type }));
+        }
+      } else await setCardBanner(draft.cardStyle, null);
+      await pruneCardBanners(nextHistory);
+    })().catch(() => {});
     setRefusals({});
     const payload = cardUpdatePayload(draft);
     for (const host of Object.keys(sockets)) {
@@ -137,11 +157,6 @@ export function CardSettings() {
     );
   };
   const shared = useSharedLook().card;
-  useEffect(() => {
-    if (!shared) return;
-    const text = takeSharedLook("card");
-    if (text && !showShared(text)) toast.error("That link had no card in it.");
-  }, [shared]);
 
   const text = (key: "bio" | "pronouns" | "statusLine", max: number) => ({
     value: draft[key] ?? "",
@@ -160,9 +175,14 @@ export function CardSettings() {
   };
   const bannerHosts = connected.filter(mayUpload);
   const [bannerPreview, setBannerPreview] = useState<string | null>();
+  const [bannerMime, setBannerMime] = useState<string>();
   const [pendingBanner, setPendingBanner] = useState<File | null>();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(settingsTab === "profile/card/edit");
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [bannerBusy, setBannerBusy] = useState(false);
+  const [bannerDownloading, setBannerDownloading] = useState(false);
+  const bannerRevision = useRef(0);
+  const [bannerToCrop, setBannerToCrop] = useState<File | null>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
   const serverBanner = useMemo(() => {
     for (const host of connected) {
@@ -175,9 +195,83 @@ export function CardSettings() {
   const dirty = cardDirty || pendingBanner !== undefined;
 
   const changeBanner = (file: File | null) => {
+    bannerRevision.current++;
+    setBannerDownloading(false);
     if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(file ? URL.createObjectURL(file) : null);
+    setBannerMime(file?.type || undefined);
     setPendingBanner(file);
+  };
+
+  useEffect(() => {
+    if (!shared) return;
+    const text = takeSharedLook("card");
+    const remoteBanner = takeSharedLook("cardBanner");
+    if (!text || !showShared(text)) {
+      toast.error("That link had no card in it.");
+      return;
+    }
+    if (remoteBanner === null) changeBanner(null);
+    else if (remoteBanner) {
+      const revision = ++bannerRevision.current;
+      setBannerDownloading(true);
+      void fetch(remoteBanner)
+        .then(async (response) => {
+          if (!response.ok) throw new Error(String(response.status));
+          const blob = await response.blob();
+          if (revision === bannerRevision.current) changeBanner(new File([blob], "copied-banner", { type: blob.type }));
+        })
+        .catch(() => {
+          if (revision !== bannerRevision.current) return;
+          setBannerDownloading(false);
+          toast.error("The card was copied, but its banner could not be downloaded.");
+        });
+    }
+  }, [shared]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (settingsTab === "profile/card/edit") setEditing(true);
+  }, [settingsTab]);
+
+  const discardChanges = () => {
+    bannerRevision.current++;
+    setBannerDownloading(false);
+    setDraft(saved);
+    if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
+    setBannerPreview(undefined);
+    setBannerMime(undefined);
+    setPendingBanner(undefined);
+  };
+
+  const closeEditor = () => {
+    discardChanges();
+    setEditing(false);
+    setConfirmCancel(false);
+    if (settingsTab === "profile/card/edit") setSettingsTab("profile/card");
+  };
+
+  const requestCancel = () => {
+    if (bannerBusy) return;
+    if (dirty || bannerDownloading) setConfirmCancel(true);
+    else closeEditor();
+  };
+
+  const chooseBanner = async (file: File) => {
+    const type = file.type.toLowerCase();
+    if (!type.startsWith("image/") && type !== "video/mp4") {
+      toast.error("Choose an image or MP4 video.");
+      return;
+    }
+    const limits = bannerHosts
+      .map((host) => serverDetailsList[host]?.server_info?.upload_max_bytes)
+      .filter((value): value is number => typeof value === "number" && value > 0);
+    const maxBytes = limits.length ? Math.min(...limits) : null;
+    if (maxBytes && file.size > maxBytes) {
+      toast.error(`Banner is too large. These servers allow up to ${(maxBytes / (1024 * 1024)).toFixed(1)}MB.`);
+      return;
+    }
+    if (type === "video/mp4" || await imageMayAnimate(file)) changeBanner(file);
+    else setBannerToCrop(file);
   };
 
   const save = async () => {
@@ -195,7 +289,7 @@ export function CardSettings() {
       setPendingBanner(undefined);
       for (const h of bannerHosts) sockets[h]?.emit("avatar:updated");
     }
-    saveCard();
+    saveCard(pendingBanner);
     toast.success(failed.length ? `Card saved, but ${failed.length} server${failed.length > 1 ? "s" : ""} refused the banner` : "Card saved");
   };
 
@@ -216,6 +310,7 @@ export function CardSettings() {
         profile={draft}
         owlHex={owlHex}
         bannerUrl={bannerUrl}
+        bannerMime={bannerMime}
         game={playing ? gameCard ?? SAMPLE_GAME : null}
         appearance={appearance}
         seedKey={seedKey}
@@ -242,6 +337,14 @@ export function CardSettings() {
 
   const refused = Object.entries(refusals);
 
+  const showPastCard = async (past: CardProfile["cardStyle"]) => {
+    const revision = ++bannerRevision.current;
+    setDraft({ ...draft, cardStyle: past });
+    const stored = await getCardBanner(past).catch(() => null);
+    if (revision !== bannerRevision.current || !stored?.found) return;
+    changeBanner(stored.file);
+  };
+
   const about = (
     <>
       <SettingGroup title="Pronouns" description="Shown under your name.">
@@ -261,8 +364,8 @@ export function CardSettings() {
           title="Banner"
           description={
             bannerHosts.length === connected.length
-              ? "A picture across the top of your card. Everywhere else your pattern shows instead."
-              : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
+              ? "An image or MP4 video across the top of your card. Everywhere else your pattern shows instead."
+              : `An image or MP4 video across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
           }
         >
           <div className="flex flex-wrap gap-2">
@@ -278,16 +381,25 @@ export function CardSettings() {
           <input
             ref={bannerInput}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,image/gif,video/mp4"
             style={{ display: "none" }}
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
-              if (file) changeBanner(file);
+              if (!file) return;
+              void chooseBanner(file);
             }}
           />
         </SettingGroup>
       )}
+      <BannerCropDialog
+        file={bannerToCrop}
+        onCancel={() => setBannerToCrop(null)}
+        onUse={(file) => {
+          setBannerToCrop(null);
+          changeBanner(file);
+        }}
+      />
     </>
   );
 
@@ -314,7 +426,7 @@ export function CardSettings() {
         </div>
       </div>
 
-      <Dialog.Root open={editing} onOpenChange={(open) => setEditing(open)}>
+      <Dialog.Root open={editing} onOpenChange={(open) => { if (!open) requestCancel(); }}>
         <Dialog.Portal>
           <Dialog.Backdrop />
           {/* Laid out like the owl designer: panes on the left, the card on the right, nothing long to scroll. */}
@@ -327,18 +439,15 @@ export function CardSettings() {
                 <Button size="small" tone="neutral" onClick={pasteLink}>
                   Paste link
                 </Button>
-                <Button size="small" tone="neutral" disabled={!dirty} onClick={() => {
-                  setDraft(saved);
-                  if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
-                  setBannerPreview(undefined);
-                  setPendingBanner(undefined);
+                <Button size="small" tone="neutral" disabled={(!dirty && !bannerDownloading) || bannerBusy} onClick={() => {
+                  discardChanges();
                 }}>
                   Undo changes
                 </Button>
-                <Button size="small" disabled={!dirty || bannerBusy} onClick={() => void save()}>
+                <Button size="small" disabled={!dirty || bannerBusy || bannerDownloading} onClick={() => void save()}>
                   Save
                 </Button>
-                <Dialog.Close render={<Button size="small" tone="neutral" />}>Close</Dialog.Close>
+                <Button size="small" tone="neutral" disabled={bannerBusy} onClick={requestCancel}>Cancel</Button>
               </div>
             </div>
             <div className="@container flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -380,14 +489,17 @@ export function CardSettings() {
                             <button
                               type="button"
                               aria-label="Show this card again"
-                              onClick={() => setDraft({ ...draft, cardStyle: past })}
+                              onClick={() => void showPastCard(past)}
                               className="block size-9 cursor-pointer rounded-(--gryt-radius-md) border border-gryt-border hover:border-gryt-accent"
                               style={{ background: styleSwatch(past) }}
                             />
                             <button
                               type="button"
                               aria-label="Forget this card"
-                              onClick={() => forgetCardStyle(past)}
+                              onClick={() => {
+                                forgetCardStyle(past);
+                                void deleteCardBanner(past).catch(() => {});
+                              }}
                               className="absolute -top-1.5 -right-1.5 hidden size-4 cursor-pointer items-center justify-center rounded-full border border-gryt-border bg-gryt-surface-raised text-[10px] leading-none text-gryt-muted group-hover:flex hover:text-gryt-text"
                             >
                               ×
@@ -412,6 +524,16 @@ export function CardSettings() {
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
+      <ConfirmDialog
+        open={confirmCancel}
+        onOpenChange={setConfirmCancel}
+        title="Discard card changes?"
+        description="Your card will go back to the last saved version."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        focusCancel
+        onConfirm={closeEditor}
+      />
     </SettingsContainer>
   );
 }

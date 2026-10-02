@@ -4,8 +4,11 @@ import { useMemo, useSyncExternalStore } from "react";
 import { getCustomEmojis, onCustomEmojisChange } from "../../utils/emojiData";
 
 /** Custom emoji from the server currently open in the client. */
-export function useCardEmojiGroups(): readonly EmojiPickerGroup[] {
-  const custom = useSyncExternalStore(onCustomEmojisChange, getCustomEmojis);
+export function useCardEmojiGroups(serverHost?: string): readonly EmojiPickerGroup[] {
+  const custom = useSyncExternalStore(
+    onCustomEmojisChange,
+    () => getCustomEmojis(serverHost),
+  );
   return useMemo(() => {
     if (custom.length === 0) return [];
     return [{

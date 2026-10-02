@@ -6,6 +6,29 @@ on:
     branches: [main]
 
 jobs:
+  desktop-media:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: COREPACK_ENABLE_STRICT=0 npx -y yarn@1.22.22 install --frozen-lockfile
+        shell: bash
+      - if: runner.os == 'Linux'
+        run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a yarn test:desktop-video-decoder
+      - if: runner.os != 'Linux'
+        run: yarn test:desktop-video-decoder
   verify:
     runs-on: ubuntu-latest
     env:
@@ -107,6 +130,11 @@ jobs:
       # A member changing group moves their row to another section, which remounts
       # it. The open hover card has to survive that.
       - run: yarn test:member-card-state
+      - run: yarn test:banner-crop
+      - run: yarn test:card-banner-store
+      - run: yarn test:card-emoji-groups
+      - run: yarn test:card-editor-flow
+      - run: yarn test:media-processing
       - run: yarn test:sidebar-tree
       - run: yarn test:hide-muted
       - run: yarn test:settings-index

@@ -1,6 +1,7 @@
-import { getServerAccessToken, getServerHttpBase, type SealedAttachmentKey } from "@/common";
+import { getServerAccessToken, getServerHttpBase, getUploadsFileUrl, type SealedAttachmentKey } from "@/common";
 
 import type { ImageDimensions } from "../utils/imageUtils";
+import { waitForMedia } from "../utils/waitForMedia";
 
 /** What an upload came back as, and how to read it again if it was sealed. */
 export interface UploadedFile {
@@ -70,5 +71,6 @@ export async function uploadChatFile(
     throw new Error(msg);
   }
   const data = await resp.json();
+  if (!sealed && data.processing) await waitForMedia(getUploadsFileUrl(serverHost, data.fileId));
   return { fileId: data.fileId as string, ...(sealed ? { meta: sealed.meta } : null) };
 }
