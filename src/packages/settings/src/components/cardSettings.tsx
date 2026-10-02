@@ -39,6 +39,8 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
+import { imageMayAnimate } from "./bannerCrop";
+import { BannerCropDialog } from "./BannerCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 /** A game for the preview when you are not playing one, so the band can be seen. */
@@ -163,6 +165,7 @@ export function CardSettings() {
   const [pendingBanner, setPendingBanner] = useState<File | null>();
   const [editing, setEditing] = useState(false);
   const [bannerBusy, setBannerBusy] = useState(false);
+  const [bannerToCrop, setBannerToCrop] = useState<File | null>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
   const serverBanner = useMemo(() => {
     for (const host of connected) {
@@ -178,6 +181,11 @@ export function CardSettings() {
     if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(file ? URL.createObjectURL(file) : null);
     setPendingBanner(file);
+  };
+
+  const chooseBanner = async (file: File) => {
+    if (await imageMayAnimate(file)) changeBanner(file);
+    else setBannerToCrop(file);
   };
 
   const save = async () => {
@@ -278,16 +286,25 @@ export function CardSettings() {
           <input
             ref={bannerInput}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,image/gif"
             style={{ display: "none" }}
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
-              if (file) changeBanner(file);
+              if (!file) return;
+              void chooseBanner(file);
             }}
           />
         </SettingGroup>
       )}
+      <BannerCropDialog
+        file={bannerToCrop}
+        onCancel={() => setBannerToCrop(null)}
+        onUse={(file) => {
+          setBannerToCrop(null);
+          changeBanner(file);
+        }}
+      />
     </>
   );
 
