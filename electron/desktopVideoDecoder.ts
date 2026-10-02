@@ -1,5 +1,4 @@
 import type { ChildProcess } from "node:child_process";
-import { randomUUID } from "node:crypto";
 
 import { BrowserWindow, session } from "electron";
 
@@ -19,7 +18,7 @@ export function attachDesktopVideoDecoder(worker: ChildProcess): void {
       reply({ error: "Video exceeds desktop decoder limits" });
       return;
     }
-    const isolated = session.fromPartition(`gryt-video-${randomUUID()}`, { cache: false });
+    const isolated = session.fromPartition("gryt-video-decoder", { cache: false });
     isolated.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     isolated.setPermissionCheckHandler(() => false);
     isolated.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !/^(data:|blob:)/.test(details.url) }));
@@ -72,7 +71,7 @@ export function attachDesktopVideoDecoder(worker: ChildProcess): void {
       clearTimeout(timeout);
       windows.delete(window);
       if (!window.isDestroyed()) window.destroy();
-      await isolated.clearStorageData();
+      await isolated.clearStorageData().catch(() => undefined);
     }
   };
   worker.on("message", (message) => { void decode(message); });
