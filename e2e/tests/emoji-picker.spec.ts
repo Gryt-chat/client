@@ -35,4 +35,6 @@ test("chat and card pickers put this server's custom emoji first and keep Unicod
   await expect(cardPicker.locator("[data-emoji-category]").first()).toHaveAttribute("aria-label", "This server");
   await cardPicker.getByRole("button", { name: `:${name}:`, exact: true }).click();
   await expect(editor.getByRole("button", { name: /^Choose emoji/ })).toContainText("server emoji");
+  await expect.poll(() => editor.locator(".gmc-frame").evaluate((element) =>
+    (element as HTMLElement).style.getPropertyValue("--pat-img"))).toMatch(/%3Cimage|<image/);
 });
