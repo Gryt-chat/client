@@ -17,7 +17,7 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((fn) => fn());
 
 export function offerSharedLook(look: SharedLook): void {
-  pending = { ...pending, ...look };
+  pending = { ...pending, ...(look.card !== undefined ? { cardBanner: undefined } : {}), ...look };
   emit();
 }
 

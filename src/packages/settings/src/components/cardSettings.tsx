@@ -69,6 +69,18 @@ async function sendBanner(host: string, file: File | null): Promise<void> {
   });
   if (r.status === 404) throw new Error("this server can't take a banner yet");
   if (!r.ok) throw new Error((await r.text().catch(() => "")) || `HTTP ${r.status}`);
+  if (!file) return;
+  const result = await r.json() as { bannerFileId?: string; processing?: boolean };
+  if (!result.processing || !result.bannerFileId) return;
+  const url = getUploadsFileUrl(host, result.bannerFileId);
+  if (!url) throw new Error("Cannot check banner processing on this server");
+  for (let attempt = 0; attempt < 90; attempt++) {
+    const ready = await fetch(url, { method: "HEAD", cache: "no-store" });
+    if (ready.ok) return;
+    if (ready.status !== 503) throw new Error("Server rejected the banner during media checks");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error("Banner is still waiting for this server's image worker. Try again later.");
 }
 
 export function CardSettings() {
@@ -175,6 +187,8 @@ export function CardSettings() {
   const [editing, setEditing] = useState(settingsTab === "profile/card/edit");
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [bannerBusy, setBannerBusy] = useState(false);
+  const [bannerDownloading, setBannerDownloading] = useState(false);
+  const bannerRevision = useRef(0);
   const [bannerToCrop, setBannerToCrop] = useState<File | null>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
   const serverBanner = useMemo(() => {
@@ -188,6 +202,8 @@ export function CardSettings() {
   const dirty = cardDirty || pendingBanner !== undefined;
 
   const changeBanner = (file: File | null) => {
+    bannerRevision.current++;
+    setBannerDownloading(false);
     if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(file ? URL.createObjectURL(file) : null);
     setBannerMime(file?.type || undefined);
@@ -204,13 +220,19 @@ export function CardSettings() {
     }
     if (remoteBanner === null) changeBanner(null);
     else if (remoteBanner) {
+      const revision = ++bannerRevision.current;
+      setBannerDownloading(true);
       void fetch(remoteBanner)
         .then(async (response) => {
           if (!response.ok) throw new Error(String(response.status));
           const blob = await response.blob();
-          changeBanner(new File([blob], "copied-banner", { type: blob.type }));
+          if (revision === bannerRevision.current) changeBanner(new File([blob], "copied-banner", { type: blob.type }));
         })
-        .catch(() => toast.error("The card was copied, but its banner could not be downloaded."));
+        .catch(() => {
+          if (revision !== bannerRevision.current) return;
+          setBannerDownloading(false);
+          toast.error("The card was copied, but its banner could not be downloaded.");
+        });
     }
   }, [shared]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -219,6 +241,8 @@ export function CardSettings() {
   }, [settingsTab]);
 
   const discardChanges = () => {
+    bannerRevision.current++;
+    setBannerDownloading(false);
     setDraft(saved);
     if (bannerPreview?.startsWith("blob:")) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(undefined);
@@ -234,7 +258,8 @@ export function CardSettings() {
   };
 
   const requestCancel = () => {
-    if (dirty) setConfirmCancel(true);
+    if (bannerBusy) return;
+    if (dirty || bannerDownloading) setConfirmCancel(true);
     else closeEditor();
   };
 
@@ -420,15 +445,15 @@ export function CardSettings() {
                 <Button size="small" tone="neutral" onClick={pasteLink}>
                   Paste link
                 </Button>
-                <Button size="small" tone="neutral" disabled={!dirty} onClick={() => {
+                <Button size="small" tone="neutral" disabled={(!dirty && !bannerDownloading) || bannerBusy} onClick={() => {
                   discardChanges();
                 }}>
                   Undo changes
                 </Button>
-                <Button size="small" disabled={!dirty || bannerBusy} onClick={() => void save()}>
+                <Button size="small" disabled={!dirty || bannerBusy || bannerDownloading} onClick={() => void save()}>
                   Save
                 </Button>
-                <Button size="small" tone="neutral" onClick={requestCancel}>Cancel</Button>
+                <Button size="small" tone="neutral" disabled={bannerBusy} onClick={requestCancel}>Cancel</Button>
               </div>
             </div>
             <div className="@container flex min-h-0 flex-1 flex-col overflow-y-auto">

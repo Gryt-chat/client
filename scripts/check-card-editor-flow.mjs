@@ -8,7 +8,7 @@ const view = readFileSync("src/packages/socket/src/components/memberCard/MemberC
 
 assert.match(card, /openSettings\("profile\/card\/edit"\)/);
 assert.match(card, /cardBanner: member\.bannerFileId/);
-assert.match(card, /member\.avatarFileId \? null : member\.avatarWorn/);
+assert.match(card, /const worn = member\.avatarWorn/);
 assert.match(settings, /title="Discard card changes\?"/);
 assert.match(settings, /confirmLabel="Discard changes"/);
 assert.match(settings, /const discardChanges = \(\) => \{[\s\S]*setDraft\(saved\);[\s\S]*setBannerPreview\(undefined\);[\s\S]*setPendingBanner\(undefined\);/);

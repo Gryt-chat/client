@@ -20,25 +20,31 @@ type BannerType = "image" | "video";
 const bannerTypes = new Map<string, BannerType>();
 const typeFromMime = (mime?: string | null): BannerType => mime?.toLowerCase().startsWith("video/") ? "video" : "image";
 
-function useBannerType(url?: string | null, mime?: string | null): BannerType {
+function useBannerType(url?: string | null, mime?: string | null): BannerType | null {
   const explicit = mime ? typeFromMime(mime) : null;
-  const [type, setType] = useState<BannerType>(() => explicit ?? (url ? bannerTypes.get(url) : undefined) ?? "image");
+  const [type, setType] = useState<BannerType | null>(() => explicit ?? (url ? bannerTypes.get(url) : undefined) ?? null);
 
   useEffect(() => {
     if (!url) { setType("image"); return; }
     if (explicit) { setType(explicit); return; }
     const cached = bannerTypes.get(url);
     if (cached) { setType(cached); return; }
-    setType("image");
+    setType(null);
     const controller = new AbortController();
-    void fetch(url, { method: "HEAD", signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) return;
+    void (async () => {
+      for (let attempt = 0; attempt < 90 && !controller.signal.aborted; attempt++) {
+        const response = await fetch(url, { method: "HEAD", signal: controller.signal });
+        if (response.status === 503) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
+        if (!response.ok || controller.signal.aborted) return;
         const found = typeFromMime(response.headers.get("content-type"));
         bannerTypes.set(url, found);
         setType(found);
-      })
-      .catch(() => {});
+        return;
+      }
+    })().catch(() => {});
     return () => controller.abort();
   }, [url, explicit]);
 
@@ -50,6 +56,6 @@ export function MemberCardView({ isBot, bannerMime, ...props }: MemberCardViewPr
   const { currentlyViewingServer } = useServerManagement();
   const emojiGroups = useCardEmojiGroups(currentlyViewingServer?.host);
   const bannerType = useBannerType(props.bannerUrl, bannerMime);
-  const memberCardProps = { ...props, bannerType };
+  const memberCardProps = { ...props, bannerType: bannerType ?? "image", bannerUrl: bannerType ? props.bannerUrl : null };
   return <MemberCard {...memberCardProps} emojiGroups={emojiGroups} badge={isBot ? <BotTag size="small" /> : undefined} />;
 }

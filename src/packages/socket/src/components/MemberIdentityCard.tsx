@@ -148,7 +148,7 @@ export function MemberIdentityCard({
     member.serverUserId === (actions.currentServerUserId ?? getOwnServerUserId(serverHost));
 
   // Only a designed owl can be copied; copying somebody's photograph would be impersonation.
-  const worn = member.avatarFileId ? null : member.avatarWorn;
+  const worn = member.avatarWorn;
   const owlHex = generatedAvatarColor(member.nickname, member.avatarWorn) ?? member.avatarColor ?? FALLBACK_OWL;
   const channelName =
     voiceChannelName ??
@@ -212,7 +212,7 @@ export function MemberIdentityCard({
       divider: true,
       onSelect: () => {
         offerSharedLook({
-          card: encodeCardStyle(profile.cardStyle),
+          card: encodeCardStyle(profile.cardStyle) || "card=b4b",
           cardBanner: member.bannerFileId && serverHost ? getUploadsFileUrl(serverHost, member.bannerFileId) : null,
         });
         openSettings("profile/card/edit");

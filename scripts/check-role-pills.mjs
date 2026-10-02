@@ -98,6 +98,7 @@ const VIEW = "src/packages/socket/src/components/memberCard/MemberCardView.tsx";
 const view = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", VIEW), "utf8");
 assert.match(card, /const chips = \[\s*\.\.\.rolePills,/, `${SOURCE} no longer hands rolePills to the card as chips`);
 assert.match(card, /chips=\{chips\}/, `${SOURCE} no longer passes the chips to MemberCardView`);
-assert.match(view, /<MemberCard \{\.\.\.props\}/, `${VIEW} no longer passes every prop, chips included, to the card`);
+assert.match(view, /const memberCardProps = \{ \.\.\.props,/, `${VIEW} no longer passes every prop, chips included, to the card`);
+assert.match(view, /<MemberCard \{\.\.\.memberCardProps\}/, `${VIEW} no longer renders the forwarded card props`);
 
 console.log("role pills: ok, names not ids, joiner defaults hidden, order kept");
