@@ -945,6 +945,9 @@ const updatesComeFromTheAppStore = process.mas === true;
 
 const updatesComeFromAStore = updatesAreManagedByWindows || updatesComeFromTheAppStore;
 
+// Which install this is, since a Store copy and an installer copy share this log file.
+startupLog(`Started ${app.getVersion()} from ${process.execPath}${updatesComeFromAStore ? `, installed from ${process.mas ? "the Mac App Store" : "the MSIX package"}` : ""}`);
+
 /** For the log, which is where somebody looks when a check did nothing. */
 const STORE_PACKAGE = updatesComeFromTheAppStore ? "the Mac App Store" : "the MSIX package";
 
@@ -955,7 +958,10 @@ autoUpdater.logger = {
   info: (m: unknown) => startupLog(`Update: ${String(m)}`),
   warn: (m: unknown) => startupLog(`Update WARN: ${String(m)}`),
   error: (m: unknown) => startupLog(`Update ERROR: ${String(m)}`),
-  debug: (m: unknown) => startupLog(`Update debug: ${String(m)}`),
+  // Not the blockmap's per-block lines: one differential download filled the 50 KB log alone.
+  debug: (m: unknown) => {
+    if (!String(m).includes("duplicated in blockmap")) startupLog(`Update debug: ${String(m)}`);
+  },
 };
 
 /* Always on. electron-updater reads it only after the `update-available` handlers have run, so it
