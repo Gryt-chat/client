@@ -1,3 +1,5 @@
+import { Spinner } from "@gryt/ui";
+
 import { useSealedVideo } from "../hooks/useSealedVideo";
 import { useStableFileUrl } from "../hooks/useStableFileUrl";
 import { readBlobUrl } from "../utils/downloadFile";
@@ -33,6 +35,16 @@ export function MessageAttachment({
   // So Save As and Copy Image use that blob. The server copy is ciphertext or not there yet.
   const openLocal = local ? () => readBlobUrl(local) : undefined;
   const fileName = meta?.original_name;
+
+  if (meta?.refused) {
+    return (
+      <div className="text-xs text-gryt-muted" style={{ padding: "8px 0" }}>
+        {fileName ? `${fileName} couldn't be processed, so it isn't shown.` : "This file couldn't be processed, so it isn't shown."}
+      </div>
+    );
+  }
+  // Still with the server's image worker: fetching it now would just wait (GRYT-1669).
+  if (meta?.processing) return <ProcessingAttachment meta={meta} />;
 
   if (mime.startsWith("image/")) {
     const imgSrc = local || url;
@@ -131,5 +143,27 @@ function SealedVideoAttachment({
         onVolumeChange={onVolumeChange}
       />
     </MessageContextMenu>
+  );
+}
+
+/** A loader in the attachment's own shape, over the sender's local copy when there is one. */
+function ProcessingAttachment({ meta }: { meta: AttachmentMeta }) {
+  const w = meta.width && meta.height ? Math.min(320, meta.width) : 320;
+  const h = meta.width && meta.height ? Math.round((w * meta.height) / meta.width) : 180;
+  return (
+    <div
+      role="status"
+      aria-label="Processing attachment"
+      className="relative flex items-center justify-center overflow-hidden rounded-(--gryt-radius-md)"
+      style={{ width: w, height: Math.min(h, 360), background: "var(--gryt-neutral-3)" }}
+    >
+      {meta.local_url && meta.mime?.startsWith("image/") && (
+        <img src={meta.local_url} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ opacity: 0.4 }} />
+      )}
+      <div className="relative flex items-center gap-2 text-xs">
+        <Spinner size={14} />
+        Processing…
+      </div>
+    </div>
   );
 }

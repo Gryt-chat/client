@@ -16,6 +16,10 @@ export type AttachmentMeta = {
   width: number | null;
   height: number | null;
   has_thumbnail: boolean;
+  /** The server's image worker still has it: drawn as a loader, not fetched (GRYT-1669). */
+  processing?: boolean;
+  /** The worker couldn't write it out, so the server never serves it. */
+  refused?: boolean;
   /** Blob URL of the file itself, when it is decrypted or still being sent. */
   local_url?: string;
   /** A sealed file not fetched yet. Calling it fetches and decrypts it. */

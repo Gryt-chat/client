@@ -2,10 +2,11 @@
 
 /* Runs in the media sandbox window: a sandboxed renderer with no Node, no network and no
    storage. Untrusted pictures and videos are decoded here, never in the main process. */
-import { BufferTarget, CanvasSource, Mp4OutputFormat, Output } from "mediabunny";
+import { BlobSource, BufferTarget, CanvasSource, Conversion, Input, MATROSKA, MP4, Mp4OutputFormat, Output, QTFF, WEBM } from "mediabunny";
 
 import {
   buildAnimatedWebp,
+  chatVideoSize,
   dominantColour,
   IMAGE_PROFILES,
   imageBox,
@@ -262,6 +263,36 @@ async function poster(bytes: Uint8Array): Promise<MediaResult> {
   }
 }
 
+/* A chat video written out again with its sound: AV1 and Opus in MP4, every frame drawn into
+   one size. The container list leaves out HLS, which would go looking for other files. */
+async function chatVideo(bytes: Uint8Array): Promise<MediaResult> {
+  const input = new Input({ source: new BlobSource(new Blob([bytes as Uint8Array<ArrayBuffer>])), formats: [MP4, QTFF, MATROSKA, WEBM] });
+  try {
+    const track = await input.getPrimaryVideoTrack();
+    if (!track) return { ok: false, reason: "No picture in the video" };
+    const { width, height } = chatVideoSize(track.displayWidth, track.displayHeight);
+    const target = new BufferTarget();
+    const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target });
+    const conversion = await Conversion.init({
+      input,
+      output,
+      tracks: "primary",
+      video: { width, height, fit: "contain", codec: "av1", bitrate: 2_000_000, frameRate: 30, forceTranscode: true, allowRotationMetadata: false },
+      audio: { codec: "opus", bitrate: 128_000, numberOfChannels: 2, sampleRate: 48_000, forceTranscode: true },
+    });
+    if (!conversion.isValid) return { ok: false, reason: "The video could not be decoded" };
+    await conversion.execute();
+    if (!target.buffer) return { ok: false, reason: "The encoder wrote nothing" };
+    const video = new Uint8Array(target.buffer);
+    // The poster comes from what was written, not from the upload.
+    const still = await poster(video);
+    if (!still.ok || still.kind !== "poster") return { ok: false, reason: "No poster from the converted video" };
+    return { ok: true, kind: "chatvideo", video, poster: still.poster, width, height };
+  } finally {
+    input.dispose?.();
+  }
+}
+
 async function run(job: MediaJob): Promise<MediaResult> {
   if (!(job.bytes instanceof Uint8Array) || job.bytes.length === 0 || job.bytes.length > MAX_MEDIA_BYTES) {
     return { ok: false, reason: "File is empty or too large to process" };
@@ -269,6 +300,7 @@ async function run(job: MediaJob): Promise<MediaResult> {
   if (job.kind === "image" && job.use in IMAGE_PROFILES) return image(job.use, job.bytes);
   if (job.kind === "video" && job.use in VIDEO_BOXES) return video(job.use, job.bytes);
   if (job.kind === "poster") return poster(job.bytes);
+  if (job.kind === "chatvideo") return chatVideo(job.bytes);
   return { ok: false, reason: "Unknown job" };
 }
 
