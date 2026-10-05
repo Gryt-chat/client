@@ -49,6 +49,8 @@ type ServerSettingsPayload = {
   spamFilter?: boolean;
   spamSensitivity?: SpamSensitivity;
   videoProfiles?: boolean;
+  /** Absent on a server from before the setting, which then shows no switch. */
+  externalEmojis?: boolean;
   /** What this host can do with uploads; an older server sends nothing. */
   media?: { checked?: boolean; video?: boolean };
 };
@@ -106,6 +108,7 @@ export function ServerOverviewTab({
   const [spamFilter, setSpamFilter] = useState(true);
   const [spamSensitivity, setSpamSensitivity] = useState<SpamSensitivity>("normal");
   const [videoProfiles, setVideoProfiles] = useState(true);
+  const [externalEmojis, setExternalEmojis] = useState<boolean | null>(null);
   const [media, setMedia] = useState<{ checked: boolean; video: boolean } | null>(null);
 
   const [autosaving, setAutosaving] = useState(false);
@@ -125,6 +128,7 @@ export function ServerOverviewTab({
     spamFilter: boolean;
     spamSensitivity: SpamSensitivity;
     videoProfiles: boolean;
+    externalEmojis: boolean;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -183,6 +187,7 @@ export function ServerOverviewTab({
       setSpamFilter(payload.spamFilter !== false);
       setSpamSensitivity(normalizeSpamSensitivity(payload.spamSensitivity));
       setVideoProfiles(payload.videoProfiles !== false);
+      setExternalEmojis(typeof payload.externalEmojis === "boolean" ? payload.externalEmojis : null);
       setMedia(payload.media ? { checked: !!payload.media.checked, video: !!payload.media.video } : null);
 
       if (!wasSaving) {
@@ -213,6 +218,7 @@ export function ServerOverviewTab({
         spamFilter: payload.spamFilter !== false,
         spamSensitivity: normalizeSpamSensitivity(payload.spamSensitivity),
         videoProfiles: payload.videoProfiles !== false,
+        externalEmojis: payload.externalEmojis === true,
       };
     };
 
@@ -275,6 +281,7 @@ export function ServerOverviewTab({
     spamFilter: boolean;
     spamSensitivity: SpamSensitivity;
     videoProfiles: boolean;
+    externalEmojis: boolean;
   }>): boolean => {
     if (!host || !socket || !socket.connected) {
       toast.error("Not connected to the server.");
@@ -590,6 +597,26 @@ export function ServerOverviewTab({
             {media.video
               ? "Each video becomes a silent clip of up to ten seconds, at the size of the card."
               : "Not available here: it needs the same sandbox."}
+          </span>
+        </div>
+      )}
+
+      {externalEmojis !== null && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Emoji from other servers</span>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={externalEmojis}
+              onCheckedChange={(v) => {
+                setExternalEmojis(v);
+                if (!saveIfChanged({ externalEmojis: v })) setExternalEmojis(!v);
+              }}
+              disabled={!canEdit}
+            />
+            <span className="text-sm">Let members use custom emoji from their other servers</span>
+          </div>
+          <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.4 }}>
+            Each one loads from the server it belongs to, so that server sees who reads it, and this server can't check what the picture shows.
           </span>
         </div>
       )}

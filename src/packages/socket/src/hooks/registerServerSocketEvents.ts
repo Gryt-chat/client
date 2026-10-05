@@ -56,6 +56,7 @@ import { attachServerMls, serverMlsPinned, serverMlsReady } from "../mls/serverM
 import { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
+import { setExternalEmojisAllowed } from "../utils/externalEmojiPolicy";
 import { firstTimeOnThisSocket } from "../utils/publishedOnce";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
@@ -241,6 +242,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("server:details", (data: serverDetails) => {
+    // An older server says nothing, which reads as off.
+    setExternalEmojisAllowed(host, data.server_info?.external_emojis === true);
     /* Where the sidebar arrives, and the layer deciding whether a message makes a
        noise has no other way to know a channel's folder. Before the join check. */
     if (Array.isArray(data.sidebar_items)) {

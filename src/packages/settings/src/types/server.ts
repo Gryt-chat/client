@@ -120,6 +120,8 @@ export type serverDetails = {
     uploads_checked?: boolean;
     /** Video avatars and banners are taken here: the host can and the owner allows it. */
     video_profiles?: boolean;
+    /** Messages here may show other Gryt servers' custom emoji. */
+    external_emojis?: boolean;
     version?: string;
     /**
      * Every plugin this server is running, and what each may do. All of them — an

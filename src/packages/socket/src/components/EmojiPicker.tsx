@@ -3,7 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 
 import { useCustomThemes, useTheme } from "@/common";
 
-import { type EmojiEntry, getCustomEmojis, getStandardEmojisByCategory, onCustomEmojisChange } from "../utils/emojiData";
+import { type EmojiEntry, externalEmojiMarkdown, getCustomEmojis, getOtherServersEmojis, getStandardEmojisByCategory, onCustomEmojisChange } from "../utils/emojiData";
+import { useExternalEmojisAllowed } from "../utils/externalEmojiPolicy";
 import { getRecentReactions } from "../utils/recentReactions";
 
 interface EmojiPickerProps {
@@ -12,11 +13,14 @@ interface EmojiPickerProps {
   anchorEl?: HTMLElement | null;
   placement?: "above" | "beside";
   serverHost?: string;
+  /** Offers other servers' emoji where this one allows them. Not for reactions, which go by name. */
+  withOtherServers?: boolean;
 }
 
 export interface EmojiPickerContentProps {
   onSelect: (reactionSrc: string) => void;
   serverHost?: string;
+  withOtherServers?: boolean;
   autoFocusSearch?: boolean;
 }
 
@@ -32,8 +36,10 @@ function pickerItem(entry: EmojiEntry): EmojiPickerItem {
     keywords: [entry.name, ...entry.aliases, ...entry.tags] };
 }
 
-export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = true }: EmojiPickerContentProps) {
+export function EmojiPickerContent({ onSelect, serverHost, withOtherServers = false, autoFocusSearch = true }: EmojiPickerContentProps) {
   const custom = useSyncExternalStore(onCustomEmojisChange, () => getCustomEmojis(serverHost));
+  const allowed = useExternalEmojisAllowed(serverHost);
+  const others = useMemo(() => (withOtherServers && allowed ? getOtherServersEmojis(serverHost) : []), [withOtherServers, allowed, serverHost, custom]); // eslint-disable-line react-hooks/exhaustive-deps
   const { activeTheme } = useCustomThemes();
   const { resolvedAppearance } = useTheme();
   const theme = useMemo(() => createGrytTheme(grytThemeToOptions(activeTheme ?? grytTheme, resolvedAppearance)), [activeTheme, resolvedAppearance]);
@@ -47,9 +53,14 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
     return [
       { id: "server", label: "This server", items: custom.map(pickerItem) },
       { id: "recent", label: "Recently Used", items: recent },
+      ...others.map(([host, entries]) => ({
+        id: `other:${host}`,
+        label: host,
+        items: entries.map((e) => ({ ...pickerItem(e), id: `other:${externalEmojiMarkdown(e)}` })),
+      })),
       ...Array.from(standard, ([label, entries]) => ({ id: label, label, items: entries.map(pickerItem) })),
     ];
-  }, [custom, serverHost]);
+  }, [custom, serverHost, others]);
   return (
     <GrytProvider theme={theme} className="min-h-0 w-full">
       <GrytEmojiPicker
@@ -58,13 +69,15 @@ export function EmojiPickerContent({ onSelect, serverHost, autoFocusSearch = tru
         searchPlaceholder="Search emojis..."
         className="max-w-none"
         onKeyDown={(event) => { if (event.target instanceof HTMLInputElement) event.stopPropagation(); }}
-        onSelect={(item) => onSelect(item.id.startsWith("server:") ? `:${item.id.slice(7)}:` : item.emoji ?? "")}
+        onSelect={(item) => onSelect(
+          item.id.startsWith("server:") ? `:${item.id.slice(7)}:` : item.id.startsWith("other:") ? item.id.slice(6) : item.emoji ?? "",
+        )}
       />
     </GrytProvider>
   );
 }
 
-export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", serverHost }: EmojiPickerProps) => {
+export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", serverHost, withOtherServers }: EmojiPickerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [fixedPos, setFixedPos] = useState<{ top?: number; bottom?: number; left: number }>({ left: 0 });
   useLayoutEffect(() => {
@@ -131,7 +144,7 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
     <div ref={containerRef} style={{ position: "fixed", ...fixedPos, width: PICKER_WIDTH, maxWidth: "calc(100vw - 16px)",
       maxHeight: PICKER_MAX_HEIGHT, display: "flex", flexDirection: "column", zIndex: "var(--gryt-z-popover)" }}
       onMouseDown={(event) => event.stopPropagation()}>
-      <EmojiPickerContent onSelect={select} serverHost={serverHost} />
+      <EmojiPickerContent onSelect={select} serverHost={serverHost} withOtherServers={withOtherServers} />
     </div>
   );
 };
