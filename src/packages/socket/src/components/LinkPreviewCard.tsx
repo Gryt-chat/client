@@ -11,8 +11,10 @@ import { Skeleton } from "@gryt/ui";
 import { memo, useEffect, useMemo, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
+import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { PiLinkSimpleBold } from "../../../../lib/icons";
+import { useTrustedEmbedHosts } from "../lib/trustedEmbedHosts";
 import { DismissButton } from "./EmbedRenderers";
 import {
   cardByline,
@@ -106,6 +108,14 @@ LinkPreviewSkeleton.displayName = "LinkPreviewSkeleton";
  * A link drawn as a card. The shape follows what the page gave us rather than one
  * fixed template — see `getLinkCardLayout`.
  */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "";
+  }
+}
+
 export const LinkPreviewCard = memo(({
   url,
   serverHost,
@@ -116,6 +126,10 @@ export const LinkPreviewCard = memo(({
   onDismiss: () => void;
 }) => {
   const { resolvedAppearance } = useTheme();
+  // The picture and favicon come from the linked site itself; the text came through the server.
+  const { autoLoadEmbeds } = useSettings();
+  const trusted = useTrustedEmbedHosts();
+  const remoteImagesOk = autoLoadEmbeds || trusted.includes(hostOf(url));
   const [data, setData] = useState<LinkPreviewData | null>(() => previewCache.get(url) ?? null);
   const [failed, setFailed] = useState(() => previewRefused.has(url));
   const [imageFailed, setImageFailed] = useState(false);
@@ -215,7 +229,7 @@ export const LinkPreviewCard = memo(({
 
   const byline = cardByline(data.author, data.publishedAt);
 
-  const showImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
+  const showImage = Boolean(data.image) && remoteImagesOk && !imageFailed && layout !== "text" && layout !== "bare";
 
   const image = showImage ? (
     <img
@@ -244,7 +258,7 @@ export const LinkPreviewCard = memo(({
         <div className="link-embed-card-inner">
           <div className="link-embed-card-main">
             <div className="link-embed-card-body">
-              <CardSite url={url} siteName={data.siteName} favicon={data.favicon} />
+              <CardSite url={url} siteName={data.siteName} favicon={remoteImagesOk ? data.favicon : null} />
 
               {title && <div className="link-embed-card-title">{title}</div>}
 

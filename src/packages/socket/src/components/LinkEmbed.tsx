@@ -1,8 +1,10 @@
 import {  } from "@gryt/ui";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
+import { trustEmbedHost, useTrustedEmbedHosts } from "../lib/trustedEmbedHosts";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EmbedConsent, type EmbedProvider } from "./EmbedConsent";
 import {
@@ -41,8 +43,22 @@ const THIRD_PARTY: Partial<Record<EmbedType, EmbedProvider>> = {
   x: { name: "Post on X", host: "platform.twitter.com" },
 };
 
-/* Per embed and not remembered: agreeing to one track is not agreeing to a
-   week of them. Settings → Chat turns the asking off. */
+const FILE_KINDS: Partial<Record<EmbedType, string>> = { image: "Picture", video: "Video", audio: "Audio" };
+
+/* A file on another site is fetched by every reader's app, so that site sees who read it (GRYT-1670). */
+function fileFromElsewhere(type: EmbedType, url: string, serverHost: string): EmbedProvider | null {
+  const kind = FILE_KINDS[type];
+  if (!kind) return null;
+  try {
+    const host = new URL(url).host;
+    return host === new URL(getServerHttpBase(serverHost)).host ? null : { name: kind, host };
+  } catch {
+    return null;
+  }
+}
+
+/* Per embed unless the reader trusts the whole site, which is their call, per site.
+   Settings → Chat turns the asking off everywhere. */
 function AskFirst({
   provider,
   onDismiss,
@@ -53,12 +69,18 @@ function AskFirst({
   children: React.ReactNode;
 }) {
   const { autoLoadEmbeds } = useSettings();
+  const trusted = useTrustedEmbedHosts();
   const [loaded, setLoaded] = useState(false);
 
-  if (autoLoadEmbeds || loaded) return <>{children}</>;
+  if (autoLoadEmbeds || loaded || trusted.includes(provider.host)) return <>{children}</>;
 
   return (
-    <EmbedConsent provider={provider} onLoad={() => setLoaded(true)} onDismiss={onDismiss} />
+    <EmbedConsent
+      provider={provider}
+      onLoad={() => setLoaded(true)}
+      onTrust={() => trustEmbedHost(provider.host)}
+      onDismiss={onDismiss}
+    />
   );
 }
 
@@ -147,7 +169,7 @@ export const MessageEmbeds = memo(({
           const type = getEmbedType(url);
 
           /* Another company's page: drawn as a placeholder until asked for. */
-          const provider = THIRD_PARTY[type];
+          const provider = THIRD_PARTY[type] ?? fileFromElsewhere(type, url, serverHost);
           if (provider) {
             return (
               <AskFirst key={url} provider={provider} onDismiss={onDismiss}>
