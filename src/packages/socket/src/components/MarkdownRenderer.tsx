@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 
 import { PiCheck, PiCopyFill } from "../../../../lib/icons";
+import { useExternalEmojisAllowed } from "../utils/externalEmojiPolicy";
 import { type CustomEmojiEntry, preprocessCustomEmojis, preprocessSmileys, remarkEmoji } from "../utils/remarkEmoji";
 import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";
@@ -375,7 +376,7 @@ export const MarkdownRenderer = memo(({
   memberNicknames,
   mentionMembersById,
   serverHost,
-  allowExternalEmojis = false,
+  allowExternalEmojis,
   profanityMatches,
   blurProfanity,
   smileyConversion = true,
@@ -386,7 +387,7 @@ export const MarkdownRenderer = memo(({
   memberNicknames?: string[];
   mentionMembersById?: Record<string, { nickname: string }>;
   serverHost?: string | null;
-  /** The server lets other Gryt servers' emoji show in its messages. */
+  /** Overrides what the server said about other servers' emoji, for previews. */
   allowExternalEmojis?: boolean;
   profanityMatches?: ProfanityMatchRange[];
   blurProfanity?: boolean;
@@ -394,6 +395,8 @@ export const MarkdownRenderer = memo(({
   disabledSmileys?: ReadonlySet<string>;
 }) => {
   const { emojiSize } = useTheme();
+  const serverAllows = useExternalEmojisAllowed(serverHost);
+  const externalOk = allowExternalEmojis ?? serverAllows;
   const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
   const hasProfanity = !!(blurProfanity && profanityMatches && profanityMatches.length > 0);
 
@@ -441,7 +444,7 @@ export const MarkdownRenderer = memo(({
         const local = !!src && imageIsLocal(src, serverHost ?? null);
         if (isCustomEmoji) {
           // An emoji that may not load here reads as its name, which is what was typed.
-          if (!src || (!local && !(allowExternalEmojis && isGrytEmojiUrl(src)))) return <>{alt || ""}</>;
+          if (!src || (!local && !(externalOk && isGrytEmojiUrl(src)))) return <>{alt || ""}</>;
           const emojiId =
             (props["data-emoji-name"] ? `:${props["data-emoji-name"]}:` : null)
             ?? (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt) ? alt : null)
@@ -533,7 +536,7 @@ export const MarkdownRenderer = memo(({
       td: wrap(base.td as React.FC<{ children?: React.ReactNode }>),
       th: wrap(base.th as React.FC<{ children?: React.ReactNode }>),
     } as Components;
-  }, [hasProfanity, membersById, serverHost, allowExternalEmojis]);
+  }, [hasProfanity, membersById, serverHost, externalOk]);
 
   if (!processed) return null;
 

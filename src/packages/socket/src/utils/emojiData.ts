@@ -96,6 +96,16 @@ export function getCustomEmojis(serverHost?: string): EmojiEntry[] {
   return serverHost ? (customEmojisByServer.get(serverHost) ?? EMPTY_CUSTOM_EMOJIS) : customEmojisCache;
 }
 
+/** Custom emoji from every other server this device has loaded, by host. */
+export function getOtherServersEmojis(serverHost: string | undefined): [string, EmojiEntry[]][] {
+  return [...customEmojisByServer].filter(([host, list]) => host !== serverHost && list.length > 0);
+}
+
+/** How a message carries another server's emoji: the image itself, since the name means nothing here. */
+export function externalEmojiMarkdown(entry: EmojiEntry): string {
+  return `![:${entry.name}:](${entry.url})`;
+}
+
 export function getAllEmojis(serverHost?: string): EmojiEntry[] {
   return [...getStandardEmojis(), ...getCustomEmojis(serverHost)];
 }

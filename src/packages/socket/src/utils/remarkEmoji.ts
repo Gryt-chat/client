@@ -231,12 +231,16 @@ export function preprocessCustomEmojis(
   }
   if (map.size === 0) return content;
 
-  return content.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code) => {
-    if (nameToEmoji[code]) return match;
-    const url = map.get(code);
-    if (url) return `![${match}](${url})`;
-    return match;
-  });
+  // Image markdown is left whole: another server's emoji arrives as one, with its name as the alt.
+  return content
+    .split(/(!\[[^\]\n]*\]\([^)\s]*\))/g)
+    .map((part, i) => (i % 2 === 1 ? part : part.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code) => {
+      if (nameToEmoji[code]) return match;
+      const url = map.get(code);
+      if (url) return `![${match}](${url})`;
+      return match;
+    })))
+    .join("");
 }
 
 function buildReplacements(value: string): PhrasingContent[] {

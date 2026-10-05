@@ -99,7 +99,8 @@ function serializeContentEditable(el: HTMLElement): string {
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const elem = node as HTMLElement;
       if (elem.tagName === "IMG" && elem.dataset.emojiName) {
-        result += `:${elem.dataset.emojiName}:`;
+        // Another server's emoji goes as its image; its name only resolves on its own server.
+        result += elem.dataset.emojiSrc ? `![:${elem.dataset.emojiName}:](${elem.dataset.emojiSrc})` : `:${elem.dataset.emojiName}:`;
       } else if (elem.dataset.roleId) {
         result += `[${elem.dataset.mentionName || elem.textContent || ""}](role:${elem.dataset.roleId})`;
       } else if (elem.dataset.channelId) {
@@ -497,7 +498,18 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       el.focus();
       const sel = window.getSelection();
 
-      if (src.startsWith(":") && src.endsWith(":")) {
+      const other = /^!\[:([a-zA-Z0-9_+-]+):\]\((https?:\/\/[^)\s]+)\)$/.exec(src);
+      if (other) {
+        const img = document.createElement("img");
+        img.src = other[2];
+        img.alt = `:${other[1]}:`;
+        img.dataset.emojiName = other[1];
+        img.dataset.emojiSrc = other[2];
+        img.className = "inline-emoji";
+        img.draggable = false;
+        img.contentEditable = "false";
+        el.appendChild(img);
+      } else if (src.startsWith(":") && src.endsWith(":")) {
         const name = src.slice(1, -1);
         const custom = getCustomEmojis().find((e) => e.name === name);
         if (custom?.url) {
@@ -721,6 +733,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                 onSelect={handlePickerEmojiSelect}
                 onClose={() => setEmojiPickerOpen(false)}
                 serverHost={serverHost}
+                withOtherServers
               />
             )}
           </div>
