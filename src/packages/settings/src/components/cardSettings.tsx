@@ -171,7 +171,18 @@ export function CardSettings() {
     }
     return null;
   }, [connected.join(" "), memberLists]); // eslint-disable-line react-hooks/exhaustive-deps
+  const serverBannerIsVideo = useMemo(() => {
+    for (const host of connected) {
+      const me = memberLists[host]?.find((m) => m.serverUserId === getOwnServerUserId(host));
+      if (me?.bannerFileId) return !!me.bannerVideo;
+    }
+    return false;
+  }, [connected.join(" "), memberLists]); // eslint-disable-line react-hooks/exhaustive-deps
   const bannerUrl = bannerPreview === undefined ? serverBanner : bannerPreview;
+  // A picked file says its own type; the server's says it in the member list.
+  const bannerType: "image" | "video" = bannerPreview === undefined
+    ? (serverBannerIsVideo ? "video" : "image")
+    : pendingBanner?.type.startsWith("video/") ? "video" : "image";
   const dirty = cardDirty || pendingBanner !== undefined;
 
   const changeBanner = (file: File | null) => {
@@ -216,6 +227,7 @@ export function CardSettings() {
         profile={draft}
         owlHex={owlHex}
         bannerUrl={bannerUrl}
+        bannerType={bannerType}
         game={playing ? gameCard ?? SAMPLE_GAME : null}
         appearance={appearance}
         seedKey={seedKey}
@@ -278,7 +290,7 @@ export function CardSettings() {
           <input
             ref={bannerInput}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
             style={{ display: "none" }}
             onChange={(e) => {
               const file = e.target.files?.[0];

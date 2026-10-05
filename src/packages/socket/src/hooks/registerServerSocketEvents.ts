@@ -817,8 +817,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         [host]: {
           nickname: me.nickname,
           avatarFileId: me.avatarFileId ?? null,
+          // A video avatar's still poster, since this one is drawn with <img>.
           avatarUrl: me.avatarFileId
-            ? getUploadsFileUrl(host, me.avatarFileId)
+            ? getUploadsFileUrl(host, me.avatarFileId, me.avatarVideo ? { thumb: true } : undefined)
             : null,
           avatarWorn: me.avatarWorn ?? null,
           card: cardProfileFor(me, me.nickname),

@@ -229,12 +229,19 @@ export function MemberIdentityCard({
     <MemberCardView
       name={member.nickname}
       avatarSrc={avatarSrc}
-      onAvatarClick={avatarSrc ? () => openLightbox({ src: avatarSrc, alt: member.nickname }) : undefined}
+      avatarType={member.avatarVideo && !member.avatarWorn ? "video" : "image"}
+      avatarPoster={member.avatarVideo && member.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : null}
+      // The lightbox shows pictures, so a video avatar opens its still poster there.
+      onAvatarClick={avatarSrc ? () => openLightbox({
+        src: member.avatarVideo && !member.avatarWorn && member.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : avatarSrc,
+        alt: member.nickname,
+      }) : undefined}
       status={member.status}
       channelName={channelName}
       isBot={member.isBot}
       profile={profile}
       owlHex={owlHex}
+      bannerType={member.bannerVideo ? "video" : "image"}
       bannerUrl={member.bannerFileId && serverHost ? getUploadsFileUrl(serverHost, member.bannerFileId) : null}
       game={offline ? null : member.richActivity}
       chips={chips}
