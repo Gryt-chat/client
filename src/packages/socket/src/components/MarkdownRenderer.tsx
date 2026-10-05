@@ -102,6 +102,30 @@ const RemoteMarkdownImage = memo(({
 
 RemoteMarkdownImage.displayName = "RemoteMarkdownImage";
 
+/**
+ * A message image loads only from the server it was sent on. Anything else would show every
+ * reader's address to whoever runs that host.
+ */
+function imageIsLocal(src: string, serverHost: string | null): boolean {
+  if (!serverHost) return false;
+  try {
+    // By host, since the scheme a server answers on is learned later and can differ.
+    return new URL(src).host === new URL(getServerHttpBase(serverHost)).host;
+  } catch {
+    return false;
+  }
+}
+
+/** Another Gryt server's custom emoji, which the server can let through (GRYT-1660). */
+function isGrytEmojiUrl(src: string): boolean {
+  try {
+    const url = new URL(src);
+    return /^https?:$/.test(url.protocol) && /^\/api\/emojis\/img\/[^/]+$/.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
 const PROFANITY_START = "\uE000";
 const PROFANITY_END = "\uE001";
 const PROFANITY_RE = /\uE000([\s\S]*?)\uE001/g;
@@ -310,62 +334,6 @@ const components: Components = {
   li: ({ children }) => (
     <li style={{ lineHeight: 1.5 }}>{children}</li>
   ),
-  img: ({ src, alt, className, ...props }: MarkdownImgProps) => {
-    const isCustomEmoji = className === "inline-emoji"
-      || Boolean(props["data-emoji-name"])
-      || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
-    if (isCustomEmoji) {
-      const emojiId =
-        (props["data-emoji-name"] ? `:${props["data-emoji-name"]}:` : null)
-        ?? (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt) ? alt : null)
-        ?? alt
-        ?? "";
-      return (
-        <Tooltip title={emojiId}>
-          <img
-            src={src}
-            alt={alt || ""}
-            className="inline-emoji"
-            style={{
-              height: "1.4em",
-              width: "auto",
-              verticalAlign: "middle",
-              display: "inline",
-              objectFit: "contain",
-              margin: "0 1px",
-              cursor: "default",
-            }}
-          />
-        </Tooltip>
-      );
-    }
-
-    const cacheKey = src ?? "";
-    const cached = cacheKey ? markdownImageSizeCache.get(cacheKey) : undefined;
-
-    return (
-      <MessageContextMenu media={{ src: src || "", isImage: true }}>
-        <div className="markdown-image-wrap">
-          <img
-            src={src}
-            alt={alt || ""}
-            className="markdown-image"
-            loading="lazy"
-            decoding="async"
-            style={cached ? { aspectRatio: `${cached.width} / ${cached.height}` } : undefined}
-            onLoad={(e) => {
-              const img = e.currentTarget;
-              if (!cacheKey) return;
-              if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-                markdownImageSizeCache.set(cacheKey, { width: img.naturalWidth, height: img.naturalHeight });
-              }
-            }}
-            onClick={() => src && window.open(src, "_blank")}
-          />
-        </div>
-      </MessageContextMenu>
-    );
-  },
   hr: () => <hr />,
   table: ({ children }) => (
     <div className="md-table">
@@ -407,6 +375,7 @@ export const MarkdownRenderer = memo(({
   memberNicknames,
   mentionMembersById,
   serverHost,
+  allowExternalEmojis = false,
   profanityMatches,
   blurProfanity,
   smileyConversion = true,
@@ -417,6 +386,8 @@ export const MarkdownRenderer = memo(({
   memberNicknames?: string[];
   mentionMembersById?: Record<string, { nickname: string }>;
   serverHost?: string | null;
+  /** The server lets other Gryt servers' emoji show in its messages. */
+  allowExternalEmojis?: boolean;
   profanityMatches?: ProfanityMatchRange[];
   blurProfanity?: boolean;
   smileyConversion?: boolean;
@@ -467,7 +438,10 @@ export const MarkdownRenderer = memo(({
         const isCustomEmoji = className === "inline-emoji"
           || Boolean(props["data-emoji-name"])
           || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
+        const local = !!src && imageIsLocal(src, serverHost ?? null);
         if (isCustomEmoji) {
+          // An emoji that may not load here reads as its name, which is what was typed.
+          if (!src || (!local && !(allowExternalEmojis && isGrytEmojiUrl(src)))) return <>{alt || ""}</>;
           const emojiId =
             (props["data-emoji-name"] ? `:${props["data-emoji-name"]}:` : null)
             ?? (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt) ? alt : null)
@@ -494,6 +468,13 @@ export const MarkdownRenderer = memo(({
         }
 
         if (!src) return null;
+        if (!local) {
+          return (
+            <a href={src} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gryt-accent-11)", textDecoration: "underline" }}>
+              {alt || src}
+            </a>
+          );
+        }
         const cacheKey = src;
         const cached = markdownImageSizeCache.get(cacheKey);
         return (
@@ -552,7 +533,7 @@ export const MarkdownRenderer = memo(({
       td: wrap(base.td as React.FC<{ children?: React.ReactNode }>),
       th: wrap(base.th as React.FC<{ children?: React.ReactNode }>),
     } as Components;
-  }, [hasProfanity, membersById, serverHost]);
+  }, [hasProfanity, membersById, serverHost, allowExternalEmojis]);
 
   if (!processed) return null;
 
