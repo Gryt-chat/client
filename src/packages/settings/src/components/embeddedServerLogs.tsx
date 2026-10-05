@@ -8,7 +8,7 @@ import { PiTrashFill } from "../../../../lib/icons";
 const SOURCE_LABEL: Record<EmbeddedLogSource, string> = {
   server: "Server",
   sfu: "SFU",
-  worker: "Image worker",
+  worker: "Media worker",
 };
 
 const LEVEL_COLOR = {

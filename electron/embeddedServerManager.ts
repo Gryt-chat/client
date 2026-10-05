@@ -96,7 +96,7 @@ function explainExit(
   code: number | null,
 ): string {
   const label =
-    source === "sfu" ? "SFU" : source === "worker" ? "Image worker" : "Server";
+    source === "sfu" ? "SFU" : source === "worker" ? "Media worker" : "Server";
   const lines = recentOutput.get(outputKey(owner, source)) ?? [];
 
   // Prefer a line that names the actual failure over the last line, which is
@@ -696,11 +696,11 @@ function spawnWorker(
 ): ChildProcess | null {
   const entry = getWorkerEntryPath();
   if (!entry) {
-    log("Image worker not bundled — image jobs will not be processed");
+    log("Media worker not bundled — uploads will not be checked");
     return null;
   }
   if (!healthPort) {
-    log("No free port for the image worker's health endpoint — not starting it");
+    log("No free port for the media worker's health endpoint — not starting it");
     return null;
   }
 
@@ -747,7 +747,7 @@ function spawnWorker(
   proc.stderr?.on("data", onOutput);
 
   proc.on("exit", (code) => {
-    log(`Image worker for ${id} exited with code ${code}`);
+    log(`Media worker for ${id} exited with code ${code}`);
     const inst = instances.get(id);
     if (inst) inst.worker = null;
     // Deliberately does not touch status or stop anything else.
@@ -886,7 +886,7 @@ async function startProcesses(id: string): Promise<EmbeddedServerState | null> {
     try {
       workerHealthPort = await findFreePort();
     } catch {
-      log("Could not find a free port for the image worker");
+      log("Could not find a free port for the media worker");
     }
 
     current.server = spawnServer(config, workerHealthPort);
@@ -901,9 +901,9 @@ async function startProcesses(id: string): Promise<EmbeddedServerState | null> {
     // it or fails the start over it.
     try {
       current.worker = spawnWorker(config, workerHealthPort);
-      if (current.worker) log(`Image worker for ${id} started (pid=${current.worker.pid})`);
+      if (current.worker) log(`Media worker for ${id} started (pid=${current.worker.pid})`);
     } catch (err) {
-      log(`Image worker failed to start: ${err instanceof Error ? err.message : err}`);
+      log(`Media worker failed to start: ${err instanceof Error ? err.message : err}`);
     }
 
     // If no "listening" log within 10 seconds, assume it's running anyway
