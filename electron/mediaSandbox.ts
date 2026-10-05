@@ -7,6 +7,8 @@ import { fileURLToPath, pathToFileURL } from "url";
 import { MAX_MEDIA_BYTES, type MediaJob, type MediaResult } from "./mediaSandboxFormat";
 
 const JOB_TIMEOUT_MS = 120_000;
+// A chat video has no ten-second cap, so it gets longer.
+const CHAT_VIDEO_TIMEOUT_MS = 10 * 60_000;
 // Closed when idle, so it holds no memory between uploads and never keeps the app from quitting.
 const IDLE_CLOSE_MS = 30_000;
 const PARTITION = "gryt-media-sandbox";
@@ -111,7 +113,7 @@ async function runOne(job: MediaJob): Promise<MediaResult> {
   const id = nextId++;
   return new Promise<MediaResult>((resolve) => {
     // A job that runs out of time takes the renderer with it, since it may still be decoding.
-    const timer = setTimeout(() => discard("The media sandbox ran out of time"), JOB_TIMEOUT_MS);
+    const timer = setTimeout(() => discard("The media sandbox ran out of time"), job.kind === "chatvideo" ? CHAT_VIDEO_TIMEOUT_MS : JOB_TIMEOUT_MS);
     pending.set(id, { resolve, timer });
     wc.send("media-sandbox:job", id, job);
   });

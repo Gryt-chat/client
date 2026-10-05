@@ -22,6 +22,7 @@ import { sealedNotificationBody } from "../utils/sealedNotification";
 import {
   ChatErrorPayload,
   type ChatErrorRef,
+  handleAttachmentsSettled,
   handleChatErrorEvent,
   handleHistoryPayload,
   handleMessageDeleted,
@@ -504,6 +505,8 @@ export function useChat({
 
     const onEdited = (updatedMessage: ChatMessage) =>
       handleMessageEdited(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
+    const onAttachments = (payload: Parameters<typeof handleAttachmentsSettled>[0]) =>
+      handleAttachmentsSettled(payload, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
     const onReportSubmitted = () => {
       toast.success("Report submitted");
@@ -582,6 +585,7 @@ export function useChat({
     currentConnection.on("chat:reaction", onReaction);
     currentConnection.on("chat:deleted", onDeleted);
     currentConnection.on("chat:edited", onEdited);
+    currentConnection.on("chat:attachments", onAttachments);
     currentConnection.on("report:submitted", onReportSubmitted);
     currentConnection.on("report:already_reported", onAlreadyReported);
     currentConnection.on("chat:purge_user", onPurgeUser);
@@ -594,6 +598,7 @@ export function useChat({
       currentConnection.off("chat:reaction", onReaction);
       currentConnection.off("chat:deleted", onDeleted);
       currentConnection.off("chat:edited", onEdited);
+      currentConnection.off("chat:attachments", onAttachments);
       currentConnection.off("report:submitted", onReportSubmitted);
       currentConnection.off("report:already_reported", onAlreadyReported);
       currentConnection.off("chat:purge_user", onPurgeUser);

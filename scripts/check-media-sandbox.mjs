@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 
 import {
   buildAnimatedWebp,
+  chatVideoSize,
   dominantColour,
   imageBox,
   parseMediaRequest,
@@ -87,5 +88,12 @@ const blue = [0, 0, 255, 255];
 const clear = [0, 255, 0, 0];
 assert.equal(dominantColour(new Uint8Array([...red, ...red, ...blue, ...clear, ...clear, ...clear])), "#ff0000");
 assert.equal(dominantColour(new Uint8Array(clear)), null, "a see-through picture has no colour");
+
+// A chat video keeps its shape inside 1280px, with even sides, and is never enlarged.
+assert.deepEqual(chatVideoSize(1920, 1080), { width: 1280, height: 720 });
+assert.deepEqual(chatVideoSize(1080, 1920), { width: 720, height: 1280 });
+assert.deepEqual(chatVideoSize(641, 359), { width: 640, height: 358 });
+assert.deepEqual(chatVideoSize(8192, 8192), { width: 1280, height: 1280 });
+assert.deepEqual(parseMediaRequest({ type: "gryt-media-job", id: 5, job: { kind: "chatvideo", bytes: job.bytes } }), { id: 5, job: { kind: "chatvideo", bytes: job.bytes } });
 
 console.log("media sandbox: ok");

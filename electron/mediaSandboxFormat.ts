@@ -31,13 +31,24 @@ export const MAX_MEDIA_BYTES = 64 * 1024 * 1024;
 export const MAX_INPUT_PIXELS = 100_000_000;
 // The worker's cap too: a 1,500-frame GIF came out as a 7 MB avatar.
 export const MAX_ANIMATION_FRAMES = 300;
+/** A chat video keeps its shape and sound, inside this box (GRYT-1669). */
+export const CHAT_VIDEO_MAX_SIDE = 1280;
+
+/** Even sides inside the box, never enlarged: what AV1 at 4:2:0 wants. */
+export function chatVideoSize(w: number, h: number): { width: number; height: number } {
+  const scale = Math.min(1, CHAT_VIDEO_MAX_SIDE / w, CHAT_VIDEO_MAX_SIDE / h);
+  const even = (n: number) => Math.max(2, Math.floor((n * scale) / 2) * 2);
+  return { width: even(w), height: even(h) };
+}
+
 /** A chat video's still, as wide as the jail's poster. */
 export const POSTER_WIDTH = 320;
 
 export type MediaJob =
   | { kind: "image"; use: MediaUse; bytes: Uint8Array }
   | { kind: "video"; use: VideoUse; bytes: Uint8Array }
-  | { kind: "poster"; bytes: Uint8Array };
+  | { kind: "poster"; bytes: Uint8Array }
+  | { kind: "chatvideo"; bytes: Uint8Array };
 
 export type MediaResult =
   | {
@@ -55,6 +66,7 @@ export type MediaResult =
     }
   | { ok: true; kind: "video"; video: Uint8Array; poster: Uint8Array; width: number; height: number }
   | { ok: true; kind: "poster"; poster: Uint8Array; width: number; height: number }
+  | { ok: true; kind: "chatvideo"; video: Uint8Array; poster: Uint8Array; width: number; height: number }
   | { ok: false; reason: string };
 
 const USES = new Set<string>(["upload", "banner", "avatar", "emoji"]);
@@ -73,6 +85,7 @@ export function parseMediaRequest(message: unknown): { id: number; job: MediaJob
     return { id: m.id, job: { kind: "video", use: job.use, bytes: job.bytes } };
   }
   if (job.kind === "poster") return { id: m.id, job: { kind: "poster", bytes: job.bytes } };
+  if (job.kind === "chatvideo") return { id: m.id, job: { kind: "chatvideo", bytes: job.bytes } };
   return null;
 }
 

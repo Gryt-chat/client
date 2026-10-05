@@ -163,6 +163,26 @@ export function handleMessageEdited(
   }
 }
 
+// ── chat:attachments ─────────────────────────────────────────────────
+
+/** A message's attachments finished processing, or one was refused. Only the attachments
+    change; text and edit time stay as they are (GRYT-1669). */
+export function handleAttachmentsSettled(
+  payload: { conversation_id: string; message_id: string; enriched_attachments: ChatMessage["enriched_attachments"] },
+  activeConversationId: string,
+  getCacheKey: CacheKeyFn,
+  setMessageCache: Dispatch<SetStateAction<MessageCache>>,
+  setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>,
+): void {
+  if (!payload?.conversation_id || !payload.message_id || !Array.isArray(payload.enriched_attachments)) return;
+  const key = getCacheKey(payload.conversation_id);
+  if (!key) return;
+  const apply = (msg: ChatMessage) =>
+    msg.message_id === payload.message_id ? { ...msg, enriched_attachments: payload.enriched_attachments } : msg;
+  setMessageCache((prev) => ({ ...prev, [key]: (prev[key] || []).map(apply) }));
+  if (payload.conversation_id === activeConversationId) setChatMessages((prev) => prev.map(apply));
+}
+
 // ── chat:deleted ─────────────────────────────────────────────────────
 
 export function handleMessageDeleted(
