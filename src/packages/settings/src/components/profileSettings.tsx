@@ -93,6 +93,15 @@ async function posterOfVideo(file: File): Promise<File> {
   }
 }
 
+/** A converted video avatar, fetched whole from a server that has it. */
+async function fetchVideoAvatar(host: string, fileId: string): Promise<File> {
+  const response = await fetch(freshUploadsFileUrl(getUploadsFileUrl(host, fileId)));
+  if (!response.ok) throw new Error(`the server answered ${response.status}`);
+  const blob = await response.blob();
+  const type = blob.type.startsWith("video/") ? blob.type : "video/mp4";
+  return new File([blob], `avatar.${extForMime(type)}`, { type });
+}
+
 async function uploadAvatarToHost(host: string, file: Blob): Promise<{ avatarFileId?: string; processing?: boolean }> {
   const token = getServerAccessToken(host);
   if (!token) throw new Error("Not authenticated with this server. Try reconnecting.");
@@ -510,6 +519,7 @@ export function ProfileSettings() {
               avatarFileId: r.value.avatarFileId!,
               avatarUrl: getUploadsFileUrl(host, r.value.avatarFileId!, isVideo ? { thumb: true } : undefined),
               avatarWorn: worn,
+              avatarVideo: isVideo,
             },
           }));
         }
@@ -663,6 +673,17 @@ export function ProfileSettings() {
     await processAndUpload(file, host ? [host] : serverHosts, worn);
   };
 
+  /* The video goes to servers that take one and its still to the rest. The server it came from already has it. */
+  const copyVideoAvatar = async (sourceHost: string, fileId: string, hosts: string[]) => {
+    const video = await fetchVideoAvatar(sourceHost, fileId);
+    const targets = hosts.filter((h) => h !== sourceHost);
+    const takes = targets.filter((h) => serverDetailsList?.[h]?.server_info?.video_profiles === true);
+    const rest = targets.filter((h) => !takes.includes(h));
+    if (takes.length) await processAndUpload(video, takes, null);
+    if (rest.length) await processAndUpload(await posterOfVideo(video), rest, null);
+    if (!targets.length) toast("That server is the only one you're on, so there's nowhere to copy it to.");
+  };
+
 /**
    * Owls and pictures are one job: a designed owl is a PNG plus the string that
    * draws it. The nickname is left alone, being per-server for a reason.
@@ -682,6 +703,10 @@ export function ProfileSettings() {
 
     setSyncing(true);
     try {
+      if (profile.avatarVideo && profile.avatarFileId && !worn) {
+        await copyVideoAvatar(sourceHost, profile.avatarFileId, connectedHosts);
+        return;
+      }
       const response = await fetch(freshUploadsFileUrl(source));
       if (!response.ok) {
         throw new Error(`the server answered ${response.status}`);
@@ -719,8 +744,15 @@ export function ProfileSettings() {
         }));
       });
 
+      // This device only keeps a video avatar's still; a server holding the video sends the real thing.
+      const videoSource = worn ? undefined : hosts.find((h) => {
+        const p = serverProfiles[h];
+        return p?.avatarVideo && p.avatarFileId && p.avatarFileId === localStorage.getItem(`avatarFileId:${h}`);
+      });
       const stored = userId ? await getStoredAvatar(userId).catch(() => null) : null;
-      if (stored?.blob) {
+      if (videoSource) {
+        await copyVideoAvatar(videoSource, serverProfiles[videoSource]!.avatarFileId!, hosts);
+      } else if (stored?.blob) {
         const minMax = getAvatarMaxBytes(hosts);
         let uploadFile: Blob = stored.blob;
 
