@@ -404,6 +404,15 @@ export function useThreads(
       );
     };
 
+    /* A reply's picture or video the server finished processing, or refused (GRYT-1669). */
+    const onAttachments = (payload: { message_id?: string; enriched_attachments?: ChatMessage["enriched_attachments"] }) => {
+      const id = payload?.message_id;
+      if (!id || !Array.isArray(payload.enriched_attachments)) return;
+      const enriched_attachments = payload.enriched_attachments;
+      patchOpen(id, (messages) => messages.map((m) => (m.message_id === id ? { ...m, enriched_attachments } : m)));
+      setOpen((o) => (o && o.root?.message_id === id ? { ...o, root: { ...o.root, enriched_attachments } } : o));
+    };
+
     /*
      * A deleted root closes the panel rather than leaving a thread hanging off
      * nothing. Its replies are gone on the server too — the topic is the root.
@@ -482,6 +491,7 @@ export function useThreads(
     socket.on("chat:new", onChatNew as (p: never) => void);
     socket.on("chat:reaction", onReaction as (p: never) => void);
     socket.on("chat:edited", onEdited as (p: never) => void);
+    socket.on("chat:attachments", onAttachments as (p: never) => void);
     socket.on("chat:deleted", onMessageDeleted as (p: never) => void);
     socket.on("chat:merge_user", onMergeUser as (p: never) => void);
     return () => {
@@ -495,6 +505,7 @@ export function useThreads(
       socket.off("chat:new", onChatNew as (p: never) => void);
       socket.off("chat:reaction", onReaction as (p: never) => void);
       socket.off("chat:edited", onEdited as (p: never) => void);
+      socket.off("chat:attachments", onAttachments as (p: never) => void);
       socket.off("chat:deleted", onMessageDeleted as (p: never) => void);
       socket.off("chat:merge_user", onMergeUser as (p: never) => void);
     };
