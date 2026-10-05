@@ -5,7 +5,7 @@ import { Wordmark } from "@/common";
 import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
-import { getElectronAPI, isElectron, isMacAppStoreBuild, UpdateStatus } from "../../../../lib/electron";
+import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, UpdateStatus } from "../../../../lib/electron";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
@@ -256,7 +256,7 @@ function UpdateControls() {
 }
 
 /** The store installs updates here, so none of the switches above would do anything. */
-function AppStoreUpdates() {
+function AppStoreUpdates({ store }: { store: string }) {
   const [appVersion, setAppVersion] = useState<string>("…");
 
   useEffect(() => {
@@ -278,7 +278,8 @@ function AppStoreUpdates() {
           </Button>
         </div>
         <span className="text-gryt-muted">
-          Updates come from the Mac App Store. You can check for a new version there.
+          Updates come from {store}. You can check for a new version there. Beta releases aren&rsquo;t in
+          the store; for those, install Gryt from gryt.chat instead.
         </span>
       </div>
     </>
@@ -406,7 +407,15 @@ export function UpdatesSettings() {
 
   return (
     <SettingsContainer>
-      {!inElectron ? <DesktopAppCard /> : isMacAppStoreBuild() ? <AppStoreUpdates /> : <UpdateControls />}
+      {!inElectron ? (
+        <DesktopAppCard />
+      ) : isMacAppStoreBuild() ? (
+        <AppStoreUpdates store="the Mac App Store" />
+      ) : isMicrosoftStoreBuild() ? (
+        <AppStoreUpdates store="the Microsoft Store" />
+      ) : (
+        <UpdateControls />
+      )}
     </SettingsContainer>
   );
 }

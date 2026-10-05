@@ -55,6 +55,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // The Mac App Store build: sandboxed, and updated by the store rather than by Gryt.
   macAppStore: process.mas === true,
+  // The Microsoft Store (MSIX) build, which the Store updates; Gryt's own updater stays off there.
+  windowsStore: process.windowsStore === true,
 
   /* Chromium's own zoom, which keeps rects and the viewport in one coordinate
      space. CSS zoom does not, and put every menu off screen (GRYT-1127). */
