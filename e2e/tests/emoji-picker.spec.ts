@@ -27,6 +27,8 @@ test("chat and card pickers put this server's custom emoji first and keep Unicod
 
   await membersPanel(page).locator(".member-row").filter({ hasText: owner.name }).click();
   await page.getByRole("button", { name: "Edit my card", exact: true }).click();
+  // Settings opens on the card page, and the editor itself is a button away.
+  await page.getByRole("button", { name: "Open the card editor", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Edit my card", exact: true });
   await editor.getByRole("tab", { name: "Pattern", exact: true }).click();
   await editor.getByRole("button", { name: "An emoji", exact: true }).click();
