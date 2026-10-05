@@ -246,7 +246,7 @@ assert.ok(narrowBranch, "no narrow version block under the settings picker");
 assert.match(narrowBranch[1], /\{versionLines\}/, "the narrow settings layout stopped rendering the versions");
 const rail = modal.slice(modal.indexOf("<div hidden={!railFits}"), modal.indexOf("{TAB_CONFIG.map(({ value, content })"));
 assert.match(rail, /\{versionLines\}/, "the settings rail stopped rendering the versions");
-for (const line of ["Server v{serverInfo.version}", "SFU {versionStatus.sfu.current", "Image worker"]) {
+for (const line of ["Server v{serverInfo.version}", "SFU {versionStatus.sfu.current", "Media worker"]) {
   assert.ok(modal.slice(modal.indexOf("const versionLines")).includes(line), `versionLines lost "${line}"`);
 }
 
