@@ -15,10 +15,13 @@ export interface EmbedProvider {
 export function EmbedConsent({
   provider,
   onLoad,
+  onTrust,
   onDismiss,
 }: {
   provider: EmbedProvider;
   onLoad: () => void;
+  /** Load this one and every later one from the same site, on this device. */
+  onTrust: () => void;
   onDismiss: () => void;
 }) {
   return (
@@ -35,9 +38,14 @@ export function EmbedConsent({
           </span>
         </div>
 
-        <Button size="small" tone="neutral" onClick={onLoad}>
-          Load
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="small" tone="neutral" onClick={onLoad}>
+            Load
+          </Button>
+          <Button size="small" tone="ghost" onClick={onTrust}>
+            Always load from {provider.host}
+          </Button>
+        </div>
       </div>
     </div>
   );

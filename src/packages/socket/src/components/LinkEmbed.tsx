@@ -4,6 +4,7 @@ import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
+import { trustEmbedHost, useTrustedEmbedHosts } from "../lib/trustedEmbedHosts";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EmbedConsent, type EmbedProvider } from "./EmbedConsent";
 import {
@@ -56,8 +57,8 @@ function fileFromElsewhere(type: EmbedType, url: string, serverHost: string): Em
   }
 }
 
-/* Per embed and not remembered: agreeing to one track is not agreeing to a
-   week of them. Settings → Chat turns the asking off. */
+/* Per embed unless the reader trusts the whole site, which is their call, per site.
+   Settings → Chat turns the asking off everywhere. */
 function AskFirst({
   provider,
   onDismiss,
@@ -68,12 +69,18 @@ function AskFirst({
   children: React.ReactNode;
 }) {
   const { autoLoadEmbeds } = useSettings();
+  const trusted = useTrustedEmbedHosts();
   const [loaded, setLoaded] = useState(false);
 
-  if (autoLoadEmbeds || loaded) return <>{children}</>;
+  if (autoLoadEmbeds || loaded || trusted.includes(provider.host)) return <>{children}</>;
 
   return (
-    <EmbedConsent provider={provider} onLoad={() => setLoaded(true)} onDismiss={onDismiss} />
+    <EmbedConsent
+      provider={provider}
+      onLoad={() => setLoaded(true)}
+      onTrust={() => trustEmbedHost(provider.host)}
+      onDismiss={onDismiss}
+    />
   );
 }
 

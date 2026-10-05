@@ -1,7 +1,8 @@
-import { Divider } from "@gryt/ui";
+import { Button, Divider } from "@gryt/ui";
 
 import { useSettings } from "@/settings";
 
+import { forgetEmbedHost, useTrustedEmbedHosts } from "../../../socket/src/lib/trustedEmbedHosts";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SmileySettings } from "./SmileySettings";
 
@@ -12,6 +13,7 @@ export function ChatSettings() {
     autoLoadEmbeds,
     setAutoLoadEmbeds,
   } = useSettings();
+  const trustedHosts = useTrustedEmbedHosts();
 
   return (
     <SettingsContainer>
@@ -32,6 +34,22 @@ export function ChatSettings() {
         checked={autoLoadEmbeds}
         onCheckedChange={setAutoLoadEmbeds}
       />
+
+      {!autoLoadEmbeds && trustedHosts.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-xs text-gryt-muted">Sites you chose to always load from:</span>
+          <div className="flex flex-wrap gap-2">
+            {trustedHosts.map((host) => (
+              <span key={host} className="flex items-center gap-1 rounded-(--gryt-radius-md) border border-gryt-border px-2 py-1 text-xs">
+                {host}
+                <Button size="xsmall" tone="ghost" onClick={() => forgetEmbedHost(host)} aria-label={`Stop always loading from ${host}`}>
+                  Forget
+                </Button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Divider />
 

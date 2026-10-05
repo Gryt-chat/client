@@ -14,6 +14,7 @@ import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { PiLinkSimpleBold } from "../../../../lib/icons";
+import { useTrustedEmbedHosts } from "../lib/trustedEmbedHosts";
 import { DismissButton } from "./EmbedRenderers";
 import {
   cardByline,
@@ -107,6 +108,14 @@ LinkPreviewSkeleton.displayName = "LinkPreviewSkeleton";
  * A link drawn as a card. The shape follows what the page gave us rather than one
  * fixed template — see `getLinkCardLayout`.
  */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "";
+  }
+}
+
 export const LinkPreviewCard = memo(({
   url,
   serverHost,
@@ -118,7 +127,9 @@ export const LinkPreviewCard = memo(({
 }) => {
   const { resolvedAppearance } = useTheme();
   // The picture and favicon come from the linked site itself; the text came through the server.
-  const { autoLoadEmbeds: remoteImagesOk } = useSettings();
+  const { autoLoadEmbeds } = useSettings();
+  const trusted = useTrustedEmbedHosts();
+  const remoteImagesOk = autoLoadEmbeds || trusted.includes(hostOf(url));
   const [data, setData] = useState<LinkPreviewData | null>(() => previewCache.get(url) ?? null);
   const [failed, setFailed] = useState(() => previewRefused.has(url));
   const [imageFailed, setImageFailed] = useState(false);
