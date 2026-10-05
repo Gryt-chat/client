@@ -256,7 +256,7 @@ function UpdateControls() {
 }
 
 /** The store installs updates here, so none of the switches above would do anything. */
-function AppStoreUpdates({ store }: { store: string }) {
+function AppStoreUpdates({ store, os }: { store: string; os: "macos" | "windows" }) {
   const [appVersion, setAppVersion] = useState<string>("…");
 
   useEffect(() => {
@@ -277,11 +277,23 @@ function AppStoreUpdates({ store }: { store: string }) {
             What&rsquo;s new
           </Button>
         </div>
-        <span className="text-gryt-muted">
-          Updates come from {store}. You can check for a new version there. Beta releases aren&rsquo;t in
-          the store; for those, install Gryt from gryt.chat instead.
-        </span>
+        <span className="text-gryt-muted">Updates come from {store}. You can check for a new version there.</span>
       </div>
+
+      <Surface>
+        <div className="flex flex-col gap-3">
+          <span className="font-medium">Want beta releases?</span>
+          <span className="text-gryt-muted">
+            Betas aren&rsquo;t in {store}. Uninstall this copy first, then install Gryt from gryt.chat and turn
+            on beta releases in Settings. If you skip the uninstall you&rsquo;ll have two copies of Gryt.
+          </span>
+          <Button size="small" render={<a href={`${DOWNLOAD_URL}?os=${os}`} target="_blank" rel="noopener noreferrer" />}>
+            <PiDownloadSimpleFill size={16} />
+            Download from gryt.chat
+            <PiArrowSquareOutFill size={14} />
+          </Button>
+        </div>
+      </Surface>
     </>
   );
 }
@@ -410,9 +422,9 @@ export function UpdatesSettings() {
       {!inElectron ? (
         <DesktopAppCard />
       ) : isMacAppStoreBuild() ? (
-        <AppStoreUpdates store="the Mac App Store" />
+        <AppStoreUpdates store="the Mac App Store" os="macos" />
       ) : isMicrosoftStoreBuild() ? (
-        <AppStoreUpdates store="the Microsoft Store" />
+        <AppStoreUpdates store="the Microsoft Store" os="windows" />
       ) : (
         <UpdateControls />
       )}
