@@ -202,10 +202,12 @@
     "test:empty-dm-copy": "node scripts/check-empty-dm-copy.mjs",
     "test:composer-enter": "node --disable-warning=ExperimentalWarning scripts/check-composer-enter.mjs",
     "test:terms-agreement": "node --disable-warning=ExperimentalWarning scripts/check-terms-agreement.mjs",
-    "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.mjs"
+    "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.mjs",
+    "test:media-sandbox": "node --disable-warning=ExperimentalWarning scripts/check-media-sandbox.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
+    "mediabunny": "^1.61.1",
     "semver": "^7.6.3",
     "tar": "^7.5.22",
     "uiohook-napi": "^1.5.4"

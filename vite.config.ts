@@ -70,6 +70,9 @@ function keepMediapipeBuild(source: string): boolean {
 
 const isElectron = !!process.env.ELECTRON;
 
+// No network, no inline script, nothing but its own file and the blob: URLs it makes.
+const MEDIA_SANDBOX_HTML = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; media-src blob:; img-src blob:"><script src="mediaSandboxPage.js"></script>`;
+
 // https://vitejs.dev/config/
 export default defineConfig({
   optimizeDeps: {
@@ -126,6 +129,48 @@ export default defineConfig({
                       format === "cjs" ? "[name].cjs" : "[name].mjs",
                   },
                   rollupOptions: { external: ["electron"] },
+                },
+              },
+            },
+            {
+              entry: "electron/mediaSandboxPreload.ts",
+              vite: {
+                build: {
+                  outDir: "dist-electron",
+                  emptyOutDir: false,
+                  lib: {
+                    entry: "electron/mediaSandboxPreload.ts",
+                    formats: ["cjs"],
+                    // The same doubled formats as preload.ts above; only the .cjs is loaded.
+                    fileName: (format) => (format === "cjs" ? "mediaSandboxPreload.cjs" : "mediaSandboxPreload.mjs"),
+                  },
+                  rollupOptions: { external: ["electron"] },
+                },
+              },
+            },
+            {
+              // The sandbox page: plain browser code, with mediabunny bundled in and nothing loaded at run time.
+              entry: "electron/mediaSandboxPage.ts",
+              vite: {
+                build: {
+                  outDir: "dist-electron",
+                  emptyOutDir: false,
+                  lib: {
+                    entry: "electron/mediaSandboxPage.ts",
+                    formats: ["iife"],
+                    name: "grytMediaSandbox",
+                    fileName: (format) => (format === "iife" ? "mediaSandboxPage.js" : "mediaSandboxPage.mjs"),
+                  },
+                  rollupOptions: {
+                    plugins: [
+                      {
+                        name: "gryt-media-sandbox-html",
+                        generateBundle() {
+                          this.emitFile({ type: "asset", fileName: "mediaSandbox.html", source: MEDIA_SANDBOX_HTML });
+                        },
+                      },
+                    ],
+                  },
                 },
               },
             },
