@@ -25,16 +25,44 @@ export function openUserSettings(tab: string): void {
   window.dispatchEvent(new CustomEvent("user_settings_open", { detail: { tab } }));
 }
 
-const BODY: Record<DmKeyFix, (server: string) => string> = {
-  unlock: (server) =>
-    `${server} has a message key this device didn't publish. Your account has a saved copy, ` +
+/** "Gryt Chat has", "Gryt Chat and Home have", "Gryt Chat, Home and 2 more servers have". */
+export function serversHave(names: readonly string[]): string {
+  if (names.length <= 1) return `${names[0] ?? "This server"} has`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} have`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more server${names.length > 3 ? "s" : ""} have`;
+}
+
+/* "I don't care", for people whose direct messages don't need to be private from the server.
+   Per device, like the key the warning is about; Security settings turns it back on. */
+const WARNINGS_OFF_KEY = "gryt_dm_key_warnings_off";
+
+export function dmKeyWarningsOff(): boolean {
+  try {
+    return localStorage.getItem(WARNINGS_OFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setDmKeyWarningsOff(off: boolean): void {
+  try {
+    if (off) localStorage.setItem(WARNINGS_OFF_KEY, "1");
+    else localStorage.removeItem(WARNINGS_OFF_KEY);
+  } catch {
+    // No storage: it warns again next launch, the safe direction.
+  }
+}
+
+const BODY: Record<DmKeyFix, (servers: readonly string[]) => string> = {
+  unlock: (servers) =>
+    `${serversHave(servers)} a message key this device didn't publish. Your account has a saved copy, ` +
     `so unlock it here and both devices use the same key.`,
-  "set-up": (server) =>
-    `${server} has a message key this device didn't publish. Each device makes its own key, ` +
+  "set-up": (servers) =>
+    `${serversHave(servers)} a message key this device didn't publish. Each device makes its own key, ` +
     `so signing in somewhere new does this. A message password lets them share one.`,
-  none: (server) =>
-    `${server} has a message key this device didn't publish. If you haven't signed in on ` +
-    `another device, treat direct messages here as readable by the server.`,
+  none: (servers) =>
+    `${serversHave(servers)} a message key this device didn't publish. If you haven't signed in on ` +
+    `another device, treat direct messages there as readable by the server.`,
 };
 
 const ACTION: Record<DmKeyFix, string | null> = {
@@ -45,12 +73,13 @@ const ACTION: Record<DmKeyFix, string | null> = {
 
 export function showDmKeyWarning({
   id,
-  serverName,
+  serverNames,
   fix,
   onDismiss,
 }: {
   id: string;
-  serverName: string;
+  /** Every server with the mismatch, in one toast rather than one each. */
+  serverNames: readonly string[];
   fix: DmKeyFix;
   /** Called when Dismiss is pressed, so the warning stays gone. */
   onDismiss: () => void;
@@ -63,7 +92,7 @@ export function showDmKeyWarning({
     () => (
       <div className="flex flex-col gap-2" style={{ minWidth: 0 }}>
         <span className="text-sm" style={{ lineHeight: 1.5 }}>
-          {BODY[fix](serverName)}
+          {BODY[fix](serverNames)}
         </span>
 
         <div className="flex items-center gap-2" style={{ alignSelf: "flex-end" }}>
@@ -76,6 +105,17 @@ export function showDmKeyWarning({
             }}
           >
             Dismiss
+          </Button>
+          <Button
+            tone="ghost"
+            size="xsmall"
+            onClick={() => {
+              toast.dismiss(id);
+              setDmKeyWarningsOff(true);
+              onDismiss();
+            }}
+          >
+            Don&rsquo;t warn me again
           </Button>
           {action && (
             <Button
