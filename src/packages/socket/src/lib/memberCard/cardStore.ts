@@ -5,7 +5,7 @@
 
 import { useSyncExternalStore } from "react";
 
-import { type CardProfile, cardProfileOf, type CardStyle, cardStyleForWire, DEFAULT_CARD_STYLE } from "./cardStyle";
+import { type CardProfile, cardProfileOf, cardStyleForWire, DEFAULT_CARD_STYLE } from "./cardStyle";
 import { generatedCardStyle } from "./generatedCard";
 
 const KEY = "memberCard";
@@ -92,53 +92,4 @@ export function cardToOffer(nickname: string | null | undefined): CardProfile | 
     }
   }
   return card && !isDefaultCard(card) ? card : null;
-}
-
-/* ── Cards used before, kept on this device like the owl's wardrobe ── */
-
-const HISTORY_KEY = "memberCardHistory";
-const HISTORY_MAX = 12;
-const historyListeners = new Set<() => void>();
-let history: CardStyle[] | undefined;
-
-function readHistory(): CardStyle[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]") as unknown;
-    return Array.isArray(raw) ? raw.map((r) => cardProfileOf({ cardStyle: r }).cardStyle).slice(0, HISTORY_MAX) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeHistory(next: CardStyle[]): void {
-  history = next;
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(next.map((s) => cardStyleForWire(s))));
-  } catch {
-    // The list is a convenience; losing it costs nothing else.
-  }
-  historyListeners.forEach((fn) => fn());
-}
-
-const sameStyle = (a: CardStyle, b: CardStyle) => JSON.stringify(cardStyleForWire(a)) === JSON.stringify(cardStyleForWire(b));
-
-/** Newest first, no repeats, and the plain card is not worth remembering. */
-export function rememberCardStyle(style: CardStyle): void {
-  if (cardStyleForWire(style) === null) return;
-  const rest = (history ?? readHistory()).filter((s) => !sameStyle(s, style));
-  writeHistory([style, ...rest].slice(0, HISTORY_MAX));
-}
-
-export function forgetCardStyle(style: CardStyle): void {
-  writeHistory((history ?? readHistory()).filter((s) => !sameStyle(s, style)));
-}
-
-export function useCardHistory(): CardStyle[] {
-  return useSyncExternalStore(
-    (fn) => {
-      historyListeners.add(fn);
-      return () => historyListeners.delete(fn);
-    },
-    () => (history ??= readHistory()),
-  );
 }

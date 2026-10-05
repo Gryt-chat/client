@@ -1,4 +1,4 @@
-import { Button, CardIcon, Checkbox, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, styleSwatch, TextField, Toggle, ToggleGroup } from "@gryt/ui";
+import { Button, CardIcon, Checkbox, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
 import { UserCircle } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -21,14 +21,12 @@ import type { RichActivity } from "../../../../lib/richActivity";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { useCardEmojiGroups } from "../../../socket/src/components/memberCard/cardEmojiGroups";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
+import { type CardPreset, forgetCardPreset, saveCardPreset, useCardPresets } from "../../../socket/src/lib/memberCard/cardPresets";
 import {
   cardUpdatePayload,
   EMPTY_CARD,
-  forgetCardStyle,
   isDefaultCard,
-  rememberCardStyle,
   setStoredCard,
-  useCardHistory,
   useStoredCard,
 } from "../../../socket/src/lib/memberCard/cardStore";
 import {
@@ -41,6 +39,7 @@ import {
 } from "../../../socket/src/lib/memberCard/cardStyle";
 import { isStillPicture } from "./bannerCrop";
 import { BannerCropDialog } from "./BannerCropDialog";
+import { CardPresetTile } from "./CardPresetTile";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 /** A game for the preview when you are not playing one, so the band can be seen. */
@@ -109,9 +108,10 @@ export function CardSettings() {
   const commit = (next: CardProfile) => setDraft(next);
   const cardDirty = JSON.stringify(cardUpdatePayload(draft)) !== JSON.stringify(cardUpdatePayload(saved));
 
-  const saveCard = () => {
+  /** `banner` is what this Save sent: a file, null for removed, undefined for untouched. */
+  const saveCard = (banner: Blob | null | undefined) => {
     setStoredCard(draft);
-    rememberCardStyle(draft.cardStyle);
+    void saveCardPreset(draft.cardStyle, banner);
     setRefusals({});
     const payload = cardUpdatePayload(draft);
     for (const host of Object.keys(sockets)) {
@@ -120,7 +120,7 @@ export function CardSettings() {
   };
 
   const style = draft.cardStyle;
-  const used = useCardHistory();
+  const presets = useCardPresets();
 
   /* A link from somebody, or from the card builder: shown in the editor, and only kept on Save. */
   const showShared = (text: string): boolean => {
@@ -195,7 +195,15 @@ export function CardSettings() {
     setPendingBanner(file);
   };
 
+  /* A preset kept from before banners were saved leaves the banner as it is. */
+  const pickPreset = (preset: CardPreset) => {
+    setDraft({ ...draft, cardStyle: preset.style });
+    if (preset.banner) changeBanner(new File([preset.banner], "banner", { type: preset.banner.type }));
+    else if (preset.banner === null && bannerUrl) changeBanner(null);
+  };
+
   const save = async () => {
+    const sent = pendingBanner;
     setBannerBusy(true);
     const results = pendingBanner === undefined
       ? []
@@ -213,7 +221,7 @@ export function CardSettings() {
       setPendingBanner(undefined);
       for (const h of bannerHosts) sockets[h]?.emit("avatar:updated");
     }
-    saveCard();
+    saveCard(sent);
     toast.success(failed.length ? `Card saved, but ${failed.length} server${failed.length > 1 ? "s" : ""} refused the banner` : "Card saved");
   };
 
@@ -405,28 +413,12 @@ export function CardSettings() {
                     </label>
                   </figcaption>
                   <div className="overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border">{preview(stage)}</div>
-                  {used.length > 0 && (
+                  {presets.length > 0 && (
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[0.65rem] font-semibold tracking-wider text-gryt-muted uppercase">Used before</span>
                       <div className="flex flex-wrap gap-2">
-                        {used.map((past, i) => (
-                          <div key={i} className="group relative">
-                            <button
-                              type="button"
-                              aria-label="Show this card again"
-                              onClick={() => setDraft({ ...draft, cardStyle: past })}
-                              className="block size-9 cursor-pointer rounded-(--gryt-radius-md) border border-gryt-border hover:border-gryt-accent"
-                              style={{ background: styleSwatch(past) }}
-                            />
-                            <button
-                              type="button"
-                              aria-label="Forget this card"
-                              onClick={() => forgetCardStyle(past)}
-                              className="absolute -top-1.5 -right-1.5 hidden size-4 cursor-pointer items-center justify-center rounded-full border border-gryt-border bg-gryt-surface-raised text-[10px] leading-none text-gryt-muted group-hover:flex hover:text-gryt-text"
-                            >
-                              ×
-                            </button>
-                          </div>
+                        {presets.map((preset) => (
+                          <CardPresetTile key={preset.id} preset={preset} onPick={() => pickPreset(preset)} onForget={() => void forgetCardPreset(preset.id)} />
                         ))}
                       </div>
                     </div>
