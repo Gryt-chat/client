@@ -3,7 +3,7 @@
  * renders, and titles here are the stable part before any colon.
  */
 
-import { isElectron } from "../../../../lib/electron";
+import { isElectron, isMacDesktop } from "../../../../lib/electron";
 
 export interface SettingsIndexEntry {
   id: string;
@@ -89,8 +89,12 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   // a browser used to send you to a page that does not render it.
   ...(isElectron()
     ? ([
-      { id: "start-with-windows", title: "Start with Windows", description: "Launches Gryt when you sign in to Windows.", page: "desktop", destination: "behaviour", section: "Desktop" },
-      { id: "start-minimized-on-login", title: "Start minimized on login", description: "Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window.", page: "desktop", destination: "behaviour", section: "Desktop" },
+      ...(isMacDesktop()
+        ? [{ id: "open-at-login", title: "Open at login", description: "Opens Gryt when you log in to your Mac.", page: "desktop", destination: "behaviour", section: "Desktop" }]
+        : [
+            { id: "start-with-windows", title: "Start with Windows", description: "Launches Gryt when you sign in to Windows.", page: "desktop", destination: "behaviour", section: "Desktop" },
+            { id: "start-minimized-on-login", title: "Start minimized on login", description: "Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window.", page: "desktop", destination: "behaviour", section: "Desktop" },
+          ]),
       { id: "minimize-to-tray-on-close", title: "Minimize to tray on close", description: "Closing the window hides Gryt in the system tray instead of quitting it.", page: "desktop", destination: "behaviour", section: "Desktop" },
       { id: "hardware-acceleration", title: "Hardware acceleration", description: "Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt.", page: "desktop", destination: "behaviour", section: "Desktop" }
       ] satisfies SettingsIndexEntry[])

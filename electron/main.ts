@@ -1040,21 +1040,19 @@ if (!hardwareAcceleration) {
   app.disableHardwareAcceleration();
 }
 
-let startWithWindows =
-  process.platform === "win32"
-    ? readBoolConfig("startWithWindows", true)
-    : false;
+/* Off on macOS until asked for (GRYT-1659): the Windows installer turns it on, and nothing on a Mac ever did. */
+const canOpenAtLogin = process.platform === "win32" || (process.platform === "darwin" && !process.mas);
+let startWithWindows = canOpenAtLogin ? readBoolConfig("startWithWindows", process.platform === "win32") : false;
 
 let startMinimizedOnLogin = readBoolConfig("startMinimizedOnLogin", false);
 
 function applyStartWithWindowsSetting(enabled: boolean) {
-  if (process.platform !== "win32") return;
+  if (!canOpenAtLogin) return;
 
   try {
-    app.setLoginItemSettings({
-      openAtLogin: enabled,
-      args: [AUTO_START_ARG],
-    });
+    app.setLoginItemSettings(
+      process.platform === "win32" ? { openAtLogin: enabled, args: [AUTO_START_ARG] } : { openAtLogin: enabled },
+    );
   } catch {
     // Best-effort: some environments (portable/dev) may not support this.
   }
@@ -3371,9 +3369,7 @@ if (!gotSingleInstanceLock) {
 
       ipcMain.handle(
         "get-start-with-windows-supported",
-        () =>
-          process.platform ===
-          "win32"
+        () => canOpenAtLogin
       );
 
       ipcMain.handle(
@@ -3660,9 +3656,8 @@ if (!gotSingleInstanceLock) {
 
       watchAddons();
 
-      applyStartWithWindowsSetting(
-        startWithWindows
-      );
+      // Windows only: on a Mac this would remove a login item somebody added in System Settings.
+      if (process.platform === "win32") applyStartWithWindowsSetting(startWithWindows);
 
       const launchedFromAutoStart =
         process.argv.includes(

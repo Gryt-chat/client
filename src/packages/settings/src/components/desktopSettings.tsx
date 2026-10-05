@@ -1,8 +1,10 @@
 import { Divider } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
-import { getElectronAPI } from "../../../../lib/electron";
+import { getElectronAPI, isMacDesktop } from "../../../../lib/electron";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
+
+const isMac = isMacDesktop();
 
 export function DesktopSettings() {
   const [closeToTray, setCloseToTray] = useState(true);
@@ -59,13 +61,23 @@ export function DesktopSettings() {
 
       {startWithWindowsSupported && (
         <>
-          <ToggleSetting
-            title="Start with Windows"
-            description="Launches Gryt when you sign in to Windows."
-            checked={startWithWindows}
-            onCheckedChange={handleStartWithWindowsToggle}
-          />
-          {startWithWindows && (
+          {isMac ? (
+            <ToggleSetting
+              title="Open at login"
+              description="Opens Gryt when you log in to your Mac."
+              checked={startWithWindows}
+              onCheckedChange={handleStartWithWindowsToggle}
+            />
+          ) : (
+            <ToggleSetting
+              title="Start with Windows"
+              description="Launches Gryt when you sign in to Windows."
+              checked={startWithWindows}
+              onCheckedChange={handleStartWithWindowsToggle}
+            />
+          )}
+          {/* macOS can't reliably tell an app it was opened at login, so there's nothing to start minimized on. */}
+          {startWithWindows && !isMac && (
             <>
               <Divider />
               <ToggleSetting
