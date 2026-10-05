@@ -22,6 +22,11 @@ export interface PresenceSourceOptions {
   findHolder: () => Promise<Holder | null>;
   /** While the in-app socket is in use, how often to look for a helper. */
   pollMs?: number;
+  /**
+   * With the helper turned on, how long start() waits for it before opening the in-app socket.
+   * A game that connects to the app in that gap is dropped when the helper takes over (GRYT-1645).
+   */
+  waitForHelperMs?: number;
 }
 
 export interface PresenceSource {
@@ -103,6 +108,12 @@ export function createPresenceSource(options: PresenceSourceOptions): PresenceSo
       if (running) return;
       running = true;
       await tryHelper();
+      // Launched alongside the app, the helper is often a moment from answering.
+      const until = Date.now() + (options.waitForHelperMs ?? 0);
+      while (running && !link && Date.now() < until) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await tryHelper();
+      }
       startHost();
       poll = setInterval(() => void tryHelper(), pollMs);
       poll.unref?.();
