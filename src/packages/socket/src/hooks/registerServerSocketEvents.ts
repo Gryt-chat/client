@@ -44,7 +44,7 @@ import {
 } from "@/settings/src/types/server";
 
 import { PiArrowsClockwiseFill, PiClockFill, PiInfoFill } from "../../../../lib/icons";
-import { type DmKeyFix, showDmKeyWarning } from "../components/dmKeyWarningToast";
+import { type DmKeyFix, dmKeyWarningsOff, showDmKeyWarning } from "../components/dmKeyWarningToast";
 import { MemberInfo } from "../components/MemberSidebar";
 import {
   applyCallMemberships,
@@ -110,6 +110,28 @@ const DM_KEY_WARNING_DELAY_MS = 5000;
 
 /** Pending warnings, per host, so a resolution can cancel one before it shows. */
 const dmKeyWarningTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/* One toast for every server with the mismatch: a second device mismatches on all of them,
+   and one toast each stacked up into a wall of the same warning. */
+const DM_KEY_TOAST_ID = "dm-key-rewritten";
+const dmKeyWarnedHosts = new Map<string, string>();
+let dmKeyLastFix: DmKeyFix = "none";
+
+function renderDmKeyWarning(): void {
+  if (dmKeyWarnedHosts.size === 0 || dmKeyWarningsOff()) {
+    toast.dismiss(DM_KEY_TOAST_ID);
+    return;
+  }
+  showDmKeyWarning({
+    id: DM_KEY_TOAST_ID,
+    serverNames: [...dmKeyWarnedHosts.values()],
+    fix: dmKeyLastFix,
+    onDismiss: () => {
+      for (const host of dmKeyWarnedHosts.keys()) rememberDmKeyWarningDismissed(host);
+      dmKeyWarnedHosts.clear();
+    },
+  });
+}
 
 /**
  * A dismissal that holds. The warning is re-armed from every `members:list`, so
@@ -767,7 +789,6 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         /* Held back before it is shown, since our own publish races the first
            member list. A second device really does mismatch, so it is named first. */
         const myId = myServerUserIdByHost.get(host);
-        const toastId = `dm-key-rewritten-${host}`;
         const pending = dmKeyWarningTimers.get(host);
 
         if (myId && states[myId]?.ownKeyRewritten) {
@@ -780,12 +801,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
                    here rather than guessed. A guest gets no button at all. */
                 void dmKeyFix().then((fix) => {
                   if (dmKeyWarningDismissed(host)) return;
-                  showDmKeyWarning({
-                    id: toastId,
-                    serverName: serversRef.current[host]?.name || host,
-                    fix,
-                    onDismiss: () => rememberDmKeyWarningDismissed(host),
-                  });
+                  dmKeyLastFix = fix;
+                  dmKeyWarnedHosts.set(host, serversRef.current[host]?.name || host);
+                  renderDmKeyWarning();
                 });
               }, DM_KEY_WARNING_DELAY_MS),
             );
@@ -798,7 +816,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
           /* The mismatch is gone, so an earlier dismissal has done its job. If
              it ever comes back it is news again, and should say so. */
           forgetDmKeyWarningDismissed(host);
-          toast.dismiss(toastId);
+          if (dmKeyWarnedHosts.delete(host)) renderDmKeyWarning();
         }
       })
       .catch(() => {
