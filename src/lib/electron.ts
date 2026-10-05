@@ -439,6 +439,11 @@ export function setNativeZoom(factor: number): boolean {
   return true;
 }
 
+/** The desktop app on a Mac. Electron's user agent names the OS. */
+export function isMacDesktop(): boolean {
+  return isElectron() && typeof navigator !== "undefined" && /Macintosh/.test(navigator.userAgent);
+}
+
 /** The Mac App Store build, where the store installs updates and the sandbox hides other apps. */
 export function isMacAppStoreBuild(): boolean {
   return window.electronAPI?.macAppStore === true;
