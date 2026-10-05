@@ -39,6 +39,8 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
+import { isStillPicture } from "./bannerCrop";
+import { BannerCropDialog } from "./BannerCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 /** A game for the preview when you are not playing one, so the band can be seen. */
@@ -164,6 +166,7 @@ export function CardSettings() {
   const [pendingBanner, setPendingBanner] = useState<File | null>();
   const [editing, setEditing] = useState(false);
   const [bannerBusy, setBannerBusy] = useState(false);
+  const [cropping, setCropping] = useState<File | null>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
   const serverBanner = useMemo(() => {
     for (const host of connected) {
@@ -306,7 +309,15 @@ export function CardSettings() {
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
-              if (file) changeBanner(file);
+              if (!file) return;
+              void isStillPicture(file).then((still) => (still ? setCropping(file) : changeBanner(file)));
+            }}
+          />
+          <BannerCropDialog
+            file={cropping}
+            onDone={(cropped) => {
+              setCropping(null);
+              if (cropped) changeBanner(cropped);
             }}
           />
         </SettingGroup>
