@@ -77,6 +77,7 @@ assert.deepEqual(parseMediaRequest({ type: "gryt-media-job", id: 3, job }), { id
 assert.equal(parseMediaRequest({ type: "gryt-media-job", id: 3, job: { ...job, use: "../etc" } }), null);
 assert.equal(parseMediaRequest({ type: "gryt-media-job", id: 3, job: { ...job, kind: "video", use: "upload" } }), null, "only banners and avatars are videos");
 assert.equal(parseMediaRequest({ type: "gryt-media-job", id: 3, job: { ...job, bytes: [1, 2] } }), null);
+assert.deepEqual(parseMediaRequest({ type: "gryt-media-job", id: 4, job: { kind: "poster", use: "upload", bytes: job.bytes } }), { id: 4, job: { kind: "poster", bytes: job.bytes } });
 assert.equal(parseMediaRequest({ type: "gryt-media-job", id: 1.5, job }), null);
 assert.equal(parseMediaRequest({ type: "other", id: 3, job }), null);
 assert.equal(parseMediaRequest(null), null);

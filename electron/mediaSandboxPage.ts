@@ -17,6 +17,7 @@ import {
   type MediaResult,
   type MediaUse,
   place,
+  POSTER_WIDTH,
   sniffImage,
   VIDEO_BOXES,
   VIDEO_FPS,
@@ -236,12 +237,38 @@ async function video(use: VideoUse, bytes: Uint8Array): Promise<MediaResult> {
   }
 }
 
+/** The first frame of a chat video, scaled down; the video itself is not touched. */
+async function poster(bytes: Uint8Array): Promise<MediaResult> {
+  const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>]));
+  const el = document.createElement("video");
+  el.muted = true;
+  el.preload = "auto";
+  try {
+    const loaded = waitFor(el, "loadedmetadata");
+    el.src = url;
+    await loaded;
+    if (!el.videoWidth || !el.videoHeight) return { ok: false, reason: "No picture in the video" };
+    const seeked = waitFor(el, "seeked");
+    el.currentTime = 0;
+    await seeked;
+    const p = place(el.videoWidth, el.videoHeight, "inside", POSTER_WIDTH, 4096);
+    const [canvas, ctx] = canvasFor(p.width, p.height);
+    ctx.drawImage(el, 0, 0, p.width, p.height);
+    return { ok: true, kind: "poster", poster: await blobBytes(canvas, "image/jpeg", 0.8), width: p.width, height: p.height };
+  } finally {
+    el.removeAttribute("src");
+    el.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function run(job: MediaJob): Promise<MediaResult> {
   if (!(job.bytes instanceof Uint8Array) || job.bytes.length === 0 || job.bytes.length > MAX_MEDIA_BYTES) {
     return { ok: false, reason: "File is empty or too large to process" };
   }
   if (job.kind === "image" && job.use in IMAGE_PROFILES) return image(job.use, job.bytes);
   if (job.kind === "video" && job.use in VIDEO_BOXES) return video(job.use, job.bytes);
+  if (job.kind === "poster") return poster(job.bytes);
   return { ok: false, reason: "Unknown job" };
 }
 

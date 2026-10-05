@@ -29,11 +29,15 @@ export const VIDEO_FPS = 24;
 export const MAX_VIDEO_SECONDS = 10;
 export const MAX_MEDIA_BYTES = 64 * 1024 * 1024;
 export const MAX_INPUT_PIXELS = 100_000_000;
-export const MAX_ANIMATION_FRAMES = 1000;
+// The worker's cap too: a 1,500-frame GIF came out as a 7 MB avatar.
+export const MAX_ANIMATION_FRAMES = 300;
+/** A chat video's still, as wide as the jail's poster. */
+export const POSTER_WIDTH = 320;
 
 export type MediaJob =
   | { kind: "image"; use: MediaUse; bytes: Uint8Array }
-  | { kind: "video"; use: VideoUse; bytes: Uint8Array };
+  | { kind: "video"; use: VideoUse; bytes: Uint8Array }
+  | { kind: "poster"; bytes: Uint8Array };
 
 export type MediaResult =
   | {
@@ -50,6 +54,7 @@ export type MediaResult =
       colour: string | null;
     }
   | { ok: true; kind: "video"; video: Uint8Array; poster: Uint8Array; width: number; height: number }
+  | { ok: true; kind: "poster"; poster: Uint8Array; width: number; height: number }
   | { ok: false; reason: string };
 
 const USES = new Set<string>(["upload", "banner", "avatar", "emoji"]);
@@ -67,6 +72,7 @@ export function parseMediaRequest(message: unknown): { id: number; job: MediaJob
   if (job.kind === "video" && (job.use === "banner" || job.use === "avatar")) {
     return { id: m.id, job: { kind: "video", use: job.use, bytes: job.bytes } };
   }
+  if (job.kind === "poster") return { id: m.id, job: { kind: "poster", bytes: job.bytes } };
   return null;
 }
 
