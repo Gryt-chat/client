@@ -51,6 +51,7 @@ jobs:
       - run: yarn test:hidden-conversations
       - run: yarn test:new-message
       - run: yarn test:server-hover-address
+      - run: yarn test:server-voice-line
       - run: yarn test:ui-scale
       - run: yarn test:peer-in-clear
       - run: yarn test:ai-toolkit

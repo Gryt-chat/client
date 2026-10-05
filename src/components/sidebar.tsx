@@ -42,6 +42,7 @@ import { useIdentityClaim } from "../hooks/useIdentityClaim";
 import { PiChatsFill } from "../lib/icons";
 import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiMicrophoneSlashFill, PiPlus, PiSignInFill } from "../lib/icons";
 import { useReportForm } from "../lib/reports/useReportForm";
+import { inVoiceLine, voiceNicknames } from "./serverVoiceLine";
 
 
 interface SidebarProps {
@@ -108,7 +109,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   };
 
   const voice = useVoicePresence();
-  const { serverConnectionStatus, serverProfiles, serverDetailsList } =
+  const { serverConnectionStatus, serverProfiles, serverDetailsList, clients } =
     useSockets();
   /* Channels only. A direct message belongs to the rail's own button, and
      counting it here as well marked two badges for one message. */
@@ -191,6 +192,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               mergeDuplicates={mergeDuplicates}
               embeddedStatus={embeddedStatusByHost[host]}
               onManageServer={manageServerFor(host)}
+              inVoice={voiceNicknames(clients[host] ?? {})}
             />
           ))}
         </Reorder.Group>
@@ -361,7 +363,10 @@ interface ServerItemProps {
   embeddedStatus?: string;
   /** Opens this app's controls for the server. Absent unless this app hosts it. */
   onManageServer?: () => void;
+  /** Who is in its voice channels, by nickname. Calls in direct messages are left out. */
+  inVoice: string[];
 }
+
 
 /* What the call is doing here, in the words somebody would use for it. Muted
    is worth saying: the call is up and nothing is going out. */
@@ -395,6 +400,7 @@ function ServerItem({
   mergeDuplicates,
   embeddedStatus,
   onManageServer,
+  inVoice,
 }: ServerItemProps) {
   /* Otherwise muting a channel does not move this badge until something else
      re-renders the rail. Read fresh each render; the value itself is unused (GRYT-1465). */
@@ -759,6 +765,12 @@ function ServerItem({
                 </span>
               )}
             </h2>
+            {inVoice.length > 0 && (
+              <div className="text-xs" style={{ marginTop: 4 }}>
+                <span className="text-gryt-muted">In voice: </span>
+                {inVoiceLine(inVoice)}
+              </div>
+            )}
             {/* No address in the hover card. It shows on a stream, and a private
                 server's address is not for the audience. The right-click menu has it. */}
             {duplicateHosts.length > 0 && (
