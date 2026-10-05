@@ -11,6 +11,7 @@ import { Skeleton } from "@gryt/ui";
 import { memo, useEffect, useMemo, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
+import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { PiLinkSimpleBold } from "../../../../lib/icons";
 import { DismissButton } from "./EmbedRenderers";
@@ -116,6 +117,8 @@ export const LinkPreviewCard = memo(({
   onDismiss: () => void;
 }) => {
   const { resolvedAppearance } = useTheme();
+  // The picture and favicon come from the linked site itself; the text came through the server.
+  const { autoLoadEmbeds: remoteImagesOk } = useSettings();
   const [data, setData] = useState<LinkPreviewData | null>(() => previewCache.get(url) ?? null);
   const [failed, setFailed] = useState(() => previewRefused.has(url));
   const [imageFailed, setImageFailed] = useState(false);
@@ -215,7 +218,7 @@ export const LinkPreviewCard = memo(({
 
   const byline = cardByline(data.author, data.publishedAt);
 
-  const showImage = Boolean(data.image) && !imageFailed && layout !== "text" && layout !== "bare";
+  const showImage = Boolean(data.image) && remoteImagesOk && !imageFailed && layout !== "text" && layout !== "bare";
 
   const image = showImage ? (
     <img
@@ -244,7 +247,7 @@ export const LinkPreviewCard = memo(({
         <div className="link-embed-card-inner">
           <div className="link-embed-card-main">
             <div className="link-embed-card-body">
-              <CardSite url={url} siteName={data.siteName} favicon={data.favicon} />
+              <CardSite url={url} siteName={data.siteName} favicon={remoteImagesOk ? data.favicon : null} />
 
               {title && <div className="link-embed-card-title">{title}</div>}
 

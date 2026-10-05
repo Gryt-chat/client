@@ -28,7 +28,7 @@ export function ChatSettings() {
 
       <ToggleSetting
         title="Load link embeds automatically"
-        description="A YouTube, Spotify, Twitch, SoundCloud, TikTok, Instagram, Vimeo or X embed is that company's own page running inside Gryt, and it can see that you opened it. Off, they wait for you to press Load."
+        description="Players from YouTube, Spotify, Twitch and the like, pictures and videos linked from other sites, and the pictures on link previews all load from those sites, which can see that you opened them. Off, players and files wait for you to press Load, and previews show text only."
         checked={autoLoadEmbeds}
         onCheckedChange={setAutoLoadEmbeds}
       />

@@ -1,6 +1,7 @@
 import {  } from "@gryt/ui";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { getServerHttpBase } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -40,6 +41,20 @@ const THIRD_PARTY: Partial<Record<EmbedType, EmbedProvider>> = {
   instagram: { name: "Instagram post", host: "instagram.com" },
   x: { name: "Post on X", host: "platform.twitter.com" },
 };
+
+const FILE_KINDS: Partial<Record<EmbedType, string>> = { image: "Picture", video: "Video", audio: "Audio" };
+
+/* A file on another site is fetched by every reader's app, so that site sees who read it (GRYT-1670). */
+function fileFromElsewhere(type: EmbedType, url: string, serverHost: string): EmbedProvider | null {
+  const kind = FILE_KINDS[type];
+  if (!kind) return null;
+  try {
+    const host = new URL(url).host;
+    return host === new URL(getServerHttpBase(serverHost)).host ? null : { name: kind, host };
+  } catch {
+    return null;
+  }
+}
 
 /* Per embed and not remembered: agreeing to one track is not agreeing to a
    week of them. Settings → Chat turns the asking off. */
@@ -147,7 +162,7 @@ export const MessageEmbeds = memo(({
           const type = getEmbedType(url);
 
           /* Another company's page: drawn as a placeholder until asked for. */
-          const provider = THIRD_PARTY[type];
+          const provider = THIRD_PARTY[type] ?? fileFromElsewhere(type, url, serverHost);
           if (provider) {
             return (
               <AskFirst key={url} provider={provider} onDismiss={onDismiss}>
