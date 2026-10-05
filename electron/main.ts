@@ -119,6 +119,7 @@ import {
   rescanLanServers,
   startLanDiscovery,
 } from "./lanDiscovery";
+import { closeMediaSandbox } from "./mediaSandbox";
 import { readNowPlaying } from "./nowPlaying";
 import {
   createPendingUpdate,
@@ -4704,6 +4705,7 @@ if (!gotSingleInstanceLock) {
 
       flushUserStore();
       flushGlobalStore();
+      closeMediaSandbox();
 
       if (uiohookRunning) {
         uiohookLib?.uIOhook.stop();

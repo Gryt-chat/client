@@ -27,6 +27,8 @@ import {
   updateServerPorts,
 } from "./embeddedServerConfig";
 import { loadGlobalStore, setGlobalValue } from "./globalStore";
+import { runMediaJob } from "./mediaSandbox";
+import { parseMediaRequest } from "./mediaSandboxFormat";
 
 export type ServerStatus = "stopped" | "starting" | "running" | "error";
 
@@ -714,10 +716,22 @@ function spawnWorker(
       // Only the server beside it reads this endpoint, and it dials 127.0.0.1.
       // Last, so neither config.env nor the Electron process can widen it.
       HEALTH_HOST: "127.0.0.1",
+      // Tells the worker it can send uploads here, to be decoded in a sandboxed renderer.
+      GRYT_MEDIA_SANDBOX: "ipc",
     },
     stdio: ["ignore", "pipe", "pipe", "ipc"],
+    // Structured clone, so a job's bytes cross as a Uint8Array and not a JSON array of numbers.
+    serialization: "advanced",
     cwd: getServerDir(id),
     silent: true,
+  });
+
+  proc.on("message", (message) => {
+    const request = parseMediaRequest(message);
+    if (!request) return;
+    void runMediaJob(request.job).then((result) => {
+      if (proc.connected) proc.send({ type: "gryt-media-result", id: request.id, result });
+    });
   });
 
   const onOutput = (data: Buffer) => {
