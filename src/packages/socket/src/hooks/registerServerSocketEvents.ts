@@ -434,6 +434,14 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }));
   });
 
+  /* The worker could not process an avatar or banner this person uploaded, so they keep
+     the old one (GRYT-1667). Asking for the profile again puts it back in settings. */
+  socket.on("profile:media-refused", (data: { purpose?: unknown }) => {
+    const what = data?.purpose === "banner" ? "banner" : "avatar";
+    toast.error(`That ${what} couldn't be processed, so you still have your old one. Try a different file.`);
+    socket.emit("avatar:updated");
+  });
+
   socket.on(
     "server:setup_required",
     (payload: {
