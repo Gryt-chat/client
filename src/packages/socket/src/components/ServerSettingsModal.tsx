@@ -321,7 +321,7 @@ export function ServerSettingsModal() {
       {versionStatus?.worker && (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gryt-muted" style={{ opacity: 0.5 }}>
-            Image worker{" "}
+            Media worker{" "}
             {versionStatus.worker.current
               ? `v${versionStatus.worker.current}`
               : "—"}
