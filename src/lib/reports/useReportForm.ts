@@ -11,21 +11,28 @@ import { singletonHook } from "@/common";
 export interface ReportForm {
   /** The type it opened as, or null when it is closed. */
   openAs: ReportType | null;
-  open: (type: ReportType) => void;
+  /** Text the form starts with, for a report opened from somewhere that knows what it's about. */
+  draft: string;
+  open: (type: ReportType, draft?: string) => void;
   close: () => void;
 }
 
 const init: ReportForm = {
   openAs: null,
+  draft: "",
   open: () => {},
   close: () => {},
 };
 
 export const useReportForm = singletonHook<ReportForm>(init, () => {
   const [openAs, setOpenAs] = useState<ReportType | null>(null);
+  const [draft, setDraft] = useState("");
 
-  const open = useCallback((type: ReportType) => setOpenAs(type), []);
+  const open = useCallback((type: ReportType, text = "") => {
+    setDraft(text);
+    setOpenAs(type);
+  }, []);
   const close = useCallback(() => setOpenAs(null), []);
 
-  return { openAs, open, close };
+  return { openAs, draft, open, close };
 });

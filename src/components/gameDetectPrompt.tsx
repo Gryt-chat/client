@@ -2,6 +2,7 @@ import { Button } from "@gryt/ui";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 
+import { useReportForm } from "../lib/reports/useReportForm";
 import { useGameDetection } from "../packages/settings/src/hooks/useGameDetection";
 import { GameIcon } from "../packages/socket/src/components/GameIcon";
 
@@ -13,6 +14,7 @@ const toastId = (appId: string) => `game-detect-${appId}`;
  */
 export function GameDetectPrompt() {
   const { pending, answer } = useGameDetection();
+  const { open: openReport } = useReportForm();
 
   useEffect(() => {
     for (const game of pending) {
@@ -28,6 +30,17 @@ export function GameDetectPrompt() {
               Gryt spotted it. People on your servers see it on your card while it&rsquo;s on.
             </span>
             <div className="flex gap-2 justify-end">
+              {/* Hidden, since it's wrong, and the feedback form opens saying what was spotted (GRYT-1661). */}
+              <Button
+                tone="ghost"
+                size="xsmall"
+                onClick={() => {
+                  void answer(game.id, "hide");
+                  openReport("feedback", `Gryt thought I was playing ${name} (${game.id}), but it's actually: `);
+                }}
+              >
+                Wrong game?
+              </Button>
               <Button tone="ghost" size="xsmall" onClick={() => void answer(game.id, "hide")}>
                 Not this one
               </Button>
@@ -43,7 +56,7 @@ export function GameDetectPrompt() {
     return () => {
       for (const game of pending) toast.dismiss(toastId(game.id));
     };
-  }, [pending, answer]);
+  }, [pending, answer, openReport]);
 
   return null;
 }

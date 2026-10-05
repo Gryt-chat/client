@@ -19,7 +19,7 @@ import { useReportForm } from "../lib/reports/useReportForm";
  * version, the server's version and the log tail. Mobile has the same form.
  */
 export function ReportDialog() {
-  const { openAs, close } = useReportForm();
+  const { openAs, draft, close } = useReportForm();
 
   return (
     <Dialog.Root
@@ -34,7 +34,7 @@ export function ReportDialog() {
           {/* Keyed on the type so switching rows starts a clean form rather
               than reusing the last one's state, and unmounting on close throws
               away a sent report's "thanks" screen. */}
-          {openAs && <ReportForm key={openAs} type={openAs} onDone={close} />}
+          {openAs && <ReportForm key={`${openAs}:${draft}`} type={openAs} draft={draft} onDone={close} />}
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
@@ -60,10 +60,10 @@ const COPY: Record<ReportType, { title: string; description: string; placeholder
   },
 };
 
-function ReportForm({ type, onDone }: { type: ReportType; onDone: () => void }) {
+function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; onDone: () => void }) {
   const diagnostics = useDiagnostics();
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(draft);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
