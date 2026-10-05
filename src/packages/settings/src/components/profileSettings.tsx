@@ -456,6 +456,19 @@ export function ProfileSettings() {
 
     hosts = permitted;
 
+    // A video only goes to servers that take one; the rest keep the avatar they have.
+    if (isVideo) {
+      const takesVideo = hosts.filter((h) => serverDetailsList?.[h]?.server_info?.video_profiles === true);
+      if (takesVideo.length === 0) {
+        toast.error(hosts.length === 1 ? "This server doesn't take video avatars. Pick a picture instead." : "None of these servers take video avatars. Pick a picture instead.");
+        return;
+      }
+      if (takesVideo.length < hosts.length) {
+        toast(`Your video goes to the ${takesVideo.length} of ${hosts.length} servers that take one. The others keep your current avatar.`);
+      }
+      hosts = takesVideo;
+    }
+
     setUploading(true);
     try {
       if (hosts.length === 0) {
@@ -959,7 +972,9 @@ export function ProfileSettings() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+        accept={serverHosts.some((h) => serverDetailsList?.[h]?.server_info?.video_profiles === true)
+          ? "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+          : "image/png,image/jpeg,image/webp,image/gif"}
         style={{ display: "none" }}
         onChange={handleFileChange}
       />

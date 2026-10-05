@@ -48,6 +48,9 @@ type ServerSettingsPayload = {
   discoverable?: boolean;
   spamFilter?: boolean;
   spamSensitivity?: SpamSensitivity;
+  videoProfiles?: boolean;
+  /** What this host can do with uploads; an older server sends nothing. */
+  media?: { checked?: boolean; video?: boolean };
 };
 
 export type ServerOverviewInitialSettings = {
@@ -102,6 +105,8 @@ export function ServerOverviewTab({
   const [discoverable, setDiscoverable] = useState(true);
   const [spamFilter, setSpamFilter] = useState(true);
   const [spamSensitivity, setSpamSensitivity] = useState<SpamSensitivity>("normal");
+  const [videoProfiles, setVideoProfiles] = useState(true);
+  const [media, setMedia] = useState<{ checked: boolean; video: boolean } | null>(null);
 
   const [autosaving, setAutosaving] = useState(false);
   const pendingSaveCountRef = useRef(0);
@@ -119,6 +124,7 @@ export function ServerOverviewTab({
     discoverable: boolean;
     spamFilter: boolean;
     spamSensitivity: SpamSensitivity;
+    videoProfiles: boolean;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -176,6 +182,8 @@ export function ServerOverviewTab({
       setDiscoverable(payload.discoverable !== false);
       setSpamFilter(payload.spamFilter !== false);
       setSpamSensitivity(normalizeSpamSensitivity(payload.spamSensitivity));
+      setVideoProfiles(payload.videoProfiles !== false);
+      setMedia(payload.media ? { checked: !!payload.media.checked, video: !!payload.media.video } : null);
 
       if (!wasSaving) {
         setDisplayName(payload.displayName || "");
@@ -204,6 +212,7 @@ export function ServerOverviewTab({
         discoverable: payload.discoverable !== false,
         spamFilter: payload.spamFilter !== false,
         spamSensitivity: normalizeSpamSensitivity(payload.spamSensitivity),
+        videoProfiles: payload.videoProfiles !== false,
       };
     };
 
@@ -265,6 +274,7 @@ export function ServerOverviewTab({
     discoverable: boolean;
     spamFilter: boolean;
     spamSensitivity: SpamSensitivity;
+    videoProfiles: boolean;
   }>): boolean => {
     if (!host || !socket || !socket.connected) {
       toast.error("Not connected to the server.");
@@ -556,6 +566,33 @@ export function ServerOverviewTab({
           }}
         />
       </div>
+
+      {media && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Uploads</span>
+          <span className="text-xs" style={{ lineHeight: 1.4 }}>
+            {media.checked
+              ? "New pictures and videos are checked and written out again in a sandbox before anyone sees them."
+              : "This server can't check uploads in a sandbox, so it shrinks pictures itself and can't take videos. Hosting from the Gryt desktop app, or with Docker, does both."}
+          </span>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={media.video && videoProfiles}
+              onCheckedChange={(v) => {
+                setVideoProfiles(v);
+                if (!saveIfChanged({ videoProfiles: v })) setVideoProfiles(!v);
+              }}
+              disabled={!canEdit || !media.video}
+            />
+            <span className="text-sm">Let members use video avatars and banners</span>
+          </div>
+          <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.4 }}>
+            {media.video
+              ? "Each video becomes a silent clip of up to ten seconds, at the size of the card."
+              : "Not available here: it needs the same sandbox."}
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">

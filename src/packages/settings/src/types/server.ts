@@ -116,6 +116,10 @@ export type serverDetails = {
     voice_enabled?: boolean;
     avatar_max_bytes?: number | null;
     upload_max_bytes?: number | null;
+    /** Uploads are checked in the image worker's sandbox first. Absent on an older server. */
+    uploads_checked?: boolean;
+    /** Video avatars and banners are taken here: the host can and the owner allows it. */
+    video_profiles?: boolean;
     version?: string;
     /**
      * Every plugin this server is running, and what each may do. All of them — an

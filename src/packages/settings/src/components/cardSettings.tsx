@@ -159,6 +159,7 @@ export function CardSettings() {
     return !info?.permission_catalogue?.includes("upload_banner_image") && permissions.includes("upload_avatar_image");
   };
   const bannerHosts = connected.filter(mayUpload);
+  const videoBannerHosts = bannerHosts.filter((h) => serverDetailsList[h]?.server_info?.video_profiles === true);
   const [bannerPreview, setBannerPreview] = useState<string | null>();
   const [pendingBanner, setPendingBanner] = useState<File | null>();
   const [editing, setEditing] = useState(false);
@@ -195,7 +196,10 @@ export function CardSettings() {
     setBannerBusy(true);
     const results = pendingBanner === undefined
       ? []
-      : await Promise.allSettled(bannerHosts.map((h) => sendBanner(h, pendingBanner)));
+      // A video only goes where it is taken; the other servers keep the banner they have.
+      : await Promise.allSettled(
+        (pendingBanner?.type.startsWith("video/") ? videoBannerHosts : bannerHosts).map((h) => sendBanner(h, pendingBanner)),
+      );
     setBannerBusy(false);
     const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
     if (results.length > 0 && failed.length === results.length) {
@@ -277,6 +281,13 @@ export function CardSettings() {
               : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
           }
         >
+          <span className="text-xs text-gryt-muted">
+            {videoBannerHosts.length === 0
+              ? "Pictures only: none of your servers takes a video banner."
+              : videoBannerHosts.length < bannerHosts.length
+                ? `A video banner goes to the ${videoBannerHosts.length} of your servers that take one. The others keep the banner they have.`
+                : "A picture or a short video. A video plays silently, up to ten seconds."}
+          </span>
           <div className="flex flex-wrap gap-2">
             <Button size="small" disabled={bannerBusy} onClick={() => bannerInput.current?.click()}>
               {bannerUrl ? "Change banner" : "Upload a banner"}
@@ -290,7 +301,7 @@ export function CardSettings() {
           <input
             ref={bannerInput}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
+            accept={videoBannerHosts.length > 0 ? "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" : "image/png,image/jpeg,image/webp,image/gif"}
             style={{ display: "none" }}
             onChange={(e) => {
               const file = e.target.files?.[0];
