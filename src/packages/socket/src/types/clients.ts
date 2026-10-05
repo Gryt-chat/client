@@ -38,6 +38,8 @@ export type ServerProfile = {
   avatarUrl: string | null;
   /** The designed look, or null for an uploaded picture or the seeded owl. */
   avatarWorn: string | null;
+  /** The avatar is a converted video, and `avatarUrl` is its still. */
+  avatarVideo?: boolean;
   /** Your card as this server holds it. Absent from a server older than cards. */
   card?: CardProfile;
 };

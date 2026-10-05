@@ -418,20 +418,25 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("profile:updated", (data: { nickname: string; avatarFileId: string | null; avatarWorn?: string | null; cardStyle?: unknown; bio?: string | null; pronouns?: string | null; statusLine?: string | null }) => {
-    setServerProfiles(prev => ({
-      ...prev,
-      [host]: {
-        nickname: data.nickname,
-        avatarFileId: data.avatarFileId,
-        avatarUrl: data.avatarFileId
-          ? getUploadsFileUrl(host, data.avatarFileId)
-          : null,
-        // Optional on the wire, since an older server does not send it. Undefined
-        // reads as no designed look, and the uploaded PNG shows instead.
-        avatarWorn: data.avatarWorn ?? null,
-        card: cardProfileFor(data, data.nickname),
-      },
-    }));
+    setServerProfiles(prev => {
+      // This event doesn't say whether the avatar is a video; the member list does, for this file id.
+      const avatarVideo = !!data.avatarFileId && prev[host]?.avatarFileId === data.avatarFileId && !!prev[host]?.avatarVideo;
+      return {
+        ...prev,
+        [host]: {
+          nickname: data.nickname,
+          avatarFileId: data.avatarFileId,
+          avatarUrl: data.avatarFileId
+            ? getUploadsFileUrl(host, data.avatarFileId, avatarVideo ? { thumb: true } : undefined)
+            : null,
+          avatarVideo,
+          // Optional on the wire, since an older server does not send it. Undefined
+          // reads as no designed look, and the uploaded PNG shows instead.
+          avatarWorn: data.avatarWorn ?? null,
+          card: cardProfileFor(data, data.nickname),
+        },
+      };
+    });
   });
 
   /* The worker could not process an avatar or banner this person uploaded, so they keep
@@ -815,6 +820,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         existing?.nickname === me.nickname &&
         existing?.avatarFileId === (me.avatarFileId ?? null) &&
         existing?.avatarWorn === (me.avatarWorn ?? null) &&
+        !!existing?.avatarVideo === !!me.avatarVideo &&
         JSON.stringify(existing?.card) === JSON.stringify(cardProfileFor(me, me.nickname))
       ) {
         return prev;
@@ -830,6 +836,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
             ? getUploadsFileUrl(host, me.avatarFileId, me.avatarVideo ? { thumb: true } : undefined)
             : null,
           avatarWorn: me.avatarWorn ?? null,
+          avatarVideo: !!me.avatarVideo,
           card: cardProfileFor(me, me.nickname),
         },
       };
