@@ -447,6 +447,8 @@ function startRichPresence(): void {
     createHost: createRpcHost,
     connect: connectHelper,
     findHolder: () => findHolder(ipcPath(0, ipcDir())),
+    // With the helper turned on, the socket is its job; the app only steps in if it never answers.
+    waitForHelperMs: readHelperOptIn() ? 15_000 : 0,
   });
   void presenceSource.start();
   startGameDetection();

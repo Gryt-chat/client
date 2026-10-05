@@ -229,6 +229,30 @@ await check("without it, the in-app socket; and when it shows up, the app lets g
   assert.equal(hosts.made[1].stopped, true);
 });
 
+await check("with the helper turned on, the app waits for it rather than taking the socket first", async () => {
+  const dir = privateDir();
+  const hosts = fakeHost();
+  const s = source(join(dir, "helper.sock"), hosts, { waitForHelperMs: 3000 });
+  const started = s.src.start();
+  await wait(400);
+  assert.equal(hosts.made.length, 0, "the app opened its own socket while waiting");
+  const helper = await fakeHelper(dir);
+  await started;
+  assert.equal(s.src.via(), "helper");
+  assert.equal(hosts.made.length, 0);
+  await s.src.stop();
+  await helper.close();
+});
+
+await check("and opens its own socket if the helper never answers", async () => {
+  const hosts = fakeHost();
+  const s = source(join(privateDir(), "helper.sock"), hosts, { waitForHelperMs: 300 });
+  await s.src.start();
+  assert.equal(hosts.made.length, 1);
+  assert.equal(s.src.via(), "app");
+  await s.src.stop();
+});
+
 await check("turning it off stops the helper too, and a plain stop leaves it running", async () => {
   const helper = await fakeHelper(privateDir());
   const s = source(helper.path, fakeHost());
