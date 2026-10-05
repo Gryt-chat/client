@@ -24,6 +24,9 @@ function extForMime(mime: string): string {
     case "image/png": return "png";
     case "image/jpeg": return "jpg";
     case "image/webp": return "webp";
+    case "video/mp4": return "mp4";
+    case "video/webm": return "webm";
+    case "video/quicktime": return "mov";
     default: return "bin";
   }
 }
@@ -55,6 +58,39 @@ async function asUploadableAvatar(blob: Blob): Promise<File> {
   if (!png) throw new Error("could not re-encode that avatar");
 
   return new File([png], "avatar.png", { type: "image/png" });
+}
+
+const VIDEO_AVATAR_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+
+/** A still from a video avatar, kept on this device where a picture would be. */
+async function posterOfVideo(file: File): Promise<File> {
+  const url = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.muted = true;
+  video.preload = "auto";
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.onloadeddata = () => resolve();
+      video.onerror = () => reject(new Error("That video can't be played here"));
+      video.src = url;
+    });
+    const side = 256;
+    const scale = Math.max(side / video.videoWidth, side / video.videoHeight);
+    const sw = side / scale;
+    const sh = side / scale;
+    const canvas = document.createElement("canvas");
+    canvas.width = side;
+    canvas.height = side;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("no canvas context to read that video with");
+    context.drawImage(video, (video.videoWidth - sw) / 2, (video.videoHeight - sh) / 2, sw, sh, 0, 0, side, side);
+    const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!png) throw new Error("could not take a still from that video");
+    return new File([png], "avatar.png", { type: "image/png" });
+  } finally {
+    video.removeAttribute("src");
+    URL.revokeObjectURL(url);
+  }
 }
 
 async function uploadAvatarToHost(host: string, file: Blob): Promise<{ avatarFileId?: string; processing?: boolean }> {
@@ -364,9 +400,24 @@ export function ProfileSettings() {
     }
 
     let uploadFile: File = file;
+    const isVideo = VIDEO_AVATAR_TYPES.includes((file.type || "").toLowerCase());
+    // The server turns a video into a short silent clip; this device keeps a still of it.
+    let localFile: File = file;
+    if (isVideo) {
+      if (hosts.length === 0) {
+        toast.error("A video avatar lives on a server, so connect to one first.");
+        return;
+      }
+      try {
+        localFile = await posterOfVideo(file);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "That video can't be played here");
+        return;
+      }
+    }
 
     const isAnimatedFormat = ["image/gif", "image/webp"].includes((file.type || "").toLowerCase());
-    if (!isAnimatedFormat) {
+    if (!isAnimatedFormat && !isVideo) {
       try {
         const blob = await compressStaticAvatarToLimit(file, { maxBytes: minAvatarMaxBytes, sizePx: 256 });
         if (blob instanceof Blob) {
@@ -416,7 +467,7 @@ export function ProfileSettings() {
 
       const [results, uploadHash] = await Promise.all([
         Promise.allSettled(hosts.map((h) => uploadAvatarToHost(h, uploadFile))),
-        getAvatarHash(uploadFile).catch(() => null),
+        getAvatarHash(isVideo ? localFile : uploadFile).catch(() => null),
       ]);
 
       const failed: Array<{ host: string; reason: string }> = [];
@@ -444,7 +495,7 @@ export function ProfileSettings() {
             [host]: {
               ...prev[host],
               avatarFileId: r.value.avatarFileId!,
-              avatarUrl: getUploadsFileUrl(host, r.value.avatarFileId!),
+              avatarUrl: getUploadsFileUrl(host, r.value.avatarFileId!, isVideo ? { thumb: true } : undefined),
               avatarWorn: worn,
             },
           }));
@@ -457,7 +508,7 @@ export function ProfileSettings() {
       });
 
       if (anySuccess) {
-        await setAvatarFile(uploadFile);
+        await setAvatarFile(isVideo ? localFile : uploadFile);
         setStoredWorn(worn);
       }
 
@@ -467,6 +518,8 @@ export function ProfileSettings() {
         } else {
           toast.error(`Avatar upload failed for ${failed.length}/${hosts.length} servers`);
         }
+      } else if (anySuccess && isVideo) {
+        toast("Your video is uploaded. It shows on your card once the server has converted it.");
       } else if (anySuccess && anyProcessing) {
         toast("Your avatar has been uploaded. It's being processed by the server \u2014 once done, your avatar will be animated.");
       } else if (anySuccess) {
@@ -559,7 +612,7 @@ export function ProfileSettings() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) {
+    if (!file || !(file.type.startsWith("image/") || VIDEO_AVATAR_TYPES.includes(file.type))) {
       e.target.value = "";
       return;
     }
@@ -906,7 +959,7 @@ export function ProfileSettings() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
         style={{ display: "none" }}
         onChange={handleFileChange}
       />
