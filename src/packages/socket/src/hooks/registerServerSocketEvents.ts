@@ -26,6 +26,7 @@ import {
 } from "@/common";
 import {
   evaluateMemberKeys,
+  forgetGuestScope,
   identityScopeFor,
   localPeerPinStore,
   type MemberKeyState,
@@ -34,7 +35,7 @@ import {
   readSealedVault,
 } from "@/common";
 import { rememberChannelNames } from "@/lib/channelDirectory";
-import { claimOutcomeToast, takeClaimOutcome } from "@/lib/identityClaimOutcome";
+import { claimOutcomeToast, guestIsGone, takeClaimOutcome } from "@/lib/identityClaimOutcome";
 import {
   Server,
   serverDetails,
@@ -358,6 +359,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       setServerRefreshToken(host, joinInfo.refreshToken);
     }
 
+    // No guest left there now, so stop offering to move one. Sign-out clears the answers, not this list.
+    if (guestIsGone(joinInfo.identityClaim)) forgetGuestScope(identityScopeFor(host));
     const claimed = takeClaimOutcome(host) ? claimOutcomeToast(joinInfo.identityClaim) : null;
     if (claimed?.tone === "success") toast.success(claimed.message, { duration: 6000 });
     else if (claimed?.tone === "error") toast.error(claimed.message, { duration: 8000 });

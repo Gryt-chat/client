@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 
-const { claimOutcomeToast, expectClaimOutcome, takeClaimOutcome, CLAIM_OUTCOME_WAIT_MS } = await import(
+const { claimOutcomeToast, expectClaimOutcome, guestIsGone, takeClaimOutcome, CLAIM_OUTCOME_WAIT_MS } = await import(
   "../src/packages/lib/identityClaimOutcome.ts"
 );
 const { mergeSender, mergeSenders } = await import("../src/packages/socket/src/utils/mergeSender.ts");
@@ -23,6 +23,12 @@ assert.equal(claimOutcomeToast("failed")?.tone, "error");
 // A server from before the field says nothing, and neither does the client.
 assert.equal(claimOutcomeToast(undefined), null);
 assert.equal(claimOutcomeToast("account_already_member"), null);
+
+// ── which answers leave no guest to offer again ─────────────────────
+
+for (const gone of ["carried", "merged", "no_prior_membership"]) assert.equal(guestIsGone(gone), true, gone);
+// A failure or an older server says nothing about the guest, so it's still offered.
+for (const kept of ["failed", "account_already_member", undefined]) assert.equal(guestIsGone(kept), false, String(kept));
 
 // ── only the join right after the click gets one ────────────────────
 

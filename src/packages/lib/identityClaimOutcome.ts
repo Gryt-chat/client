@@ -23,6 +23,11 @@ export function claimOutcomeToast(outcome: unknown): ClaimOutcomeToast | null {
   }
 }
 
+/** The server has no guest from this device after this answer: it moved, or was never there. */
+export function guestIsGone(outcome: unknown): boolean {
+  return outcome === "carried" || outcome === "merged" || outcome === "no_prior_membership";
+}
+
 /** A join answers well inside this. Past it the join was refused, and a later one
     must not be read as the answer to this yes. */
 export const CLAIM_OUTCOME_WAIT_MS = 20_000;
