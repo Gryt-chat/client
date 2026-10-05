@@ -86,6 +86,9 @@ export interface MemberInfo {
   statusLine?: string | null;
   /** An uploaded banner's file id, signed like an avatar. Only members who may upload have one. */
   bannerFileId?: string | null;
+  /** The avatar or banner plays: a video, whose thumbnail is the still poster (GRYT-1664). */
+  avatarVideo?: boolean;
+  bannerVideo?: boolean;
   isMuted: boolean;
   isDeafened: boolean;
   isServerMuted?: boolean;
