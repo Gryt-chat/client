@@ -1,7 +1,7 @@
 import { ContextMenu } from "@gryt/ui";
 import React, { type ReactNode, useCallback, useMemo } from "react";
 
-import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiPushPinFill, PiPushPinSlashFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
 import { saveOpenedFile, triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getRecentReactions } from "../utils/recentReactions";
@@ -23,6 +23,9 @@ export interface MessageActions {
   replyCount?: number;
   /** Replies in it nobody has read, which the count in the label prefers. */
   unreadCount?: number;
+  /** Pin or unpin; absent when this person may not. GRYT-1619. */
+  onTogglePin?: () => void;
+  pinned?: boolean;
 }
 
 type MediaProps = {
@@ -221,6 +224,14 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
           </div>
         </ContextMenu.Item>
       ) : null}
+      {actions.onTogglePin && (
+        <ContextMenu.Item onClick={actions.onTogglePin}>
+          <div className="flex items-center gap-1">
+            {actions.pinned ? <PiPushPinSlashFill size={14} /> : <PiPushPinFill size={14} />}
+            {actions.pinned ? "Unpin Message" : "Pin Message"}
+          </div>
+        </ContextMenu.Item>
+      )}
       {actions.canEdit && actions.onEdit && (
         <ContextMenu.Item onClick={actions.onEdit}>
           <div className="flex items-center gap-1">
@@ -258,7 +269,7 @@ export function MessageContextMenu({
   serverHost,
 }: MessageContextMenuProps) {
   const hasMessageActions = messageActions && (
-    messageActions.onReply || messageActions.onEdit || messageActions.onReport || messageActions.onDelete
+    messageActions.onReply || messageActions.onEdit || messageActions.onReport || messageActions.onDelete || messageActions.onTogglePin
   );
 
   return (

@@ -54,6 +54,9 @@ export type ChatMessage = {
   enriched_attachments?: AttachmentMeta[] | null;
   created_at: string | Date;
   edited_at?: string | Date | null;
+  /** Set while the message is pinned (GRYT-1619). */
+  pinned_at?: string | Date | null;
+  pinned_by?: string | null;
   reactions: Reaction[] | null;
   reply_to_message_id?: string | null;
   /**
