@@ -4,21 +4,24 @@
 export interface TaggableMember {
   serverUserId: string;
   nickname: string;
-  /** Server-keyed HMAC, so a matching tag can't be ground out offline. */
-  identityFingerprint?: string;
+  /** When they first joined this server. Who was here first is #1. */
+  createdAt?: string | Date;
 }
-
-/** How many characters of the fingerprint a tag shows. */
-export const NAME_TAG_LENGTH = 4;
 
 /** Names compared the way a reader compares them: case and edge spaces don't count. */
 function nameKey(nickname: string): string {
   return nickname.trim().toLowerCase();
 }
 
+function joinedAt(member: TaggableMember): number {
+  const t = member.createdAt ? new Date(member.createdAt).getTime() : NaN;
+  // An older server sends no date; those go last, in a stable order.
+  return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+}
+
 /**
- * A short tag for every member whose name someone else here also uses, keyed by
- * server user id. Members with a name of their own get none, so most lists show nothing.
+ * `#1`, `#2`… in join order for every member whose name someone else here also uses,
+ * keyed by server user id. Members with a name of their own get none.
  */
 export function nameTags(members: Iterable<TaggableMember>): Map<string, string> {
   const byName = new Map<string, TaggableMember[]>();
@@ -33,11 +36,8 @@ export function nameTags(members: Iterable<TaggableMember>): Map<string, string>
   const tags = new Map<string, string>();
   for (const list of byName.values()) {
     if (list.length < 2) continue;
-    for (const member of list) {
-      // An older server sends no fingerprint; the id still differs, if less nicely.
-      const source = member.identityFingerprint || member.serverUserId;
-      tags.set(member.serverUserId, source.slice(0, NAME_TAG_LENGTH));
-    }
+    list.sort((a, b) => joinedAt(a) - joinedAt(b) || a.serverUserId.localeCompare(b.serverUserId));
+    list.forEach((member, i) => tags.set(member.serverUserId, `#${i + 1}`));
   }
   return tags;
 }

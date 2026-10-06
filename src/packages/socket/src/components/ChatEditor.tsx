@@ -178,7 +178,7 @@ function mentionNode(member: MentionMember): Node {
     pill.dataset.mentionId = member.serverUserId;
     pill.dataset.mentionName = `@${member.nickname}`;
     // Shown, never sent: the stored label stays the name, from `mentionName`.
-    pill.textContent = member.tag ? `@${member.nickname} · ${member.tag}` : `@${member.nickname}`;
+    pill.textContent = member.tag ? `@${member.nickname} ${member.tag}` : `@${member.nickname}`;
   }
   pill.contentEditable = "false";
   pill.draggable = false;
