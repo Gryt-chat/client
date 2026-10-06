@@ -323,7 +323,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags,
-    restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages,
+    restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend,
     mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed,
   } = useChat({
@@ -947,6 +947,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         onLoadOlder={fetchOlderMessages}
         isLoadingOlder={isLoadingOlder}
         hasOlderMessages={hasOlderMessages}
+        historyWindow={historyWindow}
         {...(isLoadingMessages !== undefined && { isLoadingMessages })}
       />
   );
@@ -1064,6 +1065,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             onLoadOlder={fetchOlderMessages}
             isLoadingOlder={isLoadingOlder}
             hasOlderMessages={hasOlderMessages}
+            historyWindow={historyWindow}
             voiceWidth={voiceWidth}
             clientsForHost={hostClients}
             isCall={connectedToACall}

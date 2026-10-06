@@ -8,6 +8,7 @@ import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/t
 import { PiChatsFill, PiList, PiUsersFill } from "../../../../lib/icons";
 import { useNewMessageOpen } from "../hooks/newMessageDialog";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
+import type { HistoryWindowControls } from "../hooks/useHistoryWindow";
 import { useOpenDmSpace } from "../hooks/useOpenDmSpace";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import type { Client } from "../types/clients";
@@ -114,6 +115,7 @@ interface MobileServerViewProps {
   onLoadOlder?: () => void;
   isLoadingOlder?: boolean;
   hasOlderMessages?: boolean;
+  historyWindow?: HistoryWindowControls;
   // VoiceView
   voiceWidth: string;
   clientsForHost: Record<string, Client>;
@@ -251,6 +253,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           onLoadOlder={props.onLoadOlder}
           isLoadingOlder={props.isLoadingOlder}
           hasOlderMessages={props.hasOlderMessages}
+          historyWindow={props.historyWindow}
           {...(props.isLoadingMessages !== undefined && { isLoadingMessages: props.isLoadingMessages })}
         />
       </div>

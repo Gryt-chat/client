@@ -1,4 +1,4 @@
-import {  } from "@gryt/ui";
+import { Button } from "@gryt/ui";
 import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
@@ -13,6 +13,7 @@ import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../h
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
+import type { HistoryWindowControls } from "../hooks/useHistoryWindow";
 import { useJumpToMessage } from "../hooks/useJumpToMessage";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
@@ -101,6 +102,7 @@ export const ChatView = memo(({
   onLoadOlder,
   isLoadingOlder,
   hasOlderMessages,
+  historyWindow,
   threadBeside = false,
 }: {
   chatMessages: ChatMessage[];
@@ -156,6 +158,8 @@ export const ChatView = memo(({
   onLoadOlder?: () => void;
   isLoadingOlder?: boolean;
   hasOlderMessages?: boolean;
+  /** History opened at an old message, with the present further down (GRYT-1686). */
+  historyWindow?: HistoryWindowControls;
   /** Whether an open thread shares the pane with the conversation, or takes it. */
   threadBeside?: boolean;
 }) => {
@@ -203,7 +207,17 @@ export const ChatView = memo(({
     forceScrollToBottomRef,
     seenMessageIdsRef,
     newMessageMarkerId,
-  } = useChatScroll(chatMessages, conversationKey, hasOlderMessages, isLoadingOlder, onLoadOlder);
+  } = useChatScroll(
+    chatMessages,
+    conversationKey,
+    hasOlderMessages,
+    isLoadingOlder,
+    onLoadOlder,
+    useMemo(
+      () => historyWindow && { hasNewer: historyWindow.hasNewer, loading: historyWindow.loadingNewer, load: historyWindow.loadNewer },
+      [historyWindow],
+    ),
+  );
 
   // Threads live here so both the desktop and mobile chat views get them for
   // free — the socket, conversation and member list are all already in hand.
@@ -269,7 +283,21 @@ export const ChatView = memo(({
     onLoadOlder,
     scrollToMessage,
     leaveBottom,
+    openAt: historyWindow?.openAt,
   });
+
+  /* Instant, two frames on so the present's rows are drawn. A smooth scroll from the top crossed
+     the load-older line on the way and the prepend that followed stopped it short. */
+  const returnToPresent = useCallback(() => {
+    forceScrollToBottomRef.current = true;
+    historyWindow?.returnToPresent();
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      }),
+    );
+  }, [forceScrollToBottomRef, historyWindow, scrollRef]);
 
   /* The server deletes a root's whole thread with it, so the confirm has to
      count the replies going too rather than say "this message" (GRYT-1389). */
@@ -876,8 +904,26 @@ export const ChatView = memo(({
                   );
                 })}
               </AnimatePresence>
+              {historyWindow?.loadingNewer && (
+                <div className="flex justify-center py-2">
+                  <span className="text-xs text-gryt-muted">Loading newer messages...</span>
+                </div>
+              )}
             </div>
           ) : null}
+
+          {historyWindow?.hasNewer && (
+            <div
+              data-gryt="history-window-bar"
+              className="mb-1.5 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs"
+              style={{ background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
+            >
+              <span>You're looking at older messages.</span>
+              <Button size="small" tone="ghost" onClick={returnToPresent}>
+                Jump to present
+              </Button>
+            </div>
+          )}
 
           {/*
             Whether the next message goes out encrypted, and who is stopping it

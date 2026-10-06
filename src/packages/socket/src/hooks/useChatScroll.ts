@@ -15,8 +15,12 @@ export function useChatScroll(
   hasOlderMessages: boolean | undefined,
   isLoadingOlder: boolean | undefined,
   onLoadOlder: (() => void) | undefined,
+  /** Below an old window, where scrolling down loads newer pages until the present (GRYT-1686). */
+  newer?: { hasNewer: boolean; loading: boolean; load: () => void },
 ) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const detachedRef = useRef(false);
+  detachedRef.current = !!newer?.hasNewer;
   const isAtBottomRef = useRef(true);
   const lastMessageIdRef = useRef<string | undefined>(undefined);
   const forceScrollToBottomRef = useRef(false);
@@ -73,7 +77,10 @@ export function useChatScroll(
     if (el && el.scrollTop < 200 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
       onLoadOlder();
     }
-  }, [checkAtBottom, updateAnchor, hasOlderMessages, isLoadingOlder, onLoadOlder]);
+    if (el && newer?.hasNewer && !newer.loading && el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
+      newer.load();
+    }
+  }, [checkAtBottom, updateAnchor, hasOlderMessages, isLoadingOlder, onLoadOlder, newer]);
 
   const prevFirstMsgIdRef = useRef<string | undefined>(undefined);
 
@@ -121,6 +128,8 @@ export function useChatScroll(
     }
     // Only for a new last message. A prepend of older pages pulled a jump back down (GRYT-1677).
     if (lastId === prev && !forceScrollToBottomRef.current) return;
+    // A window's bottom is not the present, so a page arriving there is not a new message.
+    if (detachedRef.current && !forceScrollToBottomRef.current) return;
     if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
     requestAnimationFrame(() => {
       scrollToBottom(initialLoadDoneRef.current ? "smooth" : "auto");
@@ -137,7 +146,7 @@ export function useChatScroll(
     if (!el || typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => {
-      if (!isAtBottomRef.current) return;
+      if (!isAtBottomRef.current || detachedRef.current) return;
       const drift = el.scrollHeight - el.scrollTop - el.clientHeight;
       if (drift > 1) el.scrollTop = el.scrollHeight;
     });
