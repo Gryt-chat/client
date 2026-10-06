@@ -47,6 +47,7 @@ import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { getCustomEmojis } from "../utils/emojiData";
+import { setOnScreenConversation } from "../utils/onScreenConversation";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ConnectionBanner } from "./ConnectionBanner";
@@ -164,6 +165,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     const opened = visibleDmId || visibleChannelId;
     if (opened) markChannelRead(currentlyViewingServer.host, opened);
   }, [currentlyViewingServer, visibleChannelId, visibleDmId]);
+
+  useEffect(() => {
+    setOnScreenConversation(currentlyViewingServer?.host ?? null, visibleDmId || visibleChannelId);
+    return () => setOnScreenConversation(null, null);
+  }, [currentlyViewingServer?.host, visibleChannelId, visibleDmId]);
 
   useEffect(() => {
     const onNotificationChannelOpen = (event: Event) => {

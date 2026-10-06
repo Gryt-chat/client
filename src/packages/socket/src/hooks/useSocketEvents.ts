@@ -35,6 +35,7 @@ import { heldRoleIds } from "../lib/permissions";
 import { onMlsDelivered } from "../mls/serverMls";
 import { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
+import { isOnScreen, warnUnreadOnScreen } from "../utils/onScreenConversation";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import { idleRecovery, planRecovery, type RecoveryState } from "../utils/sessionRecovery";
 import { getDirectorySnapshot } from "./dmDirectory";
@@ -499,6 +500,9 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         if (msg.thread_id) {
           if (msg.conversation_id) markThreadUnread(host, msg.conversation_id, msg.thread_id);
         } else if (msg.conversation_id) {
+          if (isOnScreen(host, msg.conversation_id)) {
+            warnUnreadOnScreen("background chat:new", { host, viewingRef: currentlyViewingServerRef.current?.host ?? null });
+          }
           /* Unread whatever the level says: muting is about not being interrupted,
              not about pretending nothing happened. */
           markChannelUnread(host, msg.conversation_id);
