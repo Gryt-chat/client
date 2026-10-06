@@ -225,7 +225,7 @@
     "@gryt/crypto": "0.9.0",
     "@gryt/owl": "^0.6.0",
     "@gryt/ui": "^0.44.0",
-    "@gryt/voice": "0.6.1",
+    "@gryt/voice": "0.6.2",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@noble/curves": "^2.3.0",
     "@noble/hashes": "^2.3.0",
