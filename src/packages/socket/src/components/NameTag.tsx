@@ -2,7 +2,15 @@ import { Tooltip } from "@gryt/ui";
 
 /** The number after a name somebody else here also uses (GRYT-1674): #1 joined
     first. Muted, so the name still reads first; the fingerprint is on the card. */
-export function NameTag({ tag, tooltip = true }: { tag: string | undefined; tooltip?: boolean }) {
+export function NameTag({
+  tag,
+  tooltip = true,
+  color = "var(--gryt-neutral-10)",
+}: {
+  tag: string | undefined;
+  tooltip?: boolean;
+  color?: string;
+}) {
   if (!tag) return null;
   const text = (
     <span
@@ -11,7 +19,7 @@ export function NameTag({ tag, tooltip = true }: { tag: string | undefined; tool
         fontFamily: "var(--gryt-font-mono, ui-monospace, monospace)",
         fontSize: "0.85em",
         fontWeight: 500,
-        color: "var(--gryt-neutral-10)",
+        color,
         whiteSpace: "nowrap",
       }}
     >

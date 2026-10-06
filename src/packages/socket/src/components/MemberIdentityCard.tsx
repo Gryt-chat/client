@@ -16,6 +16,7 @@ import {
 import { useSettings } from "@/settings";
 
 import { openLightbox } from "../../../../lib/lightboxStore";
+import { nameTags } from "../../../lib/nameTags";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
@@ -91,7 +92,9 @@ export function MemberIdentityCard({
   voiceChannelName?: string;
 }) {
   const actions = useMemberCardActions();
-  const { memberKeyStates, serverDetailsList } = useSockets();
+  const { memberKeyStates, serverDetailsList, memberLists } = useSockets();
+  const serverMembers = serverHost ? memberLists[serverHost] : undefined;
+  const nameTag = useMemo(() => nameTags(serverMembers ?? []).get(member.serverUserId), [serverMembers, member.serverUserId]);
   const { roles: roleSummaries, has, can } = useServerPermissions(serverHost ?? "");
   const { resolvedAppearance } = useTheme();
   const { openSettings } = useSettings();
@@ -239,6 +242,7 @@ export function MemberIdentityCard({
       status={member.status}
       channelName={channelName}
       isBot={member.isBot}
+      nameTag={nameTag}
       profile={profile}
       owlHex={owlHex}
       bannerType={member.bannerVideo ? "video" : "image"}
