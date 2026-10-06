@@ -17,6 +17,7 @@ import { useMlsReportsTaken } from "../mls/serverMls";
 import { dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
 import { useMlsConversation } from "../mls/useMlsConversation";
 import { mergeSenders } from "../utils/mergeSender";
+import { isOnScreen, warnUnreadOnScreen } from "../utils/onScreenConversation";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import {
@@ -449,6 +450,9 @@ export function useChat({
       if (msg.thread_id) {
         if (msg.sender_server_id !== currentUserId) markThreadUnread(serverHost, msg.conversation_id, msg.thread_id);
       } else if (msg.conversation_id !== activeConversationId && msg.sender_server_id !== currentUserId) {
+        if (isOnScreen(serverHost, msg.conversation_id)) {
+          warnUnreadOnScreen("useChat chat:new", { serverHost, activeConversationId });
+        }
         markChannelUnread(serverHost, msg.conversation_id);
       }
       /* The same question `useSocketEvents` asks for a background server, so the
