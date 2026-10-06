@@ -1,7 +1,7 @@
 import { Tooltip } from "@gryt/ui";
 
-/** The tag after a name somebody else here also uses (GRYT-1674). Muted, so the
-    name still reads first; the full fingerprint is on the member's card. */
+/** The number after a name somebody else here also uses (GRYT-1674): #1 joined
+    first. Muted, so the name still reads first; the fingerprint is on the card. */
 export function NameTag({ tag, tooltip = true }: { tag: string | undefined; tooltip?: boolean }) {
   if (!tag) return null;
   const text = (
@@ -15,12 +15,12 @@ export function NameTag({ tag, tooltip = true }: { tag: string | undefined; tool
         whiteSpace: "nowrap",
       }}
     >
-      · {tag}
+      {tag}
     </span>
   );
   if (!tooltip) return text;
   return (
-    <Tooltip title="Someone else here uses this name too. This tag comes from their fingerprint, so it tells the two apart.">
+    <Tooltip title="Someone else here uses this name too. #1 joined first, #2 after them, and so on.">
       {text}
     </Tooltip>
   );

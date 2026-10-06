@@ -387,7 +387,7 @@ export const MarkdownRenderer = memo(({
   content: string | null;
   customEmojis?: CustomEmojiEntry[];
   memberNicknames?: string[];
-  mentionMembersById?: Record<string, { serverUserId: string; nickname: string; identityFingerprint?: string }>;
+  mentionMembersById?: Record<string, { serverUserId: string; nickname: string; createdAt?: string | Date }>;
   serverHost?: string | null;
   /** Overrides what the server said about other servers' emoji, for previews. */
   allowExternalEmojis?: boolean;
