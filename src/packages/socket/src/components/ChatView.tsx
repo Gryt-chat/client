@@ -13,6 +13,7 @@ import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../h
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
+import { useJumpToMessage } from "../hooks/useJumpToMessage";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
 import { useSockets } from "../hooks/useSockets";
@@ -198,6 +199,7 @@ export const ChatView = memo(({
   const {
     scrollRef,
     handleScroll,
+    leaveBottom,
     forceScrollToBottomRef,
     seenMessageIdsRef,
     newMessageMarkerId,
@@ -256,6 +258,17 @@ export const ChatView = memo(({
     reactMls: mls?.react,
     editorRef,
     forceScrollToBottomRef,
+  });
+
+  // The channel's rows, which pins and reply quotes point into. The thread panel keeps scrollToMessage.
+  const jumpToMessage = useJumpToMessage({
+    chatMessages,
+    conversationKey,
+    hasOlderMessages,
+    isLoadingOlder,
+    onLoadOlder,
+    scrollToMessage,
+    leaveBottom,
   });
 
   /* The server deletes a root's whole thread with it, so the confirm has to
@@ -747,7 +760,7 @@ export const ChatView = memo(({
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
                 {!isForum && (
-                  <PinsButton pins={pins} memberList={memberList} onJump={scrollToMessage} />
+                  <PinsButton pins={pins} memberList={memberList} onJump={jumpToMessage} />
                 )}
                 {headerAction}
               </div>
@@ -846,7 +859,7 @@ export const ChatView = memo(({
                       onEdit={startEditing}
                       onReport={handleReport}
                       onDelete={requestDelete}
-                      scrollToMessage={scrollToMessage}
+                      scrollToMessage={jumpToMessage}
                       onLightboxOpen={onLightboxOpen}
                       threadSummary={threads.summaries[m.message_id]}
                       threadUnread={threadCountsFor(threads.summaries[m.message_id]?.thread_id).unread}
