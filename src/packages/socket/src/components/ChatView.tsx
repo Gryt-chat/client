@@ -14,6 +14,7 @@ import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { usePins } from "../hooks/usePins";
 import { useSockets } from "../hooks/useSockets";
 import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
@@ -37,6 +38,7 @@ import type { MentionMember } from "./MentionAutocomplete";
 import { MentionViewerContext } from "./mentionViewerContext";
 import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
+import { PinsButton } from "./PinsButton";
 import { ThreadPanel } from "./ThreadPanel";
 import { TypingIndicator } from "./TypingIndicator";
 
@@ -205,6 +207,9 @@ export const ChatView = memo(({
   // free — the socket, conversation and member list are all already in hand.
   const threads = useThreads(socketConnection, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
   const isForum = layout === "forum" && conversationKind !== "dm";
+  const pins = usePins(socketConnection, conversationKey ?? "", serverHost);
+  // The server's rule: manage_messages in a channel, anyone in a DM.
+  const mayPin = conversationKind === "dm" || !!canDeleteAny;
 
   /* thread:status:set is the author's or a moderator's. Everyone else got the
      button and a refusal, so they do not get the button (GRYT-1389). */
@@ -740,7 +745,12 @@ export const ChatView = memo(({
                 <EmojiText text={channelName} />
               </span>
               {headerDetail}
-              {headerAction && <div className="shrink-0" style={{ marginLeft: "auto" }}>{headerAction}</div>}
+              <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
+                {!isForum && (
+                  <PinsButton pins={pins} memberList={memberList} onJump={scrollToMessage} />
+                )}
+                {headerAction}
+              </div>
             </div>
           )}
 
@@ -847,6 +857,8 @@ export const ChatView = memo(({
                          message and mean nothing. */
                       unencrypted={conversationKind === "dm" && !m.sealed && !m.mls}
                       mlsReports={!!mls?.reportsTaken}
+                      pinned={pins.isPinned(m)}
+                      onTogglePin={mayPin ? pins.setPinned : undefined}
                     />
                   );
                 })}

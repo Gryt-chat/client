@@ -2,7 +2,7 @@ import { Avatar, Popover, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
-import { PiChatsFill, PiLockOpen, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
+import { PiChatsFill, PiLockOpen, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { getFrequentReactions } from "../utils/recentReactions";
@@ -99,6 +99,10 @@ interface MessageRowProps {
   isNew?: boolean;
   /** The server takes the reporter's copy of an MLS message (decision 11). */
   mlsReports?: boolean;
+  /** Pinned now, live pins included. GRYT-1619. */
+  pinned?: boolean;
+  /** Absent when this person may not pin here. */
+  onTogglePin?: (msg: ChatMessage, pinned: boolean) => void;
 }
 
 export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
@@ -133,6 +137,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   threadMentions,
   isNew,
   mlsReports,
+  pinned,
+  onTogglePin,
 }, forwardedRef) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
@@ -177,6 +183,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
     onStartThread: !threadSummary && onStartThread && !m.pending && !m.failed ? () => onStartThread(m) : undefined,
     replyCount: threadSummary?.reply_count,
     unreadCount: threadUnread,
+    // The server has no copy of an MLS message to mark.
+    onTogglePin: onTogglePin && !mls && !m.pending && !m.failed ? () => onTogglePin(m, !pinned) : undefined,
+    pinned,
   };
 
   /**
@@ -674,6 +683,12 @@ function MessageContent({
               />
             </CollapsibleText>
           )
+        )}
+        {messageActions.pinned && (
+          <span className="flex items-center gap-1" style={{ fontSize: 10, userSelect: "none", color: "var(--gryt-neutral-9)" }}>
+            <PiPushPinFill size={10} />
+            pinned
+          </span>
         )}
         {m.edited_at && !isFirstInGroup && (
           <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
