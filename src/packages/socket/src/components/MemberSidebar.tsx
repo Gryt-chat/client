@@ -5,6 +5,7 @@ import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
 import { PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
 import type { RichActivity } from "../../../../lib/richActivity";
+import { nameTags } from "../../../lib/nameTags";
 import { useDirectory } from "../hooks/dmDirectory";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -15,6 +16,7 @@ import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
 import { groupMembersByRole, readableRoleColor } from "./memberGroups";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { statusConfig } from "./memberStatus";
+import { NameTag } from "./NameTag";
 import { PluginPanels } from "./PluginPanels";
 import { UnreadIndicator } from "./UnreadIndicator";
 import { UserContextMenu } from "./UserContextMenu";
@@ -134,6 +136,7 @@ interface MemberSidebarProps {
 const MemberItem = ({
   member,
   roleColor,
+  nameTag,
   currentServerUserId,
   currentUserRole,
   serverHost,
@@ -149,6 +152,8 @@ const MemberItem = ({
   member: MemberInfo;
   /** Already pulled into a readable band — see `readableRoleColor`. */
   roleColor?: string;
+  /** Set when another member here shares the name (GRYT-1674). */
+  nameTag?: string;
   currentServerUserId?: string;
   currentUserRole?: Role;
   serverHost: string;
@@ -240,6 +245,7 @@ const MemberItem = ({
                 }}>
                 {member.nickname}
               </span>
+              <NameTag tag={nameTag} />
               {member.isBot && <BotTag size="small" />}
             </div>
 
@@ -356,6 +362,7 @@ export const MemberSidebar = ({
     }
     return map;
   }, [roles, resolvedAppearance]);
+  const nameTagMap = useMemo(() => nameTags(members), [members]);
 
   return (
     <div role="complementary" aria-label="Members" style={{ width: "240px",
@@ -425,6 +432,7 @@ export const MemberSidebar = ({
                     key={member.serverUserId}
                     member={member}
                     roleColor={member.role ? roleColors.get(member.role) : undefined}
+                    nameTag={nameTagMap.get(member.serverUserId)}
                     currentServerUserId={currentServerUserId}
                     currentUserRole={currentUserRole}
                     serverHost={serverHost}

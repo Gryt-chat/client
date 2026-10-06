@@ -5,6 +5,7 @@ import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
 import { getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPrefs, useTheme, useThreadMentions, useThreadUnread } from "@/common";
+import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
 import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
@@ -433,9 +434,11 @@ export const ChatView = memo(({
 
   const mentionMembers = useMemo(() => {
     if (!memberList) return [];
+    const tags = nameTagsFor(memberList);
     return Object.values(memberList).map((m) => ({
       nickname: m.nickname,
       serverUserId: m.serverUserId,
+      tag: tags.get(m.serverUserId),
       avatarUrl: resolveAvatarSrc(
         m.avatarFileId && serverHost ? getUploadsFileUrl(serverHost, m.avatarFileId, { thumb: true }) : undefined,
         m.nickname,
