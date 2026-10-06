@@ -7,8 +7,8 @@ import { type ChatMessage, MessageTimestamp, toDate } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
 import type { MemberInfo } from "./MemberSidebar";
 
-/** The header's pin button and the list it opens (GRYT-1619). Asks the server each
-    time it opens, since a pin can change while the list is shut. */
+/** The header's pin button and the list it opens (GRYT-1619). Hidden under 360px,
+    where a DM header's call buttons already fill the row. */
 export function PinsButton({
   pins,
   memberList,
@@ -33,7 +33,7 @@ export function PinsButton({
         <Popover.Trigger
           aria-label="Pinned messages"
           data-gryt="pins-button"
-          render={<button type="button" className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1" style={{ color: "var(--gryt-neutral-11)" }} />}
+          render={<button type="button" className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }} />}
         >
           <PiPushPinFill size={16} />
         </Popover.Trigger>
