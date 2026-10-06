@@ -1,4 +1,4 @@
-import { Avatar, Chip, Popover, Tooltip } from "@gryt/ui";
+import { Avatar, Popover, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { forwardRef, memo, useCallback, useRef, useState } from "react";
 
@@ -24,6 +24,7 @@ import { MemberIdentityCard } from "./MemberIdentityCard";
 import type { MemberInfo } from "./MemberSidebar";
 import { MessageAttachment } from "./MessageAttachment";
 import { MessageCards } from "./MessageCards";
+import { NameTag } from "./NameTag";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 export interface MessageMeta {
@@ -51,10 +52,10 @@ export interface MessageMeta {
    */
   roleColor?: string;
   /**
-   * Somebody else in this server is displaying the same name. The one case where
-   * a reader cannot tell who wrote a message from looking at it.
+   * Set when somebody else here uses the same name: the start of their fingerprint,
+   * so two Golds read as two people (GRYT-1674).
    */
-  nameIsAmbiguous?: boolean;
+  nameTag?: string;
 }
 
 interface MessageRowProps {
@@ -329,15 +330,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 >
                   {meta.senderName}
                 </span>
-                {meta.nameIsAmbiguous && (
-                  /* Only when the name is genuinely not enough to go on. Not a
-                     mark on people without an account — an account is optional. */
-                  <Tooltip title="Someone else here is using this name too. Hover the avatar to check who this is.">
-                    <Chip tone="warning">
-                      shared name
-                    </Chip>
-                  </Tooltip>
-                )}
+                <NameTag tag={meta.nameTag} />
                 {meta.isBot && <BotTag />}
                 {meta.isWebhook && (
                   <span style={{

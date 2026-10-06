@@ -1,3 +1,4 @@
+import { nameTagsFor } from "../../../lib/nameTags.ts";
 import type { ChatMessage } from "./chatUtils";
 import { toDate } from "./chatUtils";
 import type { MemberInfo } from "./MemberSidebar";
@@ -35,20 +36,8 @@ export function buildMessageMetadata(
    */
   roleColors?: Map<string, string | undefined>,
 ): MessageMeta[] {
-  /**
-   * Display names that more than one member is currently using. Built once per
-   * pass: a scan inside the map would make this quadratic.
-   */
-  const ambiguousNames = new Set<string>();
-  if (memberList) {
-    const seen = new Set<string>();
-    for (const member of Object.values(memberList)) {
-      const name = member.nickname;
-      if (!name) continue;
-      if (seen.has(name)) ambiguousNames.add(name);
-      else seen.add(name);
-    }
-  }
+  /* Members whose name somebody else here also uses, with the tag that tells them apart. */
+  const tags = nameTagsFor(memberList);
 
   let lastDay: string | null = null;
   return chatMessages.map((m, i): MessageMeta => {
@@ -104,7 +93,7 @@ export function buildMessageMetadata(
       /* Undefined for a role with no colour set, and for System and webhooks,
          which hold no role. The row falls back to what it drew before. */
       roleColor: sender?.role ? roleColors?.get(sender.role) : undefined,
-      nameIsAmbiguous: !!sender && ambiguousNames.has(senderName),
+      nameTag: sender ? tags.get(sender.serverUserId) : undefined,
     };
   });
 }

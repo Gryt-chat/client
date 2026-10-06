@@ -119,6 +119,7 @@ jobs:
       - run: yarn test:message-notification
       - run: yarn test:notification-text
       - run: yarn test:mention-tokens
+      - run: yarn test:name-tags
       - run: yarn test:edit-mentions
       - run: yarn test:hotkeys
       - run: yarn test:screen-audio

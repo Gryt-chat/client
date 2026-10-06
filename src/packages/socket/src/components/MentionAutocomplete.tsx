@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { NameTag } from "./NameTag";
+
 export interface MentionMember {
   nickname: string;
   /** Unique within the list. For anything but a member it is only a key. */
@@ -12,6 +14,8 @@ export interface MentionMember {
   color?: string | null;
   /** A second line saying what picking it does. */
   hint?: string;
+  /** Set when another member shares the name (GRYT-1674). */
+  tag?: string;
 }
 
 interface MentionAutocompleteProps {
@@ -190,6 +194,7 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
           </span>
           <span style={{ color: "var(--gryt-neutral-12)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {member.kind && member.kind !== "member" && member.kind !== "channel" ? `@${member.nickname}` : member.nickname}
+            {member.tag && <> <NameTag tag={member.tag} tooltip={false} /></>}
           </span>
           {member.hint && (
             <span style={{ color: "var(--gryt-neutral-9)", fontSize: "12px", flexShrink: 0 }}>{member.hint}</span>

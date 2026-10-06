@@ -7,6 +7,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
+import { nameTagsFor } from "@/lib/nameTags";
 
 import { PiCheck, PiCopyFill } from "../../../../lib/icons";
 import { useExternalEmojisAllowed } from "../utils/externalEmojiPolicy";
@@ -15,6 +16,7 @@ import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";
 import { MessageContextMenu } from "./MediaContextMenu";
 import { ChannelMention, MentionPill } from "./MentionView";
+import { NameTag } from "./NameTag";
 import { BlurredWord } from "./ProfanityBlur";
 
 type MarkdownImgProps = React.ImgHTMLAttributes<HTMLImageElement> & {
@@ -385,7 +387,7 @@ export const MarkdownRenderer = memo(({
   content: string | null;
   customEmojis?: CustomEmojiEntry[];
   memberNicknames?: string[];
-  mentionMembersById?: Record<string, { nickname: string }>;
+  mentionMembersById?: Record<string, { serverUserId: string; nickname: string; identityFingerprint?: string }>;
   serverHost?: string | null;
   /** Overrides what the server said about other servers' emoji, for previews. */
   allowExternalEmojis?: boolean;
@@ -408,6 +410,7 @@ export const MarkdownRenderer = memo(({
     }
     return m;
   }, [mentionMembersById]);
+  const nameTags = nameTagsFor(mentionMembersById);
 
   const markedContent = useMemo(() => {
     if (!content) return null;
@@ -500,9 +503,11 @@ export const MarkdownRenderer = memo(({
         if (className === "chat-mention" && typeof mentionId === "string") {
           const roleId = typeof data["data-role-id"] === "string" ? data["data-role-id"] : undefined;
           const nick = mentionId ? membersById.get(mentionId) : undefined;
+          const tag = mentionId ? nameTags.get(mentionId) : undefined;
           return (
             <MentionPill userId={mentionId || undefined} roleId={roleId}>
               {nick ? `@${nick}` : children}
+              {nick && tag && <> <NameTag tag={tag} /></>}
             </MentionPill>
           );
         }
@@ -536,7 +541,7 @@ export const MarkdownRenderer = memo(({
       td: wrap(base.td as React.FC<{ children?: React.ReactNode }>),
       th: wrap(base.th as React.FC<{ children?: React.ReactNode }>),
     } as Components;
-  }, [hasProfanity, membersById, serverHost, externalOk]);
+  }, [hasProfanity, membersById, nameTags, serverHost, externalOk]);
 
   if (!processed) return null;
 
