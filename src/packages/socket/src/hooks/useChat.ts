@@ -30,12 +30,12 @@ import {
   handleMessageEdited,
   handleNewMessage,
   handleReactionUpdate,
-  type HistoryPayload,
   shouldFetchHistory,
 } from "./chatEventHandlers";
 import { parseMuteExpiry, setTextMute } from "./textMute";
 import { useChatSend } from "./useChatSend";
 import { useConversationSealing } from "./useConversationSealing";
+import { type HistoryWindowControls, isWindowPayload, useHistoryWindow, type WindowedHistoryPayload } from "./useHistoryWindow";
 
 interface UseChatParams {
   currentConnection: Socket | null;
@@ -83,6 +83,7 @@ interface UseChatReturn {
   fetchOlderMessages: () => void;
   isLoadingOlder: boolean;
   hasOlderMessages: boolean;
+  historyWindow: HistoryWindowControls;
   /** What a DM on, or held off, MLS says above the composer. */
   mlsNotice: string | null;
   /** The composer waits: the DM's mode isn't known, or MLS refused it. */
@@ -160,6 +161,18 @@ export function useChat({
 
   const activeCacheKey = cacheKeyFor(activeConversationId);
   const hasOlderMessages = hasOlderMap[activeCacheKey] ?? true;
+
+  const historyWindow = useHistoryWindow({
+    connection: currentConnection,
+    conversationId: activeConversationId,
+    cacheKeyFor,
+    setMessageCache,
+    deletedIdsRef,
+    disabled: !!dmPeer,
+  });
+  const { returnToPresent: leaveHistoryWindow } = historyWindow;
+  const windowOpenRef = useRef(false);
+  windowOpenRef.current = historyWindow.messages !== null;
 
   const getCachedMessages = useCallback(
     (conversationId: string): ChatMessage[] => messageCache[cacheKeyFor(conversationId)] || [],
@@ -493,7 +506,9 @@ export function useChat({
       }
     };
 
-    const onHistory = (payload: HistoryPayload) => {
+    const onHistory = (payload: WindowedHistoryPayload) => {
+      // A page of the window, which has a gap and must not be merged into the channel's list.
+      if (isWindowPayload(payload, windowOpenRef.current)) return;
       const setHasOlder = (v: boolean) => {
         const key = cacheKeyFor(payload.conversation_id);
         if (key) setHasOlderMap((prev) => ({ ...prev, [key]: v }));
@@ -716,8 +731,8 @@ export function useChat({
     () =>
       dmPeer
         ? mergeTimeline({ server: chatMessages, serverHasMore: hasOlderMessages, archived: mls.rows, archiveHasMore: mls.hasMore })
-        : chatMessages.filter((m) => !isMlsPlaceholder(m)),
-    [dmPeer, chatMessages, hasOlderMessages, mls.rows, mls.hasMore],
+        : (historyWindow.messages ?? chatMessages).filter((m) => !isMlsPlaceholder(m)),
+    [dmPeer, chatMessages, hasOlderMessages, mls.rows, mls.hasMore, historyWindow.messages],
   );
 
   /* On MLS, or refused by it, nothing goes through the version 1 path. It reads as
@@ -732,11 +747,13 @@ export function useChat({
   const sendPath = composer.path;
   const sendOnEitherPath = useCallback(
     (text: string, files: File[], replyToMessageId?: string) => {
+      // Sending from an old window returns to the present, where the message will appear.
+      leaveHistoryWindow();
       // Waiting or refused sends nothing: version 1 to somebody on MLS is what decision 4 rules out.
       if (sendPath === "mls") sendOverMls(text, files, replyToMessageId);
       else if (sendPath === "server") sendChat(text, files, replyToMessageId);
     },
-    [sendPath, sendOverMls, sendChat],
+    [sendPath, sendOverMls, sendChat, leaveHistoryWindow],
   );
 
   const editOnEitherPath = useCallback(
@@ -770,9 +787,17 @@ export function useChat({
     activeChannelForumTags,
     restoreText,
     clearRestoreText,
-    fetchOlderMessages,
-    isLoadingOlder,
-    hasOlderMessages: hasOlderMessages || mls.hasMore,
+    fetchOlderMessages: historyWindow.messages ? historyWindow.loadOlder : fetchOlderMessages,
+    isLoadingOlder: historyWindow.messages ? historyWindow.loadingOlder : isLoadingOlder,
+    hasOlderMessages: historyWindow.messages ? historyWindow.hasOlder : hasOlderMessages || mls.hasMore,
+    historyWindow: {
+      open: historyWindow.messages !== null,
+      hasNewer: historyWindow.hasNewer,
+      loadingNewer: historyWindow.loadingNewer,
+      loadNewer: historyWindow.loadNewer,
+      openAt: historyWindow.openAt,
+      returnToPresent: historyWindow.returnToPresent,
+    },
     mlsNotice: dmPeer
       ? mlsNotice(mls.mode, mls.problems, {
           lostHistory: mls.lostHistory,

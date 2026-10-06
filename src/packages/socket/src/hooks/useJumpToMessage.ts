@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import type { ChatMessage } from "../components/chatUtils";
+import type { OpenAtResult } from "./useHistoryWindow";
 
 /* Older pages to load looking for a message before giving up: 1,000 messages at 50 a page.
    Paced under the server's chat:fetch limit of 15 in 10 s, so a long search isn't refused. */
@@ -17,6 +18,8 @@ interface Params {
   onLoadOlder: (() => void) | undefined;
   scrollToMessage: (messageId: string) => void;
   leaveBottom: () => void;
+  /** Opens history at the message on a server that can (GRYT-1686). Without it, older pages are loaded. */
+  openAt?: (messageId: string) => Promise<OpenAtResult>;
 }
 
 /** Scroll to a message, loading older history until it is there (GRYT-1677). Pins and
@@ -29,8 +32,9 @@ export function useJumpToMessage({
   onLoadOlder,
   scrollToMessage,
   leaveBottom,
+  openAt,
 }: Params) {
-  const pending = useRef<{ id: string; pages: number; lastAt: number } | null>(null);
+  const pending = useRef<{ id: string; pages: number; lastAt: number; window?: boolean } | null>(null);
   const [tick, setTick] = useState(0);
 
   const finish = useCallback((found: boolean) => {
@@ -46,15 +50,31 @@ export function useJumpToMessage({
         scrollToMessage(messageId);
         return;
       }
-      if (!onLoadOlder || !hasOlderMessages) {
-        finish(false);
+      const searchOlder = () => {
+        if (!onLoadOlder || !hasOlderMessages) {
+          finish(false);
+          return;
+        }
+        pending.current = { id: messageId, pages: 0, lastAt: 0 };
+        toast.loading("Looking further back…", { id: TOAST_ID });
+        setTick((t) => t + 1);
+      };
+      if (!openAt) {
+        searchOlder();
         return;
       }
-      pending.current = { id: messageId, pages: 0, lastAt: 0 };
-      toast.loading("Looking further back…", { id: TOAST_ID });
-      setTick((t) => t + 1);
+      const ticket = { id: messageId, pages: 0, lastAt: 0, window: true };
+      pending.current = ticket;
+      void openAt(messageId).then((result) => {
+        if (pending.current !== ticket) return;
+        if (result === "window") setTick((t) => t + 1);
+        else if (result === "missing") {
+          pending.current = null;
+          toast.error("That message isn't there any more.", { id: TOAST_ID });
+        } else searchOlder();
+      });
     },
-    [chatMessages, finish, hasOlderMessages, onLoadOlder, scrollToMessage],
+    [chatMessages, finish, hasOlderMessages, onLoadOlder, openAt, scrollToMessage],
   );
 
   useEffect(() => {
@@ -71,6 +91,8 @@ export function useJumpToMessage({
       });
       return;
     }
+    // The window arrives in a render of its own; until then there is nothing to page through.
+    if (p.window) return;
     if (isLoadingOlder) return;
     if (!hasOlderMessages || !onLoadOlder || p.pages >= MAX_PAGES) {
       finish(false);
