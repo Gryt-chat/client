@@ -1046,6 +1046,8 @@ export function ProfileSettings() {
         }}
         onSave={(png, worn) => void handleUseOwl(png, worn, designingFor ?? null)}
         open={designingFor !== undefined}
+        // A link that shows this owl, and previews as it when pasted somewhere (GRYT-1673).
+        shareLink={(worn) => `https://ui.gryt.chat/avatars?${new URLSearchParams({ name: nickname, worn })}`}
         saving={uploading}
       />
     </SettingsContainer>
