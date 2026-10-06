@@ -46,10 +46,16 @@ export function useChatScroll(
     if (el) el.scrollTo({ top: el.scrollHeight, behavior });
   }, []);
 
+  const lastScrollTopRef = useRef(0);
+  /* Leaving the bottom takes scrolling up. A tall row landing fires a scroll before the pin runs,
+     with the view suddenly far from the end, and reading that as leaving stopped the pin. */
   const checkAtBottom = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
+    const movedUp = el.scrollTop < lastScrollTopRef.current - 1;
+    isAtBottomRef.current = near || (isAtBottomRef.current && !movedUp);
+    lastScrollTopRef.current = el.scrollTop;
   }, []);
 
   // Anchor-based: track the first visible message and its offset, so a prepend of
@@ -117,7 +123,8 @@ export function useChatScroll(
     requestAnimationFrame(() => scrollToBottom("auto"));
   }, [conversationKey, scrollToBottom]);
 
-  useEffect(() => {
+  // Before paint, so the frame with the new row below the fold is never drawn.
+  useLayoutEffect(() => {
     const lastId = chatMessages[chatMessages.length - 1]?.message_id;
     if (!lastId) return;
     const prev = lastMessageIdRef.current;
@@ -131,9 +138,8 @@ export function useChatScroll(
     // A window's bottom is not the present, so a page arriving there is not a new message.
     if (detachedRef.current && !forceScrollToBottomRef.current) return;
     if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
-    requestAnimationFrame(() => {
-      scrollToBottom(initialLoadDoneRef.current ? "smooth" : "auto");
-    });
+    // Instant: the row slides in by itself, and a smooth scroll lost races with the next resize.
+    scrollToBottom("auto");
     forceScrollToBottomRef.current = false;
   }, [chatMessages, scrollToBottom]);
 

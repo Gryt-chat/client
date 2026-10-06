@@ -460,21 +460,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   }, [forwardedRef]);
 
   return (
-    <motion.div
-      ref={mergedRef}
-      layout="position"
-      style={{ width: "100%", overflow: isNew ? "hidden" : undefined }}
-      initial={isNew ? { opacity: 0, height: 0 } : false}
-      animate={{ opacity: 1, height: "auto" }}
-      transition={{
-        layout: { type: "spring", stiffness: 170, damping: 26 },
-        opacity: { duration: 0.2, ease: "easeOut" },
-        height: { type: "spring", stiffness: 170, damping: 26 },
-      }}
-      onAnimationComplete={() => {
-        if (wrapperRef.current) wrapperRef.current.style.overflow = "";
-      }}
-    >
+    /* Full height from the first frame, fading and sliding in on the compositor. Growing from 0
+       left the bottom pin aiming short of a tall message, and layout springs re-measured every row. */
+    <div ref={mergedRef} className={isNew ? "gryt-message-enter" : undefined} style={{ width: "100%" }}>
       {content}
       {isReactionPickerOpen && (
         <EmojiPicker
@@ -485,7 +473,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           serverHost={serverHost}
         />
       )}
-    </motion.div>
+    </div>
   );
 }));
 

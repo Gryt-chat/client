@@ -1,5 +1,4 @@
 import { Button } from "@gryt/ui";
-import { AnimatePresence } from "motion/react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
 
@@ -848,7 +847,6 @@ export const ChatView = memo(({
                   <span className="text-xs text-gryt-muted">Loading older messages...</span>
                 </div>
               )}
-              <AnimatePresence mode="popLayout" initial={false}>
                 {chatMessages.map((m, i) => {
                   const meta = messageMetadata[i];
                   if (!meta) return null;
@@ -903,7 +901,6 @@ export const ChatView = memo(({
                     />
                   );
                 })}
-              </AnimatePresence>
               {historyWindow?.loadingNewer && (
                 <div className="flex justify-center py-2">
                   <span className="text-xs text-gryt-muted">Loading newer messages...</span>
