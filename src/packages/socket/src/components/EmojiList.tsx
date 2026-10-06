@@ -30,6 +30,8 @@ export function EmojiList({
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  // The one emoji the trash button asked about. It deleted on the click before (GRYT-1675).
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editingEmoji, setEditingEmoji] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingError, setEditingError] = useState<string | null>(null);
@@ -257,7 +259,7 @@ export function EmojiList({
                     <PiPencilSimpleFill size={14} />
                   </IconButton>
                   <IconButton tone="ghost" size="xsmall"
-                    onClick={() => handleDelete(e.name)}
+                    onClick={() => setConfirmDelete(e.name)}
                     disabled={deletingName === e.name}
                     title={`Delete :${e.name}:`}
                     style={{ cursor: "pointer" }}
@@ -270,6 +272,19 @@ export function EmojiList({
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+        title={`Delete :${confirmDelete ?? ""}:?`}
+        description="It's removed from this server for everyone, and this can't be undone."
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onConfirm={() => {
+          if (confirmDelete) void handleDelete(confirmDelete);
+          setConfirmDelete(null);
+        }}
+      />
     </div>
   );
 }
