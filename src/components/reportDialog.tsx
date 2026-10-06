@@ -9,6 +9,7 @@ import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
 import { useMemo, useState } from "react";
 
 import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "../lib/icons";
+import { callTimeline } from "../lib/reports/callTimeline";
 import { useDiagnostics } from "../lib/reports/diagnostics";
 import { recentLogs } from "../lib/reports/logs";
 import { submitReport } from "../lib/reports/submit";
@@ -134,7 +135,8 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
           lines={attached}
           report={report}
           includeLogs={logs !== null}
-          onIncludeLogs={(on) => setLogs(on ? recentLogs() : null)}
+          // The last call's numbers, a line a second, ride along with the console tail (GRYT-1663).
+          onIncludeLogs={(on) => setLogs(on ? [...recentLogs(), ...callTimeline()] : null)}
         />
 
         {error && <Alert severity="error">{error}</Alert>}

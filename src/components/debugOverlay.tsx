@@ -33,7 +33,9 @@ export function DebugOverlay({
   if (!isVisible) return null;
 
   return (
-    <div ref={constraintsRef} style={{ position: "fixed", inset: 0, pointerEvents: "none" }}>
+    // The rung goes here: a fixed box is its own stacking context, and the panel's z-index
+    // inside it counted for nothing, so the member list's sticky headers drew over it.
+    <div ref={constraintsRef} style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: "var(--gryt-z-debug)" }}>
       <motion.div
         drag
         dragControls={dragControls}
