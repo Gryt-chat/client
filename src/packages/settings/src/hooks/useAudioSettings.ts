@@ -45,7 +45,8 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   noiseGate: 1,
   noiseGateRelease: 200,
   rnnoiseEnabled: true,
-  autoGainEnabled: true,
+  // Off: it lifted a mixer's already-hot signal into clipping (GRYT-1679).
+  autoGainEnabled: false,
   autoGainTargetDb: -20,
   compressorEnabled: true,
   compressorAmount: 50,
