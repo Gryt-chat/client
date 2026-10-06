@@ -50,6 +50,7 @@ import {
   tileRadius,
 } from "../lib/voiceLayout";
 import type { Client } from "../types/clients";
+import { stopWatchingShare, useWatchedShares } from "../utils/watchedShares";
 import { FocusedVideoView } from "./FocusedVideoView";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { UserContextMenu } from "./UserContextMenu";
@@ -687,6 +688,29 @@ export const VoiceView = ({
     updatePopoutStream,
   } = usePopoutStreams(gridItems, streamSources);
 
+  /* A share you aren't watching stays silent (GRYT-1681). The volume it had is kept, so
+     watching again picks up where the slider was rather than at full. */
+  const watchedShares = useWatchedShares();
+  const heldShareGain = useRef(new Map<string, number>());
+  useEffect(() => {
+    if (!streamSources) return;
+    for (const [id, client] of Object.entries(clientsForHost)) {
+      if (id === currentConnectionId) continue;
+      const audioId = client.screenShareAudioStreamID;
+      const gain = audioId ? streamSources[audioId]?.gain : undefined;
+      if (!audioId || !gain) continue;
+      const watching = !!client.screenShareVideoStreamID && watchedShares.has(client.screenShareVideoStreamID);
+      const held = heldShareGain.current;
+      if (!watching && !held.has(audioId)) {
+        held.set(audioId, gain.gain.value);
+        gain.gain.setValueAtTime(0, gain.context.currentTime);
+      } else if (watching && held.has(audioId)) {
+        gain.gain.setValueAtTime(held.get(audioId)!, gain.context.currentTime);
+        held.delete(audioId);
+      }
+    }
+  }, [clientsForHost, currentConnectionId, streamSources, watchedShares]);
+
   const [customOrder, setCustomOrder] = useState<string[]>([]);
 
   const orderedItems = useMemo(() => {
@@ -1027,6 +1051,13 @@ export const VoiceView = ({
     setFocusedStream(null);
   }, []);
 
+  useEffect(() => {
+    if (!focusedStream?.itemId.startsWith("screen:")) return;
+    const id = focusedStream.itemId.slice(7);
+    const shareId = clientsForHost[id]?.screenShareVideoStreamID;
+    if (id !== currentConnectionId && (!shareId || !watchedShares.has(shareId))) setFocusedStream(null);
+  }, [focusedStream, clientsForHost, currentConnectionId, watchedShares]);
+
   const handleFocusedPopout = useCallback(() => {
     if (!focusedStream) return;
 
@@ -1255,6 +1286,11 @@ export const VoiceView = ({
                   mirrored={focusedStream.mirrored}
                   onClose={handleCloseFocus}
                   onPopout={handleFocusedPopout}
+                  onStopWatching={
+                    isScreenTile && !focusIsSelf && focusClient?.screenShareVideoStreamID
+                      ? () => stopWatchingShare(focusClient.screenShareVideoStreamID!)
+                      : undefined
+                  }
                 />
               );
 
