@@ -30,6 +30,7 @@ import { useVoiceSounds } from "@/webRTC";
 
 import { ApproveDeviceDialog } from "./components/approveDevice";
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
+import { CallStatsRecorder } from "./components/callStatsRecorder";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GameDetectPrompt } from "./components/gameDetectPrompt";
 import { GlobalLightbox } from "./components/GlobalLightbox";
@@ -167,6 +168,7 @@ export function App() {
           <TermsPrompt />
           <PushToTalkModal />
           <TrayVoiceState />
+          <CallStatsRecorder />
           <MicrophoneDebugOverlay isVisible={showDebugOverlay} />
           <VideoDebugOverlay isVisible={showVideoDebugOverlay} />
         </>
