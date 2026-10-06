@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
 
-import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiEyeSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 
 const HIDE_DELAY_MS = 2500;
@@ -31,6 +31,7 @@ export function FocusedVideoView({
   mirrored,
   onClose,
   onPopout,
+  onStopWatching,
 }: {
   stream: MediaStream;
   title: string;
@@ -40,6 +41,8 @@ export function FocusedVideoView({
   mirrored?: boolean;
   onClose: () => void;
   onPopout?: () => void;
+  /** Someone else's screen share: stop watching it altogether (GRYT-1681). */
+  onStopWatching?: () => void;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -218,6 +221,17 @@ export function FocusedVideoView({
                 className="w-20"
               />
             </div>
+          )}
+
+          {onStopWatching && (
+            <button
+              type="button"
+              style={iconBtnStyle}
+              onClick={onStopWatching}
+              aria-label="Stop watching"
+            >
+              <PiEyeSlashFill size={16} />
+            </button>
           )}
 
           {onPopout && (

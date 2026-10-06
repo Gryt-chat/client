@@ -47,6 +47,7 @@ import {
   DownloadSimple,
   Envelope,
   Eye,
+  EyeSlash,
   FadersHorizontal,
   File,
   FileAudio,
@@ -190,6 +191,7 @@ export const PiDotsThreeVerticalBold: Icon = weighted(DotsThreeVertical, "bold",
 export const PiDownloadSimpleFill: Icon = weighted(DownloadSimple, "fill", "PiDownloadSimpleFill");
 export const PiEnvelopeFill: Icon = weighted(Envelope, "fill", "PiEnvelopeFill");
 export const PiEyeFill: Icon = weighted(Eye, "fill", "PiEyeFill");
+export const PiEyeSlashFill: Icon = weighted(EyeSlash, "fill", "PiEyeSlashFill");
 export const PiFadersHorizontalFill: Icon = weighted(FadersHorizontal, "fill", "PiFadersHorizontalFill");
 export const PiFileAudioFill: Icon = weighted(FileAudio, "fill", "PiFileAudioFill");
 export const PiFileFill: Icon = weighted(File, "fill", "PiFileFill");

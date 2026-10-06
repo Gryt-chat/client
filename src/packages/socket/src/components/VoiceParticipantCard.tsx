@@ -1,4 +1,4 @@
-import { Avatar, Skeleton, Tooltip } from "@gryt/ui";
+import { Avatar, Button, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useMicrophone } from "@gryt/voice";
 import type { ReactNode } from "react";
@@ -6,11 +6,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
-import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
+import { PiEyeFill, PiEyeSlashFill, PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import { cameraStreamFor } from "../lib/cameraStream";
 import type { Client } from "../types/clients";
+import { stopWatchingShare, useWatchedShares, watchShare } from "../utils/watchedShares";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { SpeakingHalo } from "./SpeakingHalo";
 import {
@@ -387,6 +388,7 @@ export function VoiceParticipantCard({
   // Above the early return too. Passing false takes no microphone handle, so
   // this only reads what the voice connection already set up.
   const { microphoneBuffer } = useMicrophone(false);
+  const watchedShares = useWatchedShares();
 
   if (isScreenTile) {
     const screenStream = isSelf
@@ -411,6 +413,9 @@ export function VoiceParticipantCard({
     if (!screenStream && !hasPendingRemoteScreen) return null;
 
     const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
+    const shareId = client.screenShareVideoStreamID;
+    // Someone else's share waits for a click: nothing draws or plays until you choose to watch.
+    const watching = isSelf || (!!shareId && watchedShares.has(shareId));
 
     return (
       <UserContextMenu
@@ -467,39 +472,72 @@ export function VoiceParticipantCard({
             : undefined
         }
       >
-        <VideoCard
-          key={`${serverUserId ?? itemId}:${client.screenShareVideoStreamID || "local"}:${
-            screenStream?.id || "pending"
-          }`}
-          stream={screenStream}
-          nickname={screenTitle}
-          radius={tileRadius}
-          objectFit="contain"
-          pendingLabel={
-            isSelf
-              ? "Starting your screen share…"
-              : `${client.nickname} is starting their screen share…`
-          }
-          stalledLabel={
-            isSelf
-              ? "Your screen isn't coming through"
-              : `${client.nickname}'s screen isn't coming through`
-          }
-          statusIcons={<PiScreencastFill size={10} color="var(--gryt-secondary-9)" />}
-          onClick={
-            screenStream
-              ? () =>
-                  onFocus({
-                    itemId,
-                    stream: screenStream,
-                    title: screenTitle,
-                    audioStreamId:
-                      (!isSelf && client.screenShareAudioStreamID) || undefined,
-                    objectFit: "contain",
-                  })
-              : undefined
-          }
-        />
+        {!watching ? (
+          <div
+            data-gryt="share-unwatched"
+            className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center"
+            style={{ borderRadius: tileRadius, background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
+          >
+            <PiScreencastFill size={28} />
+            <span className="text-sm">{client.nickname} is sharing their screen</span>
+            <Button size="small" onClick={() => shareId && watchShare(shareId)}>
+              <PiEyeFill size={14} /> Watch stream
+            </Button>
+          </div>
+        ) : (
+          <div className="group relative h-full w-full">
+            <VideoCard
+              key={`${serverUserId ?? itemId}:${client.screenShareVideoStreamID || "local"}:${
+                screenStream?.id || "pending"
+              }`}
+              stream={screenStream}
+              nickname={screenTitle}
+              radius={tileRadius}
+              objectFit="contain"
+              pendingLabel={
+                isSelf
+                  ? "Starting your screen share…"
+                  : `${client.nickname} is starting their screen share…`
+              }
+              stalledLabel={
+                isSelf
+                  ? "Your screen isn't coming through"
+                  : `${client.nickname}'s screen isn't coming through`
+              }
+              statusIcons={<PiScreencastFill size={10} color="var(--gryt-secondary-9)" />}
+              onClick={
+                screenStream
+                  ? () =>
+                      onFocus({
+                        itemId,
+                        stream: screenStream,
+                        title: screenTitle,
+                        audioStreamId:
+                          (!isSelf && client.screenShareAudioStreamID) || undefined,
+                        objectFit: "contain",
+                      })
+                  : undefined
+              }
+            />
+            {!isSelf && shareId && (
+              <Tooltip title="Stop watching">
+                <button
+                  type="button"
+                  aria-label="Stop watching"
+                  data-gryt="share-stop-watching"
+                  className="absolute bottom-2 right-2 flex items-center rounded-full border-0 p-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  style={{ background: "rgba(0,0,0,0.6)", color: "white", cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    stopWatchingShare(shareId);
+                  }}
+                >
+                  <PiEyeSlashFill size={16} />
+                </button>
+              </Tooltip>
+            )}
+          </div>
+        )}
       </UserContextMenu>
     );
   }
