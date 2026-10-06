@@ -82,14 +82,15 @@ function fakeScroller() {
   return { el, rows, observed, FakeResizeObserver };
 }
 
-function run({ atBottom }) {
+function run({ atBottom, detached = false }) {
   const { el, rows, observed, FakeResizeObserver } = fakeScroller();
   const cleanup = new Function(
     "scrollRef",
     "isAtBottomRef",
+    "detachedRef",
     "ResizeObserver",
     `return (() => ${body})();`,
-  )({ current: el }, { current: atBottom }, FakeResizeObserver);
+  )({ current: el }, { current: atBottom }, { current: detached }, FakeResizeObserver);
   return { el, rows, observed, cleanup };
 }
 
@@ -126,6 +127,14 @@ function run({ atBottom }) {
   assert.equal(el.scrollTop, before, "a reader scrolled up was pulled to the bottom by a resize");
 }
 
+// The bottom of an old window is not the present, so nothing holds the view there (GRYT-1686).
+{
+  const { el } = run({ atBottom: true, detached: true });
+  const before = el.scrollTop;
+  el.shrinkBy(40);
+  assert.equal(el.scrollTop, before, "a resize pulled an old history window to its bottom");
+}
+
 // And the observer is torn down, or every message would leave one behind.
 {
   const { el, cleanup } = run({ atBottom: true });
@@ -135,4 +144,4 @@ function run({ atBottom }) {
   assert.equal(el.scrollTop, 0, "the effect does not disconnect its observer");
 }
 
-console.log("chat scroll anchor: ok, container observed, re-pins on resize, only when at bottom");
+console.log("chat scroll anchor: ok, container observed, re-pins on resize, only when at bottom and not in an old window");
