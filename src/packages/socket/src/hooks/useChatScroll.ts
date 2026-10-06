@@ -119,6 +119,8 @@ export function useChatScroll(
       requestAnimationFrame(() => scrollToBottom("auto"));
       return;
     }
+    // Only for a new last message. A prepend of older pages pulled a jump back down (GRYT-1677).
+    if (lastId === prev && !forceScrollToBottomRef.current) return;
     if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
     requestAnimationFrame(() => {
       scrollToBottom(initialLoadDoneRef.current ? "smooth" : "auto");
@@ -215,9 +217,16 @@ export function useChatScroll(
     prevLastIdRef.current = lastId;
   }, [chatMessages]);
 
+  /* For a jump up the history: the bottom-holding observer fires for new rows before the
+     scroll event says we left, and would put the view straight back (GRYT-1677). */
+  const leaveBottom = useCallback(() => {
+    isAtBottomRef.current = false;
+  }, []);
+
   return {
     scrollRef,
     handleScroll,
+    leaveBottom,
     forceScrollToBottomRef,
     seenMessageIdsRef,
     newMessageMarkerId,
