@@ -183,6 +183,6 @@ export const NewMessagesDivider = () => (
     lineClassName="bg-gryt-danger-8"
     labelClassName="text-gryt-danger font-medium"
   >
-    New since last visit
+    New
   </LabelledDivider>
 );

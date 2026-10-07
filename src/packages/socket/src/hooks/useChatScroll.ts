@@ -5,6 +5,8 @@ import type { ChatMessage } from "../components/chatUtils";
 const AT_BOTTOM_THRESHOLD = 120;
 /** How many screens above the bottom before "Jump to present" shows (GRYT-1691). */
 const FAR_SCREENS = 2;
+/** How long the New line stays once you're back at the bottom. */
+const MARKER_READ_MS = 3000;
 
 interface ScrollAnchor {
   id: string;
@@ -31,6 +33,17 @@ export function useChatScroll(
   const [farFromBottom, setFarFromBottom] = useState(false);
   /** Messages that arrived below while scrolled up, for the count on Jump to present. */
   const [newBelow, setNewBelow] = useState(0);
+  const [newMessageMarkerId, setNewMessageMarkerId] = useState<string | null>(null);
+  const markerReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* Back at the bottom with the window in front: the New line goes once it has been
+     on screen a few seconds, rather than the instant you arrive. */
+  const readMarkerSoon = useCallback(() => {
+    if (markerReadTimerRef.current || !document.hasFocus()) return;
+    markerReadTimerRef.current = setTimeout(() => {
+      markerReadTimerRef.current = null;
+      setNewMessageMarkerId(null);
+    }, MARKER_READ_MS);
+  }, []);
   const lastMessageIdRef = useRef<string | undefined>(undefined);
   const forceScrollToBottomRef = useRef(false);
 
@@ -99,8 +112,11 @@ export function useChatScroll(
     const movedUp = el.scrollTop < lastScrollTopRef.current - 1;
     isAtBottomRef.current = near || (isAtBottomRef.current && !movedUp);
     lastScrollTopRef.current = el.scrollTop;
-    if (near) setNewBelow(0);
-  }, []);
+    if (near) {
+      setNewBelow(0);
+      readMarkerSoon();
+    }
+  }, [readMarkerSoon]);
 
   // Anchor-based: track the first visible message and its offset, so a prepend of
   // older messages can be undone. Their combined height is not known in advance.
@@ -193,6 +209,10 @@ export function useChatScroll(
     if (!isAtBottomRef.current && !forceScrollToBottomRef.current) {
       const at = chatMessages.findIndex((m) => m.message_id === prev);
       setNewBelow((n) => n + (at >= 0 ? chatMessages.length - 1 - at : 1));
+      // The New line goes above the first of them, and stays there until it has been read.
+      setNewMessageMarkerId((marker) => marker ?? prev);
+      if (markerReadTimerRef.current) clearTimeout(markerReadTimerRef.current);
+      markerReadTimerRef.current = null;
       return;
     }
     glideToBottom();
@@ -239,7 +259,6 @@ export function useChatScroll(
   }, []);
 
   const windowFocusedRef = useRef(document.hasFocus());
-  const [newMessageMarkerId, setNewMessageMarkerId] = useState<string | null>(null);
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevConversationIdRef = useRef<string | undefined>(undefined);
   const prevLastIdRef = useRef<string | undefined>(undefined);
@@ -297,17 +316,22 @@ export function useChatScroll(
   /* Instant, two frames on so the present's rows are drawn. A smooth scroll from the top crossed
      the load-older line on the way and the prepend that followed stopped it short. */
   const jumpToPresent = useCallback(() => {
-    forceScrollToBottomRef.current = true;
+    // Not the force flag: nothing clears it without a new message, so the next one pulled you down.
     isAtBottomRef.current = true;
     anchorRef.current = null;
     setFarFromBottom(false);
     setNewBelow(0);
+    readMarkerSoon();
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         const el = scrollRef.current;
         if (el) el.scrollTop = el.scrollHeight;
       }),
     );
+  }, [readMarkerSoon]);
+
+  useEffect(() => () => {
+    if (markerReadTimerRef.current) clearTimeout(markerReadTimerRef.current);
   }, []);
 
   return {
