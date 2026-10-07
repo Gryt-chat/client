@@ -29,6 +29,8 @@ export function useChatScroll(
   detachedRef.current = !!newer?.hasNewer;
   const isAtBottomRef = useRef(true);
   const [farFromBottom, setFarFromBottom] = useState(false);
+  /** Messages that arrived below while scrolled up, for the count on Jump to present. */
+  const [newBelow, setNewBelow] = useState(0);
   const lastMessageIdRef = useRef<string | undefined>(undefined);
   const forceScrollToBottomRef = useRef(false);
 
@@ -97,6 +99,7 @@ export function useChatScroll(
     const movedUp = el.scrollTop < lastScrollTopRef.current - 1;
     isAtBottomRef.current = near || (isAtBottomRef.current && !movedUp);
     lastScrollTopRef.current = el.scrollTop;
+    if (near) setNewBelow(0);
   }, []);
 
   // Anchor-based: track the first visible message and its offset, so a prepend of
@@ -167,6 +170,7 @@ export function useChatScroll(
     lastMessageIdRef.current = undefined;
     forceScrollToBottomRef.current = false;
     setFarFromBottom(false);
+    setNewBelow(0);
     prevFirstMsgIdRef.current = undefined;
     anchorRef.current = null;
     requestAnimationFrame(() => scrollToBottom("auto"));
@@ -186,7 +190,11 @@ export function useChatScroll(
     if (lastId === prev && !forceScrollToBottomRef.current) return;
     // A window's bottom is not the present, so a page arriving there is not a new message.
     if (detachedRef.current && !forceScrollToBottomRef.current) return;
-    if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
+    if (!isAtBottomRef.current && !forceScrollToBottomRef.current) {
+      const at = chatMessages.findIndex((m) => m.message_id === prev);
+      setNewBelow((n) => n + (at >= 0 ? chatMessages.length - 1 - at : 1));
+      return;
+    }
     glideToBottom();
     forceScrollToBottomRef.current = false;
   }, [chatMessages, scrollToBottom, glideToBottom]);
@@ -293,6 +301,7 @@ export function useChatScroll(
     isAtBottomRef.current = true;
     anchorRef.current = null;
     setFarFromBottom(false);
+    setNewBelow(0);
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
         const el = scrollRef.current;
@@ -305,6 +314,7 @@ export function useChatScroll(
     scrollRef,
     handleScroll,
     farFromBottom,
+    newBelow,
     jumpToPresent,
     leaveBottom,
     forceScrollToBottomRef,

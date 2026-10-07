@@ -1,4 +1,3 @@
-import { Button } from "@gryt/ui";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
 
@@ -7,7 +6,7 @@ import { getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPr
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -203,6 +202,7 @@ export const ChatView = memo(({
     scrollRef,
     handleScroll,
     farFromBottom,
+    newBelow,
     jumpToPresent,
     leaveBottom,
     forceScrollToBottomRef,
@@ -906,16 +906,25 @@ export const ChatView = memo(({
             </div>
           ) : null}
 
-          {(historyWindow?.hasNewer || farFromBottom) && (
-            <div
-              data-gryt="history-window-bar"
-              className="mb-1.5 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs"
-              style={{ background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
-            >
-              <span>You're looking at older messages.</span>
-              <Button size="small" tone="ghost" onClick={returnToPresent}>
+          {(historyWindow?.hasNewer || farFromBottom || newBelow > 0) && (
+            // Zero-height anchor, so the pill floats over the last messages instead of pushing them up.
+            <div className="relative h-0">
+              <button
+                type="button"
+                data-gryt="history-window-bar"
+                onClick={returnToPresent}
+                className="absolute bottom-full left-1/2 z-10 mb-2 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs shadow-lg transition-colors hover:brightness-110"
+                style={{ background: "var(--gryt-neutral-3)", borderColor: "var(--gryt-neutral-6)", color: "var(--gryt-neutral-12)" }}
+              >
+                {newBelow > 0 && (
+                  <>
+                    <span style={{ color: "var(--gryt-accent-11)", fontWeight: 600 }}>{newBelow > 99 ? "99+" : newBelow} new</span>
+                    <span aria-hidden="true" style={{ color: "var(--gryt-neutral-9)" }}>·</span>
+                  </>
+                )}
                 Jump to present
-              </Button>
+                <PiArrowDownBold aria-hidden="true" size={12} />
+              </button>
             </div>
           )}
 

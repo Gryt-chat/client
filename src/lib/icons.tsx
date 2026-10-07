@@ -6,6 +6,7 @@
 import type { Icon, IconProps } from "@phosphor-icons/react";
 import {
   ArrowBendUpLeft,
+  ArrowDown,
   ArrowFatLineDown,
   ArrowLineLeft,
   ArrowLineRight,
@@ -142,6 +143,7 @@ function weighted(Base: Icon, weight: IconProps["weight"], name: string): Icon {
 }
 
 export const PiArrowBendUpLeftFill: Icon = weighted(ArrowBendUpLeft, "fill", "PiArrowBendUpLeftFill");
+export const PiArrowDownBold: Icon = weighted(ArrowDown, "bold", "PiArrowDownBold");
 export const PiArrowFatLineDownFill: Icon = weighted(ArrowFatLineDown, "fill", "PiArrowFatLineDownFill");
 export const PiArrowLineLeftFill: Icon = weighted(ArrowLineLeft, "fill", "PiArrowLineLeftFill");
 export const PiArrowLineRightFill: Icon = weighted(ArrowLineRight, "fill", "PiArrowLineRightFill");
