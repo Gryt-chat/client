@@ -50,6 +50,7 @@ jobs:
       # Hiding never leaves the device, so nothing else would notice it breaking.
       - run: yarn test:hidden-conversations
       - run: yarn test:new-message
+      - run: yarn test:desktop-away
       - run: yarn test:server-hover-address
       - run: yarn test:server-voice-line
       - run: yarn test:ui-scale

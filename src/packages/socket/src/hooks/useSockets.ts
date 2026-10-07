@@ -24,6 +24,7 @@ import { showReconnectGaveUpToast, showReconnectingToast } from "../components/c
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { installContactGuard } from "../utils/contactFilter";
+import { browserAwayDeps, watchAway } from "../utils/desktopAway";
 import { watchFriendTraffic } from "../utils/friendList";
 import { RECONNECT_GRACE_MS, watchReconnects } from "../utils/reconnectGrace";
 import { replayReconnect, retryNow } from "../utils/retryNow";
@@ -529,6 +530,20 @@ function useSocketsHook() {
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sockets, serverConnectionStatus, serverDetailsList]);
+
+  /* Away from this desktop, your phone gets the push instead (GRYT-1699). The same flag the phone
+     sends when it goes to the background; servers too old to know it ignore it. */
+  const [awayFromDesktop, setAwayFromDesktop] = useState(false);
+  useEffect(
+    () => watchAway(setAwayFromDesktop, browserAwayDeps(window.electronAPI?.onWindowFocusChange?.bind(window.electronAPI))),
+    [],
+  );
+  useEffect(() => {
+    for (const host of Object.keys(sockets)) {
+      const socket = sockets[host];
+      if (socket?.connected) socket.emit("push:presence", { background: awayFromDesktop });
+    }
+  }, [sockets, serverConnectionStatus, awayFromDesktop]);
 
   // Presence heartbeat: confirm online status to each server every 5 minutes
   useEffect(() => {
