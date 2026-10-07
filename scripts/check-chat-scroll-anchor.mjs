@@ -88,9 +88,10 @@ function run({ atBottom, detached = false }) {
     "scrollRef",
     "isAtBottomRef",
     "detachedRef",
+    "glideRef",
     "ResizeObserver",
     `return (() => ${body})();`,
-  )({ current: el }, { current: atBottom }, { current: detached }, FakeResizeObserver);
+  )({ current: el }, { current: atBottom }, { current: detached }, { current: null }, FakeResizeObserver);
   return { el, rows, observed, cleanup };
 }
 
