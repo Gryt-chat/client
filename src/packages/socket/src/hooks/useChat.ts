@@ -35,7 +35,7 @@ import {
 import { parseMuteExpiry, setTextMute } from "./textMute";
 import { useChatSend } from "./useChatSend";
 import { useConversationSealing } from "./useConversationSealing";
-import { type HistoryWindowControls, isWindowPayload, useHistoryWindow, type WindowedHistoryPayload } from "./useHistoryWindow";
+import { HISTORY_CAP, type HistoryWindowControls, isWindowPayload, useHistoryWindow, type WindowedHistoryPayload } from "./useHistoryWindow";
 
 interface UseChatParams {
   currentConnection: Socket | null;
@@ -97,6 +97,9 @@ interface UseChatReturn {
   /** This device's history won't open, and that's what's holding the composer. */
   archiveFailed: boolean;
 }
+
+/** What the channel keeps of the present once the rest moves to a window. */
+const PRESENT_KEPT = 50;
 
 export function useChat({
   currentConnection,
@@ -173,6 +176,8 @@ export function useChat({
   const { returnToPresent: leaveHistoryWindow } = historyWindow;
   const windowOpenRef = useRef(false);
   windowOpenRef.current = historyWindow.messages !== null;
+  /** An older page of the channel itself just landed, which is the only growth that hands off. */
+  const olderPageLandedRef = useRef(false);
 
   const getCachedMessages = useCallback(
     (conversationId: string): ChatMessage[] => messageCache[cacheKeyFor(conversationId)] || [],
@@ -514,6 +519,7 @@ export function useChat({
         if (key) setHasOlderMap((prev) => ({ ...prev, [key]: v }));
       };
       handleHistoryPayload(payload, activeConversationId, cacheKeyFor, inFlightFetchRef, setMessageCache, setChatMessages, setIsLoadingMessages, setHasOlder, setIsLoadingOlder, deletedIdsRef.current);
+      if (payload.before && payload.conversation_id === activeConversationId) olderPageLandedRef.current = true;
     };
 
     const onReaction = (updatedMessage: ChatMessage) =>
@@ -711,6 +717,21 @@ export function useChat({
     messageCacheMeta,
     reconnectNonce,
   ]);
+
+  /* Scrolled up past the cap: what's being read becomes a window, and the channel keeps its
+     newest page, so Jump to present needs no fetch (GRYT-1691). Not DMs, whose archive merges in. */
+  const { detach: detachToWindow } = historyWindow;
+  useEffect(() => {
+    if (!olderPageLandedRef.current) return;
+    olderPageLandedRef.current = false;
+    if (dmPeer || windowOpenRef.current || chatMessages.length <= HISTORY_CAP) return;
+    detachToWindow(chatMessages, hasOlderMessages);
+    const key = cacheKeyFor(activeConversationId);
+    if (!key) return;
+    setMessageCache((prev) => ({ ...prev, [key]: (prev[key] || []).slice(-PRESENT_KEPT) }));
+    setChatMessages((prev) => prev.slice(-PRESENT_KEPT));
+    setHasOlderMap((prev) => ({ ...prev, [key]: true }));
+  }, [chatMessages, dmPeer, hasOlderMessages, detachToWindow, cacheKeyFor, activeConversationId, setMessageCache]);
 
   const { loadOlder: loadOlderFromArchive, send: sendOverMls, edit: editOverMls } = mls;
   const fetchOlderMessages = useCallback(() => {

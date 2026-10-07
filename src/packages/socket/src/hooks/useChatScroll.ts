@@ -3,6 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { ChatMessage } from "../components/chatUtils";
 
 const AT_BOTTOM_THRESHOLD = 120;
+/** How many screens above the bottom before "Jump to present" shows (GRYT-1691). */
+const FAR_SCREENS = 2;
 
 interface ScrollAnchor {
   id: string;
@@ -26,6 +28,7 @@ export function useChatScroll(
   const detachedRef = useRef(false);
   detachedRef.current = !!newer?.hasNewer;
   const isAtBottomRef = useRef(true);
+  const [farFromBottom, setFarFromBottom] = useState(false);
   const lastMessageIdRef = useRef<string | undefined>(undefined);
   const forceScrollToBottomRef = useRef(false);
 
@@ -118,6 +121,10 @@ export function useChatScroll(
     checkAtBottom();
     updateAnchor();
     const el = scrollRef.current;
+    if (el) {
+      const far = el.scrollHeight - el.scrollTop - el.clientHeight > el.clientHeight * FAR_SCREENS;
+      setFarFromBottom((prev) => (prev === far ? prev : far));
+    }
     if (el && el.scrollTop < 200 && hasOlderMessages && !isLoadingOlder && onLoadOlder) {
       onLoadOlder();
     }
@@ -149,6 +156,9 @@ export function useChatScroll(
       if (anchorEl) {
         el.scrollTop = anchorEl.offsetTop + anchorRef.current.offset;
       }
+    } else if (prevFirstMsgIdRef.current && firstMsgId !== prevFirstMsgIdRef.current && isAtBottomRef.current && !detachedRef.current) {
+      // A page landing above somebody who just jumped to the present keeps them there (GRYT-1691).
+      el.scrollTop = el.scrollHeight;
     }
     prevFirstMsgIdRef.current = firstMsgId;
   }, [chatMessages]);
@@ -156,6 +166,7 @@ export function useChatScroll(
   useEffect(() => {
     lastMessageIdRef.current = undefined;
     forceScrollToBottomRef.current = false;
+    setFarFromBottom(false);
     prevFirstMsgIdRef.current = undefined;
     anchorRef.current = null;
     requestAnimationFrame(() => scrollToBottom("auto"));
@@ -275,9 +286,26 @@ export function useChatScroll(
     isAtBottomRef.current = false;
   }, []);
 
+  /* Instant, two frames on so the present's rows are drawn. A smooth scroll from the top crossed
+     the load-older line on the way and the prepend that followed stopped it short. */
+  const jumpToPresent = useCallback(() => {
+    forceScrollToBottomRef.current = true;
+    isAtBottomRef.current = true;
+    anchorRef.current = null;
+    setFarFromBottom(false);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      }),
+    );
+  }, []);
+
   return {
     scrollRef,
     handleScroll,
+    farFromBottom,
+    jumpToPresent,
     leaveBottom,
     forceScrollToBottomRef,
     seenMessageIdsRef,
