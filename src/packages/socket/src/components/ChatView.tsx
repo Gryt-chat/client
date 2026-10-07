@@ -202,6 +202,8 @@ export const ChatView = memo(({
   const {
     scrollRef,
     handleScroll,
+    farFromBottom,
+    jumpToPresent,
     leaveBottom,
     forceScrollToBottomRef,
     seenMessageIdsRef,
@@ -285,18 +287,10 @@ export const ChatView = memo(({
     openAt: historyWindow?.openAt,
   });
 
-  /* Instant, two frames on so the present's rows are drawn. A smooth scroll from the top crossed
-     the load-older line on the way and the prepend that followed stopped it short. */
   const returnToPresent = useCallback(() => {
-    forceScrollToBottomRef.current = true;
     historyWindow?.returnToPresent();
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        const el = scrollRef.current;
-        if (el) el.scrollTop = el.scrollHeight;
-      }),
-    );
-  }, [forceScrollToBottomRef, historyWindow, scrollRef]);
+    jumpToPresent();
+  }, [historyWindow, jumpToPresent]);
 
   /* The server deletes a root's whole thread with it, so the confirm has to
      count the replies going too rather than say "this message" (GRYT-1389). */
@@ -912,7 +906,7 @@ export const ChatView = memo(({
             </div>
           ) : null}
 
-          {historyWindow?.hasNewer && (
+          {(historyWindow?.hasNewer || farFromBottom) && (
             <div
               data-gryt="history-window-bar"
               className="mb-1.5 flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs"

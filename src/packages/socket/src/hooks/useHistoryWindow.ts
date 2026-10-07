@@ -19,6 +19,8 @@ export type OpenAtResult = "window" | "unsupported" | "missing";
 type MessageCache = { [conversationId: string]: ChatMessage[] };
 
 const PAGE = 50;
+/** The most a window holds. Past it, the end furthest from where you're reading goes (GRYT-1691). */
+export const HISTORY_CAP = 300;
 // An older server answers `around` with the newest page and no `around`; this covers one that answers nothing.
 const OPEN_TIMEOUT_MS = 8000;
 
@@ -122,14 +124,20 @@ export function useHistoryWindow({ connection, conversationId, cacheKeyFor, setM
       if (payload.after) {
         setLoadingNewer(false);
         const joined = mergeMessages(messagesRef.current, payload.items, deletedIdsRef.current);
-        if (payload.hasNewer) {
-          setMessages(joined);
-        } else {
+        if (!payload.hasNewer) {
           settle(joined);
+        } else if (joined.length > HISTORY_CAP) {
+          setMessages(joined.slice(-HISTORY_CAP));
+          setHasOlder(true);
+        } else {
+          setMessages(joined);
         }
       } else if (payload.before) {
         setLoadingOlder(false);
-        setMessages((prev) => (prev ? mergeMessages(prev, payload.items, deletedIdsRef.current) : prev));
+        const joined = mergeMessages(messagesRef.current, payload.items, deletedIdsRef.current);
+        // Reading near the top, so the newest end goes and the window gains a gap below.
+        if (joined.length > HISTORY_CAP) setHasNewer(true);
+        setMessages(joined.slice(0, HISTORY_CAP));
         if (payload.hasMore !== undefined) setHasOlder(payload.hasMore);
       }
     };
@@ -184,6 +192,15 @@ export function useHistoryWindow({ connection, conversationId, cacheKeyFor, setM
     connection.emit("chat:fetch", { conversationId, limit: PAGE, after });
   }, [connection, conversationId, hasNewer, loadingNewer]);
 
+  /* The channel's own list grew past the cap from below the reader, so the part they're
+     reading becomes a window and the present is one page away rather than hundreds. */
+  const detach = useCallback((list: ChatMessage[], older: boolean) => {
+    if (list.length <= HISTORY_CAP) return;
+    setMessages(list.slice(0, HISTORY_CAP));
+    setHasOlder(older);
+    setHasNewer(true);
+  }, []);
+
   const loadOlder = useCallback(() => {
     const list = messagesRef.current;
     if (!connection || !list?.length || loadingOlder || !hasOlder) return;
@@ -202,6 +219,7 @@ export function useHistoryWindow({ connection, conversationId, cacheKeyFor, setM
     openAt,
     loadOlder,
     loadNewer,
+    detach,
     returnToPresent: close,
   };
 }
