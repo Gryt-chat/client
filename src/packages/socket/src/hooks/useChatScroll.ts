@@ -9,6 +9,9 @@ interface ScrollAnchor {
   offset: number;
 }
 
+const GLIDE_MS = 220;
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
 export function useChatScroll(
   chatMessages: ChatMessage[],
   conversationKey: string | undefined,
@@ -19,6 +22,7 @@ export function useChatScroll(
   newer?: { hasNewer: boolean; loading: boolean; load: () => void },
 ) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const glideRef = useRef<number | null>(null);
   const detachedRef = useRef(false);
   detachedRef.current = !!newer?.hasNewer;
   const isAtBottomRef = useRef(true);
@@ -33,7 +37,7 @@ export function useChatScroll(
     const conversationId = chatMessages[0]?.conversation_id;
     if (conversationId !== prevConversationForAnimRef.current) {
       seenMessageIdsRef.current.clear();
-      chatMessages.forEach((m) => seenMessageIdsRef.current.add(m.message_id));
+      chatMessages.forEach((m) => seenMessageIdsRef.current.add(m.nonce ?? m.message_id));
       prevConversationForAnimRef.current = conversationId;
       initialLoadDoneRef.current = false;
     } else if (chatMessages.length > 0) {
@@ -47,6 +51,40 @@ export function useChatScroll(
   }, []);
 
   const lastScrollTopRef = useRef(0);
+  /* Scrolled down a frame at a time to wherever the bottom is that frame, so a row or picture
+     that grows meanwhile is taken in. A transform glide grew the scroll area and got clamped. */
+  const glideToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (glideRef.current !== null) cancelAnimationFrame(glideRef.current);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      glideRef.current = null;
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+    const from = el.scrollTop;
+    let start: number | null = null;
+    let last = from;
+    const step = (now: number) => {
+      // Somebody scrolled up: the glide gives way rather than pulling them back down.
+      if (el.scrollTop < last - 1) {
+        glideRef.current = null;
+        return;
+      }
+      start ??= now;
+      const t = Math.min(1, (now - start) / GLIDE_MS);
+      const target = el.scrollHeight - el.clientHeight;
+      el.scrollTop = from + (target - from) * easeOut(t);
+      last = el.scrollTop;
+      glideRef.current = t < 1 ? requestAnimationFrame(step) : null;
+    };
+    glideRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(() => () => {
+    if (glideRef.current !== null) cancelAnimationFrame(glideRef.current);
+  }, []);
+
   /* Leaving the bottom takes scrolling up. A tall row landing fires a scroll before the pin runs,
      with the view suddenly far from the end, and reading that as leaving stopped the pin. */
   const checkAtBottom = useCallback(() => {
@@ -123,7 +161,7 @@ export function useChatScroll(
     requestAnimationFrame(() => scrollToBottom("auto"));
   }, [conversationKey, scrollToBottom]);
 
-  // Before paint, so the frame with the new row below the fold is never drawn.
+  // In the commit, so the glide starts from the frame the new row is first drawn in.
   useLayoutEffect(() => {
     const lastId = chatMessages[chatMessages.length - 1]?.message_id;
     if (!lastId) return;
@@ -138,10 +176,9 @@ export function useChatScroll(
     // A window's bottom is not the present, so a page arriving there is not a new message.
     if (detachedRef.current && !forceScrollToBottomRef.current) return;
     if (!isAtBottomRef.current && !forceScrollToBottomRef.current) return;
-    // Instant: the row slides in by itself, and a smooth scroll lost races with the next resize.
-    scrollToBottom("auto");
+    glideToBottom();
     forceScrollToBottomRef.current = false;
-  }, [chatMessages, scrollToBottom]);
+  }, [chatMessages, scrollToBottom, glideToBottom]);
 
   /**
    * Hold the bottom while the content is still settling — an image the server
@@ -152,7 +189,7 @@ export function useChatScroll(
     if (!el || typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => {
-      if (!isAtBottomRef.current || detachedRef.current) return;
+      if (!isAtBottomRef.current || detachedRef.current || glideRef.current !== null) return;
       const drift = el.scrollHeight - el.scrollTop - el.clientHeight;
       if (drift > 1) el.scrollTop = el.scrollHeight;
     });

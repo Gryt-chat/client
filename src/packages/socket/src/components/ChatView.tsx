@@ -857,12 +857,15 @@ export const ChatView = memo(({
                   const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
                   const isMentioned = mentionsViewer(m, currentUserId, massViewer);
 
-                  const isNew = !seenMessageIdsRef.current.has(m.message_id) && i >= chatMessages.length - 10;
-                  seenMessageIdsRef.current.add(m.message_id);
+                  /* Your own send is drawn at once and swapped for the server's copy, with a new id
+                     but the same nonce. Keyed by that, the row stays put rather than remounting. */
+                  const rowKey = m.nonce ?? m.message_id;
+                  const isNew = !seenMessageIdsRef.current.has(rowKey) && i >= chatMessages.length - 10;
+                  seenMessageIdsRef.current.add(rowKey);
 
                   return (
                     <MessageRow
-                      key={m.message_id}
+                      key={rowKey}
                       message={m}
                       meta={meta}
                       replyPreviewText={replyPreviewText}
