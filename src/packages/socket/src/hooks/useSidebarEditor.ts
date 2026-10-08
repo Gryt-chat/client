@@ -38,6 +38,7 @@ export function useSidebarEditor({
   const [selectedSidebarItemId, setSelectedSidebarItemId] = useState<string | null>(null);
 
   const [sheetChannelName, setSheetChannelName] = useState("");
+  const [sheetChannelDescription, setSheetChannelDescription] = useState("");
   const [sheetChannelIsVoice, setSheetChannelIsVoice] = useState(false);
   const [sheetChannelKind, setSheetChannelKind] = useState<ChannelKind>("chat");
   const [sheetForumTags, setSheetForumTags] = useState<ForumTagDraft[]>([]);
@@ -104,6 +105,7 @@ export function useSidebarEditor({
       const channelId = selectedSidebarItem.channelId ?? selectedSidebarItem.id;
       const ch = channelById.get(channelId);
       setSheetChannelName(ch?.name || "");
+      setSheetChannelDescription(ch?.description || "");
       setSheetChannelIsVoice((ch?.type || "text") === "voice");
       setSheetChannelKind(fieldsToKind({ type: ch?.type, layout: ch?.layout, automated: ch?.automated }));
       setSheetForumTags((ch?.forumTags ?? []).map((t) => ({ id: t.id, name: t.name, emoji: t.emoji ?? null, color: t.color ?? null })));
@@ -598,7 +600,8 @@ export function useSidebarEditor({
         channelId: chId,
         name: nextName,
         type: nextType,
-        description: null,
+        // Sent every time: the server writes whatever comes, so leaving it out cleared it.
+        description: sheetChannelDescription.trim() || null,
         requirePushToTalk: sheetRequirePtt,
         disableRnnoise: sheetEsportsMode || sheetDisableRnnoise,
         maxBitrate: !isNaN(parsedBitrate) && parsedBitrate > 0 ? parsedBitrate : null,
@@ -653,6 +656,7 @@ export function useSidebarEditor({
     currentConnection,
     channelById,
     sheetChannelName,
+    sheetChannelDescription,
     sheetChannelIsVoice,
     sheetChannelKind,
     sheetForumTags,
@@ -675,6 +679,8 @@ export function useSidebarEditor({
     effectiveSidebarItems,
     sheetChannelName,
     setSheetChannelName,
+    sheetChannelDescription,
+    setSheetChannelDescription,
     sheetChannelIsVoice,
     setSheetChannelIsVoice,
     sheetChannelKind,
