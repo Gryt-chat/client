@@ -618,7 +618,7 @@ export const ChatView = memo(({
           message={m}
           meta={meta}
           replyPreviewText={
-            m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null
+            m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100, mentionViewer.channelName) : null
           }
           isMentioned={mentionsViewer(m, currentUserId, massViewer)}
           customEmojiList={customEmojiList}
@@ -649,6 +649,7 @@ export const ChatView = memo(({
       threadMetaById,
       threadMessages,
       messageMap,
+      mentionViewer.channelName,
       currentUserId,
       massViewer,
       customEmojiList,
@@ -848,7 +849,7 @@ export const ChatView = memo(({
                   const replyOriginal = m.reply_to_message_id
                     ? messageMap.get(m.reply_to_message_id) ?? m.reply_original
                     : undefined;
-                  const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100) : null;
+                  const replyPreviewText = m.reply_to_message_id ? getReplyPreview(replyOriginal ?? null, 100, mentionViewer.channelName) : null;
                   const isMentioned = mentionsViewer(m, currentUserId, massViewer);
 
                   /* Your own send is drawn at once and swapped for the server's copy, with a new id

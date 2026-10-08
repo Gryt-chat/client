@@ -1,3 +1,6 @@
+import { toPlainNotificationText } from "@/lib/desktopNotification";
+import type { ChannelName } from "@/lib/mentionTokens";
+
 import { nameTagsFor } from "../../../lib/nameTags.ts";
 import type { ChatMessage } from "./chatUtils";
 import { toDate } from "./chatUtils";
@@ -17,9 +20,11 @@ export function getAttachmentPreview(msg: ChatMessage): string {
   return "Attachment";
 }
 
-export function getReplyPreview(msg: ChatMessage | null | undefined, maxLen: number): string {
+/** One line of what a reply answers, as words: mentions read as @name, and markdown is gone. */
+export function getReplyPreview(msg: ChatMessage | null | undefined, maxLen: number, channelName?: ChannelName): string {
   if (!msg) return "Original message";
-  if (msg.text) return msg.text.length > maxLen ? msg.text.slice(0, maxLen) + "..." : msg.text;
+  const text = msg.text ? toPlainNotificationText(msg.text, channelName) : "";
+  if (text) return text.length > maxLen ? text.slice(0, maxLen) + "..." : text;
   return getAttachmentPreview(msg);
 }
 
