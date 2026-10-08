@@ -78,6 +78,7 @@ interface UseChatReturn {
   activeChannelAutomated: boolean;
   activeChannelLayout: "chat" | "forum";
   activeChannelForumTags: ForumTag[];
+  activeChannelDescription: string | undefined;
   restoreText: string | null;
   clearRestoreText: () => void;
   fetchOlderMessages: () => void;
@@ -445,6 +446,7 @@ export function useChat({
   const activeChannelAutomated = activeChannel?.automated === true;
   const activeChannelLayout: "chat" | "forum" = activeChannel?.layout === "forum" ? "forum" : "chat";
   const activeChannelForumTags: ForumTag[] = activeChannel?.forumTags ?? [];
+  const activeChannelDescription = activeChannel?.description?.trim() || undefined;
 
   // Chat event listeners
   useEffect(() => {
@@ -806,6 +808,7 @@ export function useChat({
     activeChannelAutomated,
     activeChannelLayout,
     activeChannelForumTags,
+    activeChannelDescription,
     restoreText,
     clearRestoreText,
     fetchOlderMessages: historyWindow.messages ? historyWindow.loadOlder : fetchOlderMessages,

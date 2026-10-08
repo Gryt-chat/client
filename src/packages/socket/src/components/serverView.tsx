@@ -48,6 +48,7 @@ import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { getCustomEmojis } from "../utils/emojiData";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
+import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ConnectionBanner } from "./ConnectionBanner";
@@ -322,7 +323,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const {
     chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
-    canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags,
+    canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend,
     mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed,
@@ -929,7 +930,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         conversationKind={activeDm ? "dm" : "channel"}
         headerAction={dmHeaderActions}
         headerLead={tinyBack}
-        headerDetail={dmHeaderDetail}
+        headerDetail={activeDm ? dmHeaderDetail : <ChannelDescription text={activeChannelDescription} />}
         flush={isTiny}
         serverName={serverName}
         currentUserNickname={serverNickname}
@@ -1049,7 +1050,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
 forumTags={activeDm ? [] : activeChannelForumTags}
             conversationKind={activeDm ? "dm" : "channel"}
             headerAction={dmHeaderActions}
-            headerDetail={dmHeaderDetail}
+            headerDetail={activeDm ? dmHeaderDetail : <ChannelDescription text={activeChannelDescription} />}
             currentUserNickname={serverNickname}
             socketConnection={currentConnection}
             memberList={memberListMap}

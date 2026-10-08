@@ -9,6 +9,8 @@ export type Channel = {
   name: string;
   type: "text" | "voice";
   id: string;
+  /** What the channel is for, shown under its name. Absent when nobody wrote one. */
+  description?: string;
   clients?: string[];
   requirePushToTalk?: boolean;
   disableRnnoise?: boolean;

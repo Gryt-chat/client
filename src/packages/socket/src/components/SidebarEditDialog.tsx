@@ -28,6 +28,8 @@ export interface SidebarEditorFields {
   selectedSidebarItem: SidebarItem | null;
   sheetChannelName: string;
   setSheetChannelName: (v: string) => void;
+  sheetChannelDescription: string;
+  setSheetChannelDescription: (v: string) => void;
   sheetChannelIsVoice: boolean;
   setSheetChannelIsVoice: (v: boolean) => void;
   sheetChannelKind: ChannelKind;
@@ -77,6 +79,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
   const {
     selectedSidebarItem,
     sheetChannelName, setSheetChannelName,
+    sheetChannelDescription, setSheetChannelDescription,
     sheetChannelIsVoice, setSheetChannelIsVoice,
     sheetChannelKind, setSheetChannelKind,
     sheetForumTags, setSheetForumTags,
@@ -202,6 +205,18 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   onBlur={flushSave}
                   onKeyDown={handleKeyEnter}
                   placeholder="Channel name"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">
+                  Description <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span>
+                </span>
+                <TextField
+                  value={sheetChannelDescription}
+                  onChange={(e) => setSheetChannelDescription(e.target.value)}
+                  onBlur={flushSave}
+                  onKeyDown={handleKeyEnter}
+                  placeholder="What's this channel for?"
                 />
               </div>
               <div className="flex flex-col gap-2">
