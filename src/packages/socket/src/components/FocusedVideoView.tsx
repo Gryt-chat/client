@@ -3,6 +3,7 @@ import type { StreamSources } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
+import { setReceiveAudioGain } from "@/lib/receiveAudio";
 
 import { PiArrowLineLeftFill, PiArrowSquareOutFill, PiCornersInFill, PiCornersOutFill, PiEyeSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
@@ -106,7 +107,7 @@ export function FocusedVideoView({
       const v = Number(next);
       setVolume(v);
       if (audioStreamId && streamSources?.[audioStreamId]) {
-        streamSources[audioStreamId].gain.gain.setValueAtTime(
+        setReceiveAudioGain(streamSources[audioStreamId],
           sliderToGain(v, 200),
           0,
         );
@@ -119,7 +120,7 @@ export function FocusedVideoView({
     if (!hasAudio) return;
     const next = volume > 0 ? 0 : 100;
     setVolume(next);
-    streamSources![audioStreamId!].gain.gain.setValueAtTime(
+    setReceiveAudioGain(streamSources![audioStreamId!],
       sliderToGain(next, 200),
       0,
     );

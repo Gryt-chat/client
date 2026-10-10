@@ -28,6 +28,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
+import { setReceiveAudioGain } from "@/lib/receiveAudio";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
@@ -703,9 +704,9 @@ export const VoiceView = ({
       const held = heldShareGain.current;
       if (!watching && !held.has(audioId)) {
         held.set(audioId, gain.gain.value);
-        gain.gain.setValueAtTime(0, gain.context.currentTime);
+        setReceiveAudioGain(streamSources[audioId], 0, gain.context.currentTime);
       } else if (watching && held.has(audioId)) {
-        gain.gain.setValueAtTime(held.get(audioId)!, gain.context.currentTime);
+        setReceiveAudioGain(streamSources[audioId], held.get(audioId)!, gain.context.currentTime);
         held.delete(audioId);
       }
     }

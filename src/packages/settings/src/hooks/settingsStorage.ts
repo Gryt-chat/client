@@ -27,6 +27,8 @@ export interface Settings {
   setMicVolume: (num: number) => void;
   outputVolume: number;
   setOutputVolume: (num: number) => void;
+  receiveLevelingEnabled: boolean;
+  setReceiveLevelingEnabled: (enabled: boolean) => void;
   noiseGate: number;
   setNoiseGate: (num: number) => void;
   noiseGateRelease: number;
@@ -264,6 +266,8 @@ export const settingsInit: Settings = {
   setMicVolume: noop,
   outputVolume: AUDIO_DEFAULTS.outputVolume,
   setOutputVolume: noop,
+  receiveLevelingEnabled: AUDIO_DEFAULTS.receiveLevelingEnabled,
+  setReceiveLevelingEnabled: noop,
   noiseGate: AUDIO_DEFAULTS.noiseGate,
   setNoiseGate: noop,
   noiseGateRelease: AUDIO_DEFAULTS.noiseGateRelease,
