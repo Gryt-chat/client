@@ -81,6 +81,7 @@
     "test:hotkeys": "node scripts/check-hotkeys.mjs",
     "test:screen-audio": "node scripts/check-screen-audio.mjs",
     "test:audio-mixer": "node scripts/check-audio-mixer.mjs",
+    "test:output-device": "node scripts/check-output-device.mjs",
     "test:capture-set": "node scripts/check-capture-set.mjs",
     "test:capture-health": "node scripts/check-capture-health.mjs",
     "test:screen-audio-state": "node scripts/check-screen-audio-state.mjs",
