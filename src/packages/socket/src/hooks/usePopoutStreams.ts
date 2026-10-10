@@ -2,6 +2,7 @@ import type { StreamSources } from "@gryt/voice";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
+import { setReceiveAudioGain } from "@/lib/receiveAudio";
 
 import type { PopoutHandle } from "../utils/popoutVideo";
 import { popoutStream } from "../utils/popoutVideo";
@@ -56,7 +57,7 @@ export function usePopoutStreams(
           ? {
               initialVolume: gainToSlider(gainNode.gain.value, 200),
               onVolumeChange: (v: number) => {
-                gainNode.gain.setValueAtTime(sliderToGain(v, 200), 0);
+                setReceiveAudioGain(streamSourcesRef.current?.[audioStreamId!], sliderToGain(v, 200), 0);
               },
             }
           : undefined,

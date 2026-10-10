@@ -6,6 +6,7 @@ import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { createRoomCoordinator } from "./roomCoordinator";
+import { useReceiveAudioRoles } from "./useReceiveAudioRoles";
 import { useVoiceLifecycle } from "./useVoiceLifecycle";
 import { useVoiceConfigFromSettings } from "./voiceConfig";
 import { electronVoiceHost } from "./voiceHost";
@@ -20,6 +21,7 @@ const NO_STUN: string[] = [];
 
 function VoiceLifecycle() {
   useVoiceLifecycle();
+  useReceiveAudioRoles();
   return null;
 }
 

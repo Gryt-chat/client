@@ -87,3 +87,6 @@ e2e/soak/test-results/
 # A soak run's logs, a JSONL file per client and probe.
 e2e/soak/runs/
 
+
+# Headless receive-leveling artifacts
+e2e/receive-results/

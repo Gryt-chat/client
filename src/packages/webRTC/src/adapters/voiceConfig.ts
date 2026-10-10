@@ -26,6 +26,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
         inputMode: s.inputMode,
         volume: s.micVolume,
         outputVolume: s.outputVolume,
+        receiveLevelingEnabled: s.receiveLevelingEnabled,
         loopback: s.loopbackEnabled,
         noiseSuppression: s.rnnoiseEnabled,
         noiseGate: s.noiseGate,
@@ -53,6 +54,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
     }),
     [
       s.micID, s.isMuted, s.isServerMuted, s.isDeafened, s.isServerDeafened,
+      s.receiveLevelingEnabled,
       s.inputMode, s.micVolume, s.outputVolume, s.loopbackEnabled, s.rnnoiseEnabled,
       s.noiseGate, s.noiseGateRelease, s.autoGainEnabled, s.autoGainTargetDb,
       s.compressorEnabled, s.compressorAmount, s.cameraID, s.cameraQuality,

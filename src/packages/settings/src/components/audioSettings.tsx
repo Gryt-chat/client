@@ -9,6 +9,7 @@ import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
 import { PiArrowsClockwiseFill, PiWarningFill } from "../../../../lib/icons";
+import { ReceiveLevelingSettings } from "./receiveLevelingSettings";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
 /** Visualizer refresh rate. 30 fps is plenty for a level meter. */
@@ -597,6 +598,8 @@ export function AudioSettings() {
       />
 
       <Divider />
+
+      <ReceiveLevelingSettings />
 
       {/* ── Output ── */}
       <span className="font-bold text-gryt-muted">Output</span>

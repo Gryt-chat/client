@@ -9,6 +9,7 @@ export interface AudioSettingsData {
   outputDeviceID: string;
   micVolume: number;
   outputVolume: number;
+  receiveLevelingEnabled: boolean;
   noiseGate: number;
   noiseGateRelease: number;
   rnnoiseEnabled: boolean;
@@ -42,6 +43,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   // notice and correct than loud. Only new installs see this.
   micVolume: 50,
   outputVolume: 100,
+  receiveLevelingEnabled: false,
   noiseGate: 1,
   noiseGateRelease: 200,
   rnnoiseEnabled: true,
@@ -76,6 +78,7 @@ export function loadAudioFromCache(): AudioSettingsData {
     outputDeviceID: getUserValue("outputDeviceID", AUDIO_DEFAULTS.outputDeviceID),
     micVolume: getUserValue("micVolume", AUDIO_DEFAULTS.micVolume),
     outputVolume: getUserValue("outputVolume", AUDIO_DEFAULTS.outputVolume),
+    receiveLevelingEnabled: getUserValue("receiveLevelingEnabled", AUDIO_DEFAULTS.receiveLevelingEnabled),
     noiseGate: getUserValue("noiseGate", AUDIO_DEFAULTS.noiseGate),
     noiseGateRelease: getUserValue("noiseGateRelease", AUDIO_DEFAULTS.noiseGateRelease),
     rnnoiseEnabled: getUserValue("rnnoiseEnabled", AUDIO_DEFAULTS.rnnoiseEnabled),
@@ -121,6 +124,7 @@ export function useAudioSettings() {
   const [outputDeviceID, setOutputDeviceID] = useState(AUDIO_DEFAULTS.outputDeviceID);
   const [micVolume, setMicVolume] = useState(AUDIO_DEFAULTS.micVolume);
   const [outputVolume, setOutputVolume] = useState(AUDIO_DEFAULTS.outputVolume);
+  const [receiveLevelingEnabled, setReceiveLevelingEnabled] = useState(AUDIO_DEFAULTS.receiveLevelingEnabled);
   const [noiseGate, setNoiseGate] = useState(AUDIO_DEFAULTS.noiseGate);
   const [noiseGateRelease, setNoiseGateRelease] = useState(AUDIO_DEFAULTS.noiseGateRelease);
 
@@ -150,6 +154,7 @@ export function useAudioSettings() {
     setOutputDeviceID(d.outputDeviceID);
     setMicVolume(d.micVolume);
     setOutputVolume(d.outputVolume);
+    setReceiveLevelingEnabled(d.receiveLevelingEnabled);
     setNoiseGate(d.noiseGate);
     setNoiseGateRelease(d.noiseGateRelease);
     setRnnoiseEnabled(d.rnnoiseEnabled);
@@ -199,6 +204,11 @@ export function useAudioSettings() {
   function updateOutputVolume(newVol: number) {
     setOutputVolume(newVol);
     setUserValue("outputVolume", newVol);
+  }
+
+  function updateReceiveLevelingEnabled(enabled: boolean) {
+    setReceiveLevelingEnabled(enabled);
+    setUserValue("receiveLevelingEnabled", enabled);
   }
 
   function updateNoiseGate(newGate: number) {
@@ -399,6 +409,8 @@ export function useAudioSettings() {
     setMicVolume: updateMicVolume,
     outputVolume,
     setOutputVolume: updateOutputVolume,
+    receiveLevelingEnabled,
+    setReceiveLevelingEnabled: updateReceiveLevelingEnabled,
     noiseGate,
     setNoiseGate: updateNoiseGate,
     noiseGateRelease,

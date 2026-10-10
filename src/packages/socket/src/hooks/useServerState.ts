@@ -6,6 +6,7 @@ import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken } from "@/common";
 import { sliderToOutputGain } from "@/lib/audioVolume";
+import { setReceiveAudioGain } from "@/lib/receiveAudio";
 import { useSettings } from "@/settings";
 
 import { byRosterClientId, type ByServerUser, heldKey } from "../lib/heldVoicePresence";
@@ -465,7 +466,7 @@ export function useServerState(): UseServerStateResult {
         ? (userVolumes[client.serverUserId] ?? 100) / 100
         : 1;
       const finalGain = isDeafened ? 0 : baseGain * userVol;
-      streamSources[client.streamID].gain.gain.setValueAtTime(
+      setReceiveAudioGain(streamSources[client.streamID],
         finalGain,
         audioContext.currentTime || 0
       );

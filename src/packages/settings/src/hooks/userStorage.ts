@@ -349,6 +349,7 @@ export const SETTINGS_KEYS = [
   "outputDeviceID",
   "micVolume",
   "outputVolume",
+  "receiveLevelingEnabled",
   "noiseGate",
   "rnnoiseEnabled",
   "autoGainEnabled",
