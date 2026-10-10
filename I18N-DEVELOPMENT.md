@@ -81,12 +81,9 @@ separate UI label-prop patch; removing or replacing DOM after render is not a
 supported localization approach. Search metadata for panels not migrated and a
 few descriptions that differ from the panel copy still fall back to English.
 
-The build keeps the original Gryt name and desktop configuration. Any later
-“老蒯聊” portable release must make branding a separate change, with an independent
-appId, data directory, protocol/update handling and update feed (or updates
-disabled). Do not run the original desktop packaging command as a branded release
-or reuse the original owner's data. No credentials, recovery words or live invite
-codes were added. A guest Web deployment and OIDC configuration are separate work.
+The localization change retains upstream branding and desktop packaging. The
+language preference has its own key; identity, authentication, server discovery,
+audio processing and update behavior are outside this UI migration.
 
 ## Reproduce the checks and Web build
 
@@ -110,8 +107,7 @@ yarn build
 ```
 
 The install deliberately skips Electron/native postinstall scripts for the Web
-test build. Do not use `yarn dev`, `electron:dev`, `electron:preview` or launch an
-executable while foreground windows are prohibited. The localization e2e config
+test build. The localization e2e config
 uses one headless worker, a loopback Vite service on 4777 and mocked external
 requests. Its fresh browser context does not use installed-client data, and its
 full-page test rejects media acquisition. No actual microphone, speaker, camera,
