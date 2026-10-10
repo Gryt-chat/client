@@ -424,8 +424,10 @@ const splash = readFileSync(`${ROOT}/src/components/AuthLoadingOverlay.tsx`, "ut
 
 check("the splash names an accounts outage and offline, not just a slow start", () => {
   assert.ok(splash.includes("checkAccountsAtLaunch"), "the splash no longer checks the account services");
-  assert.match(splash, /Can't reach Gryt accounts right now/, "the splash has no words for accounts being down");
-  assert.match(splash, /You're offline/, "the splash has no words for being offline");
+  const copy = JSON.parse(readFileSync(`${ROOT}/src/packages/i18n/locales/en.json`, "utf8"));
+  assert.ok(splash.includes('tr(`launch.${message}`)'), "the splash no longer renders the state-specific translation");
+  assert.match(copy.launch["accounts-down"], /Can't reach Gryt accounts right now/, "the splash has no words for accounts being down");
+  assert.match(copy.launch.offline, /You're offline/, "the splash has no words for being offline");
 });
 
 check("the banner has words for offline that don't claim an outage", () => {

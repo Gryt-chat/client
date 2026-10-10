@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/common";
+import { useTranslation } from "@/i18n";
 
 import { getGrytConfig } from "../config";
 import { isElectron } from "../lib/electron";
@@ -22,12 +23,6 @@ const SLOW_AFTER_MS = 5_000;
  */
 const FADE_GIVE_UP_SLACK_MS = 400;
 
-const SPLASH_COPY = {
-  "accounts-down":
-    "Can't reach Gryt accounts right now. You can keep using Gryt without signing in.",
-  offline: "You're offline, so Gryt can't check your account. It'll open without signing you in.",
-  slow: "This is taking longer than it should. Gryt will carry on without an account in a moment.",
-} as const;
 
 export function AuthLoadingOverlay({
   open,
@@ -36,6 +31,7 @@ export function AuthLoadingOverlay({
   open: boolean;
   fadeDurationMs?: number;
 }) {
+  const { t: tr } = useTranslation();
   // Left uncovered on purpose, so the window stays draggable and closable while
   // this is up.
   const titlebarHeight = isElectron() ? TITLEBAR_HEIGHT : 0;
@@ -125,7 +121,7 @@ export function AuthLoadingOverlay({
             userSelect: "none"
           }}
           role="status"
-          aria-label="Checking whether you are signed in"
+          aria-label={tr("launch.checking")}
           aria-live="polite"
           /* Not busy once it is leaving, and hidden from a screen reader — a
              sheet mid-exit is decoration. */
@@ -195,7 +191,7 @@ export function AuthLoadingOverlay({
                     transition={{ duration: 0.25 }}
                   >
                     <p className="text-sm text-gryt-muted text-center" style={{ margin: 0, lineHeight: 1.5 }}>
-                      {SPLASH_COPY[message]}
+                      {tr(`launch.${message}`)}
                     </p>
                   </motion.div>
                 ) : (
@@ -207,7 +203,7 @@ export function AuthLoadingOverlay({
                     transition={{ duration: 0.25 }}
                   >
                     <p className="text-sm text-gryt-muted text-center" style={{ margin: 0 }}>
-                      Checking whether you&rsquo;re signed in
+                      {tr("launch.checking")}
                     </p>
                   </motion.div>
                 )}

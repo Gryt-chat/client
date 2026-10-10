@@ -8,6 +8,8 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
+import { useTranslation } from "@/i18n";
+
 import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPaperPlaneTiltFill, PiSmileyFill, PiX } from "../../../../lib/icons";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
@@ -33,8 +35,6 @@ const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
 const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
 
 /** Said instead, where the attachment would be refused. */
-const LONG_PASTE_NO_FILES =
-  `That's too long to paste. Messages can be up to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters, and you can't attach files here.`;
 
 export interface ChatEditorHandle {
   clear: () => void;
@@ -264,6 +264,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
   ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
+  const { t: tr } = useTranslation();
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
@@ -345,7 +346,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       // Covers paste and drag-and-drop as well as the clip, which is why it is
       // here rather than only on the button.
       if (allowFiles === false) {
-        toast.error("You do not have permission to attach files here.");
+        toast.error(tr("ui.youDoNotHavePermissionToAttachFiles"));
         return;
       }
       for (const file of files) {
@@ -358,12 +359,12 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         const id = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         setPendingFiles((prev) => [...prev, { id, file, previewUrl }]);
       }
-    }, [maxFileSize, allowFiles]);
+    }, [maxFileSize, allowFiles, tr]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLDivElement>) => {
         // A suggestion list that used the key prevented it first. An empty one lets it through.
-        if (e.nativeEvent.defaultPrevented) return;
+        if (e.nativeEvent.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
@@ -421,7 +422,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           }
           // The file below would be refused, and the paste gone with it.
           if (allowFiles === false) {
-            toast.error(LONG_PASTE_NO_FILES);
+            toast.error(tr("chat.longPaste", { count: MESSAGE_MAX_LENGTH }));
             return;
           }
 
@@ -435,7 +436,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
         document.execCommand("insertText", false, text);
       },
-      [addFiles, isEditing, allowFiles]
+      [addFiles, isEditing, allowFiles, tr]
     );
 
     const handleDrop = useCallback(
@@ -667,7 +668,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                   className="chat-editor-file-delete"
                   onClick={() => removeFile(pf.id)}
                   type="button"
-                  aria-label="Remove file"
+                  aria-label={tr("ui.removeFile")}
                 >
                   <PiX size={11} />
                 </button>
@@ -695,14 +696,14 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           members={channelList || []}
           onSelect={handleChannelSelect}
           onClose={() => setChannelQuery(null)}
-          title="Channels"
+          title={tr("ui.channels")}
         />
         <div className="chat-editor-input-row">
           {allowFiles !== false && (
             <button
               className="chat-editor-attach-btn"
               type="button"
-              aria-label="Attach file"
+              aria-label={tr("ui.attachFile")}
               disabled={disabled}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -723,7 +724,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             <button
               className="chat-editor-emoji-btn"
               type="button"
-              aria-label="Insert emoji"
+              aria-label={tr("ui.insertEmoji")}
               disabled={disabled}
               onClick={() => setEmojiPickerOpen((v) => !v)}
             >
@@ -743,8 +744,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             className="chat-editor-textarea"
             contentEditable={!disabled}
             role="textbox"
-            aria-placeholder={placeholder || "Type a message..."}
-            data-placeholder={placeholder || "Type a message..."}
+            aria-placeholder={placeholder || tr("ui.typeAMessage")}
+            data-placeholder={placeholder || tr("ui.typeAMessage")}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onDrop={handleDrop}
@@ -765,7 +766,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           <button
             className="chat-editor-send-btn"
             type="button"
-            aria-label="Send message"
+            aria-label={tr("ui.sendMessage")}
             disabled={disabled}
             onClick={handleSend}
           >

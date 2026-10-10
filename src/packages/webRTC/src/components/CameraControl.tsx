@@ -2,6 +2,7 @@ import { Menu } from "@gryt/ui";
 import { useCamera } from "@gryt/voice";
 import { useState } from "react";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 
 import { PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
@@ -18,6 +19,7 @@ interface CameraControlProps {
 
 /** Off, it opens the preview. Live, a menu: the engine reopens the camera on a new setting. */
 export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: CameraControlProps) {
+  const { t: tr } = useTranslation();
   const { cameraEnabled, setCameraEnabled, devices } = useCamera();
   const {
     cameraID, setCameraID, cameraQuality, setCameraQuality,
@@ -42,14 +44,14 @@ export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: C
     <>
       {cameraEnabled ? (
         <Menu.Root>
-          <Menu.Trigger render={<CallControlButton state="live" aria-label="Camera is on" />}>
+          <Menu.Trigger render={<CallControlButton state="live" aria-label={tr("ui.cameraIsOn")} />}>
             <PiVideoCameraFill size={iconSize} />
           </Menu.Trigger>
           <Menu.Portal>
             <Menu.Positioner side={side}>
-              <Menu.Popup aria-label="Camera">
+              <Menu.Popup aria-label={tr("ui.camera")}>
                 <Menu.Group>
-                  <Menu.GroupLabel>Quality</Menu.GroupLabel>
+                  <Menu.GroupLabel>{tr("ui.quality")}</Menu.GroupLabel>
                   <Menu.RadioGroup value={current} onValueChange={(v) => pickPreset(String(v))}>
                     {!matchesPreset && (
                       <Menu.RadioItem value={current}>{presetLabel(cameraQuality, cameraFps)}</Menu.RadioItem>
@@ -67,7 +69,7 @@ export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: C
                   <>
                     <Menu.Separator />
                     <Menu.Group>
-                      <Menu.GroupLabel>Camera</Menu.GroupLabel>
+                      <Menu.GroupLabel>{tr("ui.camera")}</Menu.GroupLabel>
                       <Menu.RadioGroup value={cameraID} onValueChange={(v) => setCameraID(String(v))}>
                         {cameras.map((d, i) => (
                           <Menu.RadioItem key={d.deviceId} value={d.deviceId}>
@@ -80,14 +82,14 @@ export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: C
                 )}
                 <Menu.Separator />
                 <Menu.Item className="text-gryt-danger" onClick={() => setCameraEnabled(false)}>
-                  Turn camera off
+                  {tr("ui.turnCameraOff")}
                 </Menu.Item>
               </Menu.Popup>
             </Menu.Positioner>
           </Menu.Portal>
         </Menu.Root>
       ) : (
-        <CallControlButton state="idle" aria-label="Turn camera on" onClick={() => setShowPreview(true)}>
+        <CallControlButton state="idle" aria-label={tr("ui.turnCameraOn")} onClick={() => setShowPreview(true)}>
           <PiVideoCameraSlashFill size={iconSize} />
         </CallControlButton>
       )}

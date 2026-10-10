@@ -164,16 +164,16 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 
   const popup = rail.slice(rail.indexOf("<ContextMenu.Popup>"), rail.indexOf("</ContextMenu.Popup>"));
   assert.ok(popup.length > 0, `${RAIL} no longer has a right-click menu, so this reads nothing`);
-  assert.match(popup, /\{onManageServer && \(\s*<ContextMenu\.Item onClick=\{onManageServer\}>Manage server<\/ContextMenu\.Item>\s*\)\}/, "the rail's menu gates Manage server on something besides being hosted here");
-  assert.equal(rail.match(/Manage server<\//g)?.length, 1, `${RAIL} draws Manage server more than once`);
+  assert.match(popup, /\{onManageServer && \(\s*<ContextMenu\.Item onClick=\{onManageServer\}>\{tr\("ui\.manageServer"\)\}<\/ContextMenu\.Item>\s*\)\}/, "the rail's menu gates Manage server on something besides being hosted here");
+  assert.equal(rail.match(/tr\("ui\.manageServer"\)/g)?.length, 1, `${RAIL} draws Manage server more than once`);
   const trigger = rail.slice(rail.indexOf("<ContextMenu.Trigger"), rail.indexOf(">", rail.indexOf("<ContextMenu.Trigger")) + 1);
   assert.equal(trigger, "<ContextMenu.Trigger>", "the rail's menu trigger takes props now, and one could stop it opening on a stopped server");
 }
 
 {
   const header = read(HEADER);
-  assert.match(header, /\{onManageServer && \(\s*<Menu\.Item onClick=\{onManageServer\}>Manage server<\/Menu\.Item>\s*\)\}/, "the header menu gates Manage server on role or something else besides being hosted here");
-  assert.equal(header.match(/Manage server<\//g)?.length, 1, `${HEADER} draws Manage server more than once`);
+  assert.match(header, /\{onManageServer && \(\s*<Menu\.Item onClick=\{onManageServer\}>\{tr\("ui\.manageServer"\)\}<\/Menu\.Item>\s*\)\}/, "the header menu gates Manage server on role or something else besides being hosted here");
+  assert.equal(header.match(/tr\("ui\.manageServer"\)/g)?.length, 1, `${HEADER} draws Manage server more than once`);
 
   const view = read(VIEW);
   const hook = view.indexOf("const { servers: hostedServers } = useEmbeddedServer();");
@@ -210,7 +210,7 @@ for (const tab of ["my-servers", "profile", "sound-video/audio", "audio", ""]) {
 
   const start = settings.indexOf("const [active, activePage] = useMemo(() => {");
   assert.notEqual(start, -1, `${SETTINGS} no longer resolves the tab in a useMemo. Move this check with it.`);
-  const body = settings.slice(settings.indexOf("{", start) + 1, settings.indexOf("}, [settingsTab]);", start));
+  const body = settings.slice(settings.indexOf("{", start) + 1, settings.indexOf("}, [settingsTab, DESTINATIONS]);", start));
   const resolve = new Function(
     "DESTINATIONS",
     "DEFAULT_DESTINATION",

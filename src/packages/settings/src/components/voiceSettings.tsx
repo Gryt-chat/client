@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 
 import { NoticeDialog } from "../../../socket/src/components/NoticeDialog";
@@ -12,6 +13,7 @@ import { TileLayoutPicker } from "./tileLayoutPicker";
 import { TwoPersonLayoutPicker } from "./twoPersonLayoutPicker";
 
 export function VoiceSettings() {
+  const { t: tr } = useTranslation();
   const {
     eSportsModeEnabled,
     setESportsModeEnabled,
@@ -58,25 +60,25 @@ export function VoiceSettings() {
   return (
     <SettingsContainer>
       <h2>
-        Voice
+        {tr("ui.voice")}
       </h2>
 
-      <ToggleSetting
-        title="eSports mode"
-        description="Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames)."
+      <ToggleSetting anchorId="esports-mode"
+        title={tr("ui.esportsMode")}
+        description={tr("ui.lowestPossibleLatencyDisablesAllAudioProcessingEnables")}
         checked={eSportsModeEnabled}
         onCheckedChange={setESportsModeEnabled}
         statusText={eSportsModeEnabled
-          ? "Active — RNNoise off, noise gate bypassed, PTT enabled, 128kbps cap, ptime=10ms"
+          ? tr("audio.esportsActive")
           : undefined
         }
       />
 
       <Divider />
 
-      <SliderSetting
-        title={`AFK timeout: ${afkTimeoutMinutes} minutes`}
-        description="You are marked AFK after this many minutes of silence, and only while you are connected to voice."
+      <SliderSetting anchorId="afk-timeout"
+        title={tr("audio.afkTimeout", { count: afkTimeoutMinutes })}
+        description={tr("ui.youAreMarkedAfkAfterThisManyMinutes")}
         value={afkTimeoutMinutes}
         onChange={setAfkTimeoutMinutes}
         min={1}
@@ -87,8 +89,8 @@ export function VoiceSettings() {
 
       <div className="flex flex-col gap-4">
         <SoundSettings
-          label="Connect sound"
-          description="Play sound when connecting to voice"
+          label={tr("ui.connectSound")}
+          description={tr("ui.playSoundWhenConnectingToVoice")}
           enabled={connectSoundEnabled}
           onEnabledChange={setConnectSoundEnabled}
           volume={connectSoundVolume}
@@ -100,8 +102,8 @@ export function VoiceSettings() {
           showAlert={showAlert}
         />
         <SoundSettings
-          label="Disconnect sound"
-          description="Play sound when disconnecting from voice"
+          label={tr("ui.disconnectSound")}
+          description={tr("ui.playSoundWhenDisconnectingFromVoice")}
           enabled={disconnectSoundEnabled}
           onEnabledChange={setDisconnectSoundEnabled}
           volume={disconnectSoundVolume}
@@ -121,18 +123,18 @@ export function VoiceSettings() {
         title={alertDialog.title}
         message={alertDialog.message}
       />
-      <SettingGroup
-        title="Tile layout"
-        description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
+      <SettingGroup anchorId="tile-layout"
+        title={tr("ui.tileLayout")}
+        description={tr("ui.howTheVoiceGridArrangesPeopleOnceIt")}
       >
         <TileLayoutPicker value={voiceTileLayout} onChange={setVoiceTileLayout} />
 
 
       </SettingGroup>
 
-      <SettingGroup
-        title="Two people"
-        description="With exactly two of you in a channel and nobody sharing a screen. One large and one small is what a video call usually does; same size is better when you are both doing something rather than talking to each other."
+      <SettingGroup anchorId="two-people"
+        title={tr("ui.twoPeople")}
+        description={tr("ui.withExactlyTwoOfYouInAChannel")}
       >
         <TwoPersonLayoutPicker
           value={voiceTwoPersonLayout}

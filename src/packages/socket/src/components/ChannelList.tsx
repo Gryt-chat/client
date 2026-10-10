@@ -21,6 +21,7 @@ import {
   subscribeToPrefs,
   SuppressEveryoneItem,
 } from "@/common";
+import { useTranslation } from "@/i18n";
 import { channelHref } from "@/lib/mentionTokens";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
@@ -150,6 +151,7 @@ export const ChannelList = ({
   /** Unseen mentions per conversation id. Absent means none. */
   mentionCounts?: Map<string, number>;
 }) => {
+  const { t: tr } = useTranslation();
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
   const { microphoneBuffer } = useMicrophone(false);
@@ -290,7 +292,7 @@ export const ChannelList = ({
           ].join(" ")}
         >
           <span className="min-w-0 shrink truncate">
-            <EmojiText text={item.label || "Folder"} />
+            <EmojiText text={item.label || tr("ui.folder")} />
           </span>
           <span
             aria-hidden="true"
@@ -346,7 +348,7 @@ export const ChannelList = ({
             // because it says why.
             opacity: locked ? 0.55 : undefined,
           }}
-          title={locked ? "You cannot join this voice channel." : undefined}
+          title={locked ? tr("ui.youCannotJoinThisVoiceChannel") : undefined}
           onClick={() => {
             if (channel) onChannelClick(channel);
           }}
@@ -372,21 +374,21 @@ export const ChannelList = ({
           {hasIndicators && (
             <div className="flex gap-1 items-center" style={{ marginLeft: "auto", flexShrink: 0 }}>
               {channel!.eSportsMode && (
-                <Tooltip title="eSports mode">
+                <Tooltip title={tr("ui.esportsMode")}>
                   <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiGameControllerFill size={14} />
                   </div>
                 </Tooltip>
               )}
               {channel!.requirePushToTalk && (
-                <Tooltip title="Push to Talk required">
+                <Tooltip title={tr("ui.pushToTalkRequired")}>
                   <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiKeyboardFill size={14} />
                   </div>
                 </Tooltip>
               )}
               {channel!.disableRnnoise && (
-                <Tooltip title="Noise suppression disabled">
+                <Tooltip title={tr("ui.noiseSuppressionDisabled")}>
                   <span className="text-xs font-bold" style={{ color: "var(--gryt-neutral-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gryt-neutral-7)", borderRadius: "var(--gryt-radius-sm)" }}>
                     RAW
                   </span>
@@ -563,7 +565,7 @@ export const ChannelList = ({
     const isLast = hiding ? !moveAmongDrawn(rows, item.id, "down") : index === effectiveItems.length - 1;
     const label = item.kind === "channel"
       ? (channelById.get(item.channelId ?? item.id)?.name || "channel")
-      : item.kind === "folder" ? item.label || "Folder" : item.kind;
+      : item.kind === "folder" ? item.label || tr("ui.folder") : item.kind;
 
     return (
       <ContextMenu.Root>
@@ -613,12 +615,12 @@ export const ChannelList = ({
               onClick={() => {
                 const link = `[#channel](${channelHref(item.channelId ?? item.id, serverHost)})`;
                 void navigator.clipboard?.writeText(link).then(
-                  () => toast.success("Channel mention copied. Paste it into any message."),
-                  () => toast.error("Couldn't copy to the clipboard."),
+                  () => toast.success(tr("ui.channelMentionCopiedPasteItIntoAnyMessage")),
+                  () => toast.error(tr("ui.couldnTCopyToTheClipboard")),
                 );
               }}
             >
-              Copy channel mention
+              {tr("ui.copyChannelMention")}
             </ContextMenu.Item>
           ) : null}
 
@@ -626,7 +628,7 @@ export const ChannelList = ({
             <>
               {notifiable ? <ContextMenu.Separator /> : null}
               <ContextMenu.Item onClick={() => onEditItem?.(item)}>
-                Edit
+                {tr("ui.edit")}
               </ContextMenu.Item>
               {item.kind === "folder" ? (
                 <ContextMenu.Item
@@ -636,29 +638,29 @@ export const ChannelList = ({
                     onAddItem?.("channel:text", { folderId: item.id });
                   }}
                 >
-                  Create channel in this folder
+                  {tr("ui.createChannelInThisFolder")}
                 </ContextMenu.Item>
               ) : null}
               {item.kind === "channel" ? (
                 <ContextMenu.Item onClick={() => onAddItem?.("channel:text", { afterItemId: item.id })}>
-                  Create channel below
+                  {tr("ui.createChannelBelow")}
                 </ContextMenu.Item>
               ) : null}
               {/* Right-click anywhere in the list to start a folder. The new
                   one lands at the end, empty. */}
               <ContextMenu.Item onClick={() => onAddItem?.("folder")}>
-                Add folder
+                {tr("ui.addFolder")}
               </ContextMenu.Item>
               <ContextMenu.Separator />
               <ContextMenu.Item disabled={isFirst} onClick={() => moveItem(item, "up")}>
-                Move up
+                {tr("ui.moveUp")}
               </ContextMenu.Item>
               <ContextMenu.Item disabled={isLast} onClick={() => moveItem(item, "down")}>
-                Move down
+                {tr("ui.moveDown")}
               </ContextMenu.Item>
               <ContextMenu.Separator />
               <ContextMenu.Item className="text-gryt-danger" onClick={() => onDeleteItem?.(item)}>
-                Delete
+                {tr("ui.delete")}
               </ContextMenu.Item>
             </>
           ) : null}
@@ -777,7 +779,7 @@ export const ChannelList = ({
     <button
       type="button"
       onClick={() => setHideMuted(serverHost, false)}
-      title="Show muted channels"
+      title={tr("ui.showMutedChannels")}
       aria-label={`Show ${hiddenCount} hidden muted ${hiddenCount === 1 ? "channel" : "channels"}`}
       className={[
         "mt-3 flex w-full items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 text-left",
@@ -786,7 +788,7 @@ export const ChannelList = ({
         "text-gryt-muted hover:text-gryt-text active:text-gryt-text",
       ].join(" ")}
     >
-      <span className="shrink-0">Hidden</span>
+      <span className="shrink-0">{tr("ui.hidden")}</span>
       <span aria-hidden="true" className="h-px min-w-2 flex-1 bg-gryt-border" />
       <span aria-hidden="true" className="shrink-0 tabular-nums opacity-70">{hiddenCount}</span>
     </button>
@@ -837,7 +839,7 @@ export const ChannelList = ({
             <ContextMenu.Popup>
               <ContextMenu.Group>
                 <ContextMenu.GroupLabel>
-                  This server
+                  {tr("ui.thisServer")}
                 </ContextMenu.GroupLabel>
               </ContextMenu.Group>
               {notificationSubmenu({ kind: "server" })}
@@ -938,7 +940,7 @@ export const ChannelList = ({
           <ContextMenu.Popup>
         <ContextMenu.Group>
           <ContextMenu.GroupLabel>
-            This server
+            {tr("ui.thisServer")}
           </ContextMenu.GroupLabel>
         </ContextMenu.Group>
         {notificationSubmenu({ kind: "server" })}
@@ -948,17 +950,17 @@ export const ChannelList = ({
         <ContactPrivacyMenu host={serverHost} />
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => onAddItem?.("channel:text")}>
-          Add channel
+          {tr("ui.addChannel")}
         </ContextMenu.Item>
         <ContextMenu.Item onClick={() => onAddItem?.("folder")}>
-          Add folder
+          {tr("ui.addFolder")}
         </ContextMenu.Item>
         <ContextMenu.Separator />
         <ContextMenu.Item onClick={() => onAddItem?.("separator")}>
-          Add separator
+          {tr("ui.addSeparator")}
         </ContextMenu.Item>
         <ContextMenu.Item onClick={() => onAddItem?.("spacer")}>
-          Add spacer
+          {tr("ui.addSpacer")}
         </ContextMenu.Item>
       </ContextMenu.Popup>
         </ContextMenu.Positioner>

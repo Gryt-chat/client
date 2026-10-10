@@ -5,6 +5,7 @@ import { voiceLog } from "@gryt/voice";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
@@ -48,6 +49,7 @@ function MaybeTooltip({
 }
 
 export function Controls({ onDisconnect }: ControlsProps) {
+  const { t: tr } = useTranslation();
   const [isBrowserSupported] = useState(getIsBrowserSupported());
   const {
     disconnect,
@@ -380,18 +382,18 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (!prev || !isConnected || prev.channel !== currentChannelConnected) return;
     if (prev.video && !mayShareVideo && cameraEnabled) {
       setCameraEnabled(false);
-      toast.error("You can't share video in this channel any more, so your camera is off.", { id: "share-video-taken" });
+      toast.error(tr("ui.youCanTShareVideoInThisChannel"), { id: "share-video-taken" });
     }
     if (prev.screen && !mayShareScreen && screenShareActive) {
       stopScreenShare();
-      toast.error("You can't share your screen in this channel any more, so the share stopped.", { id: "share-screen-taken" });
+      toast.error(tr("ui.youCanTShareYourScreenInThis"), { id: "share-screen-taken" });
     }
     if (prev.speak && !maySpeak && !isMuted) {
       setIsMuted(true);
-      toast.error("You can't speak in this channel any more, so you're muted.", { id: "speak-taken" });
+      toast.error(tr("ui.youCanTSpeakInThisChannelAny"), { id: "speak-taken" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, currentChannelConnected, mayShareVideo, mayShareScreen, maySpeak]);
+  }, [isConnected, currentChannelConnected, mayShareVideo, mayShareScreen, maySpeak, tr]);
 
   useEffect(() => {
     return getElectronAPI()?.onNativeAudioProblem?.((problem) => {
@@ -402,7 +404,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
   function handleMute() {
     if (isServerMuted) {
-      toast("You are server muted by an admin.", { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
+      toast(tr("ui.youAreServerMutedByAnAdmin"), { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
       return;
     }
     setIsMuted(!isMuted);
@@ -410,7 +412,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
   function handleDeafen() {
     if (isServerDeafened) {
-      toast("You are server deafened by an admin.", { icon: <PiSpeakerSlashFill size={18} />, id: "server-deafened" });
+      toast(tr("ui.youAreServerDeafenedByAnAdmin"), { icon: <PiSpeakerSlashFill size={18} />, id: "server-deafened" });
       return;
     }
     setIsDeafened(!isDeafened);
@@ -439,20 +441,20 @@ export function Controls({ onDisconnect }: ControlsProps) {
             an empty bubble on hover and kept it anchored to whichever control
             you hovered previously.
           */}
-          <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
+          <MaybeTooltip content={isServerMuted ? tr("ui.serverMutedByAdmin") : null}>
             <CallControlButton
               state={isServerMuted ? "blocked" : isMuted ? "off" : "idle"}
-              aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
+              aria-label={(isMuted || isServerMuted) ? tr("ui.unmuteMicrophone") : tr("ui.muteMicrophone")}
               onClick={handleMute}
             >
               {(isMuted || isServerMuted) ? <PiMicrophoneSlashFill size={16} /> : <PiMicrophoneFill size={16} />}
             </CallControlButton>
           </MaybeTooltip>
 
-          <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
+          <MaybeTooltip content={isServerDeafened ? tr("ui.serverDeafenedByAdmin") : null}>
             <CallControlButton
               state={isServerDeafened ? "blocked" : isDeafened ? "off" : "idle"}
-              aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
+              aria-label={(isDeafened || isServerDeafened) ? tr("ui.undeafen") : tr("ui.deafen")}
               onClick={handleDeafen}
             >
               {(isDeafened || isServerDeafened) ? <PiSpeakerSlashFill size={16} /> : <PiSpeakerHighFill size={16} />}
@@ -466,9 +468,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
               it acts on. The setting decides whether this also happens by
               itself; the button is here so it never has to be found. */}
           {cameraEnabled && (
-            <Tooltip title="Center my face">
+            <Tooltip title={tr("ui.centerMyFace")}>
               <IconButton tone="neutral" size="xsmall"
-                aria-label="Center my face"
+                aria-label={tr("ui.centerMyFace")}
                 disabled={detectingFace}
                 onClick={() => void recentreFace()}
               >
@@ -482,10 +484,10 @@ export function Controls({ onDisconnect }: ControlsProps) {
           {/* Next to the share button because that is what it acts on, and
               only while a share is actually carrying audio. */}
           {canMuteScreenAudio && (
-            <Tooltip title={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}>
+            <Tooltip title={screenAudioMuted ? tr("ui.unmuteTheAudioYouReSharing") : tr("ui.muteTheAudioYouReSharing")}>
               <CallControlButton
                 state={screenAudioMuted ? "off" : "idle"}
-                aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
+                aria-label={screenAudioMuted ? tr("ui.unmuteTheAudioYouReSharing") : tr("ui.muteTheAudioYouReSharing")}
                 onClick={() => setScreenAudioMuted(!screenAudioMuted)}
               >
                 {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={16} /> : <PiSpeakerSimpleHighFill size={16} />}
@@ -496,9 +498,9 @@ export function Controls({ onDisconnect }: ControlsProps) {
           {/* Only where the OS can take audio per application, which is
               Windows. Everywhere else the mute above is the whole story. */}
           {canMuteScreenAudio && canPickAudioSources && (
-            <Tooltip title="Choose which apps you're sharing audio from">
+            <Tooltip title={tr("ui.chooseWhichAppsYouReSharingAudioFrom")}>
               <IconButton tone="neutral" size="xsmall"
-                aria-label="Choose which apps you're sharing audio from"
+                aria-label={tr("ui.chooseWhichAppsYouReSharingAudioFrom")}
                 onClick={() => setShowAudioSourcesModal(true)}
               >
                 <PiSlidersHorizontalFill size={16} />
@@ -506,7 +508,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS} aria-label="Leave voice channel" onClick={handleDisconnect}>
+          <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS} aria-label={tr("ui.leaveVoiceChannel")} onClick={handleDisconnect}>
             <PiPhoneDisconnectFill size={16} />
           </IconButton>
         </div>

@@ -1,6 +1,8 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
 import toast from "react-hot-toast";
 
+import { useTranslation } from "@/i18n";
+
 import { PiDotsThreeVerticalBold, PiPlusBold } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
@@ -44,6 +46,7 @@ export const ServerHeader = ({
   pinned?: boolean;
   onTogglePinned?: () => void;
 }) => {
+  const { t: tr } = useTranslation();
   const canManage = role === "owner" || role === "admin";
   /* Everyone's, not just managers': on a server anyone can join, sharing it gives nothing away. */
   const openInvite = useOpenInviteLink(serverHost);
@@ -56,11 +59,11 @@ export const ServerHeader = ({
     if (!serverHost) return;
     try {
       await navigator.clipboard.writeText(serverHost);
-      toast.success("Server address copied");
+      toast.success(tr("ui.serverAddressCopied"));
     } catch {
       // Clipboard access can be refused, and a silent no-op looks like a menu
       // item that does nothing.
-      toast.error("Could not copy the address");
+      toast.error(tr("ui.couldNotCopyTheAddress"));
     }
   };
 
@@ -76,10 +79,10 @@ export const ServerHeader = ({
         <div className="flex items-center gap-2">
           {canCreate && (
             <Menu.Root>
-              <Tooltip title="Create channel or folder">
+              <Tooltip title={tr("ui.createChannelOrFolder")}>
                 <Menu.Trigger
                   render={
-                    <IconButton tone="neutral" size="xsmall" aria-label="Create channel or folder" />
+                    <IconButton tone="neutral" size="xsmall" aria-label={tr("ui.createChannelOrFolder")} />
                   }
                 >
                   <PiPlusBold size={14} />
@@ -88,9 +91,9 @@ export const ServerHeader = ({
               <Menu.Portal>
                 <Menu.Positioner>
                   <Menu.Popup>
-                    {onCreateChannel && <Menu.Item onClick={onCreateChannel}>Channel</Menu.Item>}
+                    {onCreateChannel && <Menu.Item onClick={onCreateChannel}>{tr("ui.channel")}</Menu.Item>}
                     {/* Discord calls it a category. The sidebar already says folder, so this does too. */}
-                    {onCreateFolder && <Menu.Item onClick={onCreateFolder}>Folder</Menu.Item>}
+                    {onCreateFolder && <Menu.Item onClick={onCreateFolder}>{tr("ui.folder")}</Menu.Item>}
                   </Menu.Popup>
                 </Menu.Positioner>
               </Menu.Portal>
@@ -105,7 +108,7 @@ export const ServerHeader = ({
                 <IconButton
                   tone="neutral"
                   size="xsmall"
-                  aria-label="Server menu"
+                  aria-label={tr("ui.serverMenu")}
                 />
               }
             >
@@ -117,15 +120,15 @@ export const ServerHeader = ({
               {/* Invite and settings, moderation, the pin, the address, then leaving. Nothing is greyed
                   out for a feature Gryt lacks, and muting is on the channel list's right-click. */}
               {canManage && onOpenInvites && (
-                <Menu.Item onClick={onOpenInvites}>Invite to server</Menu.Item>
+                <Menu.Item onClick={onOpenInvites}>{tr("ui.inviteToServer")}</Menu.Item>
               )}
               {openInvite.available && (
-                <Menu.Item onClick={() => void openInvite.copy()}>Copy invite link</Menu.Item>
+                <Menu.Item onClick={() => void openInvite.copy()}>{tr("ui.copyInviteLink")}</Menu.Item>
               )}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
                   <div className="flex items-center gap-2">
-                    Server settings
+                    {tr("ui.serverSettings")}
                     {updateAvailable && (
                       <Chip tone="warning" label="!" />
                     )}
@@ -135,14 +138,14 @@ export const ServerHeader = ({
               {/* Not gated on role. It is this machine's process, which the server's
                   roles have no say over. */}
               {onManageServer && (
-                <Menu.Item onClick={onManageServer}>Manage server</Menu.Item>
+                <Menu.Item onClick={onManageServer}>{tr("ui.manageServer")}</Menu.Item>
               )}
 
               {canManage && onOpenReports && <Menu.Separator />}
               {canManage && onOpenReports && (
                 <Menu.Item onClick={onOpenReports}>
                   <div className="flex items-center gap-2">
-                    Reports
+                    {tr("ui.reports")}
                     {!!pendingReportCount && pendingReportCount > 0 && (
                       <Chip tone="danger">
                         {pendingReportCount}
@@ -154,7 +157,7 @@ export const ServerHeader = ({
 
               {onTogglePinned && (hasTopGroup || (canManage && onOpenReports)) && <Menu.Separator />}
               {onTogglePinned && (
-                <Menu.Item onClick={onTogglePinned}>{pinned ? "Unpin sidebar" : "Pin sidebar"}</Menu.Item>
+                <Menu.Item onClick={onTogglePinned}>{pinned ? tr("ui.unpinSidebar") : tr("ui.pinSidebar")}</Menu.Item>
               )}
 
               {/* The address, not an id. It is what identifies a Gryt server,
@@ -163,7 +166,7 @@ export const ServerHeader = ({
                   anybody who is here already knows it. */}
               {serverHost && <Menu.Separator />}
               {serverHost && (
-                <Menu.Item onClick={copyHost}>Copy server address</Menu.Item>
+                <Menu.Item onClick={copyHost}>{tr("ui.copyServerAddress")}</Menu.Item>
               )}
 
               {/* Everyone, not just whoever can manage the place (GRYT-942).
@@ -182,16 +185,16 @@ export const ServerHeader = ({
                     )
                   }
                 >
-                  What this server runs
+                  {tr("ui.whatThisServerRuns")}
                 </Menu.Item>
               )}
 
               <Menu.Separator />
               <Menu.Item onClick={() => onLeave("remove")}>
-                Remove from sidebar
+                {tr("ui.removeFromSidebar")}
               </Menu.Item>
               <Menu.Item className="text-gryt-danger" onClick={() => onLeave("leave")}>
-                Leave server
+                {tr("ui.leaveServer")}
               </Menu.Item>
             </Menu.Popup>
               </Menu.Positioner>

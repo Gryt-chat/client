@@ -28,6 +28,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
@@ -300,6 +301,7 @@ export const VoiceView = ({
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
 }) => {
+  const { t: tr } = useTranslation();
   const {
     showPeerLatency,
     cameraMirrored,
@@ -347,17 +349,16 @@ export const VoiceView = ({
     warnedAboutMicRef.current = true;
 
     const reasons: Record<typeof micUnavailable, string> = {
-      denied: "Microphone access is blocked",
-      "no-device": "No microphone found",
-      failed: "Your microphone could not be started",
+      denied: tr("audio.micDenied"),
+      "no-device": tr("audio.noMicrophone"),
+      failed: tr("audio.micFailed"),
     };
 
     toast(
       (t) => (
         <div className="flex items-center gap-3">
           <span className="text-sm">
-            {reasons[micUnavailable]} — you can hear others, but they cannot
-            hear you.
+            {reasons[micUnavailable]} {tr("ui.youCanHearOthersButTheyCannotHear")}
           </span>
           <Button tone="neutral" size="xsmall"
             onClick={() => {
@@ -366,7 +367,7 @@ export const VoiceView = ({
               setShowSettings(true);
             }}
           >
-            Open settings
+            {tr("ui.openSettings")}
           </Button>
         </div>
       ),
@@ -377,7 +378,7 @@ export const VoiceView = ({
         icon: <PiMicrophoneSlashFill size={18} />,
       },
     );
-  }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings]);
+  }, [isInThisVoiceChannel, micUnavailable, setSettingsTab, setShowSettings, tr]);
 
   // micUnavailable covers a microphone that would not open; this covers one that
   // opened and produces nothing, which looks healthy from outside.
@@ -409,8 +410,7 @@ export const VoiceView = ({
       (t) => (
         <div className="flex items-center gap-3">
           <span className="text-sm">
-            Your microphone is not picking up any sound — others cannot hear
-            you. Check the selected device, and that it is not muted.
+            {tr("ui.yourMicrophoneIsNotPickingUpAnySound")}
           </span>
           <Button tone="neutral" size="xsmall"
             onClick={() => {
@@ -419,7 +419,7 @@ export const VoiceView = ({
               setShowSettings(true);
             }}
           >
-            Open settings
+            {tr("ui.openSettings")}
           </Button>
           {/* Turns it off everywhere, not just this once. Sound & video has a
               switch to put it back, because a warning you cannot get back is
@@ -430,7 +430,7 @@ export const VoiceView = ({
               setMicSilentWarningDismissed(true);
             }}
           >
-            Don&apos;t show again
+            {tr("ui.donTShowAgain")}
           </Button>
         </div>
       ),
@@ -448,6 +448,7 @@ export const VoiceView = ({
     setMicSilentWarningDismissed,
     setSettingsTab,
     setShowSettings,
+    tr,
   ]);
 
   /** Without this the button turns itself back off with no reason. Not gated on
@@ -468,7 +469,7 @@ export const VoiceView = ({
               retryCamera();
             }}
           >
-            Try again
+            {tr("ui.tryAgain")}
           </Button>
           <Button tone="neutral" size="xsmall"
             onClick={() => {
@@ -477,7 +478,7 @@ export const VoiceView = ({
               setShowSettings(true);
             }}
           >
-            Open settings
+            {tr("ui.openSettings")}
           </Button>
         </div>
       ),
@@ -488,7 +489,7 @@ export const VoiceView = ({
         icon: <PiVideoCameraSlashFill size={18} />,
       },
     );
-  }, [cameraError, retryCamera, setSettingsTab, setShowSettings]);
+  }, [cameraError, retryCamera, setSettingsTab, setShowSettings, tr]);
 
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -1246,10 +1247,10 @@ export const VoiceView = ({
             }}
           >
             <span>
-              You&rsquo;re the only one here. Ending the call in {secondsLeft}s.
+              {tr("ui.youReTheOnlyOneHereEndingThe")} {secondsLeft}s.
             </span>
             <Button tone="neutral" size="xsmall" onClick={stayInCall}>
-              Stay in the call
+              {tr("ui.stayInTheCall")}
             </Button>
           </div>
         )}
@@ -1581,13 +1582,13 @@ export const VoiceView = ({
                         pointerEvents: "auto",
                       }}>
                       <Tooltip
-                        title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
+                        title={isFullscreen ? tr("ui.leaveFullscreen") : tr("ui.fullscreen")}
                       >
                         <IconButton tone="neutral" size="xsmall"
                           aria-label={
                             isFullscreen
-                              ? "Leave fullscreen"
-                              : "Fullscreen voice view"
+                              ? tr("ui.leaveFullscreen")
+                              : tr("ui.fullscreenVoiceView")
                           }
                           onClick={toggleFullscreen}
                         >
@@ -1604,13 +1605,13 @@ export const VoiceView = ({
                           sitting there doing nothing. */}
                       {!isFullscreen && (
                         <Tooltip
-                          title={isMaximized ? "Restore" : "Maximize"}
+                          title={isMaximized ? tr("ui.restore") : tr("ui.maximize")}
                         >
                           <IconButton tone="neutral" size="xsmall"
                             aria-label={
                               isMaximized
-                                ? "Restore voice view"
-                                : "Maximize voice view"
+                                ? tr("ui.restoreVoiceView")
+                                : tr("ui.maximizeVoiceView")
                             }
                             onClick={onToggleMaximize}
                           >
@@ -1637,7 +1638,7 @@ export const VoiceView = ({
             {onToggleChat && (
               <div className="flex" style={{ position: "absolute", right: 0 }}>
                 <Tooltip
-                  title={chatHidden ? "Show chat" : "Hide chat"}
+                  title={chatHidden ? tr("ui.showChat") : tr("ui.hideChat")}
                 >
                   <IconButton tone="neutral" size="xsmall"
                     onClick={onToggleChat}

@@ -123,7 +123,7 @@ assert.ok(
   assert.ok(/\}, \[serverHost, serverInfo\?\.serverId, servers\]\);/.test(memo), "existingById no longer re-runs when the address changes");
   assert.ok(!/serverId\s*===/.test(memo), "Add a server compares ids by hand again");
   assert.ok(/const alreadyMember = !!existingServer \|\| !!existingById;/.test(dialog), "a match on id no longer marks the server as joined");
-  assert.ok(/const joinAction = alreadyMember\s*\?\s*\{ label: "Already joined", tone: "secondary" as const, disabled: true/.test(dialog), "Already joined no longer follows alreadyMember");
+  assert.ok(/const joinAction = alreadyMember\s*\?\s*\{ label: tr\("ui\.alreadyJoined"\), tone: "secondary" as const, disabled: true/.test(dialog), "Already joined no longer follows alreadyMember");
 
   const management = read(MANAGEMENT);
   assert.ok(/import \{ sameServer \} from "@\/settings\/src\/serverId";/.test(management), `${MANAGEMENT} no longer imports sameServer`);

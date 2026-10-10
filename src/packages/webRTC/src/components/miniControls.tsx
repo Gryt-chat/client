@@ -3,6 +3,7 @@ import { useCamera, useScreenShare, useSFU } from "@gryt/voice";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import toast from "react-hot-toast";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
@@ -33,6 +34,7 @@ export function MiniControls({
 }: {
   direction: "row" | "column";
 }) {
+  const { t: tr } = useTranslation();
   const {
     isMuted,
     setIsMuted,
@@ -92,10 +94,10 @@ export function MiniControls({
             <motion.div variants={buttonAnimations}>
               <CallControlButton
                 state={isServerMuted ? "blocked" : isMuted ? "off" : "idle"}
-                aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
+                aria-label={(isMuted || isServerMuted) ? tr("ui.unmuteMicrophone") : tr("ui.muteMicrophone")}
                 onClick={() => {
                   if (isServerMuted) {
-                    toast("You are server muted by an admin.", { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
+                    toast(tr("ui.youAreServerMutedByAnAdmin"), { icon: <PiMicrophoneSlashFill size={18} />, id: "server-muted" });
                     return;
                   }
                   setIsMuted(!isMuted);
@@ -108,10 +110,10 @@ export function MiniControls({
             <motion.div variants={buttonAnimations}>
               <CallControlButton
                 state={isServerDeafened ? "blocked" : isDeafened ? "off" : "idle"}
-                aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
+                aria-label={(isDeafened || isServerDeafened) ? tr("ui.undeafen") : tr("ui.deafen")}
                 onClick={() => {
                   if (isServerDeafened) {
-                    toast("You are server deafened by an admin.", { icon: <PiSpeakerSlashFill size={18} />, id: "server-deafened" });
+                    toast(tr("ui.youAreServerDeafenedByAnAdmin"), { icon: <PiSpeakerSlashFill size={18} />, id: "server-deafened" });
                     return;
                   }
                   setIsDeafened(!isDeafened);
@@ -141,7 +143,7 @@ export function MiniControls({
               <motion.div variants={buttonAnimations}>
                 <CallControlButton
                   state={screenAudioMuted ? "off" : "idle"}
-                  aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
+                  aria-label={screenAudioMuted ? tr("ui.unmuteTheAudioYouReSharing") : tr("ui.muteTheAudioYouReSharing")}
                   onClick={() => setScreenAudioMuted(!screenAudioMuted)}
                 >
                   {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={iconSize} /> : <PiSpeakerSimpleHighFill size={iconSize} />}
@@ -151,7 +153,7 @@ export function MiniControls({
 
             <motion.div variants={buttonAnimations}>
               <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS}
-                aria-label="Leave voice channel"
+                aria-label={tr("ui.leaveVoiceChannel")}
                 onClick={() => {
                   // Local capture is stopped inside disconnect(). GRYT-305.
                   void disconnect();

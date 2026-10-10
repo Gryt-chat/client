@@ -207,7 +207,9 @@
     "test:composer-enter": "node --disable-warning=ExperimentalWarning scripts/check-composer-enter.mjs",
     "test:terms-agreement": "node --disable-warning=ExperimentalWarning scripts/check-terms-agreement.mjs",
     "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.mjs",
-    "test:media-sandbox": "node --disable-warning=ExperimentalWarning scripts/check-media-sandbox.mjs"
+    "test:media-sandbox": "node --disable-warning=ExperimentalWarning scripts/check-media-sandbox.mjs",
+    "test:i18n": "node scripts/check-i18n.mjs",
+    "e2e:i18n": "playwright test --config e2e/playwright.i18n.config.ts"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
@@ -256,6 +258,7 @@
     "fflate": "^0.8.2",
     "gemoji": "^8.1.0",
     "hash-wasm": "4.12.0",
+    "i18next": "^26.4.2",
     "js-yaml": "^4",
     "jwt-decode": "^4.0.0",
     "keycloak-js": "^26.2.3",
@@ -264,6 +267,7 @@
     "react": "^19",
     "react-dom": "^19",
     "react-hot-toast": "^2.6.0",
+    "react-i18next": "^17.0.16",
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "remark-breaks": "^4.0.0",

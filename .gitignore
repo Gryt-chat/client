@@ -87,3 +87,8 @@ e2e/soak/test-results/
 # A soak run's logs, a JSONL file per client and probe.
 e2e/soak/runs/
 
+e2e/i18n-results/
+local-checks.json
+local-rechecks.json
+headless-i18n-final.json
+

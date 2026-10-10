@@ -10,6 +10,7 @@ import {
   restoreIdentityFromWords,
   unlockBackup,
 } from "@/common";
+import { useTranslation } from "@/i18n";
 import { clearRemovedEverywhere } from "@/socket";
 
 import {
@@ -29,6 +30,7 @@ import { RecoveryWordsPanel } from "./recoveryWords";
 type Panel = "words" | "restore" | "unlock-file" | null;
 
 export function LocalIdentitySection() {
+  const { t: tr } = useTranslation();
   const [hasIdentity, setHasIdentity] = useState(false);
   const [busy, setBusy] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
@@ -60,11 +62,11 @@ export function LocalIdentitySection() {
       setWords(await getIdentityWords());
       setPanel("words");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not read your identity");
+      toast.error(e instanceof Error ? e.message : tr("ui.couldNotReadYourIdentity"));
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [tr]);
 
   const handleRestoreWords = useCallback(async () => {
     setBusy(true);
@@ -72,16 +74,16 @@ export function LocalIdentitySection() {
       await restoreIdentityFromWords(wordsInput);
       // Knowing the words is what lets a device removed from MLS set up again (GRYT-1555).
       clearRemovedEverywhere();
-      toast.success("Identity restored. Reloading…", { duration: 4000 });
+      toast.success(tr("ui.identityRestoredReloading"), { duration: 4000 });
       // Reloaded for the same reason restoring a file is: anything that already
       // read a key still holds it, and keeps signing as whoever this device was.
       setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not restore");
+      toast.error(e instanceof Error ? e.message : tr("ui.couldNotRestore"));
     } finally {
       setBusy(false);
     }
-  }, [wordsInput]);
+  }, [wordsInput, tr]);
 
   const applyBackup = useCallback(
     async (text: string) => {
@@ -113,12 +115,12 @@ export function LocalIdentitySection() {
         }
         await applyBackup(text);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Could not restore");
+        toast.error(e instanceof Error ? e.message : tr("ui.couldNotRestore"));
       } finally {
         setBusy(false);
       }
     },
-    [applyBackup],
+    [applyBackup, tr],
   );
 
   const handleUnlockFile = useCallback(async () => {
@@ -127,20 +129,18 @@ export function LocalIdentitySection() {
       await applyBackup(await unlockBackup(lockedFile, filePassword));
       closePanel();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not restore");
+      toast.error(e instanceof Error ? e.message : tr("ui.couldNotRestore"));
     } finally {
       setBusy(false);
     }
-  }, [applyBackup, lockedFile, filePassword, closePanel]);
+  }, [applyBackup, lockedFile, filePassword, closePanel, tr]);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-sm">Recovery key</span>
+        <span className="font-medium text-sm">{tr("ui.recoveryKey")}</span>
         <span className="text-xs text-gryt-muted">
-          Your recovery key is the identity you use on servers you join without
-          an account. It is one key for every server, and it is the only copy:
-          nothing on our side can bring it back.
+          {tr("ui.yourRecoveryKeyIsTheIdentityYouUse")}
         </span>
       </div>
 
@@ -148,10 +148,7 @@ export function LocalIdentitySection() {
         <Alert severity="warning">
           <span className="inline-flex items-start gap-2">
             <PiWarningFill className="mt-0.5 shrink-0" size={15} />
-            If you lose this device or clear its data without saving your
-            recovery key, you lose the roles, ownership and history attached to
-            every server you joined without an account. Keep it in a password
-            manager or somewhere else safe.
+            {tr("ui.ifYouLoseThisDeviceOrClearIts")}
           </span>
         </Alert>
       )}
@@ -163,7 +160,7 @@ export function LocalIdentitySection() {
           onClick={() => void handleShowWords()}
         >
           <PiEyeFill size={16} />
-          View recovery key
+          {tr("ui.viewRecoveryKey")}
         </Button>
 
         <Button
@@ -173,7 +170,7 @@ export function LocalIdentitySection() {
           onClick={() => setPanel(panel === "restore" ? null : "restore")}
         >
           <PiUploadSimple size={16} />
-          Restore identity
+          {tr("ui.restoreIdentity")}
         </Button>
       </div>
 
@@ -184,8 +181,7 @@ export function LocalIdentitySection() {
           onHide={closePanel}
           note={
             <>
-              These 24 words can restore your identity. Anyone who has them can
-              use it, so keep them like a password.
+              {tr("ui.these24WordsCanRestoreYourIdentityAnyone")}
             </>
           }
         />
@@ -194,11 +190,10 @@ export function LocalIdentitySection() {
       {panel === "restore" && (
         <div className="flex flex-col gap-3 rounded-md border border-gryt-border p-4">
           <span className="text-xs text-gryt-muted">
-            Paste your 24-word recovery key. Gryt will replace the local
-            identity on this device and reload.
+            {tr("ui.pasteYour24WordRecoveryKeyGrytWill")}
           </span>
           <label className="flex flex-col gap-1 text-xs" htmlFor="recovery-key">
-            Recovery key
+            {tr("ui.recoveryKey")}
             <TextField
               id="recovery-key"
               type="password"
@@ -215,15 +210,15 @@ export function LocalIdentitySection() {
               disabled={busy || !wordsInput.trim()}
               onClick={() => void handleRestoreWords()}
             >
-              Use recovery key
+              {tr("ui.useRecoveryKey")}
             </Button>
             <Button tone="neutral" size="small" onClick={closePanel}>
-              Cancel
+              {tr("ui.cancel")}
             </Button>
           </div>
           <div className="flex flex-col items-start gap-1 border-t border-gryt-border pt-3">
             <span className="text-xs text-gryt-muted">
-              Have an older Gryt backup file?
+              {tr("ui.haveAnOlderGrytBackupFile")}
             </span>
             <Button
               tone="ghost"
@@ -231,7 +226,7 @@ export function LocalIdentitySection() {
               disabled={busy}
               onClick={() => fileRef.current?.click()}
             >
-              Import backup file
+              {tr("ui.importBackupFile")}
             </Button>
             <input
               ref={fileRef}
@@ -251,13 +246,13 @@ export function LocalIdentitySection() {
       {panel === "unlock-file" && (
         <div className="flex flex-col gap-2 rounded-md border border-gryt-border p-3">
           <span className="text-xs text-gryt-muted">
-            Enter the password for this older backup file.
+            {tr("ui.enterThePasswordForThisOlderBackupFile")}
           </span>
           <label
             className="flex flex-col gap-1 text-xs"
             htmlFor="backup-file-password"
           >
-            Backup file password
+            {tr("ui.backupFilePassword")}
             <TextField
               id="backup-file-password"
               type="password"
@@ -274,10 +269,10 @@ export function LocalIdentitySection() {
               disabled={busy || !filePassword}
               onClick={() => void handleUnlockFile()}
             >
-              Import identity
+              {tr("ui.importIdentity")}
             </Button>
             <Button tone="neutral" size="small" onClick={closePanel}>
-              Cancel
+              {tr("ui.cancel")}
             </Button>
           </div>
         </div>

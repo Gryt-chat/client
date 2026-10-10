@@ -16,6 +16,7 @@ const read = (p) => readFileSync(join(root, p), "utf8");
 const sidebar = read(SIDEBAR);
 const manager = read(MANAGER);
 const presence = read(PRESENCE);
+const english = JSON.parse(read("src/packages/i18n/locales/en.json"));
 
 const HOST = "127.0.0.1:5010";
 
@@ -68,8 +69,8 @@ const statusLines = (() => {
    fails here until somebody adds it to the list. */
 const CARD_LABELS = ["Offline", "Reconnecting", "Starting your server", "No answer yet", "Connecting"];
 const cardLabels = (() => {
-  const found = [...sidebar.matchAll(/\{([^{}]+?) && \(\s*<span[^>]*>\s*• ([A-Z][^<{\n]*?)\s*<\/span>/g)]
-    .map((m) => ({ condition: m[1].trim(), label: m[2] }))
+  const found = [...sidebar.matchAll(/\{([^{}]+?) && \(\s*<span[^>]*>\s*\{tr\("ui\.([\w]+)"\)\}/g)]
+    .map((m) => ({ condition: m[1].trim(), label: english.ui[m[2]]?.replace(/^• /, "") }))
     .filter(({ label }) => label !== "Requested access");
   assert.deepEqual(found.map((f) => f.label), CARD_LABELS, `${SIDEBAR}'s hover card words changed. Decide what each one means here.`);
   return found;

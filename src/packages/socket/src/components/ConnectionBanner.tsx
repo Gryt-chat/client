@@ -1,5 +1,7 @@
 import { Button, Spinner } from "@gryt/ui";
 
+import { useTranslation } from "@/i18n";
+
 import { PiArrowsClockwiseFill, PiWifiSlashFill } from "../../../../lib/icons";
 
 interface ConnectionBannerProps {
@@ -8,6 +10,7 @@ interface ConnectionBannerProps {
 }
 
 export const ConnectionBanner = ({ connectionStatus, onReconnect }: ConnectionBannerProps) => {
+  const { t: tr } = useTranslation();
   const isReconnecting = connectionStatus === "reconnecting";
   return (
     <div className="flex items-center gap-3 px-3 py-2" style={{
@@ -20,11 +23,11 @@ export const ConnectionBanner = ({ connectionStatus, onReconnect }: ConnectionBa
         ? <Spinner size={16} />
         : <PiWifiSlashFill size={14} color="var(--gryt-danger-9)" style={{ flexShrink: 0 }} />}
       <span className="text-sm font-medium" style={{ flex: 1 }}>
-        {isReconnecting ? "Reconnecting to server..." : "Server is unreachable"}
+        {isReconnecting ? tr("ui.reconnectingToServer") : tr("ui.serverIsUnreachable")}
       </span>
       {connectionStatus === "disconnected" && (
         <Button tone="neutral" size="xsmall" style={{ flexShrink: 0 }} onClick={onReconnect}>
-          <PiArrowsClockwiseFill size={12} /> Reconnect
+          <PiArrowsClockwiseFill size={12} /> {tr("ui.reconnect")}
         </Button>
       )}
     </div>

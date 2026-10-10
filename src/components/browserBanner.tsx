@@ -1,12 +1,15 @@
 import { IconButton } from "@gryt/ui";
 import { useState } from "react";
 
+import { useTranslation } from "@/i18n";
+
 import { isElectron } from "../lib/electron";
 import { PiDownloadSimpleFill, PiX } from "../lib/icons";
 
 const STORAGE_KEY = "browserBannerDismissed";
 
 export function BrowserBanner() {
+  const { t: tr } = useTranslation();
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(STORAGE_KEY) === "true",
   );
@@ -21,16 +24,16 @@ export function BrowserBanner() {
       }}>
       <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--gryt-accent-11)" }} />
       <span className="text-xs" style={{ color: "var(--gryt-accent-11)" }}>
-        You&apos;re using Gryt in your browser. Some features are limited.{" "}
+        {tr("launch.browser")}{" "}
         <a
           className="gryt-link font-medium"
           href="https://github.com/Gryt-chat/gryt/releases"
           target="_blank"
           rel="noreferrer"
         >
-          Download the desktop app
+          {tr("launch.download")}
         </a>{" "}
-        for the full experience.
+        {tr("launch.fullExperience")}
       </span>
       <IconButton tone="ghost" size="xsmall"
         style={{ marginLeft: "auto", flexShrink: 0 }}
@@ -38,7 +41,7 @@ export function BrowserBanner() {
           localStorage.setItem(STORAGE_KEY, "true");
           setDismissed(true);
         }}
-        aria-label="Dismiss banner"
+        aria-label={tr("launch.dismissBanner")}
       >
         <PiX size={14} />
       </IconButton>

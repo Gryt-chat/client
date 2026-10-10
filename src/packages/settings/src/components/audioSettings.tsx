@@ -4,6 +4,7 @@ import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useTranslation } from "@/i18n";
 import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
@@ -42,6 +43,7 @@ function dedupeByValue(options: SelectOption[]): SelectOption[] {
 }
 
 export function AudioSettings() {
+  const { t: tr } = useTranslation();
   const {
     micID,
     setMicID,
@@ -313,15 +315,15 @@ export function AudioSettings() {
 
   return (
     <SettingsContainer>
-      <h2>Audio</h2>
+      <h2>{tr("ui.audio")}</h2>
 
       {/* First, because it decides what the rest of this section even shows:
           push to talk hides the noise gate below. It used to live further down
           the page in another section, so choosing it made the gate vanish with
           no visible cause. */}
-      <SettingGroup
-        title="Input mode"
-        description="Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below."
+      <SettingGroup anchorId="input-mode"
+        title={tr("ui.inputMode")}
+        description={tr("ui.voiceActivityTransmitsWheneverYouSpeakAboveThe")}
       >
         <Tabs
           value={inputMode}
@@ -331,12 +333,12 @@ export function AudioSettings() {
         >
           {/* max-[339px]: tighter padding closes the 26px overflow at the
               300px Electron minimum without wrapping the sliding indicator. */}
-          <Tabs.List aria-label="Input mode" className="max-[339px]:gap-0.5">
+          <Tabs.List aria-label={tr("ui.inputMode")} className="max-[339px]:gap-0.5">
             <Tabs.Tab value="voice_activity" className="max-[339px]:px-2">
-              Voice activity
+              {tr("ui.voiceActivity")}
             </Tabs.Tab>
             <Tabs.Tab value="push_to_talk" className="max-[339px]:px-2">
-              Push to talk
+              {tr("ui.pushToTalk")}
             </Tabs.Tab>
             <Tabs.Indicator />
           </Tabs.List>
@@ -346,16 +348,16 @@ export function AudioSettings() {
       <Divider />
 
       {!audioContext && (
-        <Alert severity="warning"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />Microphone is initializing. Audio levels and noise gate will be visible once ready.</span></Alert>
+        <Alert severity="warning"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{tr("ui.microphoneIsInitializingAudioLevelsAndNoiseGate")}</span></Alert>
       )}
 
       {/* ── Devices ── */}
-      <span className="font-bold text-gryt-muted">Devices</span>
+      <span className="font-bold text-gryt-muted">{tr("ui.devices")}</span>
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="font-medium">Microphone</span>
-          <Tooltip title="Refresh device list">
+          <span className="font-medium">{tr("ui.microphone")}</span>
+          <Tooltip title={tr("ui.refreshDeviceList")}>
             <IconButton tone="neutral" size="xsmall" onClick={getDevices}>
               <PiArrowsClockwiseFill size={12} />
             </IconButton>
@@ -364,10 +366,10 @@ export function AudioSettings() {
         <Select
           value={micID || ""}
           onValueChange={(v) => setMicID(String(v))}
-          placeholder="Select microphone device"
+          placeholder={tr("ui.selectMicrophoneDevice")}
           options={dedupeByValue(
             devices.map((device, index) => ({
-              label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
+              label: device.label || tr("audio.microphoneDevice", { id: device.deviceId.slice(0, 8) }),
               // Before the permission prompt is answered every device comes back
               // with an empty id and label, so the label is no better a key.
               value: device.deviceId || `microphone-${index}`,
@@ -378,8 +380,8 @@ export function AudioSettings() {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="font-medium">Speaker</span>
-          <Tooltip title="Refresh device list">
+          <span className="font-medium">{tr("ui.speaker")}</span>
+          <Tooltip title={tr("ui.refreshDeviceList")}>
             <IconButton tone="neutral" size="xsmall" onClick={getOutputDevices}>
               <PiArrowsClockwiseFill size={12} />
             </IconButton>
@@ -388,11 +390,11 @@ export function AudioSettings() {
         <Select
           value={outputDeviceID || "default"}
           onValueChange={(v) => handleOutputDeviceChange(String(v))}
-          placeholder="Select output device"
+          placeholder={tr("ui.selectOutputDevice")}
           options={dedupeByValue([
-            { label: "Default", value: "default" },
+            { label: tr("ui.default"), value: "default" },
             ...outputDevices.map((device, index) => ({
-              label: device.label || `Speaker ${device.deviceId.slice(0, 8)}`,
+              label: device.label || tr("audio.speakerDevice", { id: device.deviceId.slice(0, 8) }),
               value: device.deviceId || `speaker-${index}`,
             })),
           ])}
@@ -402,11 +404,11 @@ export function AudioSettings() {
       <Divider />
 
       {/* ── Input ── */}
-      <span className="font-bold text-gryt-muted">Input</span>
+      <span className="font-bold text-gryt-muted">{tr("ui.input")}</span>
 
       <SliderSetting
-        title={`Microphone volume: ${micVolume}%`}
-        description="Your microphone input level (100% = unchanged, 200% = 2x boost)"
+        anchorId="microphone-volume" title={tr("audio.microphoneVolume", { value: micVolume })}
+        description={tr("ui.yourMicrophoneInputLevel100Unchanged2002x")}
         value={micVolume}
         onChange={setMicVolume}
         max={MAX_VOLUME_PERCENT}
@@ -414,9 +416,9 @@ export function AudioSettings() {
 
       {audioContext && (
         <div className="flex flex-col gap-2">
-          <span className="font-medium">Audio Levels</span>
+          <span className="font-medium">{tr("ui.audioLevels")}</span>
           <div className="flex flex-col gap-1">
-            <span className="text-gryt-muted">Audio Spectrum (Raw Input)</span>
+            <span className="text-gryt-muted">{tr("ui.audioSpectrumRawInput")}</span>
             <div style={{
               border: '1px solid var(--gryt-neutral-6)',
               borderRadius: '4px',
@@ -432,8 +434,8 @@ export function AudioSettings() {
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-gryt-muted">
-              Status: {audioContext ? "Active" : "Inactive"}
-              {loopbackEnabled && " | Playback on"}
+              {tr("ui.status")} {audioContext ? tr("ui.active") : tr("ui.inactive")}
+              {loopbackEnabled && ` | ${tr("audio.playbackOn")}`}
             </span>
           </div>
         </div>
@@ -441,10 +443,10 @@ export function AudioSettings() {
 
       {!isPTT && <div className="flex flex-col gap-2">
         <span className="font-medium">
-          Noise gate: {noiseGate}%
+          {tr("ui.noiseGate")} {noiseGate}%
         </span>
         <span className="text-gryt-muted">
-          Audio below this level will be muted. The indicator shows your raw microphone input level.
+          {tr("ui.audioBelowThisLevelWillBeMutedThe")}
         </span>
 
         <div style={{ position: 'relative' }}>
@@ -496,19 +498,19 @@ export function AudioSettings() {
 
         <div className="flex items-center justify-between">
           <span className="text-gryt-muted">
-            Raw Input: {Math.round(micRawVolume)}% | Processed: {Math.round(micLiveVolume)}%
+            {tr("ui.rawInput")} {Math.round(micRawVolume)}{tr("ui.processed")} {Math.round(micLiveVolume)}%
           </span>
           <span className="font-medium" color={micRawVolume < noiseGate ? "red" : isMicLive ? "green" : "gray"}>
-            {micRawVolume < noiseGate ? "GATED" : isMicLive ? "OPEN" : "QUIET"}
+            {micRawVolume < noiseGate ? tr("ui.gated") : isMicLive ? tr("ui.open") : tr("ui.quiet")}
           </span>
         </div>
 
         <div className="flex flex-col gap-1 mt-2">
           <span className="font-medium">
-            Release: {noiseGateRelease} ms
+            {tr("ui.release")} {noiseGateRelease} ms
           </span>
           <span className="text-gryt-muted">
-            How long the gate stays open after your voice drops below the threshold.
+            {tr("ui.howLongTheGateStaysOpenAfterYour")}
           </span>
           <Slider
             value={noiseGateRelease}
@@ -520,9 +522,9 @@ export function AudioSettings() {
         </div>
       </div>}
 
-      <ToggleSetting
-        title="Test microphone"
-        description="Hear yourself through your speakers or headphones, to check what the processing is doing."
+      <ToggleSetting anchorId="test-microphone"
+        title={tr("ui.testMicrophone")}
+        description={tr("ui.hearYourselfThroughYourSpeakersOrHeadphonesTo")}
         checked={loopbackEnabled}
         onCheckedChange={handleLoopbackChange}
       />
@@ -530,34 +532,34 @@ export function AudioSettings() {
       <Divider />
 
       {/* ── Voice Processing ── */}
-      <span className="font-bold text-gryt-muted">Voice Processing</span>
+      <span className="font-bold text-gryt-muted">{tr("ui.voiceProcessing")}</span>
 
-      <ToggleSetting
-        title="Noise reduction"
-        description="Removes background noise before your voice is sent. Runs in an AudioWorklet off the main thread, and adds about 20 ms."
+      <ToggleSetting anchorId="noise-reduction"
+        title={tr("ui.noiseReduction")}
+        description={tr("ui.removesBackgroundNoiseBeforeYourVoiceIsSent")}
         checked={rnnoiseEnabled}
         onCheckedChange={setRnnoiseEnabled}
         statusText={rnnoiseEnabled
-          ? "RNNoise is active — background noise will be filtered"
+          ? tr("audio.rnnoiseActive")
           : undefined
         }
       />
 
-      <ToggleSetting
-        title="Auto gain"
-        description="Brings your microphone to a target volume. Quiet speech is boosted, loud speech is reduced."
+      <ToggleSetting anchorId="auto-gain"
+        title={tr("ui.autoGain")}
+        description={tr("ui.bringsYourMicrophoneToATargetVolumeQuiet")}
         checked={autoGainEnabled}
         onCheckedChange={setAutoGainEnabled}
         statusText={autoGainEnabled
-          ? "Auto gain is active — your voice will be normalized to the target level"
+          ? tr("audio.autoGainActive")
           : undefined
         }
       />
 
       {autoGainEnabled && (
         <SliderSetting
-          title={`Target level: ${autoGainTargetDb} dB`}
-          description="The volume your voice is brought to. Lower is quieter, higher is louder."
+          anchorId="target-level" title={tr("audio.targetLevel", { value: autoGainTargetDb })}
+          description={tr("ui.theVolumeYourVoiceIsBroughtToLower")}
           value={autoGainTargetDb}
           onChange={setAutoGainTargetDb}
           min={-30}
@@ -566,21 +568,21 @@ export function AudioSettings() {
         />
       )}
 
-      <ToggleSetting
-        title="Compressor"
-        description="Narrows the gap between your quietest and loudest, so your level stays steadier. Runs after auto gain."
+      <ToggleSetting anchorId="compressor"
+        title={tr("ui.compressor")}
+        description={tr("ui.narrowsTheGapBetweenYourQuietestAndLoudest")}
         checked={compressorEnabled}
         onCheckedChange={setCompressorEnabled}
         statusText={compressorEnabled
-          ? "Compressor is active — dynamic peaks will be tamed"
+          ? tr("audio.compressorActive")
           : undefined
         }
       />
 
       {compressorEnabled && (
         <SliderSetting
-          title={`Compression amount: ${compressorAmount}%`}
-          description="How aggressively to compress. Low = subtle leveling, high = heavy squash."
+          anchorId="compression-amount" title={tr("audio.compressionAmount", { value: compressorAmount })}
+          description={tr("ui.howAggressivelyToCompressLowSubtleLevelingHigh")}
           value={compressorAmount}
           onChange={setCompressorAmount}
         />
@@ -589,9 +591,9 @@ export function AudioSettings() {
       {/* The way back from the toast's "Don't show again". Reads as the warning
           rather than as the dismissal, so the switch is on by default and the
           stored flag is inverted here. */}
-      <ToggleSetting
-        title="Warn me when my microphone goes silent"
-        description="Says so if your microphone stops sending anything at all while you are in a voice channel. Some headsets mute their own noise floor between sentences, which looks the same from here, so turn this off if it keeps firing while you are audible."
+      <ToggleSetting anchorId="warn-me-when-my-microphone-goes-silent"
+        title={tr("ui.warnMeWhenMyMicrophoneGoesSilent")}
+        description={tr("ui.saysSoIfYourMicrophoneStopsSendingAnything")}
         checked={!micSilentWarningDismissed}
         onCheckedChange={(enabled) => setMicSilentWarningDismissed(!enabled)}
       />
@@ -599,11 +601,11 @@ export function AudioSettings() {
       <Divider />
 
       {/* ── Output ── */}
-      <span className="font-bold text-gryt-muted">Output</span>
+      <span className="font-bold text-gryt-muted">{tr("ui.output")}</span>
 
       <SliderSetting
-        title={`Output volume: ${outputVolume}%`}
-        description="Volume of all incoming audio (100% = unchanged, 200% = 2x boost)"
+        anchorId="output-volume" title={tr("audio.outputVolume", { value: outputVolume })}
+        description={tr("ui.volumeOfAllIncomingAudio100Unchanged200")}
         value={outputVolume}
         onChange={setOutputVolume}
         max={MAX_VOLUME_PERCENT}
@@ -612,10 +614,10 @@ export function AudioSettings() {
       <Divider />
 
       {/* ── Screen Share ── */}
-      <span className="font-bold text-gryt-muted">Screen Share</span>
+      <span className="font-bold text-gryt-muted">{tr("ui.screenShareVariant")}</span>
 
       {nativeAudioActive && (
-        <Alert severity="success">Native audio capture is active — Gryt voices are excluded at the OS level.</Alert>
+        <Alert severity="success">{tr("ui.nativeAudioCaptureIsActiveGrytVoicesAre")}</Alert>
       )}
 
     </SettingsContainer>

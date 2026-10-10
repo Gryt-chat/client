@@ -13,6 +13,8 @@ const HOOK = "src/packages/webRTC/src/adapters/useVoicePresence.ts";
 const SIDEBAR = "src/components/sidebar.tsx";
 const hook = readFileSync(join(root, HOOK), "utf8");
 const sidebar = readFileSync(join(root, SIDEBAR), "utf8");
+const english = JSON.parse(readFileSync(join(root, "src/packages/i18n/locales/en.json"), "utf8"));
+const i18n = { t: (key) => key.split(".").reduce((value, part) => value[part], english) };
 
 const STATES = {
   DISCONNECTED: "disconnected",
@@ -71,9 +73,9 @@ function presence({ state, host = "", channelId = "", isMuted = false, isServerM
 }
 
 const label = (voice) =>
-  new Function("SFUConnectionState", "voice", `return (${bodyOf(sidebar, "function voiceLabel", SIDEBAR)
+  new Function("SFUConnectionState", "voice", "i18n", `return (${bodyOf(sidebar, "function voiceLabel", SIDEBAR)
     .replace(/^\{/, "(() => {")
-    .replace(/\}$/, "})()")})`)(STATES, voice);
+    .replace(/\}$/, "})()")})`)(STATES, voice, i18n);
 
 // A call that is up: in a call, live, and sound is leaving the machine.
 {

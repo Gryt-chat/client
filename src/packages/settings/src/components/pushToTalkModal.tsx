@@ -1,11 +1,13 @@
 import { Button, Chip, Dialog } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 
 import { buildKeyCombo, buildMouseCombo, formatCombo } from "../../../../lib/hotkeys";
 
 export function PushToTalkModal() {
+  const { t: tr } = useTranslation();
   const { inputMode, setInputMode, pushToTalkKey, setPushToTalkKey } = useSettings();
   const isOpen = inputMode === "push_to_talk" && !pushToTalkKey;
 
@@ -61,10 +63,9 @@ export function PushToTalkModal() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-        <Dialog.Title>Bind push to talk</Dialog.Title>
+        <Dialog.Title>{tr("ui.bindPushToTalk")}</Dialog.Title>
         <Dialog.Description>
-          Push to talk is on, but nothing is bound to it yet. Press a key, or the middle or a
-          side mouse button.
+          {tr("ui.pushToTalkIsOnButNothingIs")}
         </Dialog.Description>
 
         <div className="flex flex-col gap-4 items-center py-4">
@@ -72,22 +73,22 @@ export function PushToTalkModal() {
             color={captured ? "green" : "blue"}
             style={{ fontFamily: "var(--code-font-family)", minWidth: "120px", textAlign: "center", padding: "8px 16px", fontSize: 16 }}
           >
-            {captured ? formatCombo(captured) : "Press a key or button..."}
+            {captured ? formatCombo(captured) : tr("ui.pressAKeyOrButton")}
           </Chip>
 
           {captured && (
             <span className="text-xs text-gryt-muted">
-              Press something else to change it, or confirm below.
+              {tr("ui.pressSomethingElseToChangeItOrConfirm")}
             </span>
           )}
         </div>
 
         <div className="flex flex-wrap gap-3 justify-end">
           <Button tone="neutral" size="small" onClick={handleCancel}>
-            Cancel
+            {tr("ui.cancel")}
           </Button>
           <Button size="small" onClick={handleConfirm} disabled={!captured}>
-            Confirm
+            {tr("ui.confirm")}
           </Button>
         </div>
       </Dialog.Popup>

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useTranslation } from "@/i18n";
+
 import { NameTag } from "./NameTag";
 
 export interface MentionMember {
@@ -53,7 +55,8 @@ function filterMembers(members: MentionMember[], query: string): MentionMember[]
   return [...prefixMatches, ...substringMatches].slice(0, 15);
 }
 
-export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose, title = "Members" }: MentionAutocompleteProps) => {
+export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose, title }: MentionAutocompleteProps) => {
+  const { t: tr } = useTranslation();
   const [results, setResults] = useState<MentionMember[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -70,7 +73,7 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!visible || results.length === 0) return;
+      if (!visible || results.length === 0 || e.isComposing || e.keyCode === 229) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -105,9 +108,9 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
   }, [selectedIndex]);
 
   const header = useMemo(() => {
-    if (!query) return title;
+    if (!query) return title ?? tr("chat.membersTitle");
     return null;
-  }, [query, title]);
+  }, [query, title, tr]);
 
   if (!visible || results.length === 0) return null;
 

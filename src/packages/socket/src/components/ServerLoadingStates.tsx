@@ -1,5 +1,7 @@
 import { Button, Spinner } from "@gryt/ui";
 
+import { useTranslation } from "@/i18n";
+
 import { PiArrowsClockwiseFill, PiClockFill, PiWarningCircleFill, PiWifiSlashFill } from "../../../../lib/icons";
 import { ServerDetailsSkeleton } from "./skeletons";
 
@@ -44,8 +46,8 @@ const REFUSALS = new Set([
  * only: "expired" is the wrong word for a session ended on purpose.
  */
 const SIGN_IN_AGAIN: Record<string, string> = {
-  session_expired: "Your session has expired",
-  session_ended: "Your session was ended",
+  session_expired: "connection.expired",
+  session_ended: "connection.ended",
 };
 
 const iconWrapStyle = (bg: string): React.CSSProperties => ({
@@ -69,6 +71,7 @@ export const ServerLoadingStates = ({
   onSignIn,
   onResumeHere,
 }: ServerLoadingStatesProps) => {
+  const { t: tr } = useTranslation();
   // The session ending is not a loading failure and Retry is the wrong verb.
   // Signing in is the only thing that changes the answer, so it is the only button.
   const signInHeading = serverFailure ? SIGN_IN_AGAIN[serverFailure.error] : undefined;
@@ -82,11 +85,11 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                {signInHeading}
+                {tr(signInHeading)}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 {serverFailure?.message ||
-                  "Sign in again to reconnect to this server."}
+                  tr("ui.signInAgainToReconnectToThisServer")}
               </span>
             </div>
             {/* A token that ran out and a device somebody signed out want
@@ -95,12 +98,12 @@ export const ServerLoadingStates = ({
                 to say it is allowed back. */}
             {serverFailure?.error === "session_ended" && onResumeHere ? (
               <Button size="small" onClick={onResumeHere} style={{ marginTop: 4 }}>
-                Use this server here again
+                {tr("ui.useThisServerHereAgain")}
               </Button>
             ) : (
               onSignIn && (
                 <Button size="small" onClick={onSignIn} style={{ marginTop: 4 }}>
-                  Sign in
+                  {tr("ui.signIn")}
                 </Button>
               )
             )}
@@ -121,13 +124,13 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                {wasRefused ? "You can't join this server" : "Failed to load server"}
+                {wasRefused ? tr("ui.youCanTJoinThisServer") : tr("ui.failedToLoadServer")}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 {serverFailure.error === "rate_limited"
-                  ? "You're being rate limited. Please wait a moment and try again."
+                  ? tr("ui.youReBeingRateLimitedPleaseWaitA")
                   : serverFailure.message ||
-                    "An error occurred while loading server details."}
+                    tr("ui.anErrorOccurredWhileLoadingServerDetails")}
               </span>
             </div>
             {!wasRefused && (
@@ -136,7 +139,7 @@ export const ServerLoadingStates = ({
                 style={{ marginTop: 4 }}
               >
                 <PiArrowsClockwiseFill size={16} />
-                Retry
+                {tr("ui.retry")}
               </Button>
             )}
           </div>
@@ -158,10 +161,10 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                Reconnecting...
+                {tr("ui.reconnectingVariant")}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-                Lost connection to the server. Attempting to reconnect automatically.
+                {tr("ui.lostConnectionToTheServerAttemptingToReconnect")}
               </span>
             </div>
           </div>
@@ -182,11 +185,11 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                Server identity not recognised
+                {tr("ui.serverIdentityNotRecognised")}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 {refusalReason ??
-                  "This server could not prove it is the one you joined before."}
+                  tr("ui.thisServerCouldNotProveItIsThe")}
               </span>
               {refusalHelpUrl && (
                 <a
@@ -195,7 +198,7 @@ export const ServerLoadingStates = ({
                   rel="noreferrer"
                   className="text-sm underline text-gryt-muted hover:text-gryt-text"
                 >
-                  How to fix this
+                  {tr("ui.howToFixThis")}
                 </a>
               )}
             </div>
@@ -215,10 +218,10 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                Server unreachable
+                {tr("ui.serverUnreachable")}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-                Unable to establish a connection. The server may be offline or there could be a network issue.
+                {tr("ui.unableToEstablishAConnectionTheServerMay")}
               </span>
             </div>
             <Button size="small"
@@ -226,7 +229,7 @@ export const ServerLoadingStates = ({
               style={{ marginTop: 4 }}
             >
               <PiArrowsClockwiseFill size={16} />
-              Reconnect
+              {tr("ui.reconnect")}
             </Button>
           </div>
         </div>
@@ -253,10 +256,10 @@ export const ServerLoadingStates = ({
           </div>
           <div className="flex flex-col gap-2 items-center">
             <span className="text-lg font-bold">
-              Taking longer than expected
+              {tr("ui.takingLongerThanExpected")}
             </span>
             <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-              The server is taking a while to respond. This could be due to network conditions or the server being under load.
+              {tr("ui.theServerIsTakingAWhileToRespond")}
             </span>
           </div>
           <Button size="small"
@@ -264,7 +267,7 @@ export const ServerLoadingStates = ({
             style={{ marginTop: 4 }}
           >
             <PiArrowsClockwiseFill size={16} />
-            Retry
+            {tr("ui.retry")}
           </Button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { Alert, Avatar, Button, Dialog, IconButton, Spinner, TextField } from "@
 import { useEffect, useState } from "react";
 
 import { GeneratedServerIcon, getServerHttpBase, normalizeCode, type PendingInvite } from "@/common";
+import { useTranslation } from "@/i18n";
 import {
   type FetchInfo,
   fetchServerInfo,
@@ -33,12 +34,12 @@ interface InviteAcceptModalProps {
 type Lookup = { kind: "loading" } | Exclude<InfoResult, { kind: "superseded" }>;
 
 const MESSAGES: Record<InviteDialogMessage, string> = {
-  member: "You're already a member of this server.",
-  invited: "You've been invited to join this server. No password required.",
-  "needs-code": "This server needs an invite code.",
-  request: "Somebody who runs this server has to let you in.",
-  open: "Anyone can join this server.",
-  private: "This server doesn't share its details. You can still try to join.",
+  member: "invite.member",
+  invited: "invite.invited",
+  "needs-code": "invite.needsCode",
+  request: "invite.request",
+  open: "invite.open",
+  private: "invite.private",
   none: "",
 };
 
@@ -52,6 +53,7 @@ export function InviteAcceptModal({
   onDismiss,
   onGoToServer,
 }: InviteAcceptModalProps) {
+  const { t: tr } = useTranslation();
   const host = invite?.host ?? "";
   const linkCode = invite?.code ?? "";
 
@@ -60,6 +62,7 @@ export function InviteAcceptModal({
   const [note, setNote] = useState("");
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const [joinErrorKey, setJoinErrorKey] = useState<string>();
   const [inviteRequired, setInviteRequired] = useState(false);
   const [accountRequired, setAccountRequired] = useState(false);
   const [awaitingApproval, setAwaitingApproval] = useState(false);
@@ -67,7 +70,7 @@ export function InviteAcceptModal({
   useEffect(() => {
     setTypedCode("");
     setNote("");
-    setJoinError("");
+    setJoinError(""); setJoinErrorKey(undefined);
     setInviteRequired(false);
     setAccountRequired(false);
     setAwaitingApproval(false);
@@ -96,12 +99,12 @@ export function InviteAcceptModal({
   });
 
   const displayName = info?.name || host;
-  const message = MESSAGES[view.message];
+  const message = view.message === "none" ? "" : tr(MESSAGES[view.message]);
 
   async function join() {
     if (joining) return;
     setJoining(true);
-    setJoinError("");
+    setJoinError(""); setJoinErrorKey(undefined);
     try {
       const outcome = await onJoin({ code: view.code, info, note: note.trim() || undefined });
       if (outcome.ok) return;
@@ -111,7 +114,7 @@ export function InviteAcceptModal({
       }
       if (outcome.kind === "invite_required") setInviteRequired(true);
       if (outcome.kind === "account_required") setAccountRequired(true);
-      setJoinError(outcome.message);
+      setJoinError(outcome.message); setJoinErrorKey(outcome.messageKey);
     } finally {
       setJoining(false);
     }
@@ -136,11 +139,11 @@ export function InviteAcceptModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <PiEnvelopeFill size={16} />
-              <Dialog.Title>Server Invite</Dialog.Title>
+              <Dialog.Title>{tr("ui.serverInvite")}</Dialog.Title>
             </div>
             <Dialog.Close
               disabled={joining}
-              render={<IconButton tone="ghost" size="xsmall" aria-label="Close" />}
+              render={<IconButton tone="ghost" size="xsmall" aria-label={tr("ui.close")} />}
             >
               <PiX size={16} />
             </Dialog.Close>
@@ -180,7 +183,7 @@ export function InviteAcceptModal({
                 <div className="flex items-center gap-1">
                   <PiUsersFill size={14} style={{ color: "var(--gryt-neutral-9)" }} />
                   <span className="text-sm text-gryt-muted">
-                    {info.members} members
+                    {tr("invite.members", { count: Number(info.members) })}
                   </span>
                 </div>
               )}
@@ -188,7 +191,7 @@ export function InviteAcceptModal({
           )}
 
           {lookup.kind === "error" && !alreadyMember && (
-            <span className="text-sm text-gryt-muted text-center">{lookup.message}</span>
+            <span className="text-sm text-gryt-muted text-center">{lookup.messageKey ? tr(lookup.messageKey) : lookup.message}</span>
           )}
 
           {message && lookup.kind !== "loading" && (
@@ -199,14 +202,14 @@ export function InviteAcceptModal({
 
           {view.needsAccount && !alreadyMember && (
             <span className="text-sm text-center">
-              You need a Gryt account to join. Sign in and you&rsquo;ll come back to this invite.
+              {tr("ui.youNeedAGrytAccountToJoinSign")}
             </span>
           )}
 
           {view.showCodeField && !awaitingApproval && (
             <TextField
-              aria-label="Invite code"
-              placeholder="Paste invite code"
+              aria-label={tr("ui.inviteCode")}
+              placeholder={tr("ui.pasteInviteCode")}
               disabled={joining}
               value={typedCode}
               onChange={(e) => setTypedCode(normalizeCode(e.target.value))}
@@ -215,8 +218,8 @@ export function InviteAcceptModal({
 
           {view.showNote && (
             <TextField
-              aria-label="Say who you are"
-              placeholder="Say who you are (optional)"
+              aria-label={tr("ui.sayWhoYouAre")}
+              placeholder={tr("ui.sayWhoYouAreOptional")}
               maxLength={300}
               disabled={joining}
               value={note}
@@ -226,36 +229,37 @@ export function InviteAcceptModal({
 
           {awaitingApproval && (
             <Alert severity="info">
-              Asked. Somebody who runs this server has to let you in. It&rsquo;s in your server
-              list now, marked as waiting, and opens on its own once they do.
+              {tr("ui.askedSomebodyWhoRunsThisServerHasToLet")}
             </Alert>
           )}
 
           {!alreadyMember && joinError && !view.needsAccount ? (
-            <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{joinError}</span></Alert>
+            <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{joinErrorKey ? tr(joinErrorKey) : joinError}</span></Alert>
           ) : null}
 
           <div className="flex flex-wrap justify-end gap-2">
             <Button tone="neutral" size="small" disabled={joining} onClick={dismiss}>
-              {alreadyMember || awaitingApproval ? "Close" : "Cancel"}
+              {alreadyMember || awaitingApproval ? tr("ui.close") : tr("ui.cancel")}
             </Button>
             {view.action.kind === "go-to-server" && (
-              <Button size="small" onClick={() => onGoToServer?.()}>Go to Server</Button>
+              <Button size="small" onClick={() => onGoToServer?.()}>{tr("ui.goToServer")}</Button>
             )}
             {view.action.kind === "sign-in" && (
               <Button size="small" disabled={signingIn} onClick={onSignIn}>
                 <PiSignInFill size={16} />
-                {signingIn ? "Signing in…" : "Sign in to join"}
+                {signingIn ? tr("ui.signingIn") : tr("ui.signInToJoin")}
               </Button>
             )}
             {view.action.kind === "join" && (
               <Button size="small" disabled={view.action.disabled || joining} onClick={() => void join()}>
                 {joining ? (
                   <>
-                    <Spinner size={20} /> Joining…
+                    <Spinner size={20} /> {tr("ui.joining")}
                   </>
                 ) : (
-                  view.action.label
+                  view.action.label === "Accept Invite"
+                    ? tr("invite.accept")
+                    : view.action.label === "Ask to join" ? tr("ui.askToJoin") : tr("ui.join")
                 )}
               </Button>
             )}
