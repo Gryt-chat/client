@@ -1,6 +1,8 @@
 import { Button } from "@gryt/ui";
 import type { RefObject } from "react";
 
+import { useTranslation } from "@/i18n";
+
 import { PiX } from "../../../../lib/icons";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import type { ChatMessage } from "./chatUtils";
@@ -46,6 +48,7 @@ export function ChatEditorBar({
   onStopTyping,
   serverHost,
 }: ChatEditorBarProps) {
+  const { t: tr } = useTranslation();
   return (
     <>
       {replyingTo && (
@@ -58,7 +61,7 @@ export function ChatEditorBar({
             fontSize: "13px",
           }}>
           <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-            <span className="text-sm text-gryt-muted">Replying to</span>
+            <span className="text-sm text-gryt-muted">{tr("ui.replyingTo")}</span>
             <span className="text-sm font-bold">{getSenderName(replyingTo)}</span>
             <span className="text-xs text-gryt-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {getReplyPreview(replyingTo, 80)}
@@ -66,7 +69,7 @@ export function ChatEditorBar({
           </div>
           <Button tone="ghost" size="xsmall"
             onClick={onCancelReply}
-            aria-label="Cancel reply"
+            aria-label={tr("ui.cancelReply")}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
             <PiX size={14} />
@@ -84,14 +87,14 @@ export function ChatEditorBar({
             fontSize: "13px",
           }}>
           <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-            <span className="text-sm text-gryt-muted">Editing message</span>
+            <span className="text-sm text-gryt-muted">{tr("ui.editingMessage")}</span>
             <span className="text-xs text-gryt-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 4 }}>
-              press Escape to cancel
+              {tr("ui.pressEscapeToCancel")}
             </span>
           </div>
           <Button tone="ghost" size="xsmall"
             onClick={onCancelEditing}
-            aria-label="Cancel editing"
+            aria-label={tr("ui.cancelEditing")}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
             <PiX size={14} />

@@ -9,6 +9,7 @@ import {
   parseServerInput,
   useAccount,
 } from "@/common";
+import { useTranslation } from "@/i18n";
 
 import {
   PiCaretRightBold,
@@ -92,6 +93,7 @@ export function AddNewServer({
   showAddServer,
   setShowAddServer,
 }: AddNewServerProps) {
+  const { t: tr } = useTranslation();
   const { servers, switchToServer, addServer } = useServerManagement();
   const { isElectron } = useLanDiscovery();
 
@@ -133,16 +135,17 @@ export function AddNewServer({
     if (isLocalhostHost(serverHost)) return "";
 
     if (isIpv4Host(serverHost)) {
-      return "The web client can only connect to servers over HTTPS. Use a domain with TLS, or use localhost on this machine.";
+      return tr("errors.webHttps");
     }
 
     return "";
-  }, [isElectron, serverHost]);
+  }, [isElectron, serverHost, tr]);
 
   const [serverInfo, setServerInfo] = useState<FetchInfo | null>(null);
   /** Public info is switched off. A code can still get you in. */
   const [serverPrivate, setServerPrivate] = useState(false);
   const [lookupError, setLookupError] = useState("");
+  const [lookupErrorKey, setLookupErrorKey] = useState<string>();
   const [isSearching, setIsSearching] = useState(false);
 
   /** A code typed by hand, when the link carried none or carried a bad one. */
@@ -151,6 +154,7 @@ export function AddNewServer({
   const [joinNote, setJoinNote] = useState("");
   const [awaitingApproval, setAwaitingApproval] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const [joinErrorKey, setJoinErrorKey] = useState<string>();
 
   const isJoining = joiningHost !== null;
   const inviteCode = manualCode || parsed.code;
@@ -171,13 +175,13 @@ export function AddNewServer({
     setInviteInput("");
     setServerInfo(null);
     setServerPrivate(false);
-    setLookupError("");
+    setLookupError(""); setLookupErrorKey(undefined);
     setIsSearching(false);
     setManualCode("");
     setInviteRequired(false);
     setJoinNote("");
     setAwaitingApproval(false);
-    setJoinError("");
+    setJoinError(""); setJoinErrorKey(undefined);
   }
 
   function closeDialog() {
@@ -193,11 +197,11 @@ export function AddNewServer({
   useEffect(() => {
     setServerInfo(null);
     setServerPrivate(false);
-    setLookupError("");
+    setLookupError(""); setLookupErrorKey(undefined);
     setManualCode("");
     setInviteRequired(false);
     setAwaitingApproval(false);
-    setJoinError("");
+    setJoinError(""); setJoinErrorKey(undefined);
 
     if (!serverHost || webAddressError) {
       setIsSearching(false);
@@ -214,7 +218,10 @@ export function AddNewServer({
 
         if (result.kind === "info") setServerInfo(result.info);
         else if (result.kind === "private") setServerPrivate(true);
-        else if (result.kind === "error") setLookupError(result.message);
+        else if (result.kind === "error") {
+          setLookupError(result.message);
+          setLookupErrorKey(result.messageKey);
+        }
 
         setIsSearching(false);
       })();
@@ -235,14 +242,14 @@ export function AddNewServer({
   }, [showAddServer]);
 
   useEffect(() => {
-    setJoinError("");
+    setJoinError(""); setJoinErrorKey(undefined);
   }, [manualCode]);
 
   async function handleJoin() {
     if (!serverHost || webAddressError) return;
     if (!serverInfo && !serverPrivate) return;
 
-    setJoinError("");
+    setJoinError(""); setJoinErrorKey(undefined);
 
     const outcome = await join({
       host: serverHost,
@@ -264,7 +271,7 @@ export function AddNewServer({
     }
 
     if (outcome.kind === "invite_required") setInviteRequired(true);
-    setJoinError(outcome.message);
+    setJoinError(outcome.message); setJoinErrorKey(outcome.messageKey);
   }
 
   function openMyServers() {
@@ -318,12 +325,12 @@ export function AddNewServer({
   /** "Sign in to join" rather than a disabled button and a tooltip, which touch
       and the keyboard cannot reach. Disabled only when a press does nothing. */
   const joinAction = alreadyMember
-    ? { label: "Already joined", tone: "secondary" as const, disabled: true, run: () => {} }
+    ? { label: tr("ui.alreadyJoined"), tone: "secondary" as const, disabled: true, run: () => {} }
     : needsAccount
-      ? { label: "Sign in to join", tone: "primary" as const, disabled: false, run: () => void login() }
+      ? { label: tr("ui.signInToJoin"), tone: "primary" as const, disabled: false, run: () => void login() }
       : serverInfo?.joinPolicy === "request"
-        ? { label: "Ask to join", tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() }
-        : { label: "Join", tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() };
+        ? { label: tr("ui.askToJoin"), tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() }
+        : { label: tr("ui.join"), tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() };
 
   return (
     <Dialog.Root
@@ -353,7 +360,7 @@ export function AddNewServer({
             <div className="absolute top-2 right-2 z-10">
               <Dialog.Close
                 render={
-                  <IconButton aria-label="Close" />
+                  <IconButton aria-label={tr("ui.close")} />
                 }
               >
                 <PiX size={16} />
@@ -368,20 +375,20 @@ export function AddNewServer({
             <div className="flex flex-col gap-1 items-center">
               <Dialog.Title className="m-0 text-xl font-bold">
                 {step === "host"
-                  ? "Create your server"
+                  ? tr("ui.createYourServer")
                   : step === "join"
-                    ? "Join a server"
-                    : "Add a server"}
+                    ? tr("ui.joinAServer")
+                    : tr("ui.addAServer")}
               </Dialog.Title>
 
               <Dialog.Description className="m-0 text-center text-sm">
                 {step === "host"
-                  ? "It runs on this machine, and your friends connect to you."
+                  ? tr("ui.itRunsOnThisMachineAndYourFriends")
                   : step === "join"
                     ? isElectron
-                      ? "Paste the invite a friend sent you, or the address of a server you already know."
-                      : "Paste an invite, or enter the HTTPS address of a server you already know."
-                    : "Start one of your own, or join somebody else's."}
+                      ? tr("ui.pasteTheInviteAFriendSentYouOr")
+                      : tr("ui.pasteAnInviteOrEnterTheHttpsAddress")
+                    : tr("ui.startOneOfYourOwnOrJoinSomebody")}
               </Dialog.Description>
             </div>
 
@@ -400,15 +407,15 @@ export function AddNewServer({
                   <EntryCard
                     tour="choose-host"
                     icon={<PiHouseFill size={17} />}
-                    name={hasOwnServer ? "Create another" : "Create my own"}
-                    hint="Runs on this machine. Best for a few friends."
+                    name={hasOwnServer ? tr("ui.createAnother") : tr("ui.createMyOwn")}
+                    hint={tr("ui.runsOnThisMachineBestForAFew")}
                     onPick={() => setMode("host")}
                   />
                   <EntryCard
                     tour="choose-join"
                     icon={<PiLinkSimpleBold size={17} />}
-                    name="Join with an invite"
-                    hint="Paste a link or an address you were given."
+                    name={tr("ui.joinWithAnInvite")}
+                    hint={tr("ui.pasteALinkOrAnAddressYouWere")}
                     onPick={() => setMode("join")}
                   />
                 </div>
@@ -432,7 +439,7 @@ export function AddNewServer({
                     looking for the other should not have to guess. */}
                 {hasOwnServer && (
                   <span className="text-xs text-center">
-                    Already running{" "}
+                    {tr("ui.alreadyRunning")}{" "}
                     {hostedServers.length === 1
                       ? "one"
                       : `${hostedServers.length}`}
@@ -442,7 +449,7 @@ export function AddNewServer({
                       onClick={openMyServers}
                       className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
                     >
-                      Manage in settings
+                      {tr("ui.manageInSettings")}
                     </button>
                   </span>
                 )}
@@ -476,7 +483,7 @@ export function AddNewServer({
                   <TextField
                     autoFocus
                     disabled={isJoining}
-                    aria-label="Invite or server address"
+                    aria-label={tr("ui.inviteOrServerAddress")}
                     placeholder={inputExamples[exampleIndex]}
                     value={inviteInput}
                     onChange={(e) => setInviteInput(e.target.value)}
@@ -514,7 +521,7 @@ export function AddNewServer({
                         host={serverHost}
                         info={serverInfo}
                         loading={isSearching}
-                        error={webAddressError || lookupError}
+                        error={webAddressError || (lookupErrorKey ? tr(lookupErrorKey) : lookupError)}
                         privateInfo={serverPrivate}
                         alreadyMember={alreadyMember}
                       />
@@ -532,11 +539,11 @@ export function AddNewServer({
                     >
                       <div className="flex flex-col gap-2">
                         <span className="text-sm font-bold">
-                          Invite code
+                          {tr("ui.inviteCode")}
                         </span>
                         <TextField
                           disabled={isJoining}
-                          placeholder="Paste invite code"
+                          placeholder={tr("ui.pasteInviteCode")}
                           value={inviteCode}
                           onChange={(e) =>
                             setManualCode(normalizeCode(e.target.value))
@@ -560,11 +567,11 @@ export function AddNewServer({
                           label carries what the paragraph used to. */}
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-bold">
-                          Say who you are
+                          {tr("ui.sayWhoYouAre")}
                         </span>
                         <TextField
                           disabled={isJoining}
-                          placeholder="Optional"
+                          placeholder={tr("ui.optional")}
                           maxLength={300}
                           value={joinNote}
                           onChange={(e) => setJoinNote(e.target.value)}
@@ -583,9 +590,7 @@ export function AddNewServer({
                       style={{ overflow: "hidden" }}
                     >
                       <Alert severity="info">
-                        Asked. Somebody who runs this server has to let you in.
-                        It is in your server list now, marked as waiting, and
-                        opens on its own once they do. You can close this.
+                        {tr("ui.askedSomebodyWhoRunsThisServerHasTo")}
                       </Alert>
                     </motion.div>
                   )}
@@ -602,7 +607,7 @@ export function AddNewServer({
                       <Alert severity="error" role="alert">
                         <span className="inline-flex items-center gap-2">
                           <PiWarningFill size={16} />
-                          {joinError}
+                          {joinErrorKey ? tr(joinErrorKey) : joinError}
                         </span>
                       </Alert>
                     </motion.div>
@@ -620,7 +625,7 @@ export function AddNewServer({
                       disabled={isJoining}
                       onClick={() => setMode(null)}
                     >
-                      Back
+                      {tr("ui.back")}
                     </Button>
                   ) : (
                     <span />
@@ -638,7 +643,7 @@ export function AddNewServer({
                           width="16px"
                           height="16px"
                         />{" "}
-                        Joining…
+                        {tr("ui.joining")}
                       </>
                     ) : (
                       joinAction.label
@@ -710,13 +715,14 @@ function EntryCard({
 
 /** The "or" between the two doors and the server we run. */
 function OrRule() {
+  const { t: tr } = useTranslation();
   return (
     <div
       className="flex items-center gap-3 text-xs uppercase"
       style={{ color: "var(--gryt-neutral-11)", letterSpacing: "0.08em" }}
     >
       <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
-      or
+      {tr("ui.or")}
       <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
     </div>
   );
@@ -729,6 +735,7 @@ function OfficialServerCard({
   server: OfficialServer;
   onPick: () => void;
 }) {
+  const { t: tr } = useTranslation();
   const { host, info } = server;
 
   return (
@@ -757,7 +764,7 @@ function OfficialServerCard({
       </span>
 
       <span className="flex flex-col" style={{ minWidth: 0 }}>
-        <span className="text-base font-bold">{info?.name || "The Gryt server"}</span>
+        <span className="text-base font-bold">{info?.name || tr("ui.theGrytServer")}</span>
         {/* The member count when the server gave one, and the address when it
             did not. Both say the same thing — this is a real place — and one
             of them is a number we did not make up. */}
@@ -786,6 +793,7 @@ function OfficialServerOffer({
   onPick: () => void;
   onHide: () => void;
 }) {
+  const { t: tr } = useTranslation();
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-end">
@@ -795,7 +803,7 @@ function OfficialServerOffer({
           className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-xs underline"
           style={{ color: "var(--gryt-neutral-11)" }}
         >
-          Hide forever
+          {tr("ui.hideForever")}
         </button>
       </div>
       <OfficialServerCard server={server} onPick={onPick} />
@@ -811,6 +819,7 @@ function ServerPreview({
   privateInfo,
   alreadyMember,
 }: ServerPreviewProps) {
+  const { t: tr } = useTranslation();
   return (
     <Surface className="p-3">
       {/* Top-aligned, because the description below the name can run to two
@@ -848,7 +857,7 @@ function ServerPreview({
             </span>
           ) : privateInfo ? (
             <span className="text-xs">
-              Public info is off. An invite code can still get you in.
+              {tr("ui.publicInfoIsOffAnInviteCodeCan")}
             </span>
           ) : (
             <span className="text-xs line-clamp-2">
@@ -864,7 +873,7 @@ function ServerPreview({
           {alreadyMember && (
             <Chip>
               <PiInfoFill size={12} />
-              Joined
+              {tr("ui.joined")}
             </Chip>
           )}
           {/*
@@ -878,8 +887,8 @@ function ServerPreview({
               color={info.identityTiers.includes("local") ? "green" : "gray"}
             >
               {info.identityTiers.includes("local")
-                ? "No account needed"
-                : "Account required"}
+                ? tr("ui.noAccountNeeded")
+                : tr("ui.accountRequired")}
             </Chip>
           )}
           {info && !loading && (

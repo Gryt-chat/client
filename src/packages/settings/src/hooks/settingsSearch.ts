@@ -1,8 +1,10 @@
+import { i18n } from "@/i18n";
+import en from "@/i18n/locales/en.json";
+
 /**
  * Search index for the settings modal. The `id` is the anchor SettingGroup
  * renders, and titles here are the stable part before any colon.
  */
-
 import { isElectron, isMacDesktop } from "../../../../lib/electron";
 
 export interface SettingsIndexEntry {
@@ -31,6 +33,7 @@ export function settingAnchorId(title: string): string {
 }
 
 export const SETTINGS_INDEX: SettingsIndexEntry[] = [
+  { id: "language", title: "Language", description: "Choose the interface language. 中文 语言 English", destination: "appearance", page: "display", section: "Display" },
   { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "about", section: "About", panel: true },
   { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", page: "profile", destination: "profile", section: "Profile", panel: true },
   { id: "edit-my-card", title: "Edit my card", description: "The card people see when they hover your name: its colour or gradient, pattern and pattern tuning, built-in styles, Surprise me, card links, bio, pronouns and status line.", page: "card", destination: "profile", section: "Edit my card", panel: true },
@@ -126,13 +129,28 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
  * Case-insensitive match across titles, descriptions and section names. Results
  * come back in screen order, so a description match can outrank a title one.
  */
-export function searchSettings(query: string): SettingsIndexEntry[] {
+const labelKeys = new Map(Object.entries(en.ui).map(([key, value]) => [value, `ui.${key}`]));
+labelKeys.set("Language", "language.title");
+labelKeys.set("Microphone volume", "settings.microphoneVolume");
+labelKeys.set("Target level", "settings.targetLevel");
+labelKeys.set("Compression amount", "settings.compressionAmount");
+labelKeys.set("Output volume", "settings.outputVolume");
+
+function localizeLabel(value: string, translate: (key: string) => string): string {
+  const key = labelKeys.get(value);
+  return key ? translate(key) : value;
+}
+
+export function searchSettings(query: string, translate: (key: string) => string = i18n.t): SettingsIndexEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
   return SETTINGS_INDEX.filter((entry) =>
+    localizeLabel(entry.title, translate).toLowerCase().includes(q) ||
+    localizeLabel(entry.section, translate).toLowerCase().includes(q) ||
+    localizeLabel(entry.description, translate).toLowerCase().includes(q) ||
     entry.title.toLowerCase().includes(q) ||
     entry.section.toLowerCase().includes(q) ||
     entry.description.toLowerCase().includes(q),
-  );
+  ).map((entry) => ({ ...entry, title: localizeLabel(entry.title, translate), section: localizeLabel(entry.section, translate), description: localizeLabel(entry.description, translate) }));
 }

@@ -109,7 +109,7 @@ const firstRun = { nickname: "Iron" };
   const welcome = readFileSync(join(root, "src/components/welcome.tsx"), "utf8");
   assert.match(
     welcome,
-    /onClick=\{\(\) => completeWelcome\(\{ startTour: true \}\)\}\s*>\s*Show me around/,
+    /onClick=\{\(\) => completeWelcome\(\{ startTour: true \}\)\}\s*>\s*\{tr\("ui.showMeAround"\)\}/,
     "Show me around should call completeWelcome({ startTour: true })",
   );
   const mainApp = readFileSync(join(root, "src/components/mainApp.tsx"), "utf8");

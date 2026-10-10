@@ -131,7 +131,7 @@ const header = readFileSync(
   "utf8",
 );
 
-const item = header.indexOf("What this server runs");
+const item = header.indexOf('tr("ui.whatThisServerRuns")');
 assert.ok(item > 0, "the menu item is gone — did it move, or lose its label?");
 
 /* The row and the few lines above it, which is where a `canManage` guard would

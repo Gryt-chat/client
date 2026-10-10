@@ -1,5 +1,6 @@
 import { Button, Dialog } from "@gryt/ui";
 
+import { useTranslation } from "@/i18n";
 import { useServerManagement, useSockets } from "@/socket";
 
 /**
@@ -7,6 +8,7 @@ import { useServerManagement, useSockets } from "@/socket";
  * leaving ends the membership, and an invite-only server may have no way back.
  */
 export function LeaveServer() {
+  const { t: tr } = useTranslation();
   const { removeServer, showRemoveServer, setShowRemoveServer, servers } =
     useServerManagement();
   const { leaveServer } = useSockets();
@@ -42,33 +44,20 @@ export function LeaveServer() {
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)]">
           <Dialog.Title>
-            {leaving ? "Leave" : "Remove"} <strong>{name}</strong>
+            {leaving ? tr("ui.leave") : tr("ui.remove")} <strong>{name}</strong>
           </Dialog.Title>
           <Dialog.Description className="mt-2">
-            {leaving ? (
-              <>
-                You stop being a member of {name}. Your messages stay and keep
-                your name on them, but your picture there is deleted, and if the
-                server is invite-only you will need a new invite to come back.
-              </>
-            ) : (
-              <>
-                {name} goes from your sidebar. You are still a member, so you
-                keep your roles and anything you own there. You just will not be
-                connected: nobody sees you online, and changing your picture
-                will not change it there.
-              </>
-            )}
+            {tr(leaving ? "server.leaveDescription" : "server.removeDescription", { server: name })}
           </Dialog.Description>
 
           <Dialog.Footer className="flex-wrap">
             <Button tone="ghost" onClick={close}>
-              Cancel
+              {tr("ui.cancel")}
             </Button>
             {/* Danger for leaving only. Removing is reversible by adding the
                 server back, and painting it red says otherwise. */}
             <Button tone={leaving ? "danger" : "primary"} onClick={confirm}>
-              {leaving ? "Leave server" : "Remove from sidebar"}
+              {leaving ? tr("ui.leaveServer") : tr("ui.removeFromSidebar")}
             </Button>
           </Dialog.Footer>
         </Dialog.Popup>

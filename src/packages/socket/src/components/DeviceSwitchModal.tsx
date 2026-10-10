@@ -1,6 +1,8 @@
 import { Button, Dialog, IconButton } from "@gryt/ui";
 import { useEffect,useState } from "react";
 
+import { useTranslation } from "@/i18n";
+
 import { PiWarningFill, PiX } from "../../../../lib/icons";
 
 interface DeviceSwitchData {
@@ -12,6 +14,7 @@ interface DeviceSwitchData {
 }
 
 export function DeviceSwitchModal() {
+  const { t: tr } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [deviceSwitchData, setDeviceSwitchData] = useState<DeviceSwitchData | null>(null);
 
@@ -45,12 +48,12 @@ export function DeviceSwitchModal() {
               color="orange" 
             />
             <span className="text-lg font-bold text-gryt-warning">
-              Device Switch Detected
+              {tr("ui.deviceSwitchDetected")}
             </span>
           </div>
           
           <span className="text-base text-center text-gryt-muted">
-            You've been disconnected because you joined from another device.
+            {tr("ui.youVeBeenDisconnectedBecauseYouJoinedFrom")}
           </span>
           
           {deviceSwitchData?.newDevice && (
@@ -60,7 +63,7 @@ export function DeviceSwitchModal() {
                 width: "100%"
               }}>
               <span className="text-sm font-medium text-gryt-muted">
-                New connection from:
+                {tr("ui.newConnectionFrom")}
               </span>
               <span className="text-base font-medium">
                 {deviceSwitchData.newDevice.nickname}
@@ -69,14 +72,14 @@ export function DeviceSwitchModal() {
           )}
           
           <span className="text-sm text-center text-gryt-muted mt-2">
-            Only one device can be connected to voice at a time. You can rejoin from any device.
+            {tr("ui.onlyOneDeviceCanBeConnectedToVoice")}
           </span>
           
           <Button size="small" 
             onClick={handleClose}
             style={{ marginTop: "8px" }}
           >
-            Got it
+            {tr("ui.gotIt")}
           </Button>
         </div>
         

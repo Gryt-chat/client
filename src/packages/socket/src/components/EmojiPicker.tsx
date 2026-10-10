@@ -2,6 +2,7 @@ import { createGrytTheme, EmojiPicker as GrytEmojiPicker, type EmojiPickerGroup,
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { useCustomThemes, useTheme } from "@/common";
+import { useTranslation } from "@/i18n";
 
 import { type EmojiEntry, externalEmojiMarkdown, getCustomEmojis, getOtherServersEmojis, getStandardEmojisByCategory, onCustomEmojisChange } from "../utils/emojiData";
 import { useExternalEmojisAllowed } from "../utils/externalEmojiPolicy";
@@ -37,6 +38,7 @@ function pickerItem(entry: EmojiEntry): EmojiPickerItem {
 }
 
 export function EmojiPickerContent({ onSelect, serverHost, withOtherServers = false, autoFocusSearch = true }: EmojiPickerContentProps) {
+  const { t: tr } = useTranslation();
   const custom = useSyncExternalStore(onCustomEmojisChange, () => getCustomEmojis(serverHost));
   const allowed = useExternalEmojisAllowed(serverHost);
   const others = useMemo(() => (withOtherServers && allowed ? getOtherServersEmojis(serverHost) : []), [withOtherServers, allowed, serverHost, custom]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -51,8 +53,8 @@ export function EmojiPickerContent({ onSelect, serverHost, withOtherServers = fa
       return entry ? [pickerItem(entry)] : [];
     });
     return [
-      { id: "server", label: "This server", items: custom.map(pickerItem) },
-      { id: "recent", label: "Recently Used", items: recent },
+      { id: "server", label: tr("ui.thisServer"), items: custom.map(pickerItem) },
+      { id: "recent", label: tr("ui.recentlyUsed"), items: recent },
       ...others.map(([host, entries]) => ({
         id: `other:${host}`,
         label: host,
@@ -60,13 +62,14 @@ export function EmojiPickerContent({ onSelect, serverHost, withOtherServers = fa
       })),
       ...Array.from(standard, ([label, entries]) => ({ id: label, label, items: entries.map(pickerItem) })),
     ];
-  }, [custom, serverHost, others]);
+  }, [custom, serverHost, others, tr]);
   return (
     <GrytProvider theme={theme} className="min-h-0 w-full">
       <GrytEmojiPicker
         groups={groups}
         autoFocus={autoFocusSearch}
-        searchPlaceholder="Search emojis..."
+        searchPlaceholder={tr("ui.searchEmojis")}
+        emptyMessage={tr("emoji.empty")}
         className="max-w-none"
         onKeyDown={(event) => { if (event.target instanceof HTMLInputElement) event.stopPropagation(); }}
         onSelect={(item) => onSelect(

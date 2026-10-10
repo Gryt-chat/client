@@ -26,6 +26,7 @@ import {
   useThemeEditor,
   useZoomShortcuts,
 } from "@/common";
+import { restoreLanguagePreference } from "@/i18n";
 import { ThemeEditorPanel } from "@/settings";
 import { useSettings } from "@/settings";
 import { ServerPluginsModal } from "@/socket";
@@ -210,7 +211,8 @@ void backfillGuestHistory()
    the import and everything it pulls in go with it (GRYT-1115). */
 if (import.meta.env.DEV) installAiToolkit();
 
-initGlobalStorage().then(() => {
+initGlobalStorage().then(async () => {
+  await restoreLanguagePreference();
   // After the file store is loaded, or the desktop app would restore the old list over it.
   const cleared = clearWithdrawnBlocksOnce();
   if (cleared) console.log(`[ServerAuth] Cleared ${cleared} proof_withdrawn block(s) left by GRYT-1497`);

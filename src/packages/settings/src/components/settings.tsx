@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
@@ -23,6 +24,7 @@ import { ChatSettings } from "./chatSettings";
 import { DesktopSettings } from "./desktopSettings";
 import { DeveloperSettings } from "./developerSettings";
 import { HotkeySettings } from "./hotkeySettings";
+import { LanguageSettings } from "./languageSettings";
 import { MyServersSettings } from "./myServersSettings";
 import { NotificationSettings } from "./notificationSettings";
 import { PrivacySettings } from "./privacySettings";
@@ -61,105 +63,109 @@ interface SettingsDestination {
   pinBottom?: boolean;
 }
 
-const DESTINATIONS: SettingsDestination[] = [
+const DEFAULT_DESTINATION = "profile";
+
+export function Settings() {
+  const { t: tr } = useTranslation();
+const DESTINATIONS = useMemo((): SettingsDestination[] => [
   {
     value: "profile",
-    label: "Profile",
+    label: tr("ui.profile"),
     icon: PiUserFill,
     pages: [
-      { value: "profile", label: "Profile", content: <ProfileSettings /> },
-      { value: "card", label: "Edit my card", content: <CardSettings /> },
+      { value: "profile", label: tr("ui.profile"), content: <ProfileSettings /> },
+      { value: "card", label: tr("ui.editMyCard"), content: <CardSettings /> },
     ],
   },
   {
     value: "account",
-    label: "Account & security",
+    label: tr("ui.accountSecurity"),
     icon: PiShieldCheckFill,
     pages: [
-      { value: "account", label: "Account", content: <AccountSettings /> },
-      { value: "security", label: "Security", content: <SecuritySettings /> },
-      { value: "privacy", label: "Privacy", content: <PrivacySettings /> },
+      { value: "account", label: tr("ui.account"), content: <AccountSettings /> },
+      { value: "security", label: tr("ui.security"), content: <SecuritySettings /> },
+      { value: "privacy", label: tr("ui.privacy"), content: <PrivacySettings /> },
     ],
   },
   {
     value: "servers",
-    label: "Servers",
+    label: tr("ui.servers"),
     icon: PiHardDrivesFill,
     pages: [
       ...(isElectron()
-        ? [{ value: "my-servers", label: "My servers", content: <MyServersSettings /> }]
+        ? [{ value: "my-servers", label: tr("ui.myServers"), content: <MyServersSettings /> }]
         : []),
       {
         value: "adding-servers",
-        label: "Adding servers",
+        label: tr("ui.addingServers"),
         content: <ServerPreferencesSettings />,
       },
       {
         value: "identities",
-        label: "Server identities",
+        label: tr("ui.serverIdentities"),
         content: <ServerIdentitySettings />,
       },
     ],
   },
   {
     value: "chat-notifications",
-    label: "Chat & notifications",
+    label: tr("ui.chatNotifications"),
     icon: PiChatsFill,
     pages: [
-      { value: "chat", label: "Chat", content: <ChatSettings /> },
+      { value: "chat", label: tr("ui.chat"), content: <ChatSettings /> },
       {
         value: "notifications",
-        label: "Notifications",
+        label: tr("ui.notifications"),
         content: <NotificationSettings />,
       },
     ],
   },
   {
     value: "sound-video",
-    label: "Voice & video",
+    label: tr("ui.voiceVideo"),
     icon: PiMicrophoneFill,
     pages: [
       {
         value: "audio",
-        label: "Audio",
+        label: tr("ui.audio"),
         mountWhenActive: true,
         content: <AudioSettings />,
       },
-      { value: "voice", label: "Voice", content: <VoiceSettings /> },
+      { value: "voice", label: tr("ui.voice"), content: <VoiceSettings /> },
       {
         value: "camera",
-        label: "Camera",
+        label: tr("ui.camera"),
         mountWhenActive: true,
         content: <CameraSettings />,
       },
       {
         value: "screen",
-        label: "Screen share",
+        label: tr("ui.screenShare"),
         content: <ScreenShareSettings />,
       },
     ],
   },
   {
     value: "appearance",
-    label: "Appearance",
+    label: tr("ui.appearance"),
     icon: PiPaletteFill,
     pages: [
-      { value: "theme", label: "Theme", content: <ThemeSettings /> },
-      { value: "display", label: "Display", content: <DisplaySettings /> },
+      { value: "theme", label: tr("ui.theme"), content: <ThemeSettings /> },
+      { value: "display", label: tr("ui.display"), content: <><LanguageSettings /><DisplaySettings /></> },
     ],
   },
   {
     value: "behaviour",
-    label: "App",
+    label: tr("ui.app"),
     icon: PiFadersHorizontalFill,
     pages: [
       ...(isElectron()
-        ? [{ value: "desktop", label: "Desktop", content: <DesktopSettings /> }]
+        ? [{ value: "desktop", label: tr("ui.desktop"), content: <DesktopSettings /> }]
         : []),
-      { value: "hotkeys", label: "Hotkeys", content: <HotkeySettings /> },
+      { value: "hotkeys", label: tr("ui.hotkeys"), content: <HotkeySettings /> },
       {
         value: "advanced",
-        label: "Advanced",
+        label: tr("ui.advanced"),
         mountWhenActive: true,
         content: <AdvancedSettings />,
       },
@@ -169,7 +175,7 @@ const DESTINATIONS: SettingsDestination[] = [
     ? [
         {
           value: "developer",
-          label: "Developer",
+          label: tr("ui.developer"),
           icon: PiFlaskFill,
           content: <DeveloperSettings />,
         },
@@ -177,27 +183,27 @@ const DESTINATIONS: SettingsDestination[] = [
     : []),
   {
     value: "extensions",
-    label: "Addons",
+    label: tr("ui.addons"),
     icon: PiPuzzlePieceFill,
     content: <AddonsSettings />,
   },
   {
     value: "about",
-    label: "About",
+    label: tr("ui.about"),
     icon: PiInfoFill,
     pages: [
-      { value: "about", label: "About", content: <AboutSettings /> },
-      { value: "updates", label: "Updates", content: <UpdatesSettings /> },
+      { value: "about", label: tr("ui.about"), content: <AboutSettings /> },
+      { value: "updates", label: tr("ui.updates"), content: <UpdatesSettings /> },
     ],
   },
   {
     value: "support",
-    label: "Support Gryt",
+    label: tr("ui.supportGryt"),
     icon: PiHeartFill,
     pinBottom: true,
     content: <SupportSettings />,
   },
-];
+], [tr]);
 
 const MAIN_DESTINATIONS = DESTINATIONS.filter((d) => !d.pinBottom);
 const PINNED_DESTINATIONS = DESTINATIONS.filter((d) => d.pinBottom);
@@ -209,9 +215,7 @@ const PICKER_OPTIONS = DESTINATIONS.map(({ value, label, icon, pages }) =>
     : { value, label, icon },
 );
 
-const DEFAULT_DESTINATION = "profile";
 
-export function Settings() {
   const {
     setLoopbackEnabled,
     setShowSettings,
@@ -229,7 +233,7 @@ export function Settings() {
   const pendingScroll = useRef<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => searchSettings(query), [query]);
+  const results = useMemo(() => searchSettings(query, tr), [query, tr]);
   const searching = query.trim().length > 0;
 
   const railFits = useRoomForSettingsRail(USER_SETTINGS_CHROME);
@@ -253,7 +257,7 @@ export function Settings() {
     const page =
       destination.pages.find((p) => p.value === wanted) ?? destination.pages[0];
     return [destination.value, page.value] as const;
-  }, [settingsTab]);
+  }, [settingsTab, DESTINATIONS]);
 
   const changeDestination = useCallback(
     (value: string) => {
@@ -399,7 +403,7 @@ export function Settings() {
 
         <div className="flex flex-col gap-4 h-full">
           <Dialog.Title>
-            Settings
+            {tr("ui.settings")}
           </Dialog.Title>
 
           {showSettings && (
@@ -423,7 +427,7 @@ export function Settings() {
                   />
                   <TextField
                     className="px-10"
-                    placeholder="Search settings"
+                    placeholder={tr("ui.searchSettings")}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.currentTarget.value);
@@ -432,6 +436,7 @@ export function Settings() {
                     onFocus={() => setResultsOpen(true)}
                     onClick={() => setResultsOpen(true)}
                     onKeyDown={(e) => {
+                        if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
                       // Clear the query first; only close the dialog once the
                       // search is already empty.
                       if (e.key === "Escape" && query) {
@@ -445,7 +450,7 @@ export function Settings() {
                   />
                   {query && (
                     <IconButton
-                      aria-label="Clear search"
+                      aria-label={tr("ui.clearSearch")}
                       className="absolute top-1/2 right-2 -translate-y-1/2"
                       size="small"
                       onClick={() => {
@@ -675,11 +680,11 @@ function SearchResults({
   onPick: (entry: SettingsIndexEntry) => void;
   picked: string | null;
 }) {
+  const { t: tr } = useTranslation();
   if (results.length === 0) {
     return (
       <span className="text-gryt-muted" style={{ padding: "8px 10px", display: "block" }}>
-        Nothing matches. Try the name of the control, or a word from its
-        description.
+        {tr("ui.nothingMatchesTryTheNameOfTheControl")}
       </span>
     );
   }

@@ -1,6 +1,8 @@
 import { Slider, Switch } from "@gryt/ui";
 import React from "react";
 
+import { useTranslation } from "@/i18n";
+
 import { settingAnchorId,SETTINGS_INDEX } from "../hooks/settingsSearch";
 import { useSettings } from "../hooks/useSettings";
 
@@ -12,6 +14,7 @@ const ADVANCED_COLOR = "cyan" as const;
 
 // Reusable wrapper components following DRY principles
 interface SettingGroupProps {
+  anchorId?: string;
   title: string;
   description: string;
   children: React.ReactNode;
@@ -22,11 +25,11 @@ interface SettingGroupProps {
   advanced?: boolean;
 }
 
-export function SettingGroup({ title, description, children, advanced }: SettingGroupProps) {
+export function SettingGroup({ title, description, children, advanced, anchorId }: SettingGroupProps) {
   const { showAdvanced } = useSettings();
   // Anchor for search results to scroll to. Derived from the title by the same
   // function the index uses, and it ignores any ": value" suffix.
-  const anchor = settingAnchorId(title);
+  const anchor = anchorId ?? settingAnchorId(title);
 
   if (import.meta.env.DEV) {
     // A setting the index doesn't know about is invisible to search. Warn
@@ -52,6 +55,7 @@ export function SettingGroup({ title, description, children, advanced }: Setting
 }
 
 interface SliderSettingProps {
+  anchorId?: string;
   title: string;
   description: string;
   value: number;
@@ -61,9 +65,9 @@ interface SliderSettingProps {
   step?: number;
 }
 
-export function SliderSetting({ title, description, value, onChange, min = 0, max = 100, step = 1 }: SliderSettingProps) {
+export function SliderSetting({ title, description, value, onChange, anchorId, min = 0, max = 100, step = 1 }: SliderSettingProps) {
   return (
-    <SettingGroup title={title} description={description}>
+    <SettingGroup title={title} description={description} anchorId={anchorId}>
       <Slider
         value={value}
         onValueChange={(next) => onChange(Number(next))}
@@ -76,6 +80,7 @@ export function SliderSetting({ title, description, value, onChange, min = 0, ma
 }
 
 interface ToggleSettingProps {
+  anchorId?: string;
   title: string;
   description: string;
   checked: boolean;
@@ -83,12 +88,13 @@ interface ToggleSettingProps {
   statusText?: string;
 }
 
-export function ToggleSetting({ title, description, checked, onCheckedChange, statusText }: ToggleSettingProps) {
+export function ToggleSetting({ title, description, checked, onCheckedChange, statusText, anchorId }: ToggleSettingProps) {
+  const { t } = useTranslation();
   return (
-    <SettingGroup title={title} description={description}>
+    <SettingGroup title={title} description={description} anchorId={anchorId}>
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-gryt-muted">Enable {title}</span>
+          <span className="text-sm text-gryt-muted">{t("settings.enable", { title })}</span>
           {statusText && (
             <span className="text-xs text-gryt-muted">{statusText}</span>
           )}

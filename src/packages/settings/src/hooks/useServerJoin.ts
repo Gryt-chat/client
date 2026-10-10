@@ -46,7 +46,7 @@ export type InfoResult =
   | { kind: "private" }
   /** Superseded by a newer lookup — the newer one owns the UI now. */
   | { kind: "superseded" }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; messageKey?: string };
 
 /**
  * Ask a server to describe itself. Separate from the hook below because Discovery
@@ -57,7 +57,7 @@ export async function fetchServerInfo(
   signal?: AbortSignal,
 ): Promise<InfoResult> {
   const normalizedHost = normalizeHost(host);
-  if (!normalizedHost) return { kind: "error", message: "No address" };
+  if (!normalizedHost) return { kind: "error", messageKey: "errors.noAddress", message: "No address" };
 
   const controller = new AbortController();
   const abortOuter = () => controller.abort();
@@ -109,6 +109,7 @@ export async function fetchServerInfo(
         kind: "error",
         message:
           "No response from this server. It may be advertising an address it is not reachable on.",
+        messageKey: "errors.timeout",
       };
     }
     // A network-layer failure gives "Failed to fetch", which describes the call
@@ -119,7 +120,7 @@ export async function fetchServerInfo(
       message === "Failed to fetch" ||
       message === "Load failed"
     ) {
-      return { kind: "error", message: "Nothing answered at this address." };
+      return { kind: "error", messageKey: "errors.noAnswer", message: "Nothing answered at this address." };
     }
 
     return { kind: "error", message: message || "Server is not responding" };
@@ -129,7 +130,7 @@ export async function fetchServerInfo(
   }
 }
 
-export type JoinOutcome =
+export type JoinOutcome = (
   | { ok: true }
   /** Somebody has to let you in by hand. Not a failure and not worth retrying. */
   | { ok: false; kind: "approval_pending"; message: string }
@@ -139,13 +140,13 @@ export type JoinOutcome =
   | { ok: false; kind: "account_required"; message: string }
   /** Already a member. The caller has been switched to it. */
   | { ok: false; kind: "already_member"; message: string }
-  | { ok: false; kind: "error"; message: string };
+  | { ok: false; kind: "error"; message: string }) & { messageKey?: string };
 
 /**
  * Turn a join failure into a line somebody can act on. The generic branch is last
  * on purpose: every case above it otherwise reads as somebody's fault.
  */
-function describeJoinError(error: { error: string; message?: string }): JoinOutcome {
+function describeJoinErrorRaw(error: { error: string; message?: string }): JoinOutcome {
   switch (error.error) {
     case "approval_pending":
       return {
@@ -204,6 +205,19 @@ function describeJoinError(error: { error: string; message?: string }): JoinOutc
         message: error.message || `Failed to join server: ${error.error}`,
       };
   }
+}
+
+const JOIN_ERROR_KEYS: Record<string, string> = {
+  approval_pending: "ui.askedSomebodyWhoRunsThisServerHasTo", invite_required: "errors.inviteRequired",
+  invalid_invite: "errors.invalidInvite", identity_tier_refused: "errors.accountRequired",
+  invite_rate_limited: "errors.rateLimited", rate_limited: "errors.rateLimited",
+  connect_error: "errors.connect", timeout: "errors.joinTimeout",
+};
+
+function describeJoinError(error: { error: string; message?: string }): JoinOutcome {
+  const outcome = describeJoinErrorRaw(error);
+  const clientCopy = !error.message || error.error === "identity_tier_refused" || error.error === "approval_pending";
+  return { ...outcome, messageKey: clientCopy ? JOIN_ERROR_KEYS[error.error] : undefined };
 }
 
 export interface JoinRequest {

@@ -1,22 +1,26 @@
 import { Button, Chip } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 
 import { buildKeyCombo, buildMouseCombo, formatCombo } from "../../../../lib/hotkeys";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 function HotkeyCapture({
+  anchorId,
   label,
   description,
   value,
   onChange,
 }: {
+  anchorId: string;
   label: string;
   description: string;
   value: string;
   onChange: (key: string) => void;
 }) {
+  const { t: tr } = useTranslation();
   const [listening, setListening] = useState(false);
 
   const handleKeyDown = useCallback(
@@ -61,25 +65,25 @@ function HotkeyCapture({
   }, [listening, handleKeyDown, handleMouseDown]);
 
   return (
-    <SettingGroup title={label} description={description}>
+    <SettingGroup anchorId={anchorId} title={label} description={description}>
       <div className="flex items-center justify-between gap-2">
         <Chip tone="neutral"
           color={listening ? "blue" : undefined}
           style={{ fontFamily: "var(--code-font-family)", minWidth: "80px", textAlign: "center" }}
         >
-          {listening ? "Press a key or button..." : formatCombo(value)}
+          {listening ? tr("ui.pressAKeyOrButton") : formatCombo(value)}
         </Chip>
         <div className="flex gap-2">
           <Button size="xsmall"
             onClick={() => setListening(!listening)}
           >
-            {listening ? "Cancel" : "Edit"}
+            {listening ? tr("ui.cancel") : tr("ui.edit")}
           </Button>
           {value && (
             <Button tone="danger" size="xsmall"
               onClick={() => onChange("")}
             >
-              Clear
+              {tr("ui.clear")}
             </Button>
           )}
         </div>
@@ -89,6 +93,7 @@ function HotkeyCapture({
 }
 
 export function HotkeySettings() {
+  const { t: tr } = useTranslation();
   const {
     inputMode,
     pushToTalkKey,
@@ -103,42 +108,41 @@ export function HotkeySettings() {
 
   return (
     <SettingsContainer>
-      <h2 className="text-lg">Hotkeys</h2>
+      <h2 className="text-lg">{tr("ui.hotkeys")}</h2>
 
       <div className="flex flex-col gap-2">
-        <span className="text-base font-bold">Shortcuts</span>
+        <span className="text-base font-bold">{tr("ui.shortcuts")}</span>
         <span className="text-xs text-gryt-muted">
-          Bind a key, or the middle or a side mouse button. In the desktop app they work while
-          Gryt is in the background. Press Escape to cancel binding.
+          {tr("ui.bindAKeyOrTheMiddleOrA")}
         </span>
       </div>
 
       {inputMode === "push_to_talk" && (
         <HotkeyCapture
-          label="Push to Talk Key"
-          description="Hold this key or mouse button to transmit your microphone."
+          anchorId="push-to-talk-key" label={tr("ui.pushToTalkKey")}
+          description={tr("ui.holdThisKeyOrMouseButtonToTransmit")}
           value={pushToTalkKey}
           onChange={setPushToTalkKey}
         />
       )}
 
       <HotkeyCapture
-        label="Toggle mute"
-        description="Toggle your microphone on or off."
+        anchorId="toggle-mute" label={tr("ui.toggleMute")}
+        description={tr("ui.toggleYourMicrophoneOnOrOff")}
         value={muteHotkey}
         onChange={setMuteHotkey}
       />
 
       <HotkeyCapture
-        label="Toggle deafen"
-        description="Mute all incoming audio and your microphone."
+        anchorId="toggle-deafen" label={tr("ui.toggleDeafen")}
+        description={tr("ui.muteAllIncomingAudioAndYourMicrophone")}
         value={deafenHotkey}
         onChange={setDeafenHotkey}
       />
 
       <HotkeyCapture
-        label="Disconnect"
-        description="Disconnect from the current voice channel."
+        anchorId="disconnect" label={tr("ui.disconnect")}
+        description={tr("ui.disconnectFromTheCurrentVoiceChannel")}
         value={disconnectHotkey}
         onChange={setDisconnectHotkey}
       />

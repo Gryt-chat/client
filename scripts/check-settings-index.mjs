@@ -8,10 +8,12 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 
 const COMPONENTS = "src/packages/settings/src/components";
 const INDEX = "src/packages/settings/src/hooks/settingsSearch.ts";
 const SETTINGS = "src/packages/settings/src/components/settings.tsx";
+const english = JSON.parse(readFileSync("src/packages/i18n/locales/en.json", "utf8"));
 
 /** The same derivation SettingGroup uses, so the two cannot disagree. */
 function settingAnchorId(title) {
@@ -46,6 +48,22 @@ for (const file of sources(COMPONENTS)) {
   )) {
     controls.push({ file, title: (match[1] ?? match[2]).trim() });
   }
+  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  function visit(node) {
+    if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && /^(SettingGroup|ToggleSetting|SliderSetting)$/.test(node.tagName.getText(tree))) {
+      const props = node.attributes.properties;
+      const title = props.find((prop) => ts.isJsxAttribute(prop) && prop.name.getText(tree) === "title")?.initializer;
+      if (title && ts.isJsxExpression(title) && title.expression && ts.isCallExpression(title.expression) && /^(t|tr)$/.test(title.expression.expression.getText(tree))) {
+        const key = title.expression.arguments[0];
+        const anchor = props.find((prop) => ts.isJsxAttribute(prop) && prop.name.getText(tree) === "anchorId")?.initializer;
+        assert.ok(anchor && ts.isStringLiteral(anchor), `${file}: a translated setting must have a stable literal anchorId`);
+        const label = ts.isStringLiteral(key) ? key.text.split(".").reduce((value, part) => value?.[part], english) : undefined;
+        controls.push({ file, title: label ?? anchor.text, anchor: anchor.text });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(tree);
 }
 
 assert.ok(controls.length > 20, `only found ${controls.length} settings — the scrape is broken`);
@@ -71,7 +89,7 @@ const ids = new Set(entries.map((entry) => entry.id));
 /* ── every setting is findable ───────────────────────────────────────────── */
 
 const unfindable = controls
-  .map((control) => ({ ...control, anchor: settingAnchorId(control.title) }))
+  .map((control) => ({ ...control, anchor: control.anchor ?? settingAnchorId(control.title) }))
   .filter((control) => !ids.has(control.anchor));
 
 assert.deepEqual(
@@ -84,11 +102,12 @@ assert.deepEqual(
 
 /* An anchor can arrive three ways and only the first is a literal title, so this
    direction reads generously: a missed anchor would fail CI over a reachable one. */
-const anchors = new Set(controls.map((control) => settingAnchorId(control.title)));
+const anchors = new Set(controls.map((control) => control.anchor ?? settingAnchorId(control.title)));
 for (const file of sources(COMPONENTS)) {
   const source = readFileSync(file, "utf8");
   for (const match of source.matchAll(/\blabel="([^"]+)"/g)) anchors.add(settingAnchorId(match[1]));
   for (const match of source.matchAll(/data-setting="([a-z0-9-]+)"/g)) anchors.add(match[1]);
+  for (const match of source.matchAll(/anchorId="([a-z0-9-]+)"/g)) anchors.add(match[1]);
 }
 const dangling = entries
   .filter((entry) => !entry.panel && !anchors.has(entry.id))

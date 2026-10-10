@@ -30,7 +30,7 @@ const card = (() => {
   assert.ok(!/duplicateHosts\.join/.test(card), "the hover card lists the other addresses a duplicate is reached at");
   assert.ok(!/\$\{host\}/.test(card), "the hover card puts the server's address in a string");
   assert.ok(
-    /Also in your list under another address/.test(card),
+    /tr\("ui.alsoInYourListUnderAnotherAddress"\)/.test(card),
     "the hover card stopped saying a server is in the list twice, which is why two identical icons exist",
   );
 }

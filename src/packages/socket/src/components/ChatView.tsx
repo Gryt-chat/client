@@ -3,6 +3,7 @@ import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
 import { getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPrefs, useTheme, useThreadMentions, useThreadUnread } from "@/common";
+import { useTranslation } from "@/i18n";
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
@@ -59,7 +60,7 @@ export interface MlsView {
 }
 
 /** Where the composer would be, for somebody who may read a channel and not post. */
-const READ_ONLY_LINE = "You can read here, but not post.";
+const READ_ONLY_LINE = "chat.readOnly";
 
 export const ChatView = memo(({
   chatMessages,
@@ -161,6 +162,7 @@ export const ChatView = memo(({
   /** Whether an open thread shares the pane with the conversation, or takes it. */
   threadBeside?: boolean;
 }) => {
+  const { t: tr } = useTranslation();
   const { chatMediaVolume, setChatMediaVolume, blurProfanity, smileyConversion, disabledSmileys } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
   /* Its own handle: sharing the channel's would show a half-typed channel draft
@@ -300,8 +302,8 @@ export const ChatView = memo(({
       : 0;
   const deleteDescription =
     deleteReplyCount > 0
-      ? `This deletes the message and the ${deleteReplyCount} ${deleteReplyCount === 1 ? "reply" : "replies"} in its thread. You can't undo it.`
-      : "This deletes the message for everyone. You can't undo it.";
+      ? tr("chat.deleteThread", { count: deleteReplyCount })
+      : tr("ui.thisDeletesTheMessageForEveryoneYouCan");
 
   const { typingUsers, emitTyping, emitStopTyping } = useTypingIndicator(
     (socketConnection as Socket) ?? null,
@@ -444,8 +446,8 @@ export const ChatView = memo(({
   const getSenderName = useCallback((msg: ChatMessage): string => {
     const fromList = memberList?.[msg.sender_server_id]?.nickname;
     if (fromList) return fromList;
-    return msg.sender_nickname || "Unknown User";
-  }, [memberList]);
+    return msg.sender_nickname || tr("ui.unknownUser");
+  }, [memberList, tr]);
 
   /* Their app deciding it cannot encrypt to us. We only see our own half of the
      decision, so the newest message they sent is the only evidence (GRYT-1124). */
@@ -526,16 +528,16 @@ export const ChatView = memo(({
     const extras: MentionMember[] = [];
     if (mayMentionEveryone) {
       extras.push(
-        { kind: "everyone", nickname: "everyone", serverUserId: "@everyone", hint: "Everyone who can read this channel" },
-        { kind: "here", nickname: "here", serverUserId: "@here", hint: "Everyone online right now" },
+        { kind: "everyone", nickname: "everyone", serverUserId: "@everyone", hint: tr("ui.everyoneWhoCanReadThisChannel") },
+        { kind: "here", nickname: "here", serverUserId: "@here", hint: tr("ui.everyoneOnlineRightNow") },
       );
     }
     for (const r of roles) {
       if (!mayMentionEveryone && !r.mentionable) continue;
-      extras.push({ kind: "role", nickname: r.name, serverUserId: `role:${r.id}`, roleId: r.id, color: r.color, hint: "Role" });
+      extras.push({ kind: "role", nickname: r.name, serverUserId: `role:${r.id}`, roleId: r.id, color: r.color, hint: tr("ui.role") });
     }
     return [...mentionMembers, ...extras];
-  }, [conversationKind, knows, mayMentionEveryone, mentionMembers, roles]);
+  }, [conversationKind, knows, mayMentionEveryone, mentionMembers, roles, tr]);
   const composerChannels = useMemo<MentionMember[]>(
     () =>
       (serverDetailsList[serverHost ?? ""]?.channels ?? []).map((c) => ({
@@ -679,7 +681,7 @@ export const ChatView = memo(({
   const muteLine = textMute
     ? textMute.until
       ? `You’re muted on this server until ${muteLiftsAt(textMute.until)}.`
-      : "You’re muted on this server."
+      : tr("ui.youReMutedOnThisServer")
     : null;
 
   // The channel's answer alone, so an allow here works for a role that cannot
@@ -694,7 +696,7 @@ export const ChatView = memo(({
         replyingTo={threadReplyingTo}
         editingMessage={threadEditing}
         editorRef={threadEditorRef}
-        placeholder={mayPost ? "Reply to thread…" : READ_ONLY_LINE}
+        placeholder={mayPost ? tr("ui.replyToThread") : tr(READ_ONLY_LINE)}
         disabled={!maySend}
         allowFiles={mayHere("attach_files")}
         maxFileSize={maxFileSize}
@@ -721,24 +723,24 @@ export const ChatView = memo(({
         serverHost={serverHost}
       />
     ),
-    [maySend, mayPost, mayHere, maxFileSize, composerMentions, composerChannels, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
+    [maySend, mayPost, mayHere, maxFileSize, composerMentions, composerChannels, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage, tr],
   );
 
 
   const editorPlaceholder =
     !canViewVoiceChannelText && isVoiceChannelTextChat
-      ? "Text chat is not available in this voice channel"
+      ? tr("ui.textChatIsNotAvailableInThisVoice")
       : !mayRead
-        ? "This channel is not readable with your role."
+        ? tr("ui.thisChannelIsNotReadableWithYourRole")
       : !maySend
-        ? READ_ONLY_LINE
+        ? tr(READ_ONLY_LINE)
         : isRateLimited && rateLimitCountdown
-          ? `Please wait ${rateLimitCountdown} seconds...`
+          ? tr("chat.wait", { count: rateLimitCountdown })
           : channelName
             ? conversationKind === "dm"
-              ? `Message ${channelName}`
-              : `Message #${channelName}`
-            : "Chat with your friends!";
+              ? tr("chat.messagePerson", { name: channelName })
+              : tr("chat.messageChannel", { name: channelName })
+            : tr("ui.chatWithYourFriends");
 
   const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
 
@@ -754,7 +756,7 @@ export const ChatView = memo(({
         Box and Flex only render as div or span, so the roles go on the existing
         containers rather than restructuring into main/nav/aside.
       */}
-      <div className="grow overflow-hidden" role="main" aria-label="Conversation" data-gryt="chat-view" style={{ minWidth: 0,
+      <div className="grow overflow-hidden" role="main" aria-label={tr("ui.conversation")} data-gryt="chat-view" style={{ minWidth: 0,
           background: "var(--gryt-neutral-3)",
           borderRadius: flush ? 0 : "var(--gryt-radius-lg)",
           position: "relative",
@@ -763,7 +765,7 @@ export const ChatView = memo(({
           <div className="chat-view-drop-overlay">
             <div className="chat-view-drop-overlay-content">
               <PiCloudArrowUpFill size={48} />
-              <span>Drop files here</span>
+              <span>{tr("ui.dropFilesHere")}</span>
             </div>
           </div>
         )}
@@ -799,7 +801,7 @@ export const ChatView = memo(({
               currentUserId={currentUserId}
               forumTags={forumTags ?? []}
               onOpenTopic={threads.openSummary}
-              readOnlyLine={mayPost ? undefined : READ_ONLY_LINE}
+              readOnlyLine={mayPost ? undefined : tr(READ_ONLY_LINE)}
             />
           ) : (
           <>
@@ -812,7 +814,7 @@ export const ChatView = memo(({
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
             <div className="flex items-center justify-center" style={{ padding: "24px", textAlign: "center" }}>
               <span className="text-base text-gryt-muted" style={{ maxWidth: "300px" }}>
-                Text chat is not available in this voice channel
+                {tr("ui.textChatIsNotAvailableInThisVoice")}
               </span>
             </div>
           )}
@@ -820,7 +822,7 @@ export const ChatView = memo(({
           {showVoiceDisabled ? (
             <div className="flex grow items-center justify-center">
               <span className="text-sm text-gryt-muted" style={{ textAlign: "center", padding: "16px" }}>
-                Text chat is disabled in this voice channel
+                {tr("ui.textChatIsDisabledInThisVoiceChannel")}
               </span>
             </div>
           ) : isLoadingMessages ? (
@@ -839,7 +841,7 @@ export const ChatView = memo(({
             >
               {isLoadingOlder && (
                 <div className="flex justify-center py-2">
-                  <span className="text-xs text-gryt-muted">Loading older messages...</span>
+                  <span className="text-xs text-gryt-muted">{tr("ui.loadingOlderMessages")}</span>
                 </div>
               )}
                 {chatMessages.map((m, i) => {
@@ -901,7 +903,7 @@ export const ChatView = memo(({
                 })}
               {historyWindow?.loadingNewer && (
                 <div className="flex justify-center py-2">
-                  <span className="text-xs text-gryt-muted">Loading newer messages...</span>
+                  <span className="text-xs text-gryt-muted">{tr("ui.loadingNewerMessages")}</span>
                 </div>
               )}
             </div>
@@ -919,11 +921,11 @@ export const ChatView = memo(({
               >
                 {newBelow > 0 && (
                   <>
-                    <span style={{ color: "var(--gryt-accent-11)", fontWeight: 600 }}>{newBelow > 99 ? "99+" : newBelow} new</span>
+                    <span style={{ color: "var(--gryt-accent-11)", fontWeight: 600 }}>{newBelow > 99 ? "99+" : newBelow} {tr("ui.new")}</span>
                     <span aria-hidden="true" style={{ color: "var(--gryt-neutral-9)" }}>·</span>
                   </>
                 )}
-                Jump to present
+                {tr("ui.jumpToPresent")}
                 <PiArrowDownBold aria-hidden="true" size={12} />
               </button>
             </div>
@@ -947,8 +949,7 @@ export const ChatView = memo(({
             >
               <PiLockOpen aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
               <span>
-                <strong style={{ fontWeight: 700 }}>Not encrypted.</strong> Whoever runs this
-                server can read what you send here, in the clear.{" "}
+                <strong style={{ fontWeight: 700 }}>{tr("ui.notEncrypted")}</strong> {tr("ui.whoeverRunsThisServerCanReadWhatYou")}{" "}
                 {sealing.blockedBy
                   .map((blocked) => {
                     const who =
@@ -995,7 +996,7 @@ export const ChatView = memo(({
               style={{ borderRadius: "var(--gryt-radius-md)", border: "1px dashed var(--gryt-neutral-6)", background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
             >
               <PiRobotFill size={22} style={{ color: "var(--gryt-neutral-9)", flexShrink: 0 }} />
-              <span>This is an automated channel &mdash; messages come from bots and the system. You can read here, but not post.</span>
+              <span>{tr("ui.thisIsAnAutomatedChannelMdashMessagesCome")}</span>
             </div>
           ) : (
           <>
@@ -1059,9 +1060,9 @@ export const ChatView = memo(({
       <ConfirmDialog
         open={!!pendingDeleteMessage}
         onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}
-        title="Delete message?"
+        title={tr("ui.deleteMessage")}
         description={deleteDescription}
-        confirmLabel="Delete"
+        confirmLabel={tr("ui.delete")}
         onConfirm={confirmDelete}
       />
     </MentionViewerContext.Provider>

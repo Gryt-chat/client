@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useTranslation } from "@/i18n";
+
 import { type EmojiEntry, getRecentEmojis, searchEmojis } from "../utils/emojiData";
 
 interface EmojiAutocompleteProps {
@@ -11,6 +13,7 @@ interface EmojiAutocompleteProps {
 }
 
 export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHost }: EmojiAutocompleteProps) => {
+  const { t: tr } = useTranslation();
   const [results, setResults] = useState<EmojiEntry[]>([]);
   const [isRecent, setIsRecent] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -41,7 +44,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (!visible || results.length === 0) return;
+      if (!visible || results.length === 0 || e.isComposing || e.keyCode === 229) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -112,7 +115,7 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
             userSelect: "none",
           }}
         >
-          Recently used
+          {tr("ui.recentlyUsedVariant")}
         </div>
       )}
       {results.map((entry, idx) => (

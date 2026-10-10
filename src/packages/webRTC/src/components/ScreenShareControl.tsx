@@ -3,6 +3,7 @@ import { type ScreenShareQuality, useScreenShare } from "@gryt/voice";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 
+import { useTranslation } from "@/i18n";
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
@@ -21,6 +22,7 @@ interface ScreenShareControlProps {
 
 /** Off, it opens the picker. Live, it opens a menu, so a stray click can't end the share. */
 export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top" }: ScreenShareControlProps) {
+  const { t: tr } = useTranslation();
   const {
     screenShareActive, nativeScreenCaptureAvailable, nativeEncodedCodec,
     startScreenShare, stopScreenShare,
@@ -41,7 +43,7 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
     async ({ sourceId, withAudio }: { sourceId?: string; withAudio: boolean }, mode: "start" | "switch") => {
       const toastId = "screen-share-starting";
       setIsStarting(true);
-      toast.loading(mode === "switch" ? "Switching…" : "Starting screen share…", { id: toastId });
+      toast.loading(mode === "switch" ? tr("ui.switching") : tr("ui.startingScreenShare"), { id: toastId });
       try {
         await startScreenShare(withAudio, sourceId);
       } finally {
@@ -49,7 +51,7 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
         toast.dismiss(toastId);
       }
     },
-    [startScreenShare],
+    [startScreenShare, tr],
   );
 
   // The browser brings its own picker, so the app's one is only for the desktop app.
@@ -74,19 +76,19 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
         <Menu.Root>
           <Menu.Trigger
             render={
-              <CallControlButton state="live" aria-label="Sharing your screen" />
+              <CallControlButton state="live" aria-label={tr("ui.sharingYourScreen")} />
             }
           >
             <PiMonitorArrowUpFill size={iconSize} />
           </Menu.Trigger>
           <Menu.Portal>
             <Menu.Positioner side={side}>
-              <Menu.Popup aria-label="Screen share">
+              <Menu.Popup aria-label={tr("ui.screenShare")}>
                 {/* The native encoder picks its own size and rate, so these would do nothing there. */}
                 {!nativeEncodedCodec && (
                   <>
                     <Menu.Group>
-                      <Menu.GroupLabel>Quality</Menu.GroupLabel>
+                      <Menu.GroupLabel>{tr("ui.quality")}</Menu.GroupLabel>
                       <Menu.RadioGroup value={current} onValueChange={(v) => pickPreset(String(v))}>
                         {!matchesPreset && (
                           <Menu.RadioItem value={current}>
@@ -104,24 +106,24 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
                     <Menu.Separator />
                   </>
                 )}
-                <Menu.Item onClick={() => openPicker("switch")}>Share something else</Menu.Item>
+                <Menu.Item onClick={() => openPicker("switch")}>{tr("ui.shareSomethingElse")}</Menu.Item>
                 {/* "Add another window" goes here once the SFU takes more than one share each (GRYT-1335). */}
                 <Menu.Separator />
                 <Menu.Item className="text-gryt-danger" onClick={stopScreenShare}>
-                  Stop sharing
+                  {tr("ui.stopSharing")}
                 </Menu.Item>
               </Menu.Popup>
             </Menu.Positioner>
           </Menu.Portal>
         </Menu.Root>
       ) : isStarting ? (
-        <Tooltip title="Starting screen share…">
-          <CallControlButton state="idle" aria-label="Starting screen share" disabled>
+        <Tooltip title={tr("ui.startingScreenShare")}>
+          <CallControlButton state="idle" aria-label={tr("ui.startingScreenShareVariant")} disabled>
             <PiMonitorFill size={iconSize} />
           </CallControlButton>
         </Tooltip>
       ) : (
-        <CallControlButton state="idle" aria-label="Share your screen" onClick={() => openPicker("start")}>
+        <CallControlButton state="idle" aria-label={tr("ui.shareYourScreen")} onClick={() => openPicker("start")}>
           <PiMonitorFill size={iconSize} />
         </CallControlButton>
       )}

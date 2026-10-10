@@ -12,6 +12,7 @@ import {
   startRecoveryCodesSetup,
   useAccount,
 } from "@/common";
+import { useTranslation } from "@/i18n";
 
 import {
   getCustomAuthIssuer,
@@ -32,13 +33,14 @@ const DEFAULT_IDENTITY = "https://id.gryt.chat";
  * sharing, and an email address in plain view is noticed too late.
  */
 function Revealable({ value }: { value: string }) {
+  const { t: tr } = useTranslation();
   const [shown, setShown] = useState(false);
 
   return (
     <div className="flex items-center gap-2">
       <code className="font-mono text-xs text-gryt-muted"
         onClick={() => setShown((s) => !s)}
-        title={shown ? "Click to hide" : "Click to reveal"}
+        title={shown ? tr("ui.clickToHide") : tr("ui.clickToReveal")}
         style={{
           cursor: "pointer",
           userSelect: shown ? "all" : "none",
@@ -66,6 +68,7 @@ function formatDate(value?: string | number): string | null {
 }
 
 export function AccountSettings() {
+  const { t: tr } = useTranslation();
   const { isSignedIn, login, logout, loginInProgress } = useAccount();
   const { showAdvanced } = useSettings();
   const { open: openLinkDevice } = useLinkDevice();
@@ -108,7 +111,7 @@ export function AccountSettings() {
     // to another's CA, and the rejection reads as a key problem.
     if (issuer.length > 0 && identity.length === 0) {
       toast.error(
-        "Set the identity service too. Your auth server needs the one that signs for it, or signing in is rejected.",
+        tr("ui.setTheIdentityServiceTooYourAuthServer"),
       );
       return;
     }
@@ -122,10 +125,10 @@ export function AccountSettings() {
     setHasCustom(issuer.length > 0 || identity.length > 0);
     toast.success(
       issuer.length > 0
-        ? "Using your own auth server. Sign in to check it works."
-        : "Back to the Gryt auth server.",
+        ? tr("ui.usingYourOwnAuthServerSignInTo")
+        : tr("ui.backToTheGrytAuthServer"),
     );
-  }, [issuerInput, identityInput]);
+  }, [issuerInput, identityInput, tr]);
 
   const handleClearIssuer = useCallback(() => {
     setIssuerInput("");
@@ -135,8 +138,8 @@ export function AccountSettings() {
     resetKeycloakInit();
     setSavedIssuer(false);
     setHasCustom(false);
-    toast.success("Back to the Gryt auth server.");
-  }, []);
+    toast.success(tr("ui.backToTheGrytAuthServer"));
+  }, [tr]);
 
   const isCustom =
     issuerInput.trim().length > 0 && issuerInput.trim() !== DEFAULT_ISSUER;
@@ -144,22 +147,22 @@ export function AccountSettings() {
   return (
     <SettingsContainer>
       <h2 className="text-lg">
-        Account
+        {tr("ui.account")}
       </h2>
 
       {isSignedIn ? (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">
-              Signed in
+              {tr("ui.signedIn")}
             </span>
-            <Chip tone="success" label="Gryt account" />
+            <Chip tone="success" label={tr("ui.grytAccount")} />
           </div>
 
           <dl className="m-0 flex flex-col gap-3">
             {profile?.email && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-gryt-muted">Email</dt>
+                <dt className="text-xs text-gryt-muted">{tr("ui.email")}</dt>
                 <dd className="m-0 text-sm text-gryt-text">
                   <Revealable value={profile.email} />
                 </dd>
@@ -168,7 +171,7 @@ export function AccountSettings() {
 
             {profile?.sub && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-gryt-muted">Gryt ID</dt>
+                <dt className="text-xs text-gryt-muted">{tr("ui.grytId")}</dt>
                 <dd className="m-0 text-sm text-gryt-text">
                   <Revealable value={profile.sub} />
                 </dd>
@@ -177,34 +180,33 @@ export function AccountSettings() {
 
             {formatDate(profile?.createdAt) && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-gryt-muted">Registered</dt>
+                <dt className="text-xs text-gryt-muted">{tr("ui.registered")}</dt>
                 <dd className="m-0 text-sm text-gryt-text">{formatDate(profile?.createdAt)}</dd>
               </div>
             )}
           </dl>
 
           <span className="text-xs">
-            Servers you joined before signing in came with you — your roles and
-            anything you own moved to this account the next time you connected.
+            {tr("ui.serversYouJoinedBeforeSigningInCameWith")}
           </span>
 
           {/* Each of these hands off to auth.gryt.chat and comes back here.
               They run on the login pages, which are Gryt's own theme, so
               nobody lands in Keycloak's stock account console. */}
           <div className="flex flex-col gap-2">
-            <span className="font-medium text-sm">Manage your account</span>
+            <span className="font-medium text-sm">{tr("ui.manageYourAccount")}</span>
             <span className="text-xs">
-              These open auth.gryt.chat and bring you back when you are done.
+              {tr("ui.theseOpenAuthGrytChatAndBringYou")}
             </span>
             <div className="flex flex-wrap gap-2">
               <Button size="small" onClick={() => void startPasswordChange()}>
-                Change password
+                {tr("ui.changePassword")}
               </Button>
               <Button size="small" onClick={() => void startEmailChange()}>
-                Change email
+                {tr("ui.changeEmail")}
               </Button>
               <Button size="small" onClick={() => void startRecoveryCodesSetup()}>
-                Recovery codes
+                {tr("ui.recoveryCodes")}
               </Button>
             </div>
           </div>
@@ -214,7 +216,7 @@ export function AccountSettings() {
             onClick={() => void logout()}
           >
             <PiSignOutFill size={16} />
-            Sign out
+            {tr("ui.signOut")}
           </Button>
 
           {/* Last, and on its own. Keycloak asks for confirmation on a page of
@@ -222,11 +224,9 @@ export function AccountSettings() {
               here — one that only repeated the next screen would train people
               to click through both. */}
           <div className="flex flex-col gap-2">
-            <span className="font-medium text-sm">Delete your account</span>
+            <span className="font-medium text-sm">{tr("ui.deleteYourAccount")}</span>
             <span className="text-xs">
-              Permanent, and it cannot be undone. It removes your Gryt account.
-              Messages you sent live on the servers that received them, and
-              deleting this does not reach them.
+              {tr("ui.permanentAndItCannotBeUndoneItRemoves")}
             </span>
             <Button
               size="small"
@@ -234,7 +234,7 @@ export function AccountSettings() {
               style={{ alignSelf: "flex-start" }}
               onClick={() => void startAccountDeletion()}
             >
-              Delete account
+              {tr("ui.deleteAccount")}
             </Button>
           </div>
         </div>
@@ -243,22 +243,19 @@ export function AccountSettings() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <span className="font-medium text-sm">
-                Not signed in
+                {tr("ui.notSignedIn")}
               </span>
-              <Chip tone="warning" label="No account" />
+              <Chip tone="warning" label={tr("ui.noAccount")} />
             </div>
             <span className="text-xs">
-              Gryt works without an account. What one adds is a way back in: an
-              identity that survives losing this device, and the same you on
-              every server rather than a separate one each time.
+              {tr("ui.grytWorksWithoutAnAccountWhatOneAdds")}
             </span>
           </div>
 
           <Alert severity="info">
             <span className="inline-flex items-start gap-2">
               <PiInfoFill className="mt-0.5 shrink-0" size={15} />
-              Signing in keeps the servers you have already joined. They move to
-              your account the next time you connect to each one.
+              {tr("ui.signingInKeepsTheServersYouHaveAlready")}
             </span>
           </Alert>
 
@@ -269,23 +266,22 @@ export function AccountSettings() {
             onClick={() => void login()}
           >
             {loginInProgress
-              ? "Waiting for sign in…"
+              ? tr("ui.waitingForSignIn")
               : isCustom
-                ? "Sign in with your own auth"
-                : "Sign in with Gryt"}
+                ? tr("ui.signInWithYourOwnAuth")
+                : tr("ui.signInWithGryt")}
           </Button>
 
           <div className="flex flex-col gap-1">
             <span className="text-xs">
-              Signed in on another device, or using Gryt there as a guest? Link this one and it
-              gets the same identity and servers.
+              {tr("ui.signedInOnAnotherDeviceOrUsingGryt")}
             </span>
             <Button size="small"
               tone="neutral"
               style={{ alignSelf: "flex-start" }}
               onClick={openLinkDevice}
             >
-              Link with another device
+              {tr("ui.linkWithAnotherDevice")}
             </Button>
           </div>
         </div>
@@ -299,11 +295,10 @@ export function AccountSettings() {
       {showAdvanced && (
       <div className="flex flex-col gap-2">
         <span className="font-medium text-sm" color="cyan">
-          Auth server
+          {tr("ui.authServer")}
         </span>
         <span className="text-xs">
-          Where accounts come from. Leave this alone unless you run your own
-          Keycloak — the address of its realm, not the server root.
+          {tr("ui.whereAccountsComeFromLeaveThisAloneUnless")}
         </span>
         <TextField
           placeholder={DEFAULT_ISSUER}
@@ -315,8 +310,7 @@ export function AccountSettings() {
         />
 
         <span className="text-xs">
-          And the identity service that signs certificates for it. It is a
-          separate service, so it cannot be worked out from the address above.
+          {tr("ui.andTheIdentityServiceThatSignsCertificatesFor")}
         </span>
         <TextField
           placeholder={DEFAULT_IDENTITY}
@@ -329,19 +323,18 @@ export function AccountSettings() {
 
         <div className="flex gap-2 flex-wrap">
           <Button size="small" onClick={handleSaveIssuer}>
-            {savedIssuer ? "Saved" : "Use these"}
+            {savedIssuer ? tr("ui.saved") : tr("ui.useThese")}
           </Button>
           {hasCustom && (
             <Button size="small" onClick={handleClearIssuer}>
-              Back to Gryt
+              {tr("ui.backToGryt")}
             </Button>
           )}
         </div>
 
         {isCustom && (
           <span className="text-xs">
-            A server also has to trust certificates from your identity service,
-            or it will refuse the join.
+            {tr("ui.aServerAlsoHasToTrustCertificatesFrom")}
           </span>
         )}
       </div>

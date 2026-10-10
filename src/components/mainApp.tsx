@@ -1,6 +1,7 @@
 import { Button } from "@gryt/ui";
 import { useEffect } from "react";
 
+import { useTranslation } from "@/i18n";
 import { OPEN_CHANNEL_EVENT } from "@/lib/channelDirectory";
 import {
   NOTIFICATION_CHANNEL_OPEN_EVENT,
@@ -17,6 +18,7 @@ import { OnboardingTour } from "./onboarding/OnboardingTour";
 import { Sidebar } from "./sidebar";
 
 export function MainApp() {
+  const { t: tr } = useTranslation();
   const {
     servers,
     setShowAddServer,
@@ -99,12 +101,11 @@ export function MainApp() {
            the tour's job; somebody who dismissed it still ends up here. */
         <div className="flex grow items-center justify-center">
           <div className="flex flex-col items-center gap-3" style={{ maxWidth: "24rem", textAlign: "center" }}>
-            <h2 className="text-lg">Nothing here yet</h2>
+            <h2 className="text-lg">{tr("ui.nothingHereYet")}</h2>
             <span className="text-sm text-gryt-muted">
-              Gryt is empty until you join a server. Add a friend&rsquo;s with an
-              invite, or start one of your own.
+              {tr("ui.grytIsEmptyUntilYouJoinAServer")}
             </span>
-            <Button onClick={() => setShowAddServer(true)}>Add a server</Button>
+            <Button onClick={() => setShowAddServer(true)}>{tr("ui.addAServer")}</Button>
           </div>
         </div>
       )}
