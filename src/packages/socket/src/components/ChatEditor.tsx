@@ -9,7 +9,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
-import { PiArrowUpBold, PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPlusBold, PiSmileyFill, PiX } from "../../../../lib/icons";
+import { PiArrowUpBold, PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPlusBold, PiSmileyFill, PiX } from "../../../../lib/icons";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
@@ -271,7 +271,6 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const mediaInputRef = useRef<HTMLInputElement>(null);
     const onSendRef = useRef(onSend);
     onSendRef.current = onSend;
     const onTypingRef = useRef(onTyping);
@@ -663,12 +662,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               <Menu.Positioner side="top" align="start" sideOffset={8}>
                 <Menu.Popup className="chat-editor-plus-menu">
                   <Menu.Item onClick={() => fileInputRef.current?.click()}>
-                    <span className="chat-editor-plus-icon"><PiFileFill size={18} /></span>
-                    Upload a file
-                  </Menu.Item>
-                  <Menu.Item onClick={() => mediaInputRef.current?.click()}>
-                    <span className="chat-editor-plus-icon" data-accent><PiImageFill size={18} /></span>
-                    Photos and videos
+                    <span className="chat-editor-plus-icon" data-accent><PiPaperclipFill size={18} /></span>
+                    Attach files
                   </Menu.Item>
                 </Menu.Popup>
               </Menu.Positioner>
@@ -730,17 +725,6 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             ref={fileInputRef}
             type="file"
             multiple
-            style={{ display: "none" }}
-            onChange={(e) => {
-              if (e.target.files) addFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
-          <input
-            ref={mediaInputRef}
-            type="file"
-            multiple
-            accept="image/*,video/*"
             style={{ display: "none" }}
             onChange={(e) => {
               if (e.target.files) addFiles(e.target.files);
