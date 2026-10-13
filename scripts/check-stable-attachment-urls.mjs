@@ -170,7 +170,13 @@ assert.doesNotMatch(
   /getUploadsFileUrl\(/,
   `${ROW} builds an upload URL during render again. Each render then carries the newest token.`,
 );
-assert.match(row, /<MessageAttachment\s+key=\{fileId\}/, `${ROW} no longer draws attachments through MessageAttachment`);
+assert.match(row, /<MessageAttachment\s+key=\{(?:a\.)?fileId\}/, `${ROW} no longer draws attachments through MessageAttachment`);
+
+// Pictures in a grid hold their URLs the same way (GRYT-1722).
+const grid = read("src/packages/socket/src/components/AttachmentGrid.tsx");
+assert.doesNotMatch(grid, /getUploadsFileUrl\(/, "AttachmentGrid builds a URL outside useStableFileUrl");
+assert.match(grid, /useStableFileUrl\(serverHost, fileId\)/, "AttachmentGrid no longer holds the file URL");
+assert.ok(grid.includes("onError={local ? undefined : refreshUrl}"), "AttachmentGrid lost its refresh, so a stale token never recovers");
 
 const attachment = read(ATTACHMENT);
 assert.doesNotMatch(attachment, /getUploadsFileUrl\(/, `${ATTACHMENT} builds a URL outside useStableFileUrl`);
