@@ -48,7 +48,9 @@ export function RichPresenceSettings() {
           </span>
           <span className="text-xs text-gryt-muted">
             People on your servers see the game&rsquo;s name and what it says about your game.
-            Nothing else leaves this computer.
+            When a game sends an app number Gryt has no name for, Gryt sends us that number and
+            nothing else, so it has a name for everyone the next day. Nothing else leaves this
+            computer.
           </span>
         </HowItWorks>
         <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
