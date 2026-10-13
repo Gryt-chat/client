@@ -2,24 +2,19 @@ import { Skeleton } from "@gryt/ui";
 
 import type { SealDecision } from "@/common";
 
-import { PiArrowBendUpLeftFill, PiChatCircleFill, PiChatsFill, PiSmileyFill, PiSpeakerHighFill, PiTrashFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftFill, PiChatCircleFill, PiDotsThreeBold, PiSmileyFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 export const MessageHoverToolbar = ({
   onReply,
-  onThread,
-  hasThread,
-  onDelete,
-  canDelete,
+  onMore,
   quickReactions,
   onQuickReaction,
   onOpenEmojiPicker,
 }: {
   onReply?: () => void;
-  onThread?: () => void;
-  hasThread?: boolean;
-  onDelete?: () => void;
-  canDelete?: boolean;
+  /** Opens the message's own menu at the button, where thread, pin, edit and delete live. */
+  onMore?: (anchor: HTMLElement) => void;
   /**
    * The reactions this person uses most, already ordered and padded. Empty when
    * they may not react here, which is why this takes a list not a permission.
@@ -49,10 +44,8 @@ export const MessageHoverToolbar = ({
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Reactions first, then a rule, then reply and delete.
-          Reacting is the thing people do most and the thing this bar exists
-          for, and putting it left of the divider keeps Delete at the far end,
-          away from the pointer's path to everything else. */}
+      {/* Reactions first, then reply and the menu, like Teams. Thread, pin, edit
+          and delete moved into that menu, which is also the right-click menu (GRYT-1722). */}
       {showQuick && quickReactions.map((src) => (
         <button
           key={src}
@@ -103,7 +96,7 @@ export const MessageHoverToolbar = ({
           <PiSmileyFill size={15} />
         </button>
       )}
-      {(showQuick || onOpenEmojiPicker) && (onReply || (canDelete && onDelete)) && (
+      {(showQuick || onOpenEmojiPicker) && (onReply || onMore) && (
         <span
           aria-hidden="true"
           style={{
@@ -138,11 +131,11 @@ export const MessageHoverToolbar = ({
           <PiArrowBendUpLeftFill size={14} />
         </button>
       )}
-      {onThread && (
+      {onMore && (
         <button
-          onClick={onThread}
-          title={hasThread ? "Open thread" : "Start thread"}
-          aria-label={hasThread ? "Open thread" : "Start thread"}
+          onClick={(e) => onMore(e.currentTarget)}
+          title="More"
+          aria-label="More"
           style={{
             background: "none",
             border: "none",
@@ -154,37 +147,13 @@ export const MessageHoverToolbar = ({
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: hasThread ? "var(--gryt-accent-11)" : "var(--gryt-neutral-11)",
+            color: "var(--gryt-neutral-11)",
             transition: "background 0.15s",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
-          <PiChatsFill size={14} />
-        </button>
-      )}
-      {canDelete && onDelete && (
-        <button
-          onClick={onDelete}
-          title="Delete"
-          style={{
-            background: "none",
-            border: "none",
-            padding: "4px 6px",
-            fontSize: "14px",
-            lineHeight: 1,
-            borderRadius: "var(--gryt-radius-md)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--gryt-danger-11)",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-danger-3)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-        >
-          <PiTrashFill size={14} />
+          <PiDotsThreeBold size={15} />
         </button>
       )}
     </div>
