@@ -81,6 +81,8 @@ import {
   LockOpen,
   LockSimple,
   MagnifyingGlass,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
   Microphone,
   MicrophoneSlash,
   Minus,
@@ -232,6 +234,8 @@ export const PiListChecksFill: Icon = weighted(ListChecks, "fill", "PiListChecks
 export const PiLockOpen: Icon = LockOpen;
 export const PiLockSimpleFill: Icon = weighted(LockSimple, "fill", "PiLockSimpleFill");
 export const PiMagnifyingGlassBold: Icon = weighted(MagnifyingGlass, "bold", "PiMagnifyingGlassBold");
+export const PiMagnifyingGlassMinusBold: Icon = weighted(MagnifyingGlassMinus, "bold", "PiMagnifyingGlassMinusBold");
+export const PiMagnifyingGlassPlusBold: Icon = weighted(MagnifyingGlassPlus, "bold", "PiMagnifyingGlassPlusBold");
 export const PiMagnifyingGlassFill: Icon = weighted(MagnifyingGlass, "fill", "PiMagnifyingGlassFill");
 export const PiMicrophoneFill: Icon = weighted(Microphone, "fill", "PiMicrophoneFill");
 export const PiMicrophoneSlashFill: Icon = weighted(MicrophoneSlash, "fill", "PiMicrophoneSlashFill");

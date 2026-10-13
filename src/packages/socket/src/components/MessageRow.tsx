@@ -20,6 +20,8 @@ import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./c
 import { CollapsibleText } from "./CollapsibleText";
 import { EmojiPicker } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
+import { type LightboxGallery } from "./ImageLightbox";
+import { galleryOf } from "./lightboxGallery";
 import { MessageEmbeds } from "./LinkEmbed";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
@@ -87,7 +89,8 @@ interface MessageRowProps {
   onReport: (msg: ChatMessage) => void;
   onDelete: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
-  onLightboxOpen: (src: string, alt?: string) => void;
+  /** With a gallery when it came from this message's pictures, so the lightbox steps through them. */
+  onLightboxOpen: (src: string, alt?: string, gallery?: LightboxGallery) => void;
   /** This message's thread, if it has one — draws the "N replies" line. GRYT-981. */
   threadSummary?: ThreadSummary;
   /** This message went out in the clear (GRYT-729). */
@@ -158,6 +161,14 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const { canIn } = useServerPermissions(serverHost || "");
   // Asked of the message's channel, which is where the server asks it too.
   const can = (permission: string) => canIn(m.conversation_id, permission);
+  // Opened from one of this message's files, the lightbox gets all of its pictures and videos.
+  const openLightbox = useCallback((src: string, alt?: string, fileId?: string) => {
+    const items = galleryOf(m, serverHost);
+    const index = fileId ? items.findIndex((it) => it.fileId === fileId) : -1;
+    if (index < 0) { onLightboxOpen(src, alt); return; }
+    const when = toDate(m.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    onLightboxOpen(src, alt, { items, index, title: { name: meta.senderName, detail: when } });
+  }, [m, serverHost, onLightboxOpen, meta.senderName]);
   const isOwnMessage = !!currentUserId && m.sender_server_id === currentUserId;
   const { messageStyle: look, ownMessageSide } = useTheme();
   const alignRight = isOwnMessage && ownMessageSide === "right" && !meta.isSystem;
@@ -377,7 +388,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 onReaction={onReaction}
                 onReply={onReply}
                 scrollToMessage={scrollToMessage}
-                onLightboxOpen={onLightboxOpen}
+                onLightboxOpen={openLightbox}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
                 onOpenReactionPicker={handleOpenReactionPicker}
@@ -564,7 +575,7 @@ function MessageContent({
   onReaction: (src: string, msg: ChatMessage) => void;
   onReply: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
-  onLightboxOpen: (src: string, alt?: string) => void;
+  onLightboxOpen: (src: string, alt?: string, fileId?: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onOpenReactionPicker: (anchorEl?: HTMLElement) => void;
