@@ -2418,3 +2418,18 @@ body {
 .poll-dialog-pill { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--gryt-neutral-6); background: transparent; color: var(--gryt-neutral-12); font: inherit; font-size: 14px; cursor: pointer; }
 .poll-dialog-pill[aria-pressed="true"], .poll-dialog-pill[aria-checked="true"] { border-color: var(--gryt-accent-9); background: var(--gryt-accent-4); }
 .poll-dialog-swatch { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Concentric corners: a message is 8px of padding round its content with a radius of
+   --gryt-radius-md + 8px, so anything sitting in its corners rounds at --gryt-radius-md. */
+.message-body > :first-child {
+  margin-top: 0 !important;
+}
+
+[data-message-id] .gryt-webhook-card {
+  border-radius: var(--gryt-radius-md);
+}
+
+/* A card's own 12px of padding leaves almost no radius for a picture in its corner. */
+[data-message-id] .gryt-webhook-card-image {
+  border-radius: 4px;
+}
