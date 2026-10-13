@@ -9,10 +9,6 @@ export interface UploadedFile {
   meta?: SealedAttachmentKey;
 }
 
-/**
- * Encrypt a file, if this conversation is being encrypted, and upload it. The seal
- * happens here so `sealed=1` and the encryption cannot come apart.
- */
 /* Older servers answer with config words a member can't act on; these say what to pass on. */
 const STORAGE_CODES: Record<string, string> = {
   s3_not_configured: "This server can't store files yet, so pictures and files can't be sent here. Let whoever runs it know that file storage isn't set up.",
@@ -20,6 +16,10 @@ const STORAGE_CODES: Record<string, string> = {
   s3_disabled: "File uploads are turned off on this server. Let whoever runs it know if you need them.",
 };
 
+/**
+ * Encrypt a file, if this conversation is being encrypted, and upload it. The seal
+ * happens here so `sealed=1` and the encryption cannot come apart.
+ */
 export async function uploadChatFile(
   file: File,
   serverHost: string,
