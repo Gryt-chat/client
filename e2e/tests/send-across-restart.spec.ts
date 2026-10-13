@@ -150,7 +150,8 @@ async function thread(page: Page): Promise<Conversation> {
   const open = async (name: "Start thread" | "Open thread") => {
     const row = page.locator('[data-message-id]:not([data-message-id^="pending-"])').filter({ hasText: root }).first();
     await row.hover();
-    await row.getByRole("button", { name }).click();
+    await row.getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitem", { name: new RegExp(`^${name}`) }).click();
     await expect(panel).toBeVisible();
   };
   await open("Start thread");

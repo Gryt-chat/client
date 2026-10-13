@@ -44,7 +44,8 @@ test("a raw socket that never joined gets none of a public channel's message eve
     await expect(editedRow).toBeVisible();
 
     await editedRow.hover();
-    await editedRow.getByTitle(/^(Start|Open) thread$/).click();
+    await editedRow.getByTitle("More", { exact: true }).click();
+    await alice.page.getByRole("menuitem", { name: /^(Start|Open) thread/ }).click();
     const thread = alice.page.getByRole("complementary", { name: "Thread" });
     await expect(thread).toBeVisible();
     const reply = unique("first reply");
@@ -57,7 +58,8 @@ test("a raw socket that never joined gets none of a public channel's message eve
     await expect(thread).toBeHidden();
 
     await editedRow.hover();
-    await editedRow.getByTitle("Delete", { exact: true }).click();
+    await editedRow.getByTitle("More", { exact: true }).click();
+    await alice.page.getByRole("menuitem", { name: "Delete Message" }).click();
     const confirm = alice.page.getByRole("alertdialog", { name: "Delete message?" });
     await confirm.getByRole("button", { name: "Delete" }).click();
     await expect(messageRow(alice.page, after)).toHaveCount(0);

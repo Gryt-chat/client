@@ -49,6 +49,13 @@ export interface ThemeSettings {
   chatFontSize: number;
   setChatFontSize: (value: number) => void;
 
+  /** How a message is drawn: name and picture, one line each, or a bubble (GRYT-1722). */
+  messageStyle: MessageStyle;
+  setMessageStyle: (value: MessageStyle) => void;
+  /** Which side your own messages sit on. Everyone else's stay on the left. */
+  ownMessageSide: OwnMessageSide;
+  setOwnMessageSide: (value: OwnMessageSide) => void;
+
   uiScale: number;
   setUiScale: (value: number) => void;
   zoomIn: () => void;
@@ -57,6 +64,18 @@ export interface ThemeSettings {
 
   // Derived, read-only
   resolvedAppearance: AppearanceResolved;
+}
+
+export type MessageStyle = "lines" | "compact" | "bubbles";
+export type OwnMessageSide = "left" | "right";
+
+function readMessageStyle(): MessageStyle {
+  const v = localStorage.getItem("theme.messageStyle");
+  return v === "compact" || v === "bubbles" ? v : "lines";
+}
+
+function readOwnMessageSide(): OwnMessageSide {
+  return localStorage.getItem("theme.ownMessageSide") === "right" ? "right" : "left";
 }
 
 function useThemeHook(): ThemeSettings {
@@ -78,6 +97,8 @@ function useThemeHook(): ThemeSettings {
   const [chatFontSize, setChatFontSizeState] = useState<number>(
     Number(localStorage.getItem("theme.chatFontSize")) || 16
   );
+  const [messageStyle, setMessageStyleState] = useState<MessageStyle>(readMessageStyle);
+  const [ownMessageSide, setOwnMessageSideState] = useState<OwnMessageSide>(readOwnMessageSide);
   const [uiScale, setUiScaleState] = useState<number>(
     Number(localStorage.getItem("theme.uiScale")) || 1
   );
@@ -133,6 +154,16 @@ function useThemeHook(): ThemeSettings {
     localStorage.setItem("theme.chatFontSize", clamped.toString());
   }
 
+  function setMessageStyle(value: MessageStyle) {
+    setMessageStyleState(value);
+    localStorage.setItem("theme.messageStyle", value);
+  }
+
+  function setOwnMessageSide(value: OwnMessageSide) {
+    setOwnMessageSideState(value);
+    localStorage.setItem("theme.ownMessageSide", value);
+  }
+
   const SCALE_STEP = 0.1;
   const SCALE_MIN = 0.5;
   const SCALE_MAX = 2.0;
@@ -172,6 +203,10 @@ function useThemeHook(): ThemeSettings {
     setEmojiSize,
     chatFontSize,
     setChatFontSize,
+    messageStyle,
+    setMessageStyle,
+    ownMessageSide,
+    setOwnMessageSide,
     uiScale,
     setUiScale,
     zoomIn,
@@ -194,6 +229,10 @@ const init: ThemeSettings = {
   setEmojiSize: () => {},
   chatFontSize: Number(localStorage.getItem("theme.chatFontSize")) || 16,
   setChatFontSize: () => {},
+  messageStyle: readMessageStyle(),
+  setMessageStyle: () => {},
+  ownMessageSide: readOwnMessageSide(),
+  setOwnMessageSide: () => {},
   uiScale: Number(localStorage.getItem("theme.uiScale")) || 1,
   setUiScale: () => {},
   zoomIn: () => {},

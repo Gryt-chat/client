@@ -1,6 +1,8 @@
 import { Avatar, Popover, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { forwardRef, memo, useCallback, useRef, useState } from "react";
+import { type CSSProperties, forwardRef, memo, useCallback, useLayoutEffect, useRef, useState } from "react";
+
+import { type MessageStyle, useTheme } from "@/common";
 
 import { PiChatsFill, PiLockOpen, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
@@ -153,6 +155,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   // Asked of the message's channel, which is where the server asks it too.
   const can = (permission: string) => canIn(m.conversation_id, permission);
   const isOwnMessage = !!currentUserId && m.sender_server_id === currentUserId;
+  const { messageStyle: look, ownMessageSide } = useTheme();
+  const alignRight = isOwnMessage && ownMessageSide === "right" && !meta.isSystem;
 
   // Editing and deleting your own message each have a permission, so a role can
   // post and not revise. `canDeleteAny` is worked out where the server is known.
@@ -230,6 +234,12 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 
   const showToolbar = isHovered && !isCtxMenuOpen && !isReactionPickerOpen;
 
+  // The ⋯ opens the same menu a right-click does, so there is one list of actions.
+  const handleMore = useCallback((anchor: HTMLElement) => {
+    const r = anchor.getBoundingClientRect();
+    anchor.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left, clientY: r.bottom }));
+  }, []);
+
   /*
    * The four this person reaches for most, read while the toolbar is going up.
    * Read on hover rather than held in state, so it is current without being told.
@@ -237,6 +247,141 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const quickReactions = showToolbar && canReact
     ? getFrequentReactions(4, serverHost)
     : undefined;
+
+  const highlighted = isHovered || isReactionPickerOpen || isCtxMenuOpen;
+  const nameColor = meta.roleColor ?? (meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)");
+  // Bubbles hug their text, so the column lines them up on the side they belong to.
+  const bubbleAlign = look === "bubbles" ? (alignRight ? "flex-end" : "flex-start") : undefined;
+
+  const avatarNode = (
+    <>
+            {/* The same card the member sidebar shows, on the avatar in the
+                flow. A message is where an impersonation is most convincing
+                and least checkable, and where nobody is going to open the
+                member list to compare fingerprints (GRYT-203). */}
+            {meta.sender ? (
+              <Popover.Root open={cardOpen} onOpenChange={(open) => setCardOpen(open)}>
+                <Popover.Trigger
+                  render={<button type="button" aria-label="Open card" className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
+                >
+                  <Avatar
+                    size="large"
+                    className="h-[51px] w-[51px] shrink-0 text-lg"
+                    fallback={meta.senderName[0]}
+                    src={meta.avatarUrl}
+                  />
+                </Popover.Trigger>
+                {cardOpen && (
+                  <Popover.Portal>
+                    <Popover.Positioner side="right" align="start">
+                      <Popover.Popup className={MEMBER_CARD_POPUP}>
+                        <MemberIdentityCard member={meta.sender} serverHost={serverHost} />
+                      </Popover.Popup>
+                    </Popover.Positioner>
+                  </Popover.Portal>
+                )}
+              </Popover.Root>
+            ) : (
+              <Avatar
+                size="large"
+                className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
+                fallback={meta.senderName[0]}
+                src={meta.avatarUrl}
+              />
+            )}
+    </>
+  );
+
+  const nameLineNode = (
+              <div className="flex items-baseline gap-2" style={{ marginBottom: 2, justifyContent: alignRight ? "flex-end" : undefined }}>
+                {/* Role colour first, so a name reads the same here as it does
+                    in the member sidebar. It applies to your own messages too:
+                    the sidebar colours you by role like everybody else, and
+                    keeping the accent here would make your own name the one
+                    that disagrees.
+
+                    The old accent-for-self and neutral-for-everyone-else stay
+                    as the fallback, for a role with no colour set — which is
+                    every role until somebody picks one, so on most servers
+                    nothing changes until they do. */}
+                <span
+                  className="text-sm font-bold"
+                  style={{ color: meta.roleColor ?? (meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)") }}
+                >
+                  {meta.senderName}
+                </span>
+                <NameTag tag={meta.nameTag} />
+                {meta.isBot && <BotTag />}
+                {meta.isWebhook && (
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "0 5px",
+                    height: 16,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    lineHeight: 1,
+                    borderRadius: "var(--gryt-radius-sm)",
+                    background: "var(--gryt-accent-9)",
+                    color: "var(--gryt-neutral-1)",
+                    letterSpacing: "0.02em",
+                    userSelect: "none",
+                    flexShrink: 0,
+                  }}>
+                    BOT
+                  </span>
+                )}
+                <MessageTimestamp date={toDate(m.created_at)} />
+                {meta.isFirstEdited && (
+                  <Tooltip title={`Edited ${new Date(m.edited_at!).toLocaleString()}`}>
+                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
+                      (edited)
+                    </span>
+                  </Tooltip>
+                )}
+              </div>
+  );
+
+  const contentNode = (
+              <MessageContent
+                quickReactions={quickReactions}
+                m={m}
+                rowRef={rowRef}
+                bgColor={bgColor}
+                showToolbar={showToolbar}
+                customEmojiList={customEmojiList}
+                memberNicknames={memberNicknames}
+                blurProfanity={blurProfanity}
+                smileyConversion={smileyConversion}
+                disabledSmileys={disabledSmileys}
+                serverHost={serverHost}
+                currentUserId={currentUserId}
+                currentUserNickname={currentUserNickname}
+                memberList={memberList}
+                chatMediaVolume={chatMediaVolume}
+                setChatMediaVolume={setChatMediaVolume}
+                replyPreviewText={replyPreviewText}
+                isFirstInGroup={meta.isFirstInGroup}
+                look={look}
+                alignRight={alignRight}
+                own={isOwnMessage}
+                highlighted={highlighted}
+                onMore={handleMore}
+                messageActions={messageActions}
+                threadUnread={threadUnread}
+                threadMentions={threadMentions}
+                onReaction={onReaction}
+                onReply={onReply}
+                scrollToMessage={scrollToMessage}
+                onLightboxOpen={onLightboxOpen}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onOpenReactionPicker={handleOpenReactionPicker}
+                unencrypted={unencrypted}
+                canReact={canReact}
+                showsPreviews={showsPreviews}
+              />
+  );
 
   const content = (
     <>
@@ -284,168 +429,34 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           </span>
         </div>
         </MessageContextMenu>
+      ) : look === "compact" ? (
+        <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
+          <div className="flex items-baseline" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row" }}>
+            <span style={{ width: 44, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+              <MessageTimestamp date={toDate(m.created_at)} />
+            </span>
+            <span className="text-sm font-bold" style={{ flex: "none", color: nameColor }}>{meta.senderName}</span>
+            {meta.isBot && <BotTag />}
+            <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
+              {contentNode}
+            </div>
+          </div>
+        </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
-          <div className="flex gap-3 items-start" style={{ width: "100%", marginTop: 12 }}>
-            {/* The same card the member sidebar shows, on the avatar in the
-                flow. A message is where an impersonation is most convincing
-                and least checkable, and where nobody is going to open the
-                member list to compare fingerprints (GRYT-203). */}
-            {meta.sender ? (
-              <Popover.Root open={cardOpen} onOpenChange={(open) => setCardOpen(open)}>
-                <Popover.Trigger
-                  render={<button type="button" aria-label="Open card" className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
-                >
-                  <Avatar
-                    size="large"
-                    className="h-[51px] w-[51px] shrink-0 text-lg"
-                    fallback={meta.senderName[0]}
-                    src={meta.avatarUrl}
-                  />
-                </Popover.Trigger>
-                {cardOpen && (
-                  <Popover.Portal>
-                    <Popover.Positioner side="right" align="start">
-                      <Popover.Popup className={MEMBER_CARD_POPUP}>
-                        <MemberIdentityCard member={meta.sender} serverHost={serverHost} />
-                      </Popover.Popup>
-                    </Popover.Positioner>
-                  </Popover.Portal>
-                )}
-              </Popover.Root>
-            ) : (
-              <Avatar
-                size="large"
-                className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
-                fallback={meta.senderName[0]}
-                src={meta.avatarUrl}
-              />
-            )}
-            <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
-              <div className="flex items-baseline gap-2" style={{ marginBottom: 2 }}>
-                {/* Role colour first, so a name reads the same here as it does
-                    in the member sidebar. It applies to your own messages too:
-                    the sidebar colours you by role like everybody else, and
-                    keeping the accent here would make your own name the one
-                    that disagrees.
-
-                    The old accent-for-self and neutral-for-everyone-else stay
-                    as the fallback, for a role with no colour set — which is
-                    every role until somebody picks one, so on most servers
-                    nothing changes until they do. */}
-                <span
-                  className="text-sm font-bold"
-                  style={{ color: meta.roleColor ?? (meta.isSelf ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)") }}
-                >
-                  {meta.senderName}
-                </span>
-                <NameTag tag={meta.nameTag} />
-                {meta.isBot && <BotTag />}
-                {meta.isWebhook && (
-                  <span style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "0 5px",
-                    height: 16,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    lineHeight: 1,
-                    borderRadius: "var(--gryt-radius-sm)",
-                    background: "var(--gryt-accent-9)",
-                    color: "var(--gryt-neutral-1)",
-                    letterSpacing: "0.02em",
-                    userSelect: "none",
-                    flexShrink: 0,
-                  }}>
-                    BOT
-                  </span>
-                )}
-                <MessageTimestamp date={toDate(m.created_at)} />
-                {meta.isFirstEdited && (
-                  <Tooltip title={`Edited ${new Date(m.edited_at!).toLocaleString()}`}>
-                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-                      (edited)
-                    </span>
-                  </Tooltip>
-                )}
-              </div>
-              <MessageContent
-                quickReactions={quickReactions}
-                m={m}
-                rowRef={rowRef}
-                bgColor={bgColor}
-                showToolbar={showToolbar}
-                canDelete={canDelete}
-                customEmojiList={customEmojiList}
-                memberNicknames={memberNicknames}
-                blurProfanity={blurProfanity}
-                smileyConversion={smileyConversion}
-                disabledSmileys={disabledSmileys}
-                serverHost={serverHost}
-                currentUserId={currentUserId}
-                currentUserNickname={currentUserNickname}
-                memberList={memberList}
-                chatMediaVolume={chatMediaVolume}
-                setChatMediaVolume={setChatMediaVolume}
-                replyPreviewText={replyPreviewText}
-                isFirstInGroup
-                messageActions={messageActions}
-                threadUnread={threadUnread}
-                threadMentions={threadMentions}
-                onReaction={onReaction}
-                onReply={onReply}
-                onDelete={onDelete}
-                scrollToMessage={scrollToMessage}
-                onLightboxOpen={onLightboxOpen}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onOpenReactionPicker={handleOpenReactionPicker}
-                unencrypted={unencrypted}
-                canReact={canReact}
-                showsPreviews={showsPreviews}
-              />
+          <div className="flex gap-3 items-start" style={{ width: "100%", marginTop: look === "bubbles" ? 14 : 12, flexDirection: alignRight ? "row-reverse" : "row" }}>
+            {!(look === "bubbles" && alignRight) && avatarNode}
+            <div className="flex flex-col" style={{ flex: 1, minWidth: 0, alignItems: bubbleAlign }}>
+              {nameLineNode}
+              {contentNode}
             </div>
           </div>
         </MessageContextMenu>
       ) : (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
-          <div className="flex" style={{ width: "100%", paddingLeft: 63 }}>
-            <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
-              <MessageContent
-                quickReactions={quickReactions}
-                m={m}
-                rowRef={rowRef}
-                bgColor={bgColor}
-                showToolbar={showToolbar}
-                canDelete={canDelete}
-                customEmojiList={customEmojiList}
-                memberNicknames={memberNicknames}
-                blurProfanity={blurProfanity}
-                smileyConversion={smileyConversion}
-                disabledSmileys={disabledSmileys}
-                serverHost={serverHost}
-                currentUserId={currentUserId}
-                currentUserNickname={currentUserNickname}
-                memberList={memberList}
-                chatMediaVolume={chatMediaVolume}
-                setChatMediaVolume={setChatMediaVolume}
-                replyPreviewText={replyPreviewText}
-                isFirstInGroup={false}
-                messageActions={messageActions}
-                threadUnread={threadUnread}
-                threadMentions={threadMentions}
-                onReaction={onReaction}
-                onReply={onReply}
-                onDelete={onDelete}
-                scrollToMessage={scrollToMessage}
-                onLightboxOpen={onLightboxOpen}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onOpenReactionPicker={handleOpenReactionPicker}
-                unencrypted={unencrypted}
-                canReact={canReact}
-                showsPreviews={showsPreviews}
-              />
+          <div className="flex" style={{ width: "100%", marginTop: look === "bubbles" ? 4 : 0, ...(alignRight ? { paddingRight: look === "bubbles" ? 0 : 63 } : { paddingLeft: 63 }) }}>
+            <div className="flex flex-col" style={{ flex: 1, minWidth: 0, alignItems: bubbleAlign }}>
+              {contentNode}
             </div>
           </div>
         </MessageContextMenu>
@@ -485,7 +496,6 @@ function MessageContent({
   bgColor,
   showToolbar,
   quickReactions,
-  canDelete,
   customEmojiList,
   memberNicknames,
   blurProfanity,
@@ -502,7 +512,6 @@ function MessageContent({
   messageActions,
   onReaction,
   onReply,
-  onDelete,
   scrollToMessage,
   onLightboxOpen,
   onMouseEnter,
@@ -513,14 +522,25 @@ function MessageContent({
   showsPreviews,
   threadUnread,
   threadMentions,
+  look,
+  alignRight,
+  own,
+  highlighted,
+  onMore,
 }: {
   m: ChatMessage;
   rowRef: React.RefObject<HTMLDivElement | null>;
+  look: MessageStyle;
+  /** Your own message, drawn on the right. */
+  alignRight: boolean;
+  own: boolean;
+  /** Hovered, or its menu or picker open. Bubbles show it on the bubble rather than the row. */
+  highlighted: boolean;
+  onMore: (anchor: HTMLElement) => void;
   bgColor: string;
   showToolbar: boolean;
   /** The reactions this person uses most, for the hover bar. */
   quickReactions?: string[];
-  canDelete: boolean;
   customEmojiList: CustomEmojiEntry[];
   memberNicknames: string[];
   blurProfanity: boolean;
@@ -537,7 +557,6 @@ function MessageContent({
   messageActions: MessageActions;
   onReaction: (src: string, msg: ChatMessage) => void;
   onReply: (msg: ChatMessage) => void;
-  onDelete: (msg: ChatMessage) => void;
   scrollToMessage: (messageId: string) => void;
   onLightboxOpen: (src: string, alt?: string) => void;
   onMouseEnter: () => void;
@@ -559,21 +578,43 @@ function MessageContent({
   const drawsText = drawsMessageText(m);
   // For tests and tools: a row the server has not confirmed says why.
   const sendState = m.failed ? "failed" : m.waiting && m.pending ? "waiting" : m.pending ? "pending" : undefined;
+  const bubble = look === "bubbles";
+  const textRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barStyle, setBarStyle] = useState<CSSProperties>({});
+  useLayoutEffect(() => {
+    if (!showToolbar) return;
+    const width = barRef.current?.offsetWidth || 200;
+    setBarStyle(hoverBarPlacement(look, alignRight, rowRef.current, textRef.current, width));
+  }, [showToolbar, look, alignRight, rowRef]);
+  const bubbleBackground = own
+    ? (highlighted ? "var(--gryt-accent-5)" : "var(--gryt-accent-4)")
+    : (highlighted ? "var(--gryt-neutral-5)" : "var(--gryt-neutral-4)");
   return (
     <motion.div
-      animate={{ marginBottom: hasReactions ? 30 : 0, background: bgColor }}
+      animate={{ marginBottom: hasReactions ? 30 : 0, background: bubble ? "rgba(0, 0, 0, 0)" : bgColor }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
         borderRadius: "var(--gryt-radius-md)",
         margin: "0 -6px",
+        ...(bubble ? { display: "flex", flexDirection: "column", alignItems: alignRight ? "flex-end" : "flex-start", alignSelf: "stretch" } : {}),
       }}
     >
     <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState} style={{
         /* Inset so the row does not shift by two pixels depending on it. */
         boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
-        padding: "2px 6px",
+        padding: bubble ? "8px 14px" : "2px 6px",
         cursor: "default",
         position: "relative",
+        textAlign: alignRight && !bubble ? "right" : undefined,
+        ...(bubble ? {
+          width: "fit-content",
+          maxWidth: "min(680px, 85%)",
+          margin: "0 6px",
+          borderRadius: 16,
+          background: bubbleBackground,
+          transition: "background 0.15s",
+        } : {}),
       }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
       <AnimatePresence>
         {showToolbar && (
@@ -582,7 +623,8 @@ function MessageContent({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 4 }}
             transition={{ type: "spring", stiffness: 500, damping: 25 }}
-            style={{ position: "absolute", top: -16, right: 8, zIndex: 10 }}
+            ref={barRef}
+            style={{ position: "absolute", zIndex: 10, ...barStyle }}
           >
             {/* onOpenEmojiPicker follows quickReactions rather than a
                 permission of its own: that list is undefined for somebody who
@@ -592,10 +634,7 @@ function MessageContent({
               onQuickReaction={(src) => onReaction(src, m)}
               onOpenEmojiPicker={quickReactions ? () => onOpenReactionPicker() : undefined}
               onReply={() => onReply(m)}
-              onThread={messageActions.onOpenThread || messageActions.onStartThread}
-              hasThread={!!messageActions.onOpenThread}
-              canDelete={canDelete}
-              onDelete={canDelete ? () => onDelete(m) : undefined}
+              onMore={onMore}
             />
           </motion.div>
         )}
@@ -657,6 +696,7 @@ function MessageContent({
           </span>
         ) : (
           drawsText && (
+            <div ref={textRef}>
             <CollapsibleText>
               <MarkdownRenderer
                 content={m.text}
@@ -670,6 +710,7 @@ function MessageContent({
                 disabledSmileys={disabledSmileys}
               />
             </CollapsibleText>
+            </div>
           )
         )}
         {messageActions.pinned && (
@@ -731,7 +772,7 @@ function MessageContent({
         <button
           onClick={messageActions.onOpenThread}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4, alignSelf: "flex-start",
+            display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4, alignSelf: alignRight ? "flex-end" : "flex-start",
             userSelect: "none",
             background: "none", border: "none", cursor: "pointer", padding: "3px 7px",
             borderRadius: "var(--gryt-radius-sm)",
@@ -760,6 +801,7 @@ function MessageContent({
         memberList={memberList}
         onReaction={canReact ? (src) => onReaction(src, m) : undefined}
         onOpenPicker={onOpenReactionPicker}
+        alignRight={alignRight}
       />
     </div>
     </motion.div>
@@ -773,6 +815,7 @@ function ReactionBadges({
   memberList,
   onReaction,
   onOpenPicker,
+  alignRight,
 }: {
   reactions: Reaction[] | null | undefined;
   currentUserId: string | undefined;
@@ -781,6 +824,7 @@ function ReactionBadges({
   /** Absent where this member may not react: the counts show, and nothing is pressable. */
   onReaction?: (src: string) => void;
   onOpenPicker: (anchorEl?: HTMLElement) => void;
+  alignRight?: boolean;
 }) {
   const hasReactions = reactions && reactions.length > 0;
   if (!hasReactions) return null;
@@ -792,7 +836,7 @@ function ReactionBadges({
       userSelect: "none",
       position: "absolute",
       bottom: 0,
-      left: "6px",
+      ...(alignRight ? { right: "6px" } : { left: "6px" }),
       transform: "translateY(100%)",
       gap: "4px",
       zIndex: 1,
@@ -883,4 +927,37 @@ function ReactionBadges({
       )}
     </div>
   );
+}
+
+/* The bar is about this tall. Its width is measured, since the quick reactions vary. */
+const BAR_HEIGHT = 28;
+
+/**
+ * Where the hover bar goes: above a bubble's top-right end, or on the last line of
+ * text right where it ends, so it never sits over anything anyone wrote (GRYT-1722).
+ */
+function hoverBarPlacement(
+  look: MessageStyle,
+  alignRight: boolean,
+  row: HTMLElement | null,
+  text: HTMLElement | null,
+  barWidth: number,
+): CSSProperties {
+  if (look === "bubbles") return { bottom: "calc(100% + 4px)", right: 0 };
+  // No text, or no room beside it: the corner above the row, where it always was.
+  const corner: CSSProperties = alignRight ? { top: -16, left: 8 } : { top: -16, right: 8 };
+  if (!row || !text) return corner;
+  const range = document.createRange();
+  range.selectNodeContents(text);
+  const lines = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+  const last = lines[lines.length - 1];
+  if (!last) return corner;
+  const box = row.getBoundingClientRect();
+  const top = last.top - box.top + last.height / 2 - BAR_HEIGHT / 2;
+  if (alignRight) {
+    const right = box.right - last.left + 10;
+    return right + barWidth + 8 <= box.width ? { top, right } : corner;
+  }
+  const left = last.right - box.left + 10;
+  return left + barWidth + 8 <= box.width ? { top, left } : corner;
 }

@@ -35,6 +35,7 @@ import { HIGHLIGHT_MS } from "./settingsComponents";
 import { SupportSettings } from "./supportSettings";
 import { ThemeSettings } from "./theme/appearanceSettings";
 import { DisplaySettings } from "./theme/displaySettings";
+import { MessageStyleSettings } from "./theme/messageStyleSettings";
 import { VoiceSettings } from "./voiceSettings";
 
 /** Settings are grouped by the thing somebody is trying to configure. */
@@ -146,6 +147,7 @@ const DESTINATIONS: SettingsDestination[] = [
     pages: [
       { value: "theme", label: "Theme", content: <ThemeSettings /> },
       { value: "display", label: "Display", content: <DisplaySettings /> },
+      { value: "messages", label: "Messages", content: <MessageStyleSettings /> },
     ],
   },
   {

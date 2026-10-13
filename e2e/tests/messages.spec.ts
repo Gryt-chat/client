@@ -195,7 +195,8 @@ test("deleting a message removes it for everyone", async ({ newMember }) => {
   await expect(messageRow(bob.page, text)).toBeVisible();
 
   await row.hover();
-  await row.getByTitle("Delete", { exact: true }).click();
+  await row.getByTitle("More", { exact: true }).click();
+  await alice.page.getByRole("menuitem", { name: "Delete Message" }).click();
   const confirm = alice.page.getByRole("alertdialog", { name: "Delete message?" });
   await confirm.getByRole("button", { name: "Delete" }).click();
 
