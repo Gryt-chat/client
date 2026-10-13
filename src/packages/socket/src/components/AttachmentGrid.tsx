@@ -6,17 +6,18 @@ import { readBlobUrl } from "../utils/downloadFile";
 import type { AttachmentMeta } from "./chatUtils";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
 
-const WIDTH = 420;
 const GAP = 4;
-/** Past this many the last tile says how many more; clicking it shows them all. */
-const SHOWN = 4;
+/** Each square: as many fit across as the chat has room for. */
+const SQUARE = 180;
+/** Past this many the last square says how many more; clicking it shows them all. */
+const SHOWN = 8;
 
 export interface GridImage {
   fileId: string;
   meta: AttachmentMeta | undefined;
 }
 
-/** Two or more pictures on one message, as a grid (GRYT-1722 draft): 2 across, 3 with the first big, 4 square. */
+/** Two or more pictures as a row of squares that fills the width and wraps, each cropped to fill (GRYT-1722). */
 export function AttachmentGrid({
   images,
   serverHost,
@@ -31,34 +32,16 @@ export function AttachmentGrid({
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? images : images.slice(0, SHOWN);
   const hidden = images.length - shown.length;
-  const half = (WIDTH - GAP) / 2;
 
-  const tile = (img: GridImage, style: CSSProperties, more = 0) => (
-    <GridTile key={img.fileId} image={img} style={style} more={more} serverHost={serverHost}
-      messageActions={messageActions} onLightboxOpen={onLightboxOpen} onMore={() => setExpanded(true)} />
-  );
-
-  if (shown.length === 2) {
-    return (
-      <div style={{ display: "flex", gap: GAP, width: WIDTH, maxWidth: "100%" }}>
-        {shown.map((img) => tile(img, { flex: 1, height: 200 }))}
-      </div>
-    );
-  }
-  if (shown.length === 3) {
-    return (
-      <div style={{ display: "flex", gap: GAP, width: WIDTH, maxWidth: "100%", height: 260 }}>
-        {tile(shown[0], { flex: 2, height: "100%" })}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: GAP }}>
-          {tile(shown[1], { flex: 1 })}
-          {tile(shown[2], { flex: 1 })}
-        </div>
-      </div>
-    );
-  }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: GAP, width: WIDTH, maxWidth: "100%" }}>
-      {shown.map((img, i) => tile(img, { height: half * 0.72 }, i === shown.length - 1 ? hidden : 0))}
+    // As wide as one row of all of them, capped at the column: the row around it hugs its text.
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, ${SQUARE}px)`, gap: GAP,
+      width: shown.length * SQUARE + (shown.length - 1) * GAP, maxWidth: "100%" }}>
+      {shown.map((img, i) => (
+        <GridTile key={img.fileId} image={img} style={{ width: SQUARE, aspectRatio: "1 / 1" }}
+          more={i === shown.length - 1 ? hidden : 0} serverHost={serverHost}
+          messageActions={messageActions} onLightboxOpen={onLightboxOpen} onMore={() => setExpanded(true)} />
+      ))}
     </div>
   );
 }
@@ -100,7 +83,9 @@ function GridTile({
     );
   }
 
+  // The size lives on this box: the menu's trigger wraps the button in an unsized div.
   return (
+    <div style={box}>
     <MessageContextMenu
       media={local ? { open: () => readBlobUrl(local), fileName: meta?.original_name, isImage: true } : { src: url, fileName: meta?.original_name, isImage: true }}
       messageActions={messageActions}
@@ -109,7 +94,7 @@ function GridTile({
         type="button"
         aria-label={more > 0 ? `${more} more pictures` : `Open ${name}`}
         onClick={() => (more > 0 ? onMore() : onLightboxOpen(src, name))}
-        style={{ ...box, display: "block", padding: 0, border: 0, cursor: "zoom-in" }}
+        style={{ position: "absolute", inset: 0, display: "block", padding: 0, border: 0, background: "none", cursor: "zoom-in" }}
       >
         <img src={src} alt={name} loading="lazy" onError={local ? undefined : refreshUrl}
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -121,5 +106,6 @@ function GridTile({
         )}
       </button>
     </MessageContextMenu>
+    </div>
   );
 }
