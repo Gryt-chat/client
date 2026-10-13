@@ -1,5 +1,5 @@
 import { accessTokenOf, ask, withSocket } from "../support/admin";
-import { channelComposer, messageRow, sendMessage, sidebarChannelRow, unique } from "../support/app";
+import { canAttachFiles, channelComposer, messageRow, sendMessage, sidebarChannelRow, unique } from "../support/app";
 import { expect, test, uniqueName } from "../support/fixtures";
 
 /** A channel's denies take their buttons away there only. An older server sends no
@@ -55,22 +55,21 @@ test("a channel's denies take its buttons away there and nowhere else", async ({
     await expect(member.page.getByRole("button", { name: "Reply" }).first()).toBeVisible();
     return {
       react: member.page.getByRole("button", { name: "React with another emoji" }),
-      attach: member.page.getByRole("button", { name: "Add", exact: true }),
     };
   };
 
   const inOpen = await buttonsIn(open);
   await expect(inOpen.react).toBeVisible();
-  await expect(inOpen.attach).toBeVisible();
+  expect(await canAttachFiles(member.page)).toBe(true);
 
   const inQuiet = await buttonsIn(quiet);
   if (perChannel) {
     await expect(inQuiet.react).toHaveCount(0);
-    await expect(inQuiet.attach).toHaveCount(0);
+    await expect.poll(() => canAttachFiles(member.page)).toBe(false);
   } else {
     // The server-wide list allows both, so an older server keeps drawing them.
     await expect(inQuiet.react).toBeVisible();
-    await expect(inQuiet.attach).toBeVisible();
+    expect(await canAttachFiles(member.page)).toBe(true);
   }
   test.info().annotations.push({
     type: "server",
