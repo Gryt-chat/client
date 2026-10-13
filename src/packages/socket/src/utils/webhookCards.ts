@@ -6,11 +6,29 @@ import type { StoredWebhookCard } from "../components/chatUtils";
 type MessageText = {
   text: string | null;
   text_fallback?: boolean;
+  kind?: string;
+  poll?: unknown;
 };
 
-/** Whether the row draws `text`. A fallback line is for clients that cannot draw the cards. */
+/** The kinds of message this app draws. Anything else gets a line saying to update. */
+export const KNOWN_KINDS: readonly string[] = ["poll"];
+
+/** A message of a kind added after this version. Its `text` is for apps from before kinds existed. */
+export function isUnknownKind(message: MessageText): boolean {
+  return !!message.kind && !KNOWN_KINDS.includes(message.kind);
+}
+
+/** What the row says in place of a message it can't draw. Plugin kinds are `plugin:<id>:<name>`. */
+export function unknownKindNotice(kind: string): string {
+  const plugin = /^plugin:([^:]+):/.exec(kind)?.[1];
+  return plugin
+    ? `This message is from the ${plugin} plugin, which this app doesn't have.`
+    : "This message needs a newer version of Gryt. Update to see it.";
+}
+
+/** Whether the row draws `text`. Cards, polls and unknown kinds stand in for it. */
 export function drawsMessageText(message: MessageText): boolean {
-  return message.text_fallback !== true;
+  return message.text_fallback !== true && !message.kind && !message.poll;
 }
 
 /** Whether this message names the viewer. Only `text` can, and a fallback line never does.
