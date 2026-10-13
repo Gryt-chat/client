@@ -473,7 +473,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   return (
     /* Full height from the first frame, fading and sliding in on the compositor. Growing from 0
        left the bottom pin aiming short of a tall message, and layout springs re-measured every row. */
-    <div ref={mergedRef} className={isNew ? "gryt-message-enter" : undefined} style={{ width: "100%" }}>
+    <div ref={mergedRef} className={isNew ? "gryt-message-enter" : undefined} style={{ width: "100%", paddingRight: alignRight ? 14 : undefined }}>
       {content}
       {isReactionPickerOpen && (
         <EmojiPicker
@@ -949,7 +949,11 @@ function hoverBarPlacement(
   text: HTMLElement | null,
   barWidth: number,
 ): CSSProperties {
-  if (look === "bubbles") return { bottom: "calc(100% + 4px)", right: 0 };
+  if (look === "bubbles") {
+    // Above the bubble's far end, unless a short bubble on the left would push it off the column.
+    const short = !alignRight && !!row && row.getBoundingClientRect().width < barWidth;
+    return short ? { bottom: "calc(100% + 4px)", left: 0 } : { bottom: "calc(100% + 4px)", right: 0 };
+  }
   if (!row) return alignRight ? { top: -16, left: 8 } : { top: -16, right: 8 };
   // The row hugs its text, so room is measured against the column it sits in.
   const box = row.getBoundingClientRect();
