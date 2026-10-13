@@ -663,7 +663,7 @@ function MessageContent({
             whiteSpace: "nowrap",
           }}
         >
-          <span className="text-xs">{replyPreviewText ?? "Original message"}</span>
+          <span className="text-xs">{replyPreviewText ? <EmojiText text={replyPreviewText} emojiSize={14} disableTooltip /> : "Original message"}</span>
         </div>
       )}
       <motion.div
