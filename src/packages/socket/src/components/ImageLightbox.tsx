@@ -145,7 +145,7 @@ export const ImageLightbox = ({
               </button>
             </>
           )}
-          <button type="button" className="lightbox-toolbar-btn" aria-label="Save" title="Save" onClick={() => { if (shownSrc) void triggerDownload(shownSrc, item.name); }}>
+          <button type="button" className="lightbox-toolbar-btn" aria-label={item.kind === "video" ? "Save video" : "Save image"} title={item.kind === "video" ? "Save video" : "Save image"} onClick={() => { if (shownSrc) void triggerDownload(shownSrc, item.name); }}>
             <PiCloudArrowDownFill size={18} />
           </button>
           <button type="button" className="lightbox-toolbar-btn" aria-label="Close (Esc)" title="Close (Esc)" onClick={onClose}>

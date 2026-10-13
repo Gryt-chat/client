@@ -2,15 +2,16 @@ import type { ChatMessage } from "./chatUtils";
 import type { LightboxItem } from "./ImageLightbox";
 
 /** A message's pictures and videos, in the order they were sent, for the lightbox to step through.
-    An encrypted video and anything still processing or refused are left out. */
+    Anything still processing, refused or sealed and not yet decrypted is left out. */
 export function galleryOf(message: ChatMessage, serverHost: string | undefined): LightboxItem[] {
   if (!message.attachments || !serverHost) return [];
   const items: LightboxItem[] = [];
   message.attachments.forEach((fileId, i) => {
     const meta = message.enriched_attachments?.[i];
-    if (!meta || meta.refused || meta.processing) return;
+    // A sealed file not decrypted yet would load as ciphertext from the server.
+    if (!meta || meta.refused || meta.processing || (meta.open_sealed && !meta.local_url)) return;
     const mime = meta.mime || "";
-    const kind = mime.startsWith("image/") ? "image" : mime.startsWith("video/") && !meta.open_sealed ? "video" : null;
+    const kind = mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : null;
     if (!kind) return;
     items.push({
       kind,
