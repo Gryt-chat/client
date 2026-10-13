@@ -601,8 +601,8 @@ function MessageContent({
   useLayoutEffect(() => {
     if (!showToolbar) return;
     const width = barRef.current?.offsetWidth || 200;
-    setBarStyle(hoverBarPlacement(look, alignRight, rowRef.current, width));
-  }, [showToolbar, look, alignRight, rowRef]);
+    setBarStyle(hoverBarPlacement(alignRight, rowRef.current, width));
+  }, [showToolbar, alignRight, rowRef]);
   const bubbleBackground = own
     ? (highlighted ? "var(--gryt-accent-5)" : "var(--gryt-accent-4)")
     : (highlighted ? "var(--gryt-neutral-5)" : "var(--gryt-neutral-4)");
@@ -613,7 +613,7 @@ function MessageContent({
       animate={{ marginBottom: hasReactions ? 30 : 0 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
-        margin: "0 -6px",
+        margin: bubble ? "0 -6px" : "0 -8px",
         display: "flex", flexDirection: "column", alignItems: alignRight ? "flex-end" : "flex-start", alignSelf: "stretch",
       }}
     >
@@ -622,7 +622,7 @@ function MessageContent({
       onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{
         /* Inset so the row does not shift by two pixels depending on it. */
         boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
-        padding: bubble ? "8px 14px" : "2px 6px",
+        padding: bubble ? "8px 14px" : "6px 8px",
         cursor: "default",
         position: "relative",
         textAlign: alignRight && !bubble ? "right" : undefined,
@@ -985,24 +985,15 @@ function ReactionBadges({
   );
 }
 
-/** Always just above the message: Bubbles at the bubble's far end, Cozy and Compact at the
-    column's far edge, so it's in the same place every time (GRYT-1722). */
+/** Always just above the highlighted part's far end, in every style, so it sits by the message
+    it's for. A short message on the left takes it at its start instead (GRYT-1722). */
 function hoverBarPlacement(
-  look: MessageStyle,
   alignRight: boolean,
   row: HTMLElement | null,
   barWidth: number,
 ): CSSProperties {
-  if (look === "bubbles") {
-    // Above the bubble's far end, unless a short bubble on the left would push it off the column.
-    const short = !alignRight && !!row && row.getBoundingClientRect().width < barWidth;
-    return short ? { bottom: "calc(100% + 4px)", left: 0 } : { bottom: "calc(100% + 4px)", right: 0 };
-  }
-  if (!row) return alignRight ? { bottom: "calc(100% - 6px)", left: 8 } : { bottom: "calc(100% - 6px)", right: 8 };
-  // The row hugs its text, so the edge is the column's, not the row's.
-  const box = row.getBoundingClientRect();
-  const area = (row.parentElement ?? row).getBoundingClientRect();
-  return alignRight
-    ? { bottom: "calc(100% - 6px)", left: area.left - box.left + 8 }
-    : { bottom: "calc(100% - 6px)", right: box.right - area.right + 8 };
+  const short = !alignRight && !!row && row.getBoundingClientRect().width < barWidth;
+  // The 4px above the message is the bar's own padding, so the pointer never crosses a gap to reach it.
+  const lift: CSSProperties = { bottom: "100%", paddingBottom: 4 };
+  return short ? { ...lift, left: 0 } : { ...lift, right: 0 };
 }

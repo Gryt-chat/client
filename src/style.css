@@ -853,6 +853,13 @@ body {
    tall, the skeleton inside it has nothing to fill, and the row jumps when the
    file lands. Dropped the moment the image loads, so the real picture is never
    held to a guessed box. */
+/* The width it's drawn at, height cap included, so the message around it hugs the picture.
+   A percentage in max-width alone doesn't count when the row sizes itself to its content. */
+.chat-attachment-image-wrapper[data-sized] {
+  width: min(var(--img-w), 480px, calc(480px * var(--img-ar)));
+  max-width: 100%;
+}
+
 .chat-attachment-image-wrapper[data-unsized] {
   width: min(320px, 100%);
   aspect-ratio: 4 / 3;
@@ -1640,6 +1647,10 @@ body {
   .chat-attachment-image-wrapper {
     max-width: min(var(--img-w, 620px), 620px, 100%);
     max-height: 620px;
+  }
+
+  .chat-attachment-image-wrapper[data-sized] {
+    width: min(var(--img-w), 620px, calc(620px * var(--img-ar)));
   }
 
   .chat-attachment-image {
