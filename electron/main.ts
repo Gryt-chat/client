@@ -141,6 +141,7 @@ import {
   startNativeScreenCapture,
   stopNativeScreenCapture,
 } from "./screenCaptureManager";
+import { createUnknownAppQueue } from "./unknownApps";
 import {
   clockTime,
   findFeedRelease,
@@ -284,12 +285,18 @@ function detectedName(key: string): string | null {
 let detectedShown: DetectedApp[] = [];
 /** One card per addon that holds the `activity` permission (GRYT-1637). */
 const addonCards = new Map<string, DetectedApp>();
+const unknownApps = createUnknownAppQueue();
 
 /** The one board every card goes through. An addon's card needs it even with Rich Presence off. */
 function ensurePresenceBoard(): PresenceBoard {
   if (presenceBoard) return presenceBoard;
   const board = createPresenceBoard({
-    nameForApp,
+    // An id no list knows goes to the game list's daily job, so it has a name for everyone tomorrow.
+    nameForApp: (appId) => {
+      const name = nameForApp(appId);
+      if (!name) unknownApps.note(appId);
+      return name;
+    },
     onChange: (card) => mainWindow?.webContents.send("rich-presence-changed", card),
   });
   board.setHidden(readHiddenApps().map((app) => app.id));

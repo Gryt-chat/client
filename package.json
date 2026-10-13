@@ -208,6 +208,7 @@
     "test:terms-agreement": "node --disable-warning=ExperimentalWarning scripts/check-terms-agreement.mjs",
     "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.mjs",
     "test:media-sandbox": "node --disable-warning=ExperimentalWarning scripts/check-media-sandbox.mjs",
+    "test:unknown-apps": "node --disable-warning=ExperimentalWarning scripts/check-unknown-apps.mjs",
     "test:polls": "node --disable-warning=ExperimentalWarning scripts/check-polls.mjs"
   },
   "dependencies": {
