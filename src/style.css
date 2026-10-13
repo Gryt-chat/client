@@ -547,6 +547,12 @@ body {
   background: var(--gryt-neutral-3);
 }
 
+.chat-editor-file-preview[draggable="true"] { cursor: grab; }
+.chat-editor-file-preview[data-dragging] { opacity: 0.35; }
+/* Where a dragged file would land: a bar in the gap before or after this one. */
+.chat-editor-file-preview[data-drop="before"] { box-shadow: -5px 0 0 -2px var(--gryt-accent-9); }
+.chat-editor-file-preview[data-drop="after"] { box-shadow: 5px 0 0 -2px var(--gryt-accent-9); }
+
 .chat-editor-file-preview img {
   width: 100px;
   height: 70px;
