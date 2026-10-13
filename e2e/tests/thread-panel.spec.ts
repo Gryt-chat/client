@@ -22,14 +22,16 @@ function threadComposer(page: Page): Locator {
 async function startThread(page: Page, rootText: string): Promise<void> {
   const row = messageRow(page, rootText);
   await row.hover();
-  await row.getByRole("button", { name: "Start thread" }).click();
+  await row.getByTitle("More", { exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Start thread/ }).click();
   await expect(panel(page)).toBeVisible();
 }
 
 async function openThread(page: Page, rootText: string): Promise<void> {
   const row = messageRow(page, rootText);
   await row.hover();
-  await row.getByRole("button", { name: "Open thread" }).click();
+  await row.getByTitle("More", { exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Open thread/ }).click();
   await expect(panel(page)).toBeVisible();
 }
 
@@ -51,7 +53,8 @@ async function closeTopic(page: Page): Promise<void> {
 async function deleteMessage(page: Page, text: string): Promise<void> {
   const row = messageRow(page, text);
   await row.hover();
-  await row.getByRole("button", { name: "Delete" }).click();
+  await row.getByTitle("More", { exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete Message" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).last().click();
   await expect(messageRow(page, text)).toHaveCount(0);
 }
@@ -248,13 +251,15 @@ test("deleting a threaded message counts the replies going with it", async ({ ne
 
   const plainRow = messageRow(alice.page, plain);
   await plainRow.hover();
-  await plainRow.getByRole("button", { name: "Delete" }).click();
+  await plainRow.getByTitle("More", { exact: true }).click();
+  await alice.page.getByRole("menuitem", { name: "Delete Message" }).click();
   await expect(dialog).toContainText("This deletes the message for everyone.");
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
   const rootRow = messageRow(alice.page, root);
   await rootRow.hover();
-  await rootRow.getByRole("button", { name: "Delete" }).click();
+  await rootRow.getByTitle("More", { exact: true }).click();
+  await alice.page.getByRole("menuitem", { name: "Delete Message" }).click();
   await expect(dialog, "the server takes the thread with the root").toContainText(
     "This deletes the message and the 2 replies in its thread.",
   );
@@ -275,7 +280,8 @@ test("starting a thread with no connection says so", async ({ newMember }) => {
         async () => {
           const row = messageRow(alice.page, root);
           await row.hover();
-          await row.getByRole("button", { name: "Start thread" }).click({ force: true });
+          await row.getByTitle("More", { exact: true }).click({ force: true });
+          await alice.page.getByRole("menuitem", { name: /^Start thread/ }).click();
           return alice.page.getByText("Not connected to this server").isVisible();
         },
         { timeout: 30_000 },
@@ -360,7 +366,7 @@ test("a message row beside the panel takes a click where the panel used to be", 
 
   // And the actions on it are reachable, which is what the overlap cost.
   await row.hover();
-  await expect(row.getByRole("button", { name: "Open thread" })).toBeVisible();
+  await expect(row.getByTitle("More", { exact: true })).toBeVisible();
 });
 
 /** One socket.io event held back in a page's socket until `release`, so a race runs in the order a test picks. */

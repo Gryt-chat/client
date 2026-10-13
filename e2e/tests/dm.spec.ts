@@ -238,7 +238,8 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
 
   const doomed = messageRow(bob.page, edited).first();
   await doomed.hover();
-  await doomed.getByTitle("Delete", { exact: true }).click();
+  await doomed.getByTitle("More", { exact: true }).click();
+  await bob.page.getByRole("menuitem", { name: "Delete Message" }).click();
   await bob.page.getByRole("alertdialog", { name: "Delete message?" }).getByRole("button", { name: "Delete" }).click();
   await expect(messageRow(alice.page, edited)).toHaveCount(0);
 
