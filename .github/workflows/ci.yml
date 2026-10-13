@@ -100,6 +100,9 @@ jobs:
       - run: yarn test:history-merge
       - run: yarn test:media-sandbox
 
+      # Poll picks, percentages of voters, and the countdown (GRYT-1732).
+      - run: yarn test:polls
+
       # Enter sends unless a suggestion list shows something to pick. A port in a
       # pasted URL used to open an empty emoji list that swallowed it.
       - run: yarn test:composer-enter

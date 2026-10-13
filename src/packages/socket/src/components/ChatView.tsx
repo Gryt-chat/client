@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
-import { getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPrefs, useTheme, useThreadMentions, useThreadUnread } from "@/common";
+import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPrefs, useTheme, useThreadMentions, useThreadUnread } from "@/common";
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
@@ -19,6 +19,7 @@ import { useSockets } from "../hooks/useSockets";
 import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
+import type { NewPoll } from "../utils/polls";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { mentionsViewer } from "../utils/webhookCards";
 import type { ChatEditorHandle } from "./ChatEditor";
@@ -39,6 +40,7 @@ import { MentionViewerContext } from "./mentionViewerContext";
 import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
 import { PinsButton } from "./PinsButton";
+import { PollDialog } from "./PollDialog";
 import { ThreadPanel } from "./ThreadPanel";
 import { TypingIndicator } from "./TypingIndicator";
 
@@ -196,6 +198,7 @@ export const ChatView = memo(({
   }, []);
   const [isDragOver, setIsDragOver] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
+  const [pollOpen, setPollOpen] = useState(false);
   const dragCounterRef = useRef(0);
 
   const {
@@ -687,6 +690,12 @@ export const ChatView = memo(({
   const mayPost = mayHere("send_messages");
   const maySend = mayPost && !textMute;
   const mayRead = mayHere("read_messages");
+  const offersPolls = conversationKind !== "dm" && maySend && !!serverDetailsList[serverHost ?? ""]?.server_info?.polls;
+  const postPoll = useCallback((poll: NewPoll) => {
+    const accessToken = getServerAccessToken(serverHost ?? "");
+    if (!socketConnection || !accessToken || !conversationKey) return;
+    (socketConnection as Socket).emit("chat:send", { conversationId: conversationKey, accessToken, poll });
+  }, [socketConnection, serverHost, conversationKey]);
 
   const renderThreadComposer = useCallback(
     () => (
@@ -1014,6 +1023,7 @@ export const ChatView = memo(({
             onCancelReply={cancelReply}
             onCancelEditing={cancelEditing}
             onSend={handleEditorSend}
+            onCreatePoll={offersPolls ? () => setPollOpen(true) : undefined}
             onArrowUpEmpty={handleArrowUpEmpty}
             onTyping={emitTyping}
             onStopTyping={emitStopTyping}
@@ -1049,6 +1059,7 @@ export const ChatView = memo(({
           )}
         </div>
       </div>
+      {offersPolls && <PollDialog open={pollOpen} onOpenChange={setPollOpen} serverHost={serverHost} onPost={postPoll} />}
       {lightboxImage && (
         <ImageLightbox
           src={lightboxImage.src}

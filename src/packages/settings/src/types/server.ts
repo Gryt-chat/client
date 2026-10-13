@@ -120,6 +120,8 @@ export type serverDetails = {
     upload_max_bytes?: number | null;
     /** Uploads are checked in the image worker's sandbox first. Absent on an older server. */
     uploads_checked?: boolean;
+    /** Takes polls (GRYT-1732). Older servers leave it out. */
+    polls?: boolean;
     /** Video avatars and banners are taken here: the host can and the owner allows it. */
     video_profiles?: boolean;
     /** Messages here may show other Gryt servers' custom emoji. */

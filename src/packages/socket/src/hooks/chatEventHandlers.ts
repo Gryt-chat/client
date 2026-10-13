@@ -183,6 +183,24 @@ export function handleAttachmentsSettled(
   if (payload.conversation_id === activeConversationId) setChatMessages((prev) => prev.map(apply));
 }
 
+// ── poll:updated ─────────────────────────────────────────────────────
+
+/** New totals for a poll, addressed to this viewer, so `mine` is theirs (GRYT-1732). */
+export function handlePollUpdated(
+  payload: { conversation_id: string; message_id: string; poll: ChatMessage["poll"] },
+  activeConversationId: string,
+  getCacheKey: CacheKeyFn,
+  setMessageCache: Dispatch<SetStateAction<MessageCache>>,
+  setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>,
+): void {
+  if (!payload?.conversation_id || !payload.message_id || !payload.poll) return;
+  const key = getCacheKey(payload.conversation_id);
+  if (!key) return;
+  const apply = (msg: ChatMessage) => (msg.message_id === payload.message_id ? { ...msg, poll: payload.poll } : msg);
+  setMessageCache((prev) => ({ ...prev, [key]: (prev[key] || []).map(apply) }));
+  if (payload.conversation_id === activeConversationId) setChatMessages((prev) => prev.map(apply));
+}
+
 // ── chat:deleted ─────────────────────────────────────────────────────
 
 export function handleMessageDeleted(

@@ -9,6 +9,7 @@ import {
   handleAttachmentsSettled,
   handleMessageDeleted,
   handleMessageEdited,
+  handlePollUpdated,
   handleReactionUpdate,
   type HistoryPayload,
 } from "./chatEventHandlers";
@@ -148,18 +149,22 @@ export function useHistoryWindow({ connection, conversationId, cacheKeyFor, setM
       handleMessageDeleted(p, conversationId, key, noCache, setWindow);
     const onAttachments = (p: Parameters<typeof handleAttachmentsSettled>[0]) =>
       handleAttachmentsSettled(p, conversationId, key, noCache, setWindow);
+    const onPollUpdated = (p: Parameters<typeof handlePollUpdated>[0]) =>
+      handlePollUpdated(p, conversationId, key, noCache, setWindow);
 
     connection.on("chat:history", onHistory);
     connection.on("chat:reaction", onReaction);
     connection.on("chat:edited", onEdited);
     connection.on("chat:deleted", onDeleted);
     connection.on("chat:attachments", onAttachments);
+    connection.on("poll:updated", onPollUpdated);
     return () => {
       connection.off("chat:history", onHistory);
       connection.off("chat:reaction", onReaction);
       connection.off("chat:edited", onEdited);
       connection.off("chat:deleted", onDeleted);
       connection.off("chat:attachments", onAttachments);
+      connection.off("poll:updated", onPollUpdated);
     };
   }, [cacheKeyFor, connection, conversationId, deletedIdsRef, settle]);
 

@@ -29,6 +29,7 @@ import {
   handleMessageDeleted,
   handleMessageEdited,
   handleNewMessage,
+  handlePollUpdated,
   handleReactionUpdate,
   shouldFetchHistory,
 } from "./chatEventHandlers";
@@ -534,6 +535,8 @@ export function useChat({
       handleMessageEdited(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
     const onAttachments = (payload: Parameters<typeof handleAttachmentsSettled>[0]) =>
       handleAttachmentsSettled(payload, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
+    const onPollUpdated = (payload: Parameters<typeof handlePollUpdated>[0]) =>
+      handlePollUpdated(payload, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
     const onReportSubmitted = () => {
       toast.success("Report submitted");
@@ -613,6 +616,7 @@ export function useChat({
     currentConnection.on("chat:deleted", onDeleted);
     currentConnection.on("chat:edited", onEdited);
     currentConnection.on("chat:attachments", onAttachments);
+    currentConnection.on("poll:updated", onPollUpdated);
     currentConnection.on("report:submitted", onReportSubmitted);
     currentConnection.on("report:already_reported", onAlreadyReported);
     currentConnection.on("chat:purge_user", onPurgeUser);
@@ -626,6 +630,7 @@ export function useChat({
       currentConnection.off("chat:deleted", onDeleted);
       currentConnection.off("chat:edited", onEdited);
       currentConnection.off("chat:attachments", onAttachments);
+      currentConnection.off("poll:updated", onPollUpdated);
       currentConnection.off("report:submitted", onReportSubmitted);
       currentConnection.off("report:already_reported", onAlreadyReported);
       currentConnection.off("chat:purge_user", onPurgeUser);

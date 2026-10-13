@@ -22,6 +22,7 @@ interface ChatEditorBarProps {
   onCancelReply: () => void;
   onCancelEditing: () => void;
   onSend: (markdown: string, files: File[]) => void;
+  onCreatePoll?: () => void;
   onArrowUpEmpty: () => void;
   onTyping?: () => void;
   onStopTyping?: () => void;
@@ -42,6 +43,7 @@ export function ChatEditorBar({
   onCancelReply,
   onCancelEditing,
   onSend,
+  onCreatePoll,
   onArrowUpEmpty,
   onTyping,
   onStopTyping,
@@ -107,6 +109,7 @@ export function ChatEditorBar({
         allowFiles={allowFiles}
         maxFileSize={maxFileSize}
         onSend={onSend}
+        onCreatePoll={onCreatePoll}
         onArrowUpEmpty={onArrowUpEmpty}
         onCancel={editingMessage ? onCancelEditing : undefined}
         onTyping={onTyping}
