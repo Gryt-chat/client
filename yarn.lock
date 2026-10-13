@@ -562,23 +562,23 @@
     fflate "0.8.3"
     ts-mls "1.6.4"
 
-"@gryt/owl@^0.6.0":
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.6.0.tgz#7efa4a1c28884e71cdac3316c9db01dc5c21c08e"
-  integrity sha512-2T+YiP8ds8Z3dfkNd2GgaCQyknp0OPmxwC6yAwMsmRG8blGlakd7bdaEoeuUYnlXNgWt+Ssc5ZAE2r/4pMSqaA==
+"@gryt/owl@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.7.0.tgz#730a4f9fc3b355dd3629e1bce1d8af71e765ff75"
+  integrity sha512-Bi+xkPjEnvdjGvqV+nYGLYCtlEG5ZkeUZNmGA1KK7U5Gu350mGrpCB5k+h+hss8BbHt5kfX15PDoNHKVoUOevA==
 
 "@gryt/theme@^0.12.0":
   version "0.12.1"
   resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.12.1.tgz#9a21b6a4d0ec0f5139828b99bd86a9d9893472c4"
   integrity sha512-oAMaBq/xF1YdR1AcBgqIRhN3CvkPW+Ifx7FgN6hC0xQ37SMp+g3WG34VNHInp5xVA5ahITUHkdRzDUq4Hb67uQ==
 
-"@gryt/ui@^0.44.0":
-  version "0.44.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.44.0.tgz#19eb8b9763831a1ce7a30906b66831d6299b025c"
-  integrity sha512-HS60cYK2vbOWmatTx1jb1vQt3EXNTMkxOkFeA7sLdgjJQalslMHyUDPoqbfNDNxdXaN8RYUgX+1GWoGQPKAgrw==
+"@gryt/ui@^0.45.0":
+  version "0.45.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.45.0.tgz#c591d03e341fdbf79b1267097ef6567324f7ac45"
+  integrity sha512-yGlxQEtkfLcJxIO+/yPUUjxmnIdUAz7QWyE39fDDQjPmz+Uk26qX4rtLeGfEMoR/7fhzf/D+4I33+ULe0Noi0A==
   dependencies:
     "@base-ui/react" "^1.7.0"
-    "@gryt/owl" "^0.6.0"
+    "@gryt/owl" "^0.7.0"
     "@gryt/theme" "^0.12.0"
     "@phosphor-icons/react" "^2.1.10"
     "@tanstack/react-virtual" "^3.13.12"
