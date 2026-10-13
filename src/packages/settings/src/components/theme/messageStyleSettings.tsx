@@ -98,7 +98,7 @@ export function MessageStyleSettings() {
   const { messageStyle, setMessageStyle, ownMessageSide, setOwnMessageSide } = useTheme();
 
   const styles: { value: MessageStyle; label: string; hint: string }[] = [
-    { value: "lines", label: "Lines", hint: "Pictures and names, like it's always been." },
+    { value: "cozy", label: "Cozy", hint: "Pictures and names, like it's always been." },
     { value: "compact", label: "Compact", hint: "No pictures, one line per message." },
     { value: "bubbles", label: "Bubbles", hint: "Each message in its own bubble." },
   ];

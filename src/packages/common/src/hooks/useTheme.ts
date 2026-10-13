@@ -66,12 +66,12 @@ export interface ThemeSettings {
   resolvedAppearance: AppearanceResolved;
 }
 
-export type MessageStyle = "lines" | "compact" | "bubbles";
+export type MessageStyle = "cozy" | "compact" | "bubbles";
 export type OwnMessageSide = "left" | "right";
 
 function readMessageStyle(): MessageStyle {
   const v = localStorage.getItem("theme.messageStyle");
-  return v === "compact" || v === "bubbles" ? v : "lines";
+  return v === "compact" || v === "bubbles" ? v : "cozy";
 }
 
 function readOwnMessageSide(): OwnMessageSide {
