@@ -357,18 +357,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
               </div>
   );
 
-  const compactTime = look === "compact" ? (
-    // After the message and always shown, like a system line's: a column for it left a gap in front of every name.
-    // Bottom-aligned with a nudge rather than on the last baseline, which would drag the name down with it.
-    <span title={toDate(m.created_at).toLocaleString()} style={{ flex: "none", fontSize: 11, lineHeight: "16px", paddingBottom: 3, color: "var(--gryt-neutral-9)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-      {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-    </span>
-  ) : undefined;
-  const textShown = !sealedPlaceholder(m) && drawsMessageText(m) && !!m.text?.trim();
-
   const contentNode = (
               <MessageContent
-                trailing={textShown ? compactTime : undefined}
                 quickReactions={quickReactions}
                 m={m}
                 rowRef={rowRef}
@@ -458,12 +448,15 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
           {/* Lined up on the text, or on the top when there's no text, like pictures or a card. */}
           <div className="flex" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row", alignItems: m.text && drawsMessageText(m) ? "baseline" : "flex-start" }}>
+            {/* Always shown, in a column: times scan down one line and names start at one x. Hidden, it was just a gap. */}
+            <span title={toDate(m.created_at).toLocaleString()} style={{ width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+              {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
             <span className="text-sm font-bold" style={{ flex: "none", color: nameColor }}>{meta.senderName}</span>
             {meta.isBot && <BotTag />}
-            <div className="flex flex-col" style={{ flex: "0 1 auto", minWidth: 0 }}>
+            <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               {contentNode}
             </div>
-            {!textShown && compactTime && <div style={{ flex: "none", marginTop: 4 }}>{compactTime}</div>}
           </div>
         </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
@@ -514,8 +507,10 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 
 MessageRow.displayName = "MessageRow";
 
+/** Compact's time column, as wide as this locale's latest time: "23:59" here, "11:59 PM" in en-US. */
+const COMPACT_TIME_WIDTH = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
+
 function MessageContent({
-  trailing,
   m,
   rowRef,
   bgColor,
@@ -553,8 +548,6 @@ function MessageContent({
   highlighted,
   onMore,
 }: {
-  /** Drawn after the text on its line, for Compact's time. */
-  trailing?: React.ReactNode;
   m: ChatMessage;
   rowRef: React.RefObject<HTMLDivElement | null>;
   look: MessageStyle;
@@ -736,9 +729,7 @@ function MessageContent({
         ) : (
           drawsText && (
             <CollapsibleText>
-              {/* The time lines up with the text's last line, so a long message ends with it. */}
-              <div style={trailing ? { display: "flex", alignItems: "flex-end", gap: 8 } : undefined}>
-              <div style={trailing ? { minWidth: 0 } : undefined}>
+              <div>
               <MarkdownRenderer
                 content={m.text}
                 customEmojis={customEmojiList}
@@ -750,8 +741,6 @@ function MessageContent({
                 smileyConversion={smileyConversion}
                 disabledSmileys={disabledSmileys}
               />
-              </div>
-              {trailing}
               </div>
             </CollapsibleText>
           )
