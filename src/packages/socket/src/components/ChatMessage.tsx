@@ -1,9 +1,28 @@
 import { Skeleton } from "@gryt/ui";
+import type { CSSProperties, MouseEvent } from "react";
 
 import type { SealDecision } from "@/common";
 
-import { PiArrowBendUpLeftFill, PiChatCircleFill, PiDotsThreeBold, PiSmileyFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftBold, PiChatCircleFill, PiDotsThreeBold, PiSmileyBold, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
+
+/* Sized to the GRYT-1722 drafts: 36px buttons, 21px emoji, 20px icons. */
+const BAR_BUTTON: CSSProperties = {
+  width: 36,
+  height: 36,
+  padding: 0,
+  border: "none",
+  borderRadius: 8,
+  background: "none",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "var(--gryt-neutral-11)",
+  transition: "background 0.15s",
+};
+const hoverOn = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "var(--gryt-neutral-5)"; };
+const hoverOff = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "none"; };
 
 export const MessageHoverToolbar = ({
   onReply,
@@ -30,12 +49,12 @@ export const MessageHoverToolbar = ({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: "1px",
-        background: "var(--gryt-neutral-2)",
+        gap: 2,
+        background: "var(--gryt-neutral-3)",
         border: "1px solid var(--gryt-neutral-6)",
-        borderRadius: "var(--gryt-radius-md)",
-        padding: "2px 3px",
-        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.18)",
+        borderRadius: 12,
+        padding: "3px 5px",
+        boxShadow: "0 6px 20px rgba(0, 0, 0, 0.5)",
         pointerEvents: "auto",
         /* Chrome, not content: the bar sits earlier in the DOM than the text
            it floats over, so a drag copied it too. */
@@ -52,23 +71,11 @@ export const MessageHoverToolbar = ({
           onClick={() => onQuickReaction(src)}
           title={`React with ${src}`}
           aria-label={`React with ${src}`}
-          style={{
-            background: "none",
-            border: "none",
-            padding: "3px 5px",
-            fontSize: "15px",
-            lineHeight: 1,
-            borderRadius: "var(--gryt-radius-md)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+          style={{ ...BAR_BUTTON, fontSize: 21, lineHeight: 1 }}
+          onMouseEnter={hoverOn}
+          onMouseLeave={hoverOff}
         >
-          <EmojiText text={src} emojiSize={16} disableTooltip />
+          <EmojiText text={src} emojiSize={22} disableTooltip />
         </button>
       ))}
       {onOpenEmojiPicker && (
@@ -76,59 +83,28 @@ export const MessageHoverToolbar = ({
           onClick={onOpenEmojiPicker}
           title="React with another emoji"
           aria-label="React with another emoji"
-          style={{
-            background: "none",
-            border: "none",
-            padding: "4px 6px",
-            fontSize: "14px",
-            lineHeight: 1,
-            borderRadius: "var(--gryt-radius-md)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--gryt-neutral-11)",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+          style={BAR_BUTTON}
+          onMouseEnter={hoverOn}
+          onMouseLeave={hoverOff}
         >
-          <PiSmileyFill size={15} />
+          <PiSmileyBold size={20} />
         </button>
       )}
       {(showQuick || onOpenEmojiPicker) && (onReply || onMore) && (
         <span
           aria-hidden="true"
-          style={{
-            width: "1px",
-            alignSelf: "stretch",
-            margin: "2px 3px",
-            background: "var(--gryt-neutral-6)",
-          }}
+          style={{ width: 1, height: 22, margin: "0 4px", background: "var(--gryt-neutral-6)" }}
         />
       )}
       {onReply && (
         <button
           onClick={onReply}
           title="Reply"
-          style={{
-            background: "none",
-            border: "none",
-            padding: "4px 6px",
-            fontSize: "14px",
-            lineHeight: 1,
-            borderRadius: "var(--gryt-radius-md)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--gryt-neutral-11)",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+          style={BAR_BUTTON}
+          onMouseEnter={hoverOn}
+          onMouseLeave={hoverOff}
         >
-          <PiArrowBendUpLeftFill size={14} />
+          <PiArrowBendUpLeftBold size={20} />
         </button>
       )}
       {onMore && (
@@ -136,24 +112,11 @@ export const MessageHoverToolbar = ({
           onClick={(e) => onMore(e.currentTarget)}
           title="More"
           aria-label="More"
-          style={{
-            background: "none",
-            border: "none",
-            padding: "4px 6px",
-            fontSize: "14px",
-            lineHeight: 1,
-            borderRadius: "var(--gryt-radius-md)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--gryt-neutral-11)",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+          style={BAR_BUTTON}
+          onMouseEnter={hoverOn}
+          onMouseLeave={hoverOff}
         >
-          <PiDotsThreeBold size={15} />
+          <PiDotsThreeBold size={20} />
         </button>
       )}
     </div>

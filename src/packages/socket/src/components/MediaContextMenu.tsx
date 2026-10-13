@@ -168,7 +168,7 @@ function QuickReactions({
           <ContextMenu.Portal>
             <ContextMenu.Positioner sideOffset={2} alignOffset={-6}>
               <ContextMenu.Popup
-                className="flex w-85 max-h-100 flex-col overflow-hidden p-0"
+                className="flex h-130 max-h-[calc(100vh-16px)] w-110 max-w-[calc(100vw-16px)] flex-col overflow-hidden border-0 bg-transparent p-0 shadow-none"
               >
             <EmojiPickerContent
               onSelect={handleEmojiSelect}

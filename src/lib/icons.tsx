@@ -144,6 +144,7 @@ function weighted(Base: Icon, weight: IconProps["weight"], name: string): Icon {
 }
 
 export const PiArrowBendUpLeftFill: Icon = weighted(ArrowBendUpLeft, "fill", "PiArrowBendUpLeftFill");
+export const PiArrowBendUpLeftBold: Icon = weighted(ArrowBendUpLeft, "bold", "PiArrowBendUpLeftBold");
 export const PiArrowDownBold: Icon = weighted(ArrowDown, "bold", "PiArrowDownBold");
 export const PiArrowFatLineDownFill: Icon = weighted(ArrowFatLineDown, "fill", "PiArrowFatLineDownFill");
 export const PiArrowLineLeftFill: Icon = weighted(ArrowLineLeft, "fill", "PiArrowLineLeftFill");
@@ -264,6 +265,7 @@ export const PiSignOutFill: Icon = weighted(SignOut, "fill", "PiSignOutFill");
 export const PiSignpost: Icon = Signpost;
 export const PiSlidersHorizontalFill: Icon = weighted(SlidersHorizontal, "fill", "PiSlidersHorizontalFill");
 export const PiSmileyFill: Icon = weighted(Smiley, "fill", "PiSmileyFill");
+export const PiSmileyBold: Icon = weighted(Smiley, "bold", "PiSmileyBold");
 export const PiSpeakerHighFill: Icon = weighted(SpeakerHigh, "fill", "PiSpeakerHighFill");
 export const PiSpeakerSimpleHighFill: Icon = weighted(SpeakerSimpleHigh, "fill", "PiSpeakerSimpleHighFill");
 export const PiSpeakerSimpleSlashFill: Icon = weighted(SpeakerSimpleSlash, "fill", "PiSpeakerSimpleSlashFill");
