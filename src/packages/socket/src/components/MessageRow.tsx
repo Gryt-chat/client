@@ -473,7 +473,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   return (
     /* Full height from the first frame, fading and sliding in on the compositor. Growing from 0
        left the bottom pin aiming short of a tall message, and layout springs re-measured every row. */
-    <div ref={mergedRef} className={isNew ? "gryt-message-enter" : undefined} style={{ width: "100%", paddingRight: alignRight ? 14 : undefined }}>
+    <div ref={mergedRef} className={isNew ? "gryt-message-enter" : undefined} style={{ width: "100%", paddingRight: 14 }}>
       {content}
       {isReactionPickerOpen && (
         <EmojiPicker
@@ -936,7 +936,7 @@ function ReactionBadges({
 }
 
 /* The bar is about this tall. Its width is measured, since the quick reactions vary. */
-const BAR_HEIGHT = 28;
+const BAR_HEIGHT = 44;
 
 /**
  * Where the hover bar goes: above a bubble's top-right end, or on the last line of

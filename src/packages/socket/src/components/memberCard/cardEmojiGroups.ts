@@ -1,4 +1,6 @@
 import type { EmojiPickerGroup } from "@gryt/ui";
+import { Sparkle } from "@phosphor-icons/react";
+import { createElement } from "react";
 import { useMemo, useSyncExternalStore } from "react";
 
 import { getCustomEmojis, onCustomEmojisChange } from "../../utils/emojiData";
@@ -14,6 +16,8 @@ export function useCardEmojiGroups(serverHost?: string): readonly EmojiPickerGro
     return [{
       id: "server",
       label: "This server",
+      // Without an icon the picker's category bar draws a dot.
+      icon: createElement(Sparkle, { size: 18, weight: "bold" }),
       items: custom.flatMap((emoji) => emoji.url ? [{
         id: `server:${emoji.name}`,
         name: emoji.name,

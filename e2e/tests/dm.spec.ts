@@ -202,7 +202,7 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
     await bobsReply.hover();
     await bobsReply.getByTitle("React with another emoji").click({ timeout: 2000 });
   }).toPass();
-  await bob.page.getByPlaceholder("Search emojis...").fill("thumbsup");
+  await bob.page.getByPlaceholder("Search emoji").fill("thumbsup");
   await bob.page.getByTitle(":thumbsup:").click();
   await expect(bobsReply.getByRole("button", { name: "👍 1" })).toBeVisible();
   const alicesReply = messageRow(alice.page, reply);
