@@ -22,7 +22,8 @@ interface MessageCardsProps {
 /** The cards a webhook posted, in order (GRYT-1186). */
 export const MessageCards = memo(function MessageCards({ cards, ...rest }: MessageCardsProps) {
   return (
-    <div className="flex flex-col gap-2" style={{ marginTop: 4 }}>
+    // A width of its own: a Compact row shrinks to its text, and a card-only message has none.
+    <div className="flex flex-col gap-2" style={{ marginTop: 4, width: 520, maxWidth: "100%" }}>
       {cards.map((card, index) => (
         <MessageCard key={index} card={card} {...rest} />
       ))}

@@ -435,7 +435,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
         </MessageContextMenu>
       ) : look === "compact" ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
-          <div className="flex items-baseline" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row" }}>
+          {/* Lined up on the text, or on the top when there's no text, like pictures or a card. */}
+          <div className="flex" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row", alignItems: m.text && drawsMessageText(m) ? "baseline" : "flex-start" }}>
             {/* The clock time, on hover only: "4 days ago" ran into the name. The column keeps names lined up. */}
             <span title={toDate(m.created_at).toLocaleString()} style={{ width: 44, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", visibility: highlighted ? "visible" : "hidden" }}>
               {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -596,15 +597,18 @@ function MessageContent({
     : (highlighted ? "var(--gryt-neutral-5)" : "var(--gryt-neutral-4)");
   return (
     <motion.div
+      // Reactions already there on open are just there: growing in pushed the chat off the bottom.
+      initial={false}
       animate={{ marginBottom: hasReactions ? 30 : 0 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
         margin: "0 -6px",
         display: "flex", flexDirection: "column", alignItems: alignRight ? "flex-end" : "flex-start", alignSelf: "stretch",
       }}
-      onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
     >
-    <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState} style={{
+    {/* Hover is on the highlighted part only, so the bar doesn't open from the empty space beside a message. */}
+    <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState}
+      onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{
         /* Inset so the row does not shift by two pixels depending on it. */
         boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
         padding: bubble ? "8px 14px" : "2px 6px",
@@ -613,7 +617,7 @@ function MessageContent({
         textAlign: alignRight && !bubble ? "right" : undefined,
         width: "fit-content",
         transition: "background 0.15s",
-        /* The highlight hugs the text; hover is on the full-width wrapper. */
+        /* The highlight hugs the text, and so does the hover. */
         ...(bubble ? {
           maxWidth: "min(680px, 85%)",
           margin: "0 6px",
@@ -877,7 +881,7 @@ function ReactionBadges({
       zIndex: 1,
       width: "max-content",
     }}>
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="popLayout" initial={false}>
         {reactions.map((reaction, rIdx) => {
           const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
           const emojiId = reaction.src;
