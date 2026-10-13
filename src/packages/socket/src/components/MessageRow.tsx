@@ -696,8 +696,8 @@ function MessageContent({
           </span>
         ) : (
           drawsText && (
-            <div ref={textRef}>
             <CollapsibleText>
+              <div ref={textRef}>
               <MarkdownRenderer
                 content={m.text}
                 customEmojis={customEmojiList}
@@ -709,8 +709,8 @@ function MessageContent({
                 smileyConversion={smileyConversion}
                 disabledSmileys={disabledSmileys}
               />
+              </div>
             </CollapsibleText>
-            </div>
           )
         )}
         {messageActions.pinned && (
