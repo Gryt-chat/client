@@ -206,7 +206,7 @@ export function PollDialog({ open, onOpenChange, serverHost, onPost }: PollDialo
               </div>
             </div>
 
-            <div className="flex justify-end gap-2" style={{ marginTop: 4 }}>
+            <div className="flex flex-wrap justify-end gap-2" style={{ marginTop: 4 }}>
               <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button size="small" onClick={post} disabled={!canPost}>Post poll</Button>
             </div>
