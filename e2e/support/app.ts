@@ -200,3 +200,13 @@ export async function addChannel(owner: Page, server: GrytServer, name: string):
     await Promise.race([expect(sidebarChannelRow(owner, name)).toBeVisible(), refused]);
   });
 }
+
+/** Whether the composer offers Attach files. The + stays for Poll on a server that has polls, so its being there says nothing. */
+export async function canAttachFiles(page: Page): Promise<boolean> {
+  const plus = page.getByRole("button", { name: "Add", exact: true });
+  if ((await plus.count()) === 0) return false;
+  await plus.click();
+  const offered = (await page.getByRole("menuitem", { name: "Attach files" }).count()) > 0;
+  await page.keyboard.press("Escape");
+  return offered;
+}

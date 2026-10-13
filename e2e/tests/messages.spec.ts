@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { accessTokenOf, ask, serverUserIdOf, setProfanityMode, withSocket } from "../support/admin";
-import { channelComposer, messageRow, pasteText, sendMessage, unique } from "../support/app";
+import { canAttachFiles, channelComposer, messageRow, pasteText, sendMessage, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 test("a message sent with one Enter reaches the other members", async ({ newMember }) => {
@@ -53,8 +53,7 @@ test("an oversized paste where files can't be attached says so", async ({ newMem
   const alice = await newMember({ server });
   await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
-  const attach = alice.page.getByRole("button", { name: "Add", exact: true });
-  await expect(attach).toBeVisible();
+  await expect.poll(() => canAttachFiles(alice.page)).toBe(true);
   const accessToken = await accessTokenOf(owner.page, server.host);
   await withSocket(server.httpBase, async (socket) => {
     const state = await ask<{ roles?: { id: string; permissions: string[] }[] }>(
@@ -69,7 +68,7 @@ test("an oversized paste where files can't be attached says so", async ({ newMem
     socket.emit("server:roles:definitions:save", {
       accessToken, roleId: "member", permissions: member!.permissions.filter((p) => p !== "attach_files"),
     });
-    await Promise.race([expect(attach).toHaveCount(0), refused]);
+    await Promise.race([expect.poll(() => canAttachFiles(alice.page)).toBe(false), refused]);
   });
 
   const box = channelComposer(alice.page);
