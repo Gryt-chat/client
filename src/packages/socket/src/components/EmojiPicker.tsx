@@ -57,7 +57,7 @@ interface Section { id: string; label: string; items: EmojiPickerItem[] }
 
 function Cell({ item, active, onPick, onPoint }: { item: EmojiPickerItem; active: boolean; onPick: () => void; onPoint: () => void }) {
   return (
-    <button type="button" aria-label={item.name} title={`:${item.name}:`} onClick={onPick} onMouseEnter={onPoint} onFocus={onPoint}
+    <button type="button" aria-label={`:${item.name}:`} title={`:${item.name}:`} onClick={onPick} onMouseEnter={onPoint} onFocus={onPoint}
       style={{ width: CELL, height: CELL, padding: 0, border: "none", borderRadius: 10, cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, lineHeight: 1,
         background: active ? "var(--gryt-neutral-5)" : "transparent" }}>
@@ -150,7 +150,7 @@ export function EmojiPickerContent({ onSelect, serverHost, withOtherServers = fa
     item.id.startsWith("server:") ? "From this server" : item.id.startsWith("other:") ? `From ${from}` : sections.find((s) => s.id === from)?.label ?? "";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0,
+    <div className="gryt-emoji-picker" style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", minHeight: 0,
       background: "var(--gryt-neutral-2)", border: "1px solid var(--gryt-neutral-6)", borderRadius: 16,
       boxShadow: "0 18px 48px rgba(0, 0, 0, 0.6)", overflow: "hidden", color: "var(--gryt-neutral-12)" }}>
       <div style={{ padding: 12, borderBottom: "1px solid var(--gryt-neutral-6)", flex: "none" }}>
@@ -178,13 +178,13 @@ export function EmojiPickerContent({ onSelect, serverHost, withOtherServers = fa
         </label>
       </div>
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <div role="tablist" aria-label="Categories" style={{ display: "flex", flexDirection: "column", gap: 2, padding: "8px 6px",
+        <div aria-label="Categories" style={{ display: "flex", flexDirection: "column", gap: 2, padding: "8px 6px",
           borderRight: "1px solid var(--gryt-neutral-6)", overflowY: "auto", flex: "none", opacity: q ? 0.45 : 1 }}>
           {sections.filter((s) => !s.id.startsWith("other:")).map((section) => {
             const Glyph = CATEGORY_ICONS[section.id] ?? Smiley;
             const on = !q && current === section.id;
             return (
-              <button key={section.id} type="button" role="tab" aria-selected={on} aria-label={section.label} title={section.label}
+              <button key={section.id} type="button" data-emoji-category={section.id} aria-pressed={on} aria-label={section.label} title={section.label}
                 onClick={() => jump(section.id)}
                 style={{ width: 34, height: 34, flex: "none", padding: 0, border: "none", borderRadius: 10, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",

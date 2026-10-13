@@ -21,7 +21,7 @@ test("chat and card pickers put this server's custom emoji first and keep Unicod
   await expect(channelComposer(page).getByRole("img", { name: `:${name}:`, exact: true })).toBeVisible();
   await expect(chatPicker).toBeHidden();
   await page.getByRole("button", { name: "Insert emoji", exact: true }).click();
-  await chatPicker.getByPlaceholder("Search emojis...").fill("thumbsup");
+  await chatPicker.getByPlaceholder("Search emoji").fill("thumbsup");
   await chatPicker.getByTitle(":thumbsup:", { exact: true }).click();
   await expect(channelComposer(page)).toContainText("👍");
 

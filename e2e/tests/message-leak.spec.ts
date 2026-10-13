@@ -28,7 +28,7 @@ test("a raw socket that never joined gets none of a public channel's message eve
 
     await row.hover();
     await row.getByTitle("React with another emoji").click();
-    await alice.page.getByPlaceholder("Search emojis...").fill("thumbsup");
+    await alice.page.getByPlaceholder("Search emoji").fill("thumbsup");
     await alice.page.getByTitle(":thumbsup:").click();
     await expect(row.getByRole("button", { name: "👍 1" })).toBeVisible();
 
