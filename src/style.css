@@ -622,15 +622,13 @@ body {
   outline-offset: -2px;
 }
 
-/* Each row drawn on that person's card (GRYT-1726). The layers mirror the card's
-   banner in @gryt/ui's memberCard.css, fed by the same cardVars. */
+/* The row you point at, or whose card is open, is drawn on that person's card
+   (GRYT-1726). The layers mirror the card's banner in @gryt/ui's memberCard.css. */
 .member-row-card {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   border-radius: 12px;
-  margin: 3px 0;
-  color: #fff;
 }
 .member-row-card::before,
 .member-row-card::after {
@@ -639,6 +637,8 @@ body {
   inset: 0;
   z-index: -1;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 .member-row-card::before {
   background-color: var(--owl);
@@ -656,14 +656,18 @@ body {
 .member-row-card::after {
   background: linear-gradient(90deg, rgb(14 15 20 / 0.62), rgb(14 15 20 / 0.12) 75%);
 }
-.member-row-card[data-offline]::before { opacity: 0.45; }
-.member-row-card .text-sm,
-.member-row-card .text-xs { text-shadow: 0 1px 2px rgb(0 0 0 / 0.6); }
 .member-row-card.member-row-clickable:hover,
 .member-row-card.member-row-clickable:focus-visible,
 .member-row-card[data-card-open] {
   background: none;
-  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.4);
+  color: #fff;
+}
+.member-row-card:is(.member-row-clickable:hover, .member-row-clickable:focus-visible, [data-card-open])::before,
+.member-row-card:is(.member-row-clickable:hover, .member-row-clickable:focus-visible, [data-card-open])::after {
+  opacity: 1;
+}
+.member-row-card:is(.member-row-clickable:hover, .member-row-clickable:focus-visible, [data-card-open]) :is(.text-sm, .text-xs) {
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
 }
 
 .chat-editor-attach-btn:hover {

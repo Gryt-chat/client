@@ -216,7 +216,6 @@ const MemberItem = ({
             className="member-row member-row-clickable member-row-card"
             data-card-open={cardOpen || undefined}
             data-row-card={rowCard.kind}
-            data-offline={isOffline || undefined}
             style={rowCard.style}
           >
         <div className="flex items-center gap-2 w-full">
