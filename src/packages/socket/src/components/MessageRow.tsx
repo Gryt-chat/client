@@ -592,13 +592,13 @@ function MessageContent({
     : (highlighted ? "var(--gryt-neutral-5)" : "var(--gryt-neutral-4)");
   return (
     <motion.div
-      animate={{ marginBottom: hasReactions ? 30 : 0, background: bubble ? "rgba(0, 0, 0, 0)" : bgColor }}
+      animate={{ marginBottom: hasReactions ? 30 : 0 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
-        borderRadius: "var(--gryt-radius-md)",
         margin: "0 -6px",
-        ...(bubble ? { display: "flex", flexDirection: "column", alignItems: alignRight ? "flex-end" : "flex-start", alignSelf: "stretch" } : {}),
+        display: "flex", flexDirection: "column", alignItems: alignRight ? "flex-end" : "flex-start", alignSelf: "stretch",
       }}
+      onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
     >
     <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState} style={{
         /* Inset so the row does not shift by two pixels depending on it. */
@@ -607,15 +607,20 @@ function MessageContent({
         cursor: "default",
         position: "relative",
         textAlign: alignRight && !bubble ? "right" : undefined,
+        width: "fit-content",
+        transition: "background 0.15s",
+        /* The highlight hugs the text; hover is on the full-width wrapper. */
         ...(bubble ? {
-          width: "fit-content",
           maxWidth: "min(680px, 85%)",
           margin: "0 6px",
           borderRadius: 16,
           background: bubbleBackground,
-          transition: "background 0.15s",
-        } : {}),
-      }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+        } : {
+          maxWidth: "100%",
+          borderRadius: "var(--gryt-radius-md)",
+          background: bgColor,
+        }),
+      }}>
       <AnimatePresence>
         {showToolbar && (
           <motion.div
@@ -840,6 +845,7 @@ function ReactionBadges({
       transform: "translateY(100%)",
       gap: "4px",
       zIndex: 1,
+      width: "max-content",
     }}>
       <AnimatePresence mode="popLayout">
         {reactions.map((reaction, rIdx) => {
@@ -944,20 +950,25 @@ function hoverBarPlacement(
   barWidth: number,
 ): CSSProperties {
   if (look === "bubbles") return { bottom: "calc(100% + 4px)", right: 0 };
-  // No text, or no room beside it: the corner above the row, where it always was.
-  const corner: CSSProperties = alignRight ? { top: -16, left: 8 } : { top: -16, right: 8 };
-  if (!row || !text) return corner;
+  if (!row) return alignRight ? { top: -16, left: 8 } : { top: -16, right: 8 };
+  // The row hugs its text, so room is measured against the column it sits in.
+  const box = row.getBoundingClientRect();
+  const area = (row.parentElement ?? row).getBoundingClientRect();
+  // No text, or no room beside it: the column's top corner, where it always was.
+  const corner: CSSProperties = alignRight
+    ? { top: -16, left: area.left - box.left + 8 }
+    : { top: -16, right: box.right - area.right + 8 };
+  if (!text) return corner;
   const range = document.createRange();
   range.selectNodeContents(text);
   const lines = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
   const last = lines[lines.length - 1];
   if (!last) return corner;
-  const box = row.getBoundingClientRect();
   const top = last.top - box.top + last.height / 2 - BAR_HEIGHT / 2;
   if (alignRight) {
     const right = box.right - last.left + 10;
-    return right + barWidth + 8 <= box.width ? { top, right } : corner;
+    return last.left - 10 - barWidth - 8 >= area.left ? { top, right } : corner;
   }
   const left = last.right - box.left + 10;
-  return left + barWidth + 8 <= box.width ? { top, left } : corner;
+  return last.right + 10 + barWidth + 8 <= area.right ? { top, left } : corner;
 }
