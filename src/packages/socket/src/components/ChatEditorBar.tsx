@@ -5,8 +5,8 @@ import { PiX } from "../../../../lib/icons";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import type { ChatMessage } from "./chatUtils";
 import { getReplyPreview } from "./chatViewHelpers";
-import { EmojiText } from "./EmojiText";
 import type { MentionMember } from "./MentionAutocomplete";
+import { ReplyPreviewText } from "./ReplyPreviewText";
 
 interface ChatEditorBarProps {
   replyingTo: ChatMessage | null;
@@ -62,7 +62,7 @@ export function ChatEditorBar({
             <span className="text-sm text-gryt-muted">Replying to</span>
             <span className="text-sm font-bold">{getSenderName(replyingTo)}</span>
             <span className="text-xs text-gryt-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              <EmojiText text={getReplyPreview(replyingTo, 80)} emojiSize={14} disableTooltip />
+              <ReplyPreviewText text={getReplyPreview(replyingTo, 80)} />
             </span>
           </div>
           <Button tone="ghost" size="xsmall"

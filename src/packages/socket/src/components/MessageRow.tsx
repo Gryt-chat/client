@@ -27,6 +27,7 @@ import type { MemberInfo } from "./MemberSidebar";
 import { MessageAttachment } from "./MessageAttachment";
 import { MessageCards } from "./MessageCards";
 import { NameTag } from "./NameTag";
+import { ReplyPreviewText } from "./ReplyPreviewText";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 export interface MessageMeta {
@@ -663,7 +664,7 @@ function MessageContent({
             whiteSpace: "nowrap",
           }}
         >
-          <span className="text-xs">{replyPreviewText ? <EmojiText text={replyPreviewText} emojiSize={14} disableTooltip /> : "Original message"}</span>
+          <span className="text-xs">{replyPreviewText ? <ReplyPreviewText text={replyPreviewText} /> : "Original message"}</span>
         </div>
       )}
       <motion.div
