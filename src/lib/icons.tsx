@@ -13,6 +13,7 @@ import {
   ArrowsClockwise,
   ArrowsLeftRight,
   ArrowSquareOut,
+  ArrowUp,
   At,
   Bell,
   BellSlash,
@@ -146,6 +147,7 @@ function weighted(Base: Icon, weight: IconProps["weight"], name: string): Icon {
 export const PiArrowBendUpLeftFill: Icon = weighted(ArrowBendUpLeft, "fill", "PiArrowBendUpLeftFill");
 export const PiArrowBendUpLeftBold: Icon = weighted(ArrowBendUpLeft, "bold", "PiArrowBendUpLeftBold");
 export const PiArrowDownBold: Icon = weighted(ArrowDown, "bold", "PiArrowDownBold");
+export const PiArrowUpBold: Icon = weighted(ArrowUp, "bold", "PiArrowUpBold");
 export const PiArrowFatLineDownFill: Icon = weighted(ArrowFatLineDown, "fill", "PiArrowFatLineDownFill");
 export const PiArrowLineLeftFill: Icon = weighted(ArrowLineLeft, "fill", "PiArrowLineLeftFill");
 export const PiArrowLineRightFill: Icon = weighted(ArrowLineRight, "fill", "PiArrowLineRightFill");

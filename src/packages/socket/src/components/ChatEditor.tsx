@@ -1,3 +1,4 @@
+import { Menu } from "@gryt/ui";
 import {
   forwardRef,
   useCallback,
@@ -8,7 +9,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
-import { PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPaperPlaneTiltFill, PiSmileyFill, PiX } from "../../../../lib/icons";
+import { PiArrowUpBold, PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPlusBold, PiSmileyFill, PiX } from "../../../../lib/icons";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
@@ -270,6 +271,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const editorRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const mediaInputRef = useRef<HTMLInputElement>(null);
     const onSendRef = useRef(onSend);
     onSendRef.current = onSend;
     const onTypingRef = useRef(onTyping);
@@ -646,8 +648,34 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       };
     }, []);
 
+    const canSend = length > 0 || pendingFiles.length > 0;
     return (
-      <div className={`chat-editor-wrapper ${disabled ? "chat-editor-disabled" : ""}`} style={{ position: "relative" }}>
+      <div className={`chat-editor-shell ${disabled ? "chat-editor-disabled" : ""}`}>
+        {/* The phone's + menu, outside the field (GRYT-1722). */}
+        {allowFiles !== false && (
+          <Menu.Root>
+            <Menu.Trigger
+              render={<button className="chat-editor-plus-btn" type="button" aria-label="Add" disabled={disabled} />}
+            >
+              <PiPlusBold size={20} />
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner side="top" align="start" sideOffset={8}>
+                <Menu.Popup className="chat-editor-plus-menu">
+                  <Menu.Item onClick={() => fileInputRef.current?.click()}>
+                    <span className="chat-editor-plus-icon"><PiFileFill size={18} /></span>
+                    Upload a file
+                  </Menu.Item>
+                  <Menu.Item onClick={() => mediaInputRef.current?.click()}>
+                    <span className="chat-editor-plus-icon" data-accent><PiImageFill size={18} /></span>
+                    Photos and videos
+                  </Menu.Item>
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        )}
+      <div className="chat-editor-wrapper" style={{ position: "relative" }}>
         {pendingFiles.length > 0 && (
           <div className="chat-editor-file-preview-bar">
             {pendingFiles.map((pf) => (
@@ -698,17 +726,6 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           title="Channels"
         />
         <div className="chat-editor-input-row">
-          {allowFiles !== false && (
-            <button
-              className="chat-editor-attach-btn"
-              type="button"
-              aria-label="Attach file"
-              disabled={disabled}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <PiPaperclipFill size={20} />
-            </button>
-          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -719,25 +736,17 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               e.target.value = "";
             }}
           />
-          <div style={{ position: "relative" }}>
-            <button
-              className="chat-editor-emoji-btn"
-              type="button"
-              aria-label="Insert emoji"
-              disabled={disabled}
-              onClick={() => setEmojiPickerOpen((v) => !v)}
-            >
-              <PiSmileyFill size={20} />
-            </button>
-            {emojiPickerOpen && (
-              <EmojiPicker
-                onSelect={handlePickerEmojiSelect}
-                onClose={() => setEmojiPickerOpen(false)}
-                serverHost={serverHost}
-                withOtherServers
-              />
-            )}
-          </div>
+          <input
+            ref={mediaInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
           <div
             ref={editorRef}
             className="chat-editor-textarea"
@@ -762,16 +771,39 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               {(MESSAGE_MAX_LENGTH - length).toLocaleString("en")}
             </span>
           )}
-          <button
-            className="chat-editor-send-btn"
-            type="button"
-            aria-label="Send message"
-            disabled={disabled}
-            onClick={handleSend}
-          >
-            <PiPaperPlaneTiltFill size={20} />
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              className="chat-editor-emoji-btn"
+              type="button"
+              aria-label="Insert emoji"
+              disabled={disabled}
+              onClick={() => setEmojiPickerOpen((v) => !v)}
+            >
+              <PiSmileyFill size={20} />
+            </button>
+            {emojiPickerOpen && (
+              <EmojiPicker
+                onSelect={handlePickerEmojiSelect}
+                onClose={() => setEmojiPickerOpen(false)}
+                serverHost={serverHost}
+                withOtherServers
+              />
+            )}
+          </div>
+          {/* Round, and only once there is something to send. Enter still sends. */}
+          {canSend && (
+            <button
+              className="chat-editor-send-btn"
+              type="button"
+              aria-label="Send message"
+              disabled={disabled}
+              onClick={handleSend}
+            >
+              <PiArrowUpBold size={18} />
+            </button>
+          )}
         </div>
+      </div>
       </div>
     );
   }

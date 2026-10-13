@@ -128,10 +128,11 @@ export function sha256(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-/** Attaches files with the paperclip and sends them with one Enter in `box`. */
+/** Attaches files through the + menu and sends them with one Enter in `box`. */
 export async function attachAndSend(page: Page, files: string[], box: Locator = channelComposer(page)): Promise<void> {
   const chooser = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Attach file" }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Upload a file" }).click();
   await (await chooser).setFiles(files);
   await expect(page.getByRole("button", { name: "Remove file" })).toHaveCount(files.length);
   await box.press("Enter");
