@@ -448,8 +448,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
           {/* Lined up on the text, or on the top when there's no text, like pictures or a card. */}
           <div className="flex" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row", alignItems: m.text && drawsMessageText(m) ? "baseline" : "flex-start" }}>
-            {/* The clock time, on hover only: "4 days ago" ran into the name. The column keeps names lined up. */}
-            <span title={toDate(m.created_at).toLocaleString()} style={{ width: 44, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", visibility: highlighted ? "visible" : "hidden" }}>
+            {/* Always shown, in a column: times scan down one line and names start at one x. Hidden, it was just a gap. */}
+            <span title={toDate(m.created_at).toLocaleString()} style={{ width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
               {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
             <span className="text-sm font-bold" style={{ flex: "none", color: nameColor }}>{meta.senderName}</span>
@@ -506,6 +506,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 }));
 
 MessageRow.displayName = "MessageRow";
+
+/** Compact's time column, as wide as this locale's latest time: "23:59" here, "11:59 PM" in en-US. */
+const COMPACT_TIME_WIDTH = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
 
 function MessageContent({
   m,
