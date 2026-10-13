@@ -592,7 +592,8 @@ function MessageContent({
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   const hasThreadNews = (threadUnread ?? 0) > 0 || (threadMentions ?? 0) > 0;
   const sealedNote = sealedPlaceholder(m);
-  const drawsText = drawsMessageText(m);
+  // No empty text box above a picture, or it pushes the picture off its corner.
+  const drawsText = drawsMessageText(m) && !!m.text?.trim();
   // For tests and tools: a row the server has not confirmed says why.
   const sendState = m.failed ? "failed" : m.waiting && m.pending ? "waiting" : m.pending ? "pending" : undefined;
   const bubble = look === "bubbles";
@@ -622,7 +623,8 @@ function MessageContent({
       onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{
         /* Inset so the row does not shift by two pixels depending on it. */
         boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
-        padding: bubble ? "8px 14px" : "6px 8px",
+        // Even padding, and a radius of a picture's plus that padding, so the edge round one reads as one stroke.
+        padding: bubble ? 10 : 8,
         cursor: "default",
         position: "relative",
         textAlign: alignRight && !bubble ? "right" : undefined,
@@ -632,11 +634,13 @@ function MessageContent({
         ...(bubble ? {
           maxWidth: "min(680px, 85%)",
           margin: "0 6px",
-          borderRadius: 16,
+          borderRadius: "calc(var(--gryt-radius-md) + 10px)",
           background: bubbleBackground,
         } : {
           maxWidth: "100%",
-          borderRadius: "var(--gryt-radius-md)",
+          // The extra 2px of padding above and below doesn't spread the chat out.
+          margin: "-2px 0",
+          borderRadius: "calc(var(--gryt-radius-md) + 8px)",
           background: bgColor,
         }),
       }}>
@@ -687,6 +691,7 @@ function MessageContent({
       <motion.div
         animate={{ opacity: m.pending ? 0.6 : m.failed ? 0.5 : 1 }}
         transition={{ duration: 0.2 }}
+        className="message-body"
         style={{ wordBreak: "break-word" }}
       >
         {/* Only the text folds. Attachments and embeds below carry their own
