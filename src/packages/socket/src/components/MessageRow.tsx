@@ -10,7 +10,7 @@ import type { ThreadSummary } from "../hooks/useThreads";
 import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
-import { drawsMessageText } from "../utils/webhookCards";
+import { drawsMessageText, isUnknownKind } from "../utils/webhookCards";
 import { AttachmentGrid } from "./AttachmentGrid";
 import { isFileCard, isGridImage } from "./attachmentKinds";
 import { BotTag } from "./BotTag";
@@ -770,7 +770,12 @@ function MessageContent({
             </div>
           );
         })()}
-        {m.poll && (
+        {isUnknownKind(m) && (
+          <div className="text-sm" style={{ marginTop: 4, padding: "8px 12px", borderRadius: "var(--gryt-radius-md)", border: "1px dashed var(--gryt-neutral-6)", color: "var(--gryt-neutral-11)" }}>
+            This message needs a newer version of Gryt. Update to see it.
+          </div>
+        )}
+        {m.poll && !isUnknownKind(m) && (
           <PollCard
             poll={m.poll}
             conversationId={m.conversation_id}

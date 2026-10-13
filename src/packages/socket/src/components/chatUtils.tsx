@@ -105,6 +105,8 @@ export type ChatMessage = {
   reply_original?: ChatMessage;
   /** A poll, as this viewer sees it. `text` is then a fallback line (GRYT-1732). */
   poll?: PublicPoll | null;
+  /** What the message is when it's more than text, like "poll". One this app doesn't know says to update. */
+  kind?: string;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components

@@ -16,13 +16,20 @@ const ROW = "src/packages/socket/src/components/MessageRow.tsx";
 const CARDS = "src/packages/socket/src/components/MessageCards.tsx";
 const VIEW = "src/packages/socket/src/components/ChatView.tsx";
 
-const { drawsMessageText, mentionsViewer, toWebhookCardData } = await import(`../${HELPERS}`);
+const { drawsMessageText, isUnknownKind, mentionsViewer, toWebhookCardData } = await import(`../${HELPERS}`);
 
 /* ── the fallback line ──────────────────────────────────────────────────── */
 
 assert.equal(drawsMessageText({ text: "Deploy finished" }), true);
 assert.equal(drawsMessageText({ text: "Deploy finished", text_fallback: false }), true);
 assert.equal(drawsMessageText({ text: "Deploy finished +1 more", text_fallback: true }), false);
+// A poll draws itself, and a kind this app doesn't know gets the update line instead of its text.
+assert.equal(drawsMessageText({ text: "📊 Poll: Lunch?", kind: "poll", poll: {} }), false);
+assert.equal(drawsMessageText({ text: "📊 Poll: Lunch?", poll: {} }), false);
+assert.equal(drawsMessageText({ text: "Something new", kind: "event" }), false);
+assert.equal(isUnknownKind({ text: "x", kind: "event" }), true);
+assert.equal(isUnknownKind({ text: "x", kind: "poll" }), false);
+assert.equal(isUnknownKind({ text: "x" }), false);
 
 const rowSource = read(ROW);
 assert.match(rowSource, /drawsMessageText\(m\)/, `${ROW} no longer asks whether to draw the text`);
