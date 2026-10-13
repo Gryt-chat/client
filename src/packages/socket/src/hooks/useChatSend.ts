@@ -405,12 +405,12 @@ export function useChatSend({
             : null;
         } catch (err) {
           const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
-          toast.error(msg);
-          // Nothing will confirm this row now, so it fails, and the files go back.
-          const failed = (m: ChatMessage) => (m.message_id === pendingId ? { ...m, pending: false, failed: true } : m);
+          toast.error(msg, { duration: 8000 });
+          // The draft goes back into the composer, so the row goes; leaving it failed showed it twice.
+          const gone = (m: ChatMessage) => m.message_id !== pendingId;
           const key = cacheKeyFor(activeConversationId);
-          setChatMessages((prev) => prev.map(failed));
-          setMessageCache((prev) => (prev[key] ? { ...prev, [key]: prev[key].map(failed) } : prev));
+          setChatMessages((prev) => prev.filter(gone));
+          setMessageCache((prev) => (prev[key] ? { ...prev, [key]: prev[key].filter(gone) } : prev));
           returnDraft(returnTo, { text: body, files });
           return;
         }

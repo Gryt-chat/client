@@ -80,7 +80,7 @@ test("an oversized paste where files can't be attached says so", async ({ newMem
   await expect(alice.page.getByRole("button", { name: "Remove file" })).toHaveCount(0);
 });
 
-test("a message whose upload fails comes back to the composer, and its row says it failed", async ({ newMember }) => {
+test("a message whose upload fails comes back to the composer, and leaves no row behind", async ({ newMember }) => {
   const alice = await newMember();
   await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
@@ -95,8 +95,9 @@ test("a message whose upload fails comes back to the composer, and its row says 
   await alice.page.route("**/api/uploads", (route) => route.abort("connectionrefused"));
   await box.press("Enter");
 
-  await expect(alice.page.locator("[data-message-id]").filter({ hasText: text })).toContainText("Failed to send");
   await expect(box).toHaveText(text);
+  // Back in the box and not also in chat: a failed row beside the draft showed it twice.
+  await expect(alice.page.locator("[data-message-id]").filter({ hasText: text })).toHaveCount(0);
   await expect(files).toHaveCount(1);
 
   // What came back is the whole message: one Enter sends it.
