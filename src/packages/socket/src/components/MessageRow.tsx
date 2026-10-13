@@ -584,13 +584,12 @@ function MessageContent({
   // For tests and tools: a row the server has not confirmed says why.
   const sendState = m.failed ? "failed" : m.waiting && m.pending ? "waiting" : m.pending ? "pending" : undefined;
   const bubble = look === "bubbles";
-  const textRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const [barStyle, setBarStyle] = useState<CSSProperties>({});
   useLayoutEffect(() => {
     if (!showToolbar) return;
     const width = barRef.current?.offsetWidth || 200;
-    setBarStyle(hoverBarPlacement(look, alignRight, rowRef.current, textRef.current, width));
+    setBarStyle(hoverBarPlacement(look, alignRight, rowRef.current, width));
   }, [showToolbar, look, alignRight, rowRef]);
   const bubbleBackground = own
     ? (highlighted ? "var(--gryt-accent-5)" : "var(--gryt-accent-4)")
@@ -707,7 +706,7 @@ function MessageContent({
         ) : (
           drawsText && (
             <CollapsibleText>
-              <div ref={textRef}>
+              <div>
               <MarkdownRenderer
                 content={m.text}
                 customEmojis={customEmojiList}
@@ -966,18 +965,12 @@ function ReactionBadges({
   );
 }
 
-/* The bar is about this tall. Its width is measured, since the quick reactions vary. */
-const BAR_HEIGHT = 44;
-
-/**
- * Where the hover bar goes: above the message's far corner in Cozy and Bubbles, else at the
- * end of the last line, and never over anything anyone wrote (GRYT-1722).
- */
+/** Always just above the message: Bubbles at the bubble's far end, Cozy and Compact at the
+    column's far edge, so it's in the same place every time (GRYT-1722). */
 function hoverBarPlacement(
   look: MessageStyle,
   alignRight: boolean,
   row: HTMLElement | null,
-  text: HTMLElement | null,
   barWidth: number,
 ): CSSProperties {
   if (look === "bubbles") {
@@ -985,35 +978,11 @@ function hoverBarPlacement(
     const short = !alignRight && !!row && row.getBoundingClientRect().width < barWidth;
     return short ? { bottom: "calc(100% + 4px)", left: 0 } : { bottom: "calc(100% + 4px)", right: 0 };
   }
-  // Cozy, like Teams: above the message's far corner when it's wide enough not to cover the name.
-  if (look === "cozy" && row && row.getBoundingClientRect().width >= barWidth + 40) {
-    return alignRight ? { bottom: "calc(100% - 6px)", left: 0 } : { bottom: "calc(100% - 6px)", right: 0 };
-  }
-  if (!row) return alignRight ? { top: -16, left: 8 } : { top: -16, right: 8 };
-  // The row hugs its text, so room is measured against the column it sits in.
+  if (!row) return alignRight ? { bottom: "calc(100% - 6px)", left: 8 } : { bottom: "calc(100% - 6px)", right: 8 };
+  // The row hugs its text, so the edge is the column's, not the row's.
   const box = row.getBoundingClientRect();
   const area = (row.parentElement ?? row).getBoundingClientRect();
-  // No text, or no room beside it: the column's top corner, where it always was.
-  const corner: CSSProperties = alignRight
-    ? { top: -16, left: area.left - box.left + 8 }
-    : { top: -16, right: box.right - area.right + 8 };
-  if (!text) return corner;
-  const range = document.createRange();
-  range.selectNodeContents(text);
-  const lines = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
-  const last = lines[lines.length - 1];
-  if (!last) return corner;
-  const top = last.top - box.top + last.height / 2 - BAR_HEIGHT / 2;
-  // Anything above the text in the row, like a quoted reply, would sit under the bar: use the corner.
-  if (text.getBoundingClientRect().top - box.top > 8 && lines.length > 0 && lines[0].top - box.top > 8) return corner;
-  // The bar is taller than a line, so a wrapped line above that reaches under it would be covered.
-  const above = lines.filter((r) => r.bottom <= last.top + 1).pop();
-  if (alignRight) {
-    const right = box.right - last.left + 10;
-    const covers = !!above && above.left < last.left - 10;
-    return !covers && last.left - 10 - barWidth - 8 >= area.left ? { top, right } : corner;
-  }
-  const left = last.right - box.left + 10;
-  const covers = !!above && above.right > last.right + 10;
-  return !covers && last.right + 10 + barWidth + 8 <= area.right ? { top, left } : corner;
+  return alignRight
+    ? { bottom: "calc(100% - 6px)", left: area.left - box.left + 8 }
+    : { bottom: "calc(100% - 6px)", right: box.right - area.right + 8 };
 }
