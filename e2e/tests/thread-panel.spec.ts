@@ -15,13 +15,18 @@ function panel(page: Page): Locator {
   return page.getByRole("complementary", { name: "Thread" });
 }
 
+/** Top-left: in Cozy the next row's hover bar sits over the bottom right of this one (GRYT-1722). */
+async function hoverRow(row: Locator): Promise<void> {
+  await row.hover({ position: { x: 24, y: 6 } });
+}
+
 function threadComposer(page: Page): Locator {
   return composer(page, "Reply to thread…");
 }
 
 async function startThread(page: Page, rootText: string): Promise<void> {
   const row = messageRow(page, rootText);
-  await row.hover();
+  await hoverRow(row);
   await row.getByTitle("More", { exact: true }).click();
   await page.getByRole("menuitem", { name: /^Start thread/ }).click();
   await expect(panel(page)).toBeVisible();
@@ -29,7 +34,7 @@ async function startThread(page: Page, rootText: string): Promise<void> {
 
 async function openThread(page: Page, rootText: string): Promise<void> {
   const row = messageRow(page, rootText);
-  await row.hover();
+  await hoverRow(row);
   await row.getByTitle("More", { exact: true }).click();
   await page.getByRole("menuitem", { name: /^Open thread/ }).click();
   await expect(panel(page)).toBeVisible();
@@ -52,7 +57,7 @@ async function closeTopic(page: Page): Promise<void> {
 
 async function deleteMessage(page: Page, text: string): Promise<void> {
   const row = messageRow(page, text);
-  await row.hover();
+  await hoverRow(row);
   await row.getByTitle("More", { exact: true }).click();
   await page.getByRole("menuitem", { name: "Delete Message" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).last().click();
