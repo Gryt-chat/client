@@ -13,6 +13,7 @@ import { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
 import { GameIcon } from "./GameIcon";
 import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
+import { useRowCard } from "./memberCard/rowCard";
 import { groupMembersByRole, readableRoleColor } from "./memberGroups";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import { statusConfig } from "./memberStatus";
@@ -173,6 +174,7 @@ const MemberItem = ({
   const { label: statusLabel, color: statusColor } = statusConfig[member.status];
   const isOffline = member.status === "offline";
   const showStatusLine = member.status === "in_voice" || member.status === "afk";
+  const rowCard = useRowCard(member, serverHost);
 
   return (
     <UserContextMenu
@@ -211,8 +213,10 @@ const MemberItem = ({
         {/* Clicking opens the card. Messaging is a button on it, and in the context menu. */}
         <Popover.Trigger nativeButton={false} render={<div />}>
           <div
-            className="member-row member-row-clickable"
+            className="member-row member-row-clickable member-row-card"
             data-card-open={cardOpen || undefined}
+            data-row-card={rowCard.kind}
+            style={rowCard.style}
           >
         <div className="flex items-center gap-2 w-full">
           <Avatar
