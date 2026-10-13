@@ -1,10 +1,10 @@
 import { ContextMenu } from "@gryt/ui";
-import React, { type ReactNode, useCallback, useMemo } from "react";
+import React, { type ReactNode, useCallback, useMemo, useState } from "react";
 
 import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiPushPinFill, PiPushPinSlashFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
 import { saveOpenedFile, triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
-import { getRecentReactions } from "../utils/recentReactions";
+import { getFrequentReactions } from "../utils/recentReactions";
 import { EmojiPickerContent } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
 
@@ -114,7 +114,8 @@ function QuickReactions({
   onReaction: (src: string) => void;
   serverHost?: string;
 }) {
-  const recent = useMemo(() => getRecentReactions(4, serverHost), [serverHost]);
+  // The same four as the hover bar, so the two never disagree.
+  const recent = useMemo(() => getFrequentReactions(4, serverHost), [serverHost]);
 
   const handleEmojiSelect = useCallback((src: string) => {
     onReaction(src);
@@ -272,15 +273,21 @@ export function MessageContextMenu({
     messageActions.onReply || messageActions.onEdit || messageActions.onReport || messageActions.onDelete || messageActions.onTogglePin
   );
 
+  /* The bar's "…" opens this with a synthetic event. The bar already shows these emojis
+     right above it, so only a real right-click gets the row. */
+  const [fromBar, setFromBar] = useState(false);
   return (
     <ContextMenu.Root onOpenChange={onOpenChange}>
-      <ContextMenu.Trigger onContextMenu={media ? ((e: React.MouseEvent) => e.stopPropagation()) : undefined}>
+      <ContextMenu.Trigger onContextMenu={(e: React.MouseEvent) => {
+        setFromBar(!e.nativeEvent.isTrusted);
+        if (media) e.stopPropagation();
+      }}>
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
         <ContextMenu.Positioner>
           <ContextMenu.Popup className="min-w-45">
-        {onReaction && (
+        {onReaction && !fromBar && (
           <QuickReactions onReaction={onReaction} serverHost={serverHost} />
         )}
         {media && <MediaItems media={media} />}
