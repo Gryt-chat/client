@@ -9,7 +9,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
-import { PiArrowUpBold, PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPlusBold, PiSmileyFill, PiX } from "../../../../lib/icons";
+import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPlusBold, PiSmileyFill, PiX } from "../../../../lib/icons";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
@@ -64,6 +64,8 @@ interface ChatEditorProps {
   allowFiles?: boolean;
   maxFileSize?: number | null;
   onSend: (markdown: string, files: File[]) => void;
+  /** Shown as Poll in the + menu where this server and channel take one (GRYT-1732). */
+  onCreatePoll?: () => void;
   onArrowUpEmpty?: () => void;
   onCancel?: () => void;
   onTyping?: () => void;
@@ -264,7 +266,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
+  ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [dragFrom, setDragFrom] = useState<number | null>(null);
     const [dropAt, setDropAt] = useState<number | null>(null);
@@ -664,7 +666,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     return (
       <div className={`chat-editor-shell ${disabled ? "chat-editor-disabled" : ""}`}>
         {/* The phone's + menu, outside the field (GRYT-1722). */}
-        {allowFiles !== false && (
+        {(allowFiles !== false || onCreatePoll) && (
           <Menu.Root>
             <Menu.Trigger
               render={<button className="chat-editor-plus-btn" type="button" aria-label="Add" disabled={disabled} />}
@@ -674,10 +676,18 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             <Menu.Portal>
               <Menu.Positioner side="top" align="start" sideOffset={8}>
                 <Menu.Popup className="chat-editor-plus-menu">
-                  <Menu.Item onClick={() => fileInputRef.current?.click()}>
-                    <span className="chat-editor-plus-icon" data-accent><PiPaperclipFill size={18} /></span>
-                    Attach files
-                  </Menu.Item>
+                  {allowFiles !== false && (
+                    <Menu.Item onClick={() => fileInputRef.current?.click()}>
+                      <span className="chat-editor-plus-icon" data-accent><PiPaperclipFill size={18} /></span>
+                      Attach files
+                    </Menu.Item>
+                  )}
+                  {onCreatePoll && (
+                    <Menu.Item onClick={onCreatePoll}>
+                      <span className="chat-editor-plus-icon" data-accent><PiChartBarFill size={18} /></span>
+                      Poll
+                    </Menu.Item>
+                  )}
                 </Menu.Popup>
               </Menu.Positioner>
             </Menu.Portal>

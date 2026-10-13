@@ -29,6 +29,7 @@ import type { MemberInfo } from "./MemberSidebar";
 import { MessageAttachment } from "./MessageAttachment";
 import { MessageCards } from "./MessageCards";
 import { NameTag } from "./NameTag";
+import { PollCard } from "./PollCard";
 import { ReplyPreviewText } from "./ReplyPreviewText";
 import { UnreadIndicator } from "./UnreadIndicator";
 
@@ -770,6 +771,16 @@ function MessageContent({
             </div>
           );
         })()}
+        {m.poll && (
+          <PollCard
+            poll={m.poll}
+            conversationId={m.conversation_id}
+            messageId={m.message_id}
+            serverHost={serverHost}
+            currentUserId={currentUserId}
+            memberList={memberList}
+          />
+        )}
         {m.cards && m.cards.length > 0 && serverHost && (
           <MessageCards
             cards={m.cards}

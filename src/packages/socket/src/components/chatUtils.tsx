@@ -1,6 +1,7 @@
 import { Tooltip } from "@gryt/ui";
 
 import { LabelledDivider } from "./LabelledDivider";
+import type { PublicPoll } from "../utils/polls";
 
 export type Reaction = {
   src: string;
@@ -102,6 +103,8 @@ export type ChatMessage = {
   mls_placeholder?: { seq: number; sender_server_id: string } | null;
   /** The message this one answers, when it's in the archive but not on screen. */
   reply_original?: ChatMessage;
+  /** A poll, as this viewer sees it. `text` is then a fallback line (GRYT-1732). */
+  poll?: PublicPoll | null;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components

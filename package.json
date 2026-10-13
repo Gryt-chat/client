@@ -207,7 +207,8 @@
     "test:composer-enter": "node --disable-warning=ExperimentalWarning scripts/check-composer-enter.mjs",
     "test:terms-agreement": "node --disable-warning=ExperimentalWarning scripts/check-terms-agreement.mjs",
     "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.mjs",
-    "test:media-sandbox": "node --disable-warning=ExperimentalWarning scripts/check-media-sandbox.mjs"
+    "test:media-sandbox": "node --disable-warning=ExperimentalWarning scripts/check-media-sandbox.mjs",
+    "test:polls": "node --disable-warning=ExperimentalWarning scripts/check-polls.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
