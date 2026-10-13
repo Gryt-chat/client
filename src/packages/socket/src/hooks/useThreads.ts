@@ -640,19 +640,9 @@ export function useThreads(
           fileIds = uploaded.map((u) => u.fileId);
         } catch (err) {
           const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
-          toast.error(msg);
-          // The optimistic row is marked rather than removed, the same way a
-          // failed send is in a channel — a reply that vanishes reads as sent.
-          setOpen((o) =>
-            o
-              ? {
-                  ...o,
-                  messages: o.messages.map((m) =>
-                    m.message_id === nonce ? { ...m, pending: false, failed: true } : m,
-                  ),
-                }
-              : o,
-          );
+          toast.error(msg, { duration: 8000 });
+          // The draft goes back into the composer with the toast, so the row goes; failed, it showed twice.
+          setOpen((o) => (o ? { ...o, messages: o.messages.filter((m) => m.message_id !== nonce) } : o));
           returnDraft(draftKey(serverHost || "", conversationId, cur.thread.thread_id), { text: trimmed, files });
           return;
         }

@@ -9,6 +9,13 @@ export interface UploadedFile {
   meta?: SealedAttachmentKey;
 }
 
+/* Older servers answer with config words a member can't act on; these say what to pass on. */
+const STORAGE_CODES: Record<string, string> = {
+  s3_not_configured: "This server can't store files yet, so pictures and files can't be sent here. Let whoever runs it know that file storage isn't set up.",
+  "S3_BUCKET not configured": "This server can't store files yet, so pictures and files can't be sent here. Let whoever runs it know that file storage isn't set up.",
+  s3_disabled: "File uploads are turned off on this server. Let whoever runs it know if you need them.",
+};
+
 /**
  * Encrypt a file, if this conversation is being encrypted, and upload it. The seal
  * happens here so `sealed=1` and the encryption cannot come apart.
@@ -63,7 +70,9 @@ export async function uploadChatFile(
     let msg = `Upload failed (${resp.status})`;
     try {
       const err = raw ? JSON.parse(raw) : {};
-      if (err.message) msg = err.message;
+      if (err.message && !/S3_BUCKET|DISABLE_S3/.test(err.message)) msg = err.message;
+      else if (STORAGE_CODES[err.error]) msg = STORAGE_CODES[err.error];
+      else if (err.message) msg = err.message;
       else if (err.error) msg = err.error;
     } catch { /* ignored */ }
     console.error("[Upload] Failed:", { status: resp.status, url: `${base}/api/uploads`, body: raw });
