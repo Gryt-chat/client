@@ -27,6 +27,7 @@ import type { MemberInfo } from "./MemberSidebar";
 import { MessageAttachment } from "./MessageAttachment";
 import { MessageCards } from "./MessageCards";
 import { NameTag } from "./NameTag";
+import { ReplyPreviewText } from "./ReplyPreviewText";
 import { UnreadIndicator } from "./UnreadIndicator";
 
 export interface MessageMeta {
@@ -432,8 +433,9 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
       ) : look === "compact" ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
           <div className="flex items-baseline" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row" }}>
-            <span style={{ width: 44, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-              <MessageTimestamp date={toDate(m.created_at)} />
+            {/* The clock time, on hover only: "4 days ago" ran into the name. The column keeps names lined up. */}
+            <span title={toDate(m.created_at).toLocaleString()} style={{ width: 44, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", visibility: highlighted ? "visible" : "hidden" }}>
+              {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
             <span className="text-sm font-bold" style={{ flex: "none", color: nameColor }}>{meta.senderName}</span>
             {meta.isBot && <BotTag />}
@@ -662,7 +664,7 @@ function MessageContent({
             whiteSpace: "nowrap",
           }}
         >
-          <span className="text-xs">{replyPreviewText ?? "Original message"}</span>
+          <span className="text-xs">{replyPreviewText ? <ReplyPreviewText text={replyPreviewText} /> : "Original message"}</span>
         </div>
       )}
       <motion.div
@@ -939,8 +941,8 @@ function ReactionBadges({
 const BAR_HEIGHT = 44;
 
 /**
- * Where the hover bar goes: above a bubble's top-right end, or on the last line of
- * text right where it ends, so it never sits over anything anyone wrote (GRYT-1722).
+ * Where the hover bar goes: above the message's far corner in Cozy and Bubbles, else at the
+ * end of the last line, and never over anything anyone wrote (GRYT-1722).
  */
 function hoverBarPlacement(
   look: MessageStyle,
@@ -953,6 +955,10 @@ function hoverBarPlacement(
     // Above the bubble's far end, unless a short bubble on the left would push it off the column.
     const short = !alignRight && !!row && row.getBoundingClientRect().width < barWidth;
     return short ? { bottom: "calc(100% + 4px)", left: 0 } : { bottom: "calc(100% + 4px)", right: 0 };
+  }
+  // Cozy, like Teams: above the message's far corner when it's wide enough not to cover the name.
+  if (look === "cozy" && row && row.getBoundingClientRect().width >= barWidth + 40) {
+    return alignRight ? { bottom: "calc(100% - 6px)", left: 0 } : { bottom: "calc(100% - 6px)", right: 0 };
   }
   if (!row) return alignRight ? { top: -16, left: 8 } : { top: -16, right: 8 };
   // The row hugs its text, so room is measured against the column it sits in.
@@ -969,10 +975,16 @@ function hoverBarPlacement(
   const last = lines[lines.length - 1];
   if (!last) return corner;
   const top = last.top - box.top + last.height / 2 - BAR_HEIGHT / 2;
+  // Anything above the text in the row, like a quoted reply, would sit under the bar: use the corner.
+  if (text.getBoundingClientRect().top - box.top > 8 && lines.length > 0 && lines[0].top - box.top > 8) return corner;
+  // The bar is taller than a line, so a wrapped line above that reaches under it would be covered.
+  const above = lines.filter((r) => r.bottom <= last.top + 1).pop();
   if (alignRight) {
     const right = box.right - last.left + 10;
-    return last.left - 10 - barWidth - 8 >= area.left ? { top, right } : corner;
+    const covers = !!above && above.left < last.left - 10;
+    return !covers && last.left - 10 - barWidth - 8 >= area.left ? { top, right } : corner;
   }
   const left = last.right - box.left + 10;
-  return last.right + 10 + barWidth + 8 <= area.right ? { top, left } : corner;
+  const covers = !!above && above.right > last.right + 10;
+  return !covers && last.right + 10 + barWidth + 8 <= area.right ? { top, left } : corner;
 }
