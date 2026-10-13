@@ -31,9 +31,11 @@ export const ImageAttachment = memo(({
   return (
     <div className="chat-attachment-image-wrapper"
       data-unsized={!hasDimensions && !loaded ? "" : undefined}
+      data-sized={hasDimensions ? "" : undefined}
       style={hasDimensions ? {
         aspectRatio: `${width} / ${height}`,
         "--img-w": `${width}px`,
+        "--img-ar": `${width / height}`,
       } as React.CSSProperties : undefined}
     >
       {!loaded && (
