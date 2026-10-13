@@ -18,6 +18,14 @@ export function isUnknownKind(message: MessageText): boolean {
   return !!message.kind && !KNOWN_KINDS.includes(message.kind);
 }
 
+/** What the row says in place of a message it can't draw. Plugin kinds are `plugin:<id>:<name>`. */
+export function unknownKindNotice(kind: string): string {
+  const plugin = /^plugin:([^:]+):/.exec(kind)?.[1];
+  return plugin
+    ? `This message is from the ${plugin} plugin, which this app doesn't have.`
+    : "This message needs a newer version of Gryt. Update to see it.";
+}
+
 /** Whether the row draws `text`. Cards, polls and unknown kinds stand in for it. */
 export function drawsMessageText(message: MessageText): boolean {
   return message.text_fallback !== true && !message.kind && !message.poll;

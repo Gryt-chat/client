@@ -16,7 +16,7 @@ const ROW = "src/packages/socket/src/components/MessageRow.tsx";
 const CARDS = "src/packages/socket/src/components/MessageCards.tsx";
 const VIEW = "src/packages/socket/src/components/ChatView.tsx";
 
-const { drawsMessageText, isUnknownKind, mentionsViewer, toWebhookCardData } = await import(`../${HELPERS}`);
+const { drawsMessageText, isUnknownKind, mentionsViewer, toWebhookCardData, unknownKindNotice } = await import(`../${HELPERS}`);
 
 /* ── the fallback line ──────────────────────────────────────────────────── */
 
@@ -30,6 +30,8 @@ assert.equal(drawsMessageText({ text: "Something new", kind: "event" }), false);
 assert.equal(isUnknownKind({ text: "x", kind: "event" }), true);
 assert.equal(isUnknownKind({ text: "x", kind: "poll" }), false);
 assert.equal(isUnknownKind({ text: "x" }), false);
+assert.match(unknownKindNotice("plugin:now-playing:track"), /now-playing plugin/);
+assert.match(unknownKindNotice("event"), /newer version of Gryt/);
 
 const rowSource = read(ROW);
 assert.match(rowSource, /drawsMessageText\(m\)/, `${ROW} no longer asks whether to draw the text`);
