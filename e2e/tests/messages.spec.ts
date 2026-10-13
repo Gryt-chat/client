@@ -53,7 +53,7 @@ test("an oversized paste where files can't be attached says so", async ({ newMem
   const alice = await newMember({ server });
   await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
-  const attach = alice.page.getByRole("button", { name: "Attach file" });
+  const attach = alice.page.getByRole("button", { name: "Add", exact: true });
   await expect(attach).toBeVisible();
   const accessToken = await accessTokenOf(owner.page, server.host);
   await withSocket(server.httpBase, async (socket) => {

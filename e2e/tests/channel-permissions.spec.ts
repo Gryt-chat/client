@@ -55,7 +55,7 @@ test("a channel's denies take its buttons away there and nowhere else", async ({
     await expect(member.page.getByRole("button", { name: "Reply" }).first()).toBeVisible();
     return {
       react: member.page.getByRole("button", { name: "React with another emoji" }),
-      attach: member.page.getByRole("button", { name: "Attach file" }),
+      attach: member.page.getByRole("button", { name: "Add", exact: true }),
     };
   };
 
