@@ -11,6 +11,8 @@ import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
 import { drawsMessageText } from "../utils/webhookCards";
+import { AttachmentGrid } from "./AttachmentGrid";
+import { isFileCard, isGridImage } from "./attachmentKinds";
 import { BotTag } from "./BotTag";
 import { MessageHoverToolbar } from "./ChatMessage";
 import type { ChatMessage, Reaction } from "./chatUtils";
@@ -736,22 +738,38 @@ function MessageContent({
         {serverHost && !m.pending && showsPreviews && drawsText && (
           <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
         )}
-        {m.attachments && m.attachments.length > 0 && serverHost && (
-          <div className="flex gap-2 flex-wrap flex-col" style={{ marginTop: "4px" }}>
-            {m.attachments.map((fileId, attIdx) => (
-              <MessageAttachment
-                key={fileId}
-                fileId={fileId}
-                meta={m.enriched_attachments?.[attIdx]}
-                serverHost={serverHost}
-                messageActions={messageActions}
-                onLightboxOpen={onLightboxOpen}
-                chatMediaVolume={chatMediaVolume}
-                setChatMediaVolume={setChatMediaVolume}
-              />
-            ))}
-          </div>
-        )}
+        {m.attachments && m.attachments.length > 0 && serverHost && (() => {
+          /* Two or more pictures go in a grid, and plain files two to a row (GRYT-1722 draft).
+             Media keeps its own player. The order is the order they were sent in. */
+          const all = m.attachments.map((fileId, i) => ({ fileId, meta: m.enriched_attachments?.[i] }));
+          const images = all.filter((a) => isGridImage(a.meta));
+          const grid = images.length >= 2;
+          const files = all.filter((a) => isFileCard(a.meta));
+          const rest = all.filter((a) => !(grid && isGridImage(a.meta)) && !(files.length >= 2 && isFileCard(a.meta)));
+          const one = (a: (typeof all)[number]) => (
+            <MessageAttachment
+              key={a.fileId}
+              fileId={a.fileId}
+              meta={a.meta}
+              serverHost={serverHost}
+              messageActions={messageActions}
+              onLightboxOpen={onLightboxOpen}
+              chatMediaVolume={chatMediaVolume}
+              setChatMediaVolume={setChatMediaVolume}
+            />
+          );
+          return (
+            <div className="flex gap-2 flex-col" style={{ marginTop: "4px" }}>
+              {grid && <AttachmentGrid images={images} serverHost={serverHost} messageActions={messageActions} onLightboxOpen={onLightboxOpen} />}
+              {rest.map(one)}
+              {files.length >= 2 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, width: 420, maxWidth: "100%" }}>
+                  {files.map(one)}
+                </div>
+              )}
+            </div>
+          );
+        })()}
         {m.cards && m.cards.length > 0 && serverHost && (
           <MessageCards
             cards={m.cards}

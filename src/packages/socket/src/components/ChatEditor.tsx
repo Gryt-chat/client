@@ -266,6 +266,19 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
   ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+    const [dragFrom, setDragFrom] = useState<number | null>(null);
+    const [dropAt, setDropAt] = useState<number | null>(null);
+    /** Moves a staged file from one place to another; `to` counts gaps, 0 is before the first. */
+    const moveFile = (from: number, to: number) => {
+      setPendingFiles((files) => {
+        const next = [...files];
+        const [moved] = next.splice(from, 1);
+        next.splice(to > from ? to - 1 : to, 0, moved);
+        return next;
+      });
+      setDragFrom(null);
+      setDropAt(null);
+    };
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
 
@@ -673,8 +686,34 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       <div className="chat-editor-wrapper" style={{ position: "relative" }}>
         {pendingFiles.length > 0 && (
           <div className="chat-editor-file-preview-bar">
-            {pendingFiles.map((pf) => (
-              <div key={pf.id} className="chat-editor-file-preview">
+            {/* Drag a file left or right to change the order it's sent in (GRYT-1722 draft). */}
+            {pendingFiles.map((pf, i) => (
+              <div
+                key={pf.id}
+                className="chat-editor-file-preview"
+                draggable={pendingFiles.length > 1}
+                data-dragging={dragFrom === i || undefined}
+                data-drop={dropAt === i ? "before" : dropAt === i + 1 && i === pendingFiles.length - 1 ? "after" : undefined}
+                onDragStart={(e) => {
+                  setDragFrom(i);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("application/x-gryt-staged", String(i));
+                }}
+                onDragOver={(e) => {
+                  if (dragFrom === null) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setDropAt(e.clientX < r.left + r.width / 2 ? i : i + 1);
+                }}
+                onDrop={(e) => {
+                  if (dragFrom === null) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  moveFile(dragFrom, dropAt ?? i);
+                }}
+                onDragEnd={() => { setDragFrom(null); setDropAt(null); }}
+              >
                 {pf.previewUrl ? (
                   <img src={pf.previewUrl} alt="Upload preview" />
                 ) : (
