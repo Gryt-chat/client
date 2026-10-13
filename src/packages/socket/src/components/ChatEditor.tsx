@@ -731,25 +731,6 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               e.target.value = "";
             }}
           />
-          <div style={{ position: "relative" }}>
-            <button
-              className="chat-editor-emoji-btn"
-              type="button"
-              aria-label="Insert emoji"
-              disabled={disabled}
-              onClick={() => setEmojiPickerOpen((v) => !v)}
-            >
-              <PiSmileyFill size={20} />
-            </button>
-            {emojiPickerOpen && (
-              <EmojiPicker
-                onSelect={handlePickerEmojiSelect}
-                onClose={() => setEmojiPickerOpen(false)}
-                serverHost={serverHost}
-                withOtherServers
-              />
-            )}
-          </div>
           <div
             ref={editorRef}
             className="chat-editor-textarea"
@@ -774,6 +755,25 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               {(MESSAGE_MAX_LENGTH - length).toLocaleString("en")}
             </span>
           )}
+          <div style={{ position: "relative" }}>
+            <button
+              className="chat-editor-emoji-btn"
+              type="button"
+              aria-label="Insert emoji"
+              disabled={disabled}
+              onClick={() => setEmojiPickerOpen((v) => !v)}
+            >
+              <PiSmileyFill size={20} />
+            </button>
+            {emojiPickerOpen && (
+              <EmojiPicker
+                onSelect={handlePickerEmojiSelect}
+                onClose={() => setEmojiPickerOpen(false)}
+                serverHost={serverHost}
+                withOtherServers
+              />
+            )}
+          </div>
           {/* Round, and only once there is something to send. Enter still sends. */}
           {canSend && (
             <button
