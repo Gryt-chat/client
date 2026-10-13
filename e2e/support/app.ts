@@ -206,7 +206,11 @@ export async function canAttachFiles(page: Page): Promise<boolean> {
   const plus = page.getByRole("button", { name: "Add", exact: true });
   if ((await plus.count()) === 0) return false;
   await plus.click();
-  const offered = (await page.getByRole("menuitem", { name: "Attach files" }).count()) > 0;
+  // Read it once the menu is up, and wait for it to go: a menu left open blocks every click after (GRYT-1737).
+  const menu = page.getByRole("menu");
+  await menu.waitFor({ state: "visible" });
+  const offered = (await menu.getByRole("menuitem", { name: "Attach files" }).count()) > 0;
   await page.keyboard.press("Escape");
+  await menu.waitFor({ state: "hidden" });
   return offered;
 }
