@@ -27,7 +27,7 @@ export function AttachmentGrid({
   images: GridImage[];
   serverHost: string;
   messageActions: MessageActions;
-  onLightboxOpen: (src: string, alt?: string) => void;
+  onLightboxOpen: (src: string, alt?: string, fileId?: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? images : images.slice(0, SHOWN);
@@ -60,7 +60,7 @@ function GridTile({
   more: number;
   serverHost: string;
   messageActions: MessageActions;
-  onLightboxOpen: (src: string, alt?: string) => void;
+  onLightboxOpen: (src: string, alt?: string, fileId?: string) => void;
   onMore: () => void;
 }) {
   const { fileId, meta } = image;
@@ -93,7 +93,7 @@ function GridTile({
       <button
         type="button"
         aria-label={more > 0 ? `${more} more pictures` : `Open ${name}`}
-        onClick={() => (more > 0 ? onMore() : onLightboxOpen(src, name))}
+        onClick={() => (more > 0 ? onMore() : onLightboxOpen(src, name, fileId))}
         style={{ position: "absolute", inset: 0, display: "block", padding: 0, border: 0, background: "none", cursor: "zoom-in" }}
       >
         <img src={src} alt={name} loading="lazy" onError={local ? undefined : refreshUrl}

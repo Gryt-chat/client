@@ -31,7 +31,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { EmojiText } from "./EmojiText";
 import { ForumView } from "./ForumView";
-import { ImageLightbox } from "./ImageLightbox";
+import { ImageLightbox, type LightboxGallery } from "./ImageLightbox";
 import { LocalHistoryProblem } from "./LocalHistoryProblem";
 import { readableRoleColor } from "./memberGroups";
 import type { MemberInfo } from "./MemberSidebar";
@@ -197,7 +197,7 @@ export const ChatView = memo(({
     threadEditorRef.current?.clear();
   }, []);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string; gallery?: LightboxGallery } | null>(null);
   const [pollOpen, setPollOpen] = useState(false);
   const dragCounterRef = useRef(0);
 
@@ -575,8 +575,8 @@ export const ChatView = memo(({
   const messageMap = useMemo(() => buildMessageMap(chatMessages), [chatMessages]);
 
 
-  const onLightboxOpen = useCallback((src: string, alt?: string) => {
-    setLightboxImage({ src, alt });
+  const onLightboxOpen = useCallback((src: string, alt?: string, gallery?: LightboxGallery) => {
+    setLightboxImage({ src, alt, gallery });
   }, []);
   /* `buildMessageMetadata` is a pure pass over an ordered array, since grouping
      needs neighbours, so the root goes in front and the result is keyed after. */
@@ -1064,6 +1064,7 @@ export const ChatView = memo(({
         <ImageLightbox
           src={lightboxImage.src}
           alt={lightboxImage.alt}
+          gallery={lightboxImage.gallery}
           onClose={() => setLightboxImage(null)}
         />
       )}

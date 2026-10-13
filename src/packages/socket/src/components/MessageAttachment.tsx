@@ -23,7 +23,7 @@ export function MessageAttachment({
   meta: AttachmentMeta | undefined;
   serverHost: string;
   messageActions: MessageActions;
-  onLightboxOpen: (src: string, alt?: string) => void;
+  onLightboxOpen: (src: string, alt?: string, fileId?: string) => void;
   chatMediaVolume: number;
   setChatMediaVolume: (v: number) => void;
 }) {
@@ -59,7 +59,7 @@ export function MessageAttachment({
           width={meta?.width}
           height={meta?.height}
           onError={local ? undefined : refreshUrl}
-          onClick={() => onLightboxOpen(imgSrc, meta?.original_name || "Attachment")}
+          onClick={() => onLightboxOpen(imgSrc, meta?.original_name || "Attachment", fileId)}
         />
       </MessageContextMenu>
     );
