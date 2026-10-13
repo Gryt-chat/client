@@ -1,7 +1,7 @@
 import { Tooltip } from "@gryt/ui";
 
-import { LabelledDivider } from "./LabelledDivider";
 import type { PublicPoll } from "../utils/polls";
+import { LabelledDivider } from "./LabelledDivider";
 
 export type Reaction = {
   src: string;

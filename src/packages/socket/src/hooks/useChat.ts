@@ -24,12 +24,12 @@ import {
   ChatErrorPayload,
   type ChatErrorRef,
   handleAttachmentsSettled,
-  handlePollUpdated,
   handleChatErrorEvent,
   handleHistoryPayload,
   handleMessageDeleted,
   handleMessageEdited,
   handleNewMessage,
+  handlePollUpdated,
   handleReactionUpdate,
   shouldFetchHistory,
 } from "./chatEventHandlers";

@@ -7,9 +7,9 @@ import type { Socket } from "socket.io-client";
 import type { ChatMessage } from "../components/chatUtils";
 import {
   handleAttachmentsSettled,
-  handlePollUpdated,
   handleMessageDeleted,
   handleMessageEdited,
+  handlePollUpdated,
   handleReactionUpdate,
   type HistoryPayload,
 } from "./chatEventHandlers";
