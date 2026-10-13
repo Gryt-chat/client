@@ -965,11 +965,8 @@ function ReactionBadges({
   );
 }
 
-/* The bar is about this tall. Its width is measured, since the quick reactions vary. */
-/**
- * Where the hover bar goes: always just above the message. Bubbles at the bubble's far end,
- * Cozy and Compact at the chat column's far edge, so it's in the same place every time (GRYT-1722).
- */
+/** Always just above the message: Bubbles at the bubble's far end, Cozy and Compact at the
+    column's far edge, so it's in the same place every time (GRYT-1722). */
 function hoverBarPlacement(
   look: MessageStyle,
   alignRight: boolean,
