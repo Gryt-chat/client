@@ -592,7 +592,8 @@ function MessageContent({
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   const hasThreadNews = (threadUnread ?? 0) > 0 || (threadMentions ?? 0) > 0;
   const sealedNote = sealedPlaceholder(m);
-  const drawsText = drawsMessageText(m);
+  // No empty text box above a picture, or it pushes the picture off its corner.
+  const drawsText = drawsMessageText(m) && !!m.text?.trim();
   // For tests and tools: a row the server has not confirmed says why.
   const sendState = m.failed ? "failed" : m.waiting && m.pending ? "waiting" : m.pending ? "pending" : undefined;
   const bubble = look === "bubbles";
@@ -723,8 +724,7 @@ function MessageContent({
             {sealedNote}
           </span>
         ) : (
-          // No empty text box above a picture, or it pushes the picture off its corner.
-          drawsText && !!m.text?.trim() && (
+          drawsText && (
             <CollapsibleText>
               <div>
               <MarkdownRenderer
