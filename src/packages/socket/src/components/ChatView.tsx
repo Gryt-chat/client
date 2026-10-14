@@ -1,3 +1,4 @@
+import { Tooltip } from "@gryt/ui";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
 
@@ -6,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -19,6 +20,7 @@ import { useSockets } from "../hooks/useSockets";
 import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
+import { SEARCH_SHORTCUT } from "../utils/messageSearch";
 import type { NewPoll } from "../utils/polls";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { mentionsViewer } from "../utils/webhookCards";
@@ -104,9 +106,15 @@ export const ChatView = memo(({
   hasOlderMessages,
   historyWindow,
   threadBeside = false,
+  onSearch,
+  pendingJump,
 }: {
   chatMessages: ChatMessage[];
   conversationKey?: string;
+  /** Opens the search palette; no button without it (GRYT-1738). */
+  onSearch?: () => void;
+  /** A search hit to scroll to once its conversation has loaded. `nonce` lets the same message be picked twice. */
+  pendingJump?: { conversationId: string; messageId: string; nonce: number } | null;
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
@@ -289,6 +297,16 @@ export const ChatView = memo(({
     leaveBottom,
     openAt: historyWindow?.openAt,
   });
+
+  const jumpedNonce = useRef<number | null>(null);
+  useEffect(() => {
+    if (!pendingJump || pendingJump.nonce === jumpedNonce.current) return;
+    if (pendingJump.conversationId !== conversationKey || isLoadingMessages) return;
+    // Until the new channel's own rows arrive, a jump would page through the old one's.
+    if (chatMessages.length > 0 && chatMessages[0].conversation_id !== conversationKey) return;
+    jumpedNonce.current = pendingJump.nonce;
+    jumpToMessage(pendingJump.messageId);
+  }, [pendingJump, conversationKey, isLoadingMessages, chatMessages, jumpToMessage]);
 
   const returnToPresent = useCallback(() => {
     historyWindow?.returnToPresent();
@@ -790,6 +808,13 @@ export const ChatView = memo(({
               </span>
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
+                {onSearch && (
+                  <Tooltip title={`Search (${SEARCH_SHORTCUT})`}>
+                    <button type="button" aria-label="Search" data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
+                      <PiMagnifyingGlassBold size={16} />
+                    </button>
+                  </Tooltip>
+                )}
                 {!isForum && (
                   <PinsButton pins={pins} memberList={memberList} onJump={jumpToMessage} />
                 )}
