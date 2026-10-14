@@ -990,7 +990,8 @@ function ReactionBadges({
               <Tooltip
                 title={(
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ fontWeight: 600 }}>{emojiId}</div>
+                    {/* The emoji itself, never its :code: */}
+                    <div style={{ lineHeight: 1 }}><EmojiText text={emojiId} emojiSize={22} disableTooltip /></div>
                     <div style={{ opacity: 0.9 }}>{usersLabel}</div>
                   </div>
                 )}
