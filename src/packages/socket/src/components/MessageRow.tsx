@@ -1,12 +1,13 @@
 import { Avatar, Popover, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { type CSSProperties, forwardRef, memo, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, forwardRef, memo, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { type MessageStyle, useTheme } from "@/common";
 
 import { PiChatsFill, PiLockOpen, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
+import { TINY_MAX_WIDTH } from "../lib/narrowLayout";
 import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
@@ -357,8 +358,26 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
               </div>
   );
 
+  const tiny = useMiniWindow();
+  const compactTime = (
+    <span title={toDate(m.created_at).toLocaleString()} style={{ fontSize: 11, color: "var(--gryt-neutral-9)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+      {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+    </span>
+  );
+
+  const textShown = !sealedPlaceholder(m) && drawsMessageText(m) && !!m.text?.trim();
+  // Floated at the start of the text, so its lines run under it once past the first.
+  const miniLead = (
+    <span style={{ float: alignRight ? "right" : "left", display: "inline-flex", alignItems: "baseline", gap: 6, margin: alignRight ? "0 0 0 8px" : "0 8px 0 0", flexDirection: alignRight ? "row-reverse" : "row" }}>
+      {compactTime}
+      <span className="text-sm font-bold" style={{ color: nameColor }}>{meta.senderName}</span>
+      {meta.isBot && <BotTag />}
+    </span>
+  );
+
   const contentNode = (
               <MessageContent
+                leading={look === "compact" && tiny && textShown ? miniLead : undefined}
                 quickReactions={quickReactions}
                 m={m}
                 rowRef={rowRef}
@@ -446,18 +465,24 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
         </MessageContextMenu>
       ) : look === "compact" ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
-          {/* Lined up on the text, or on the top when there's no text, like pictures or a card. */}
+          {tiny ? (
+            /* Mini mode: time and name start the first line and the text wraps back under them, so it gets the full width. */
+            <div className="flex flex-col" style={{ width: "100%", marginTop: meta.isFirstInGroup ? 6 : 0, alignItems: alignRight ? "flex-end" : "flex-start" }}>
+              {!textShown && <div style={{ padding: "0 8px" }}>{miniLead}</div>}
+              {contentNode}
+            </div>
+          ) : (
           <div className="flex" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row", alignItems: m.text && drawsMessageText(m) ? "baseline" : "flex-start" }}>
+            {/* Lined up on the text, or on the top when there's no text, like pictures or a card. */}
             {/* Always shown, in a column: times scan down one line and names start at one x. Hidden, it was just a gap. */}
-            <span title={toDate(m.created_at).toLocaleString()} style={{ width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, color: "var(--gryt-neutral-9)", textAlign: alignRight ? "left" : "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-              {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
+            <span style={{ width: COMPACT_TIME_WIDTH, flex: "none", textAlign: alignRight ? "left" : "right" }}>{compactTime}</span>
             <span className="text-sm font-bold" style={{ flex: "none", color: nameColor }}>{meta.senderName}</span>
             {meta.isBot && <BotTag />}
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
               {contentNode}
             </div>
           </div>
+          )}
         </MessageContextMenu>
       ) : meta.isFirstInGroup ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
@@ -507,10 +532,24 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 
 MessageRow.displayName = "MessageRow";
 
+/** Mini mode, as `useIsTinyWindow` has it, but a media query: it changes once at the edge, not every resize step. */
+const MINI_QUERY = `(max-width: ${TINY_MAX_WIDTH}px) and (pointer: fine)`;
+function useMiniWindow(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mq = window.matchMedia(MINI_QUERY);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(MINI_QUERY).matches,
+  );
+}
+
 /** Compact's time column, as wide as this locale's latest time: "23:59" here, "11:59 PM" in en-US. */
 const COMPACT_TIME_WIDTH = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
 
 function MessageContent({
+  leading,
   m,
   rowRef,
   bgColor,
@@ -548,6 +587,8 @@ function MessageContent({
   highlighted,
   onMore,
 }: {
+  /** Floated before the text, for Compact's time and name in mini mode. */
+  leading?: React.ReactNode;
   m: ChatMessage;
   rowRef: React.RefObject<HTMLDivElement | null>;
   look: MessageStyle;
@@ -729,7 +770,8 @@ function MessageContent({
         ) : (
           drawsText && (
             <CollapsibleText>
-              <div>
+              <div style={leading ? { display: "flow-root" } : undefined}>
+              {leading}
               <MarkdownRenderer
                 content={m.text}
                 customEmojis={customEmojiList}
