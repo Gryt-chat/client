@@ -64,6 +64,7 @@ import { MobileServerView } from "./MobileServerView";
 import { PresenceDot } from "./PresenceDot";
 import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
+import { SearchPanel } from "./SearchPanel";
 import { SecurityNoticeBanner } from "./SecurityNoticeBanner";
 import { ServerChip } from "./ServerChip";
 import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
@@ -171,6 +172,22 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     setOnScreenConversation(currentlyViewingServer?.host ?? null, visibleDmId || visibleChannelId);
     return () => setOnScreenConversation(null, null);
   }, [currentlyViewingServer?.host, visibleChannelId, visibleDmId]);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchFocus, setSearchFocus] = useState(0);
+  const [pendingJump, setPendingJump] = useState<{ conversationId: string; messageId: string; nonce: number } | null>(null);
+  // Ctrl/Cmd+K, GRYT-1738. Not in the direct messages space: the server can't search sealed DMs.
+  useEffect(() => {
+    if (dmSpace) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyK") return;
+      e.preventDefault();
+      setSearchOpen(true);
+      setSearchFocus((n) => n + 1);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dmSpace]);
 
   useEffect(() => {
     const onNotificationChannelOpen = (event: Event) => {
@@ -949,6 +966,11 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         isLoadingOlder={isLoadingOlder}
         hasOlderMessages={hasOlderMessages}
         historyWindow={historyWindow}
+        onSearch={dmSpace || isTiny || isMobile ? undefined : () => {
+          setSearchOpen((open) => !open);
+          setSearchFocus((n) => n + 1);
+        }}
+        pendingJump={pendingJump}
         {...(isLoadingMessages !== undefined && { isLoadingMessages })}
       />
   );
@@ -1188,6 +1210,25 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 {chatView}
               </div>
             </div>
+            {searchOpen && !dmSpace ? (
+              <SearchPanel
+                socketConnection={currentConnection}
+                serverHost={host}
+                serverName={serverName}
+                channels={hostChannels}
+                memberList={memberListMap}
+                focusNonce={searchFocus}
+                onClose={() => setSearchOpen(false)}
+                onOpen={(channel, hit) => {
+                  if (channel.id !== visibleChannelId) handleChannelClickAndCloseDm(channel);
+                  setPendingJump({
+                    conversationId: channel.id,
+                    messageId: hit.thread_root_message_id ?? hit.message_id,
+                    nonce: Date.now(),
+                  });
+                }}
+              />
+            ) : (
             <MemberSidebarPanel
               // Closed for good, not collapsed: the server stops sending the list,
               // so an open panel would show whatever was last cached.
@@ -1214,6 +1255,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               pinned={pinMembersSidebar}
               onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
             />
+            )}
           </div>
         )}
       </div>
