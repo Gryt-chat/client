@@ -990,7 +990,8 @@ function ReactionBadges({
               <Tooltip
                 title={(
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ fontWeight: 600 }}>{emojiId}</div>
+                    {/* The emoji itself, never its :code: */}
+                    <div style={{ lineHeight: 1 }}><EmojiText text={emojiId} emojiSize={22} disableTooltip /></div>
                     <div style={{ opacity: 0.9 }}>{usersLabel}</div>
                   </div>
                 )}
@@ -1017,7 +1018,8 @@ function ReactionBadges({
                   onMouseEnter={onReaction ? (e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-4)" : "var(--gryt-neutral-4)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-8)" : "var(--gryt-neutral-6)"; } : undefined}
                   onMouseLeave={onReaction ? (e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"; } : undefined}
                 >
-                  <EmojiText text={reaction.src} emojiSize={18} />
+                  {/* No tooltip of its own: the emoji's name-only one won over this pill's whenever you pointed at the emoji. */}
+                  <EmojiText text={reaction.src} emojiSize={18} disableTooltip />
                   <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
                 </button>
               </Tooltip>
