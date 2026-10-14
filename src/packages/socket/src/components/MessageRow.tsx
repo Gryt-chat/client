@@ -425,6 +425,25 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
       {meta.isSystem ? (
         /* An event, not a message: one quiet row keeping the left edge every
            message shares, and a right-click carrying Delete only (GRYT-896, GRYT-908). */
+        look === "compact" ? (
+          <MessageContextMenu messageActions={systemActions} onOpenChange={handleCtxMenuOpenChange}>
+          {/* Compact: the time in the messages' column and the icon where their names start, so the line sits on the same grid. */}
+          <div ref={rowRef} data-message-id={m.message_id} className="text-sm" style={{ width: "100%", padding: "4px 0", color: "var(--gryt-neutral-11)", wordBreak: "break-word", ...(tiny ? { display: "flow-root", paddingInline: 8 } : { display: "flex", gap: 8, alignItems: "baseline" }) }}>
+            <span style={tiny ? { float: "left", display: "inline-flex", alignItems: "baseline", gap: 6, marginRight: 6 } : { display: "contents" }}>
+              <span style={tiny ? undefined : { width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, textAlign: "right" }}>{compactTime}</span>
+              <span aria-hidden="true" style={{ flex: "none", color: "var(--gryt-neutral-9)", position: "relative", top: 2 }}>{meta.systemEvent === "left" ? <PiSignOutBold size={13} /> : <PiSignInBold size={13} />}</span>
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <MarkdownRenderer
+                content={m.text}
+                memberNicknames={memberNicknames}
+                mentionMembersById={memberList}
+                serverHost={serverHost}
+              />
+            </span>
+          </div>
+          </MessageContextMenu>
+        ) : (
         <MessageContextMenu messageActions={systemActions} onOpenChange={handleCtxMenuOpenChange}>
         <div
           className="flex gap-3 items-baseline"
@@ -463,6 +482,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           </span>
         </div>
         </MessageContextMenu>
+        )
       ) : look === "compact" ? (
         <MessageContextMenu messageActions={messageActions} onOpenChange={handleCtxMenuOpenChange} onReaction={canReact ? (src) => onReaction(src, m) : undefined} serverHost={serverHost}>
           {tiny ? (
@@ -475,7 +495,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           <div className="flex" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row", alignItems: m.text && drawsMessageText(m) ? "baseline" : "flex-start" }}>
             {/* Lined up on the text, or on the top when there's no text, like pictures or a card. */}
             {/* Always shown, in a column: times scan down one line and names start at one x. Hidden, it was just a gap. */}
-            <span style={{ width: COMPACT_TIME_WIDTH, flex: "none", textAlign: alignRight ? "left" : "right" }}>{compactTime}</span>
+            <span style={{ width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, textAlign: alignRight ? "left" : "right" }}>{compactTime}</span>
             <span className="text-sm font-bold" style={{ flex: "none", color: nameColor }}>{meta.senderName}</span>
             {meta.isBot && <BotTag />}
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
@@ -545,7 +565,7 @@ function useMiniWindow(): boolean {
   );
 }
 
-/** Compact's time column, as wide as this locale's latest time: "23:59" here, "11:59 PM" in en-US. */
+/** Compact's time column, as wide as this locale's latest time. In `ch` of the 11px time, so set 11px where it's used. */
 const COMPACT_TIME_WIDTH = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
 
 function MessageContent({
