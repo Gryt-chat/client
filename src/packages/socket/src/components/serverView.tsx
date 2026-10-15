@@ -58,12 +58,12 @@ import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CreateChannelDialog } from "./CreateChannelDialog";
-import { DmGroupPanel, DmPersonPanel } from "./DmInfoPanel";
+import { DmGroupPanel, DmPersonPanel, PANEL_WIDTH as DM_PANEL_WIDTH } from "./DmInfoPanel";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
 import { GroupDialog } from "./GroupDialog";
 import { GroupFace } from "./GroupFace";
-import { hideConversationWithUndo } from "./hideConversation";
+import { hideConversationWithUndo, useConfirmHide } from "./hideConversation";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { type MemberCardActions, MemberCardActionsContext } from "./memberCard/memberCardContext";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
@@ -198,6 +198,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [dmSearchOpen, setDmSearchOpen] = useState(false);
   // The conversation info panel on the right of the messages space (GRYT-1745).
   const [dmInfoOpen, setDmInfoOpen] = useState(true);
+  const [askHide, hideDialog] = useConfirmHide();
   const { setCameraEnabled } = useCamera();
   const openDmSearch = useCallback(() => {
     setDmSearchOpen(true);
@@ -270,7 +271,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const {
     leftSidebarOpen, rightSidebarOpen,
     leftSidebarContentRef, rightSidebarContentRef,
-    openLeftSidebar, closeLeftSidebar, openRightSidebar, closeRightSidebar,
+    openLeftSidebar, closeLeftSidebar, hideLeftSidebarNow, openRightSidebar, closeRightSidebar,
   } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: false, isCompact, roomForMembers });
 
   const serverClients = currentlyViewingServer ? heldHostClients : undefined;
@@ -1323,7 +1324,10 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                     onOpen={handleSelectDm}
                     onHidden={forgetHiddenDm}
                     listPinned={pinChannelsSidebar}
-                    onToggleList={() => setPinChannelsSidebar(!pinChannelsSidebar)}
+                    onToggleList={() => {
+                if (pinChannelsSidebar) hideLeftSidebarNow();
+                setPinChannelsSidebar(!pinChannelsSidebar);
+              }}
                   />
                 </motion.div>
                 <motion.div
@@ -1349,7 +1353,10 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               serverName={serverName}
               serverRole={currentUserRole}
               pinned={pinChannelsSidebar}
-              onTogglePinned={() => setPinChannelsSidebar(!pinChannelsSidebar)}
+              onTogglePinned={() => {
+                if (pinChannelsSidebar) hideLeftSidebarNow();
+                setPinChannelsSidebar(!pinChannelsSidebar);
+              }}
               onOpenSettings={onOpenSettings}
               onOpenInvites={onOpenInvites}
               onManageServer={onManageServer}
@@ -1482,8 +1489,19 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   setPendingJump({ conversationId: hit.conversation_id, messageId: hit.message_id, nonce: Date.now() });
                 }}
               />
-            ) : dmSpace && dmInfoOpen && activeDm && !isTiny ? (
-              activeDm.kind === "group" ? (
+            ) : dmSpace && activeDm && !isTiny ? (
+              /* Folds like the channel list rather than vanishing. The negative margin takes
+                 back the row's gap, so a closed panel leaves no strip. */
+              <motion.div
+                data-gryt="dm-info-slot"
+                animate={{ width: dmInfoOpen ? DM_PANEL_WIDTH : 0, marginLeft: dmInfoOpen ? 0 : -16 }}
+                initial={false}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                style={{ flexShrink: 0, overflow: "hidden", display: "flex", justifyContent: "flex-start" }}
+                aria-hidden={!dmInfoOpen}
+                inert={!dmInfoOpen}
+              >
+              {activeDm.kind === "group" ? (
                 <DmGroupPanel
                   host={host}
                   conversation={activeDm}
@@ -1504,11 +1522,15 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   memberList={memberListMap}
                   onJump={(messageId) => setPendingJump({ conversationId: activeDm.conversation_id, messageId, nonce: Date.now() })}
                   onHide={() => {
-                    hideConversationWithUndo(host, currentServerUserId ?? "", activeDm.conversation_id, conversationTitle(activeDm));
-                    forgetHiddenDm(activeDm.conversation_id);
+                    const dm = activeDm;
+                    askHide(conversationTitle(dm), () => {
+                      hideConversationWithUndo(host, currentServerUserId ?? "", dm.conversation_id, conversationTitle(dm));
+                      forgetHiddenDm(dm.conversation_id);
+                    });
                   }}
                 />
-              )
+              )}
+              </motion.div>
             ) : (
             <MemberSidebarPanel
               // Closed for good, not collapsed: the server stops sending the list,
@@ -1595,6 +1617,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         }}
       />
 
+      {hideDialog}
       <ServerConfirmDialogs
         pendingDeleteItem={pendingDeleteItem}
         channelById={channelById}

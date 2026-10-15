@@ -28,6 +28,23 @@ interface UseChatActionsParams {
   forceScrollToBottomRef: { current: boolean };
 }
 
+/* One mark at a time: opening the next result takes it off the last. */
+let jumpMark: { el: HTMLElement; timer: ReturnType<typeof setTimeout> } | null = null;
+const JUMP_MARK_MS = 5_000;
+
+function markJumped(el: HTMLElement): void {
+  if (jumpMark) {
+    clearTimeout(jumpMark.timer);
+    jumpMark.el.classList.remove("gryt-jump-mark");
+  }
+  el.classList.add("gryt-jump-mark");
+  const timer = setTimeout(() => {
+    el.classList.remove("gryt-jump-mark");
+    if (jumpMark?.el === el) jumpMark = null;
+  }, JUMP_MARK_MS);
+  jumpMark = { el, timer };
+}
+
 export function useChatActions({
   chatMessages,
   socketConnection,
@@ -156,13 +173,7 @@ export function useChatActions({
     const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
-    // A class rather than a background: setting one and then "transparent" wiped a bubble's colour.
-    setTimeout(() => {
-      el.classList.remove("gryt-jump-flash");
-      void el.offsetWidth;
-      el.classList.add("gryt-jump-flash");
-      setTimeout(() => el.classList.remove("gryt-jump-flash"), 1600);
-    }, 300);
+    markJumped(el);
   }, []);
 
   const cancelReply = useCallback(() => setReplyingTo(null), []);

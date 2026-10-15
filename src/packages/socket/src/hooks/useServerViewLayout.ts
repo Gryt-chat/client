@@ -89,6 +89,8 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
   const [hoverLeftSidebar, setHoverLeftSidebar] = useState(false);
   const [hoverRightSidebar, setHoverRightSidebar] = useState(false);
   const leftCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* Hidden from inside the list: hovering mustn't reopen it until the pointer has left. */
+  const leftHoverHeld = useRef(false);
   const rightCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const leftSidebarContentRef = useRef<HTMLDivElement>(null);
@@ -104,11 +106,18 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
 
   const openLeftSidebar = useCallback(() => {
     if (leftCloseTimer.current) { clearTimeout(leftCloseTimer.current); leftCloseTimer.current = null; }
-    if (!isDraggingResize) setHoverLeftSidebar(true);
+    if (!isDraggingResize && !leftHoverHeld.current) setHoverLeftSidebar(true);
   }, [isDraggingResize]);
 
   const closeLeftSidebar = useCallback(() => {
+    leftHoverHeld.current = false;
     leftCloseTimer.current = setTimeout(() => setHoverLeftSidebar(false), SIDEBAR_CLOSE_DELAY);
+  }, []);
+
+  const hideLeftSidebarNow = useCallback(() => {
+    if (leftCloseTimer.current) { clearTimeout(leftCloseTimer.current); leftCloseTimer.current = null; }
+    leftHoverHeld.current = true;
+    setHoverLeftSidebar(false);
   }, []);
 
   const openRightSidebar = useCallback(() => {
@@ -145,7 +154,7 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
   return {
     leftSidebarOpen, rightSidebarOpen,
     leftSidebarContentRef, rightSidebarContentRef,
-    openLeftSidebar, closeLeftSidebar,
+    openLeftSidebar, closeLeftSidebar, hideLeftSidebarNow,
     openRightSidebar, closeRightSidebar,
   };
 }

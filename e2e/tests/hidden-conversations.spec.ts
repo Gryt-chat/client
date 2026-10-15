@@ -73,6 +73,8 @@ async function conversationBetween(a: Member, b: Member): Promise<void> {
 async function hide(page: Page, name: string) {
   await row(page, name).click({ button: "right" });
   await page.getByRole("menuitem", { name: /Hide this conversation/ }).click();
+  // It asks first (GRYT-1759).
+  await page.getByRole("alertdialog").getByRole("button", { name: "Hide", exact: true }).click();
 }
 
 test("hides a conversation and offers it straight back", async ({ newMember }) => {

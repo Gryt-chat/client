@@ -14,7 +14,7 @@ import type { MemberInfo } from "./MemberSidebar";
 import { statusConfig } from "./memberStatus";
 import { PresenceDot } from "./PresenceDot";
 
-const PANEL_WIDTH = 336;
+export const PANEL_WIDTH = 336;
 const THUMBS = 6;
 
 interface SharedFile {
