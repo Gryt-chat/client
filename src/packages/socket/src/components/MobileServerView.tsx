@@ -86,8 +86,6 @@ interface MobileServerViewProps {
   /** Whether the next message will be encrypted (GRYT-729). */
   sealing?: SealDecision;
   mls?: MlsView;
-  /** Member id to nickname, so a refusal names the person. */
-  memberNames?: Record<string, string>;
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
@@ -223,7 +221,6 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           chatMessages={props.chatMessages}
           sealing={props.sealing}
           mls={props.mls}
-          memberNames={props.memberNames}
           conversationKey={props.selectedDmId ?? props.selectedChannelId ?? undefined}
           canSend={props.canSend}
           sendChat={props.sendChat}

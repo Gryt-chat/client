@@ -56,6 +56,8 @@ interface PendingFile {
 
 interface ChatEditorProps {
   placeholder?: string;
+  /** Board 5: going out in the clear, so the field is red. */
+  unencrypted?: boolean;
   disabled?: boolean;
   /**
    * Whether attaching is offered at all. Separate from `disabled`: a role can be
@@ -266,7 +268,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
+  ({ placeholder, unencrypted, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [dragFrom, setDragFrom] = useState<number | null>(null);
     const [dropAt, setDropAt] = useState<number | null>(null);
@@ -693,7 +695,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             </Menu.Portal>
           </Menu.Root>
         )}
-      <div className="chat-editor-wrapper" style={{ position: "relative" }}>
+      <div className="chat-editor-wrapper" data-unencrypted={unencrypted ? "" : undefined} style={{ position: "relative" }}>
         {pendingFiles.length > 0 && (
           <div className="chat-editor-file-preview-bar">
             {/* Drag a file left or right to change the order it's sent in (GRYT-1722 draft). */}

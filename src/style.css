@@ -404,6 +404,14 @@ body {
   border-color: var(--gryt-accent-8);
 }
 
+/* Board 5: a DM going out in the clear. */
+.chat-editor-wrapper[data-unencrypted] {
+  border-color: var(--gryt-danger-7);
+}
+.chat-editor-wrapper[data-unencrypted]:focus-within {
+  border-color: var(--gryt-danger-9);
+}
+
 .chat-editor-disabled {
   opacity: 0.5;
   pointer-events: none;
