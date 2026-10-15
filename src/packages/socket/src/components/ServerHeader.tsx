@@ -20,8 +20,11 @@ export const ServerHeader = ({
   updateAvailable,
   pinned,
   onTogglePinned,
+  statusLine,
 }: {
   serverName?: string;
+  /** Why the server isn't usable right now, under its name (GRYT-1751). */
+  statusLine?: string;
   /** For "Copy server address". Absent hides that item rather than copying "". */
   serverHost?: string;
   /**
@@ -72,7 +75,15 @@ export const ServerHeader = ({
       }}
     >
       <div className="flex justify-between items-center">
-        <span>{serverName}</span>
+        <span className="flex flex-col min-w-0">
+          <span>{serverName}</span>
+          {statusLine && (
+            <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--gryt-warning-11)" }}>
+              <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--gryt-warning-9)" }} />
+              {statusLine}
+            </span>
+          )}
+        </span>
         <div className="flex items-center gap-2">
           {canCreate && (
             <Menu.Root>

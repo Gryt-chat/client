@@ -57,7 +57,6 @@ import { setOnScreenConversation } from "../utils/onScreenConversation";
 import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { ConnectionBanner } from "./ConnectionBanner";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { DmGroupPanel, DmPersonPanel } from "./DmInfoPanel";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
@@ -83,6 +82,7 @@ import { ServerNoticePanel } from "./ServerNoticePanel";
 import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
 import { type ChannelPlacement, folderOf } from "./sidebarTree";
+import { UnreachableServer } from "./UnreachableServer";
 import { VoiceSheetButton } from "./VoiceSheetButton";
 import { VoiceView } from "./VoiceView";
 
@@ -988,6 +988,19 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const serverNickname = serverProfiles[currentlyViewingServer.host]?.nickname || nickname;
   const channelById = new Map((serverDetails?.channels || []).map((c) => [c.id, c]));
 
+  // Never reached this session, so there are no channels to dim (board 9, GRYT-1751).
+  if (!serverDetails && !serverFailure && currentConnectionStatus === "disconnected") {
+    return (
+      <UnreachableServer
+        host={currentlyViewingServer.host}
+        serverName={currentlyViewingServer.name || currentlyViewingServer.host}
+        sfuHosts={[]}
+        stunHosts={[]}
+        onTryNow={() => reconnectServer(currentlyViewingServer.host)}
+      />
+    );
+  }
+
   if (!serverDetails) {
     return (
       <ServerLoadingStates
@@ -1068,6 +1081,13 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     <MessagesHome onSearch={openDmSearch} />
   ) : (
       <ChatView
+        offlineLine={
+          currentConnectionStatus === "reconnecting"
+            ? `Reconnecting to ${serverName || host}…`
+            : isServerUnreachable
+              ? `Can’t reach ${serverName || host}`
+              : undefined
+        }
         /* Wide enough for the thread to sit beside the conversation rather than
            take the chat pane. */
         threadBeside={threadBeside}
@@ -1131,13 +1151,24 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
   );
 
+  /* Gave up reconnecting. A call still running here keeps the view, since its
+     controls are in it; otherwise the same card as a server never reached. */
+  if (currentConnectionStatus === "disconnected" && !isVoiceOnThisServer) {
+    return (
+      <UnreachableServer
+        host={host}
+        serverName={serverName || host}
+        sfuHosts={serverDetails.sfu_hosts ?? (serverDetails.sfu_host ? [serverDetails.sfu_host] : [])}
+        stunHosts={serverDetails.stun_hosts ?? []}
+        onTryNow={() => reconnectServer(host)}
+      />
+    );
+  }
+
   return (
     <MemberCardActionsContext.Provider value={memberCardActions}>
       {/* min-w-0, or a header's one-line name sets the narrowest this can get. */}
       <div className="flex w-full h-full min-w-0 gap-4 flex-col" data-gryt="server-view">
-        {isServerUnreachable && (
-          <ConnectionBanner connectionStatus={currentConnectionStatus} onReconnect={() => reconnectServer(host)} />
-        )}
         {/* Not in the direct messages space, where the server behind it isn't what's on screen. */}
         {!dmSpace && currentConnectionStatus === "connected" && (
           <SecurityNoticeBanner host={host} serverInfo={serverDetails.server_info} hostedHere={!!hostedHere} />
@@ -1256,8 +1287,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         ) : (
           <div className="flex w-full gap-4" style={{
               flex: 1, overflow: "hidden",
-              ...(isServerUnreachable && !isVoiceOnThisServer && { opacity: 0.5, pointerEvents: "none" as const }),
-              transition: "opacity 0.3s ease",
             }}>
             {dmSpace ? (
               /* Folds like the channel list, on the same setting: one left list, one choice. */
@@ -1299,7 +1328,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={leftSidebarContentRef}
-              isUnreachableWhileConnected={isVoiceOnThisServer && isServerUnreachable}
+              isUnreachableWhileConnected={isServerUnreachable}
+              statusLine={currentConnectionStatus === "reconnecting" ? "Reconnecting…" : isServerUnreachable ? "Can’t reach it" : undefined}
               onMouseEnter={openLeftSidebar}
               onMouseLeave={closeLeftSidebar}
               serverName={serverName}
@@ -1473,7 +1503,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               sidebarWidthPx={SIDEBAR_WIDTH_PX}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={rightSidebarContentRef}
-              isUnreachableWhileConnected={isVoiceOnThisServer && isServerUnreachable}
+              isUnreachableWhileConnected={isServerUnreachable}
               onMouseEnter={!canViewMembers ? undefined : openRightSidebar}
               onMouseLeave={closeRightSidebar}
               members={hostMembers}

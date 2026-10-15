@@ -62,7 +62,7 @@ test("a DM lights no server in the rail, and its header names the server instead
   await expect(header.getByTitle("Gryt E2E")).toBeVisible();
 
   // The row names the server only when two people share a name (GRYT-1742).
-  const row = bob.page.getByRole("button", { name: alice.name });
+  const row = bob.page.locator('[data-gryt="dm-row"]', { hasText: alice.name });
   await expect(row).toBeVisible();
   await expect(row).not.toContainText("Gryt E2E");
 

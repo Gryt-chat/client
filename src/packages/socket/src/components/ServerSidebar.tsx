@@ -20,7 +20,10 @@ interface ServerSidebarProps {
   sidebarWidthPx: number;
   hoverPx: number;
   contentRef: RefObject<HTMLDivElement | null>;
+  /** The server dropped: the channels dim and stop taking clicks, the header stays. */
   isUnreachableWhileConnected: boolean;
+  /** Under the server name, saying why (GRYT-1751). */
+  statusLine?: string;
   onMouseEnter?: () => void;
   onMouseLeave: () => void;
   serverName: string | undefined;
@@ -73,7 +76,7 @@ interface ServerSidebarProps {
 
 export const ServerSidebar = ({
   sidebarOpen, sidebarWidthPx, hoverPx, contentRef,
-  isUnreachableWhileConnected,
+  isUnreachableWhileConnected, statusLine,
   onMouseEnter, onMouseLeave,
   serverName, serverRole, pinned, onTogglePinned,
   onOpenSettings, onOpenInvites, onManageServer, onOpenReports, pendingReportCount, updateAvailable, onLeave,
@@ -99,11 +102,6 @@ export const ServerSidebar = ({
         overflow: "hidden",
         display: "flex",
         justifyContent: "flex-start",
-        ...(isUnreachableWhileConnected && {
-          opacity: 0.5,
-          pointerEvents: "none" as const,
-        }),
-        transition: "opacity 0.3s ease",
       }}
     >
       <div
@@ -123,6 +121,7 @@ export const ServerSidebar = ({
           <div className="flex flex-col h-full w-full items-center gap-4">
             <ServerHeader
               serverName={serverName}
+              statusLine={statusLine}
               role={serverRole}
               canManageChannels={canManage}
               pinned={pinned}
@@ -164,6 +163,8 @@ export const ServerSidebar = ({
               flexDirection: "column",
               overflowY: "auto",
               padding: "2px 6px",
+              ...(isUnreachableWhileConnected && { opacity: 0.45, pointerEvents: "none" as const }),
+              transition: "opacity 0.3s ease",
             }}>
               <ChannelList
                 channels={channels}

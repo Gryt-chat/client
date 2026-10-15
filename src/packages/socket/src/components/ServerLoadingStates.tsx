@@ -132,7 +132,7 @@ export const ServerLoadingStates = ({
             </div>
             {!wasRefused && (
               <Button size="small"
-                onClick={() => window.location.reload()}
+                onClick={onReconnect ?? (() => window.location.reload())}
                 style={{ marginTop: 4 }}
               >
                 <PiArrowsClockwiseFill size={16} />
@@ -199,35 +199,6 @@ export const ServerLoadingStates = ({
                 </a>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (connectionStatus === 'disconnected') {
-    return (
-      <div className="flex w-full h-full items-center justify-center p-4">
-        <div style={cardStyle}>
-          <div className="flex flex-col items-center gap-4">
-            <div style={iconWrapStyle("color-mix(in oklab, var(--gryt-danger-9) 7%, transparent)")}>
-              <PiWifiSlashFill size={26} color="var(--gryt-danger-9)" />
-            </div>
-            <div className="flex flex-col gap-2 items-center">
-              <span className="text-lg font-bold">
-                Server unreachable
-              </span>
-              <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-                Unable to establish a connection. The server may be offline or there could be a network issue.
-              </span>
-            </div>
-            <Button size="small"
-              onClick={onReconnect ?? (() => window.location.reload())}
-              style={{ marginTop: 4 }}
-            >
-              <PiArrowsClockwiseFill size={16} />
-              Reconnect
-            </Button>
           </div>
         </div>
       </div>
