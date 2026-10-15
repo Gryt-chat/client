@@ -1,5 +1,5 @@
 import { Menu, Tooltip } from "@gryt/ui";
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
@@ -7,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiLockOpen, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiLockSimpleFill, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -19,6 +19,7 @@ import { usePins } from "../hooks/usePins";
 import { useSockets } from "../hooks/useSockets";
 import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
+import { encryptedSince, noteEncrypted, useMarksHidden } from "../lib/unencryptedMarks";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import { SEARCH_SHORTCUT } from "../utils/messageSearch";
 import type { NewPoll } from "../utils/polls";
@@ -85,7 +86,6 @@ export const ChatView = memo(({
   conversationKind = "channel",
   sealing,
   mls,
-  memberNames,
   serverName,
   headerAction,
   headerLead,
@@ -145,8 +145,6 @@ export const ChatView = memo(({
   /** Absent on a channel, which is never encrypted and needs no note. */
   sealing?: SealDecision;
   mls?: MlsView;
-  /** Member id to nickname, so a refusal can name the person rather than an id. */
-  memberNames?: Record<string, string>;
   serverName?: string;
   /** A slot rather than a named button: the DM view puts "start a group" here
       and a channel puts nothing. */
@@ -767,6 +765,21 @@ export const ChatView = memo(({
   );
 
 
+  /* Board 5: a DM that will go out in the clear says so in the box, which is red. */
+  const inClear = conversationKind === "dm" && sealing?.kind === "plaintext";
+  const marksHidden = useMarksHidden(serverHost, conversationKey);
+
+  /* Seen switching to encrypted by itself while open: a line in the chat says so from then on. */
+  const lastSealing = useRef(sealing?.kind);
+  useEffect(() => {
+    const was = lastSealing.current;
+    lastSealing.current = sealing?.kind;
+    if (conversationKind === "dm" && serverHost && conversationKey && was === "plaintext" && sealing?.kind === "seal") {
+      noteEncrypted(serverHost, conversationKey);
+    }
+  }, [sealing?.kind, conversationKind, serverHost, conversationKey]);
+  const sealedFrom = conversationKind === "dm" && serverHost && conversationKey ? encryptedSince(serverHost, conversationKey) : null;
+
   const editorPlaceholder = offlineLine
     ? offlineLine
     : !canViewVoiceChannelText && isVoiceChannelTextChat
@@ -779,7 +792,7 @@ export const ChatView = memo(({
           ? `Please wait ${rateLimitCountdown} seconds...`
           : channelName
             ? conversationKind === "dm"
-              ? `Message ${channelName}`
+              ? `Message ${channelName}${inClear ? " (not encrypted)" : ""}`
               : `Message #${channelName}`
             : "Chat with your friends!";
 
@@ -883,7 +896,8 @@ export const ChatView = memo(({
           {/* Above the messages rather than under the header, so it is the
               first thing read on the way down to the composer, and so it
               scrolls with a long conversation instead of sitting over it. */}
-          {conversationKind === "dm" && <DirectMessagePrivacyNotice decision={sealing} peerInClear={peerInClear} />}
+          {/* Not when it's unencrypted: the header, the box and the dots say that now (board 5). */}
+          {conversationKind === "dm" && sealing?.kind !== "plaintext" && <DirectMessagePrivacyNotice decision={sealing} peerInClear={peerInClear} />}
           {conversationKind === "dm" && <MessageKeyPrompt />}
 
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
@@ -935,9 +949,21 @@ export const ChatView = memo(({
                   const isNew = !seenMessageIdsRef.current.has(rowKey) && i >= chatMessages.length - 10;
                   seenMessageIdsRef.current.add(rowKey);
 
+                  // The first message after it switched to encrypted on its own gets the line above it.
+                  const prev = chatMessages[i - 1];
+                  const encryptedHere = sealedFrom !== null && !!prev && !prev.sealed && !prev.mls
+                    && new Date(prev.created_at).getTime() < sealedFrom && new Date(m.created_at).getTime() >= sealedFrom;
+
                   return (
+                    <Fragment key={rowKey}>
+                    {encryptedHere && (
+                      <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
+                        <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
+                        <span className="flex items-center gap-1.5"><PiLockSimpleFill size={11} aria-hidden /> Encrypted from here on</span>
+                        <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
+                      </div>
+                    )}
                     <MessageRow
-                      key={rowKey}
                       message={m}
                       meta={meta}
                       replyPreviewText={replyPreviewText}
@@ -969,11 +995,12 @@ export const ChatView = memo(({
                       onOpenThread={threads.openThread}
                       /* Channels are never sealed, so the mark would be on every
                          message and mean nothing. */
-                      unencrypted={conversationKind === "dm" && !m.sealed && !m.mls}
+                      unencrypted={conversationKind === "dm" && !m.sealed && !m.mls && !marksHidden}
                       mlsReports={!!mls?.reportsTaken}
                       pinned={pins.isPinned(m)}
                       onTogglePin={mayPin ? pins.setPinned : undefined}
                     />
+                    </Fragment>
                   );
                 })}
               {historyWindow?.loadingNewer && (
@@ -1003,40 +1030,6 @@ export const ChatView = memo(({
                 Jump to present
                 <PiArrowDownBold aria-hidden="true" size={12} />
               </button>
-            </div>
-          )}
-
-          {/*
-            Whether the next message goes out encrypted, and who is stopping it
-            (GRYT-729). Above the composer rather than in the header, so it is
-            in the same glance as the box being typed into.
-
-            Drawn only when it is *not* encrypted. A conversation that seals is
-            the ordinary case once everybody has updated, and a permanent badge
-            saying so becomes furniture nobody reads — which is the state where
-            it going missing means nothing to anybody.
-          */}
-          {sealing?.kind === "plaintext" && sealing.blockedBy.length > 0 && (
-            <div
-              aria-live="polite"
-              className="mb-1.5 flex items-start gap-1.5 px-1 text-xs leading-snug"
-              style={{ color: "var(--gryt-danger-11)" }}
-            >
-              <PiLockOpen aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
-              <span>
-                <strong style={{ fontWeight: 700 }}>Not encrypted.</strong> Whoever runs this
-                server can read what you send here, in the clear.{" "}
-                {sealing.blockedBy
-                  .map((blocked) => {
-                    const who =
-                      memberNames?.[blocked.memberId] ?? "somebody in this conversation";
-                    if (blocked.reason === "changed") return `${who}'s key changed`;
-                    if (blocked.reason === "unusable") return `${who}'s key did not check out`;
-                    return `${who} has not published a key`;
-                  })
-                  .join(", ")}
-                .
-              </span>
             </div>
           )}
 
@@ -1082,6 +1075,7 @@ export const ChatView = memo(({
             editingMessage={editingMessage}
             editorRef={editorRef}
             placeholder={editorPlaceholder}
+            unencrypted={inClear && !offlineLine}
             disabled={editorDisabled}
             allowFiles={mayHere("attach_files")}
             maxFileSize={maxFileSize}

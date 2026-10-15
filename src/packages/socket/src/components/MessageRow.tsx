@@ -4,7 +4,7 @@ import { type CSSProperties, forwardRef, memo, useCallback, useLayoutEffect, use
 
 import { type MessageStyle, useTheme } from "@/common";
 
-import { PiChatsFill, PiLockOpen, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
+import { PiChatsFill, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { TINY_MAX_WIDTH } from "../lib/narrowLayout";
@@ -685,8 +685,6 @@ function MessageContent({
     {/* Hover is on the highlighted part only, so the bar doesn't open from the empty space beside a message. */}
     <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState}
       onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{
-        /* Inset so the row does not shift by two pixels depending on it. */
-        boxShadow: unencrypted ? "inset 2px 0 0 var(--gryt-danger-9)" : undefined,
         // Even padding, and a radius of a picture's plus that padding, so the edge round one reads as one stroke.
         padding: bubble ? 10 : 8,
         cursor: "default",
@@ -708,6 +706,8 @@ function MessageContent({
           background: bgColor,
         }),
       }}>
+      {/* Just past the message's edge, so it marks the message without moving its text. */}
+      {unencrypted && <UnencryptedDot side={alignRight ? "left" : "right"} />}
       <AnimatePresence>
         {showToolbar && (
           <motion.div
@@ -761,26 +761,6 @@ function MessageContent({
         {/* Only the text folds. Attachments and embeds below carry their own
             sizing, and folding them too would hide an image behind a control
             that says "show full message". */}
-        {unencrypted && (
-          <span
-            title="Sent without encryption. Whoever runs this server can read it in the clear."
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 3,
-              marginRight: 6,
-              verticalAlign: "middle",
-              color: "var(--gryt-danger-11)",
-              fontSize: 10,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.03em",
-            }}
-          >
-            <PiLockOpen aria-hidden="true" size={11} />
-            Not encrypted
-          </span>
-        )}
         {sealedNote ? (
           /* An envelope this client has not opened has no words to draw. Plain
              rather than through markdown: it must not be parsed or linkified. */
@@ -1068,4 +1048,24 @@ function hoverBarPlacement(
   // The 4px above the message is the bar's own padding, so the pointer never crosses a gap to reach it.
   const lift: CSSProperties = { bottom: "100%", paddingBottom: 4 };
   return short ? { ...lift, left: 0 } : { ...lift, right: 0 };
+}
+
+/** Board 5: a small red dot beside a message that went out in the clear. */
+function UnencryptedDot({ side }: { side: "left" | "right" }) {
+  return (
+    <span
+      role="img"
+      aria-label="Not encrypted"
+      title="Sent without encryption. Whoever runs this server can read it in the clear."
+      style={{
+        position: "absolute",
+        top: "calc(50% - 3.5px)",
+        [side]: -11,
+        width: 7,
+        height: 7,
+        borderRadius: "50%",
+        background: "var(--gryt-danger-9)",
+      }}
+    />
+  );
 }

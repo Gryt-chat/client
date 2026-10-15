@@ -272,7 +272,7 @@ for (const kind of ["channel", "dm", "thread"] as const) {
     // A DM typed while the socket had no id used to go out in the clear.
     if (kind === "dm") {
       for (const text of texts) {
-        await expect.soft(conversation.rows(text).filter({ hasText: "Not encrypted" }), `"${text}" sealed`).toHaveCount(0);
+        await expect.soft(conversation.rows(text).filter({ has: alice.page.getByRole("img", { name: "Not encrypted" }) }), `"${text}" sealed`).toHaveCount(0);
       }
     }
 
