@@ -5,7 +5,7 @@ import { Wordmark } from "@/common";
 import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
-import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, UpdateStatus } from "../../../../lib/electron";
+import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, MS_STORE_PAGE, UpdateStatus } from "../../../../lib/electron";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
@@ -278,6 +278,13 @@ function AppStoreUpdates({ store, os }: { store: string; os: "macos" | "windows"
           </Button>
         </div>
         <span className="text-gryt-muted">Updates come from {store}. You can check for a new version there.</span>
+        {os === "windows" && (
+          <Button tone="neutral" size="small" className="self-start" render={<a href={MS_STORE_PAGE} target="_blank" rel="noopener noreferrer" />}>
+            <PiArrowsClockwiseFill size={16} />
+            Check for updates in the Microsoft Store
+            <PiArrowSquareOutFill size={14} />
+          </Button>
+        )}
       </div>
 
       <Surface>

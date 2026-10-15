@@ -4,7 +4,7 @@ import type { UpdateStatus } from "../lib/electron";
 export const UPDATE_TOAST_ID = "update";
 
 /** What the toast is showing about the release it named. */
-export type Phase = "waiting" | "downloading" | "ready" | "installing" | "failed";
+export type Phase = "waiting" | "downloading" | "ready" | "installing" | "failed" | "store";
 
 export type Shown = {
   version: string;
@@ -38,7 +38,7 @@ export function nextShown(current: Shown | null, status: UpdateStatus): Shown | 
       version: status.version,
       /* Announced with `autoDownload` means the bytes are already moving —
          the main process says so once electron-updater starts fetching. */
-      phase: status.autoDownload ? "downloading" : "waiting",
+      phase: status.storeManaged ? "store" : status.autoDownload ? "downloading" : "waiting",
       /* Only when the release changed: a press during a download installs that same one. */
       newerAfterPress:
         Boolean(status.installWhenReady) &&

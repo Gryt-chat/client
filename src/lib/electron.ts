@@ -46,6 +46,8 @@ export interface UpdateStatus {
    * toast stays dismissed for news; a later ask redraws it.
    */
   reannounce?: boolean;
+  /** On "announced" from a Microsoft Store build: the Store installs it, so there's nothing to download. */
+  storeManaged?: boolean;
   /** On "announced", that install was pressed and this newer release installs once it lands. */
   installWhenReady?: boolean;
   percent?: number;
@@ -448,6 +450,9 @@ export function isMacDesktop(): boolean {
 export function isMacAppStoreBuild(): boolean {
   return window.electronAPI?.macAppStore === true;
 }
+
+/** Gryt's page in the Microsoft Store app, where Update shows when there's a new version. */
+export const MS_STORE_PAGE = "ms-windows-store://pdp/?productid=9PKPT1C2M95Q";
 
 /** The Microsoft Store build, where the Store installs updates and there is no beta to switch to. */
 export function isMicrosoftStoreBuild(): boolean {

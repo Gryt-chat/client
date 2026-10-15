@@ -125,6 +125,10 @@ for (const name of ["checkForUpdatesInBackground", "offerRelease"]) {
   assert.match(bodyOf(name), /\{\s*(\/\*[\s\S]*?\*\/\s*)?if \(updatesComeFromAStore\) \{/, `${name} no longer stops first in a store build`);
 }
 
+// The Microsoft Store build announces a release (GRYT-1763) and still never downloads one.
+assert.doesNotMatch(bodyOf("announceStoreRelease"), /offerRelease|downloadRelease|autoUpdater|updates\./);
+assert.match(bodyOf("announceStoreRelease"), /sendToMain\("announced", \{[^}]*storeManaged: true/);
+
 // A press on a store build still gets an answer: the panel is not left on "Checking...".
 assert.match(
   bodyOf("checkForUpdatesInBackground"),

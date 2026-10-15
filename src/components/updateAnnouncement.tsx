@@ -2,7 +2,7 @@ import { Progress } from "@gryt/ui";
 import { useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
-import { getElectronAPI } from "../lib/electron";
+import { getElectronAPI, MS_STORE_PAGE } from "../lib/electron";
 import { nextShown, type Shown, UPDATE_TOAST_ID } from "./updateToastState";
 
 /** Telling somebody a release exists while they are using the app. */
@@ -161,6 +161,17 @@ function Subtitle({
   onInstall: () => void;
 }) {
   switch (shown.phase) {
+    /* The Store installs it. Review there can lag a release by a day or two, so it says so. */
+    case "store":
+      return (
+        <>
+          {"Can take a day or two to reach the Store · "}
+          <Action onClick={() => window.open(MS_STORE_PAGE, "_blank")}>
+            open the Microsoft Store
+          </Action>
+        </>
+      );
+
     case "waiting":
       return (
         <>
