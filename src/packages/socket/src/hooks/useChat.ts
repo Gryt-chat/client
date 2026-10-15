@@ -35,6 +35,7 @@ import {
   shouldFetchHistory,
 } from "./chatEventHandlers";
 import { parseMuteExpiry, setTextMute } from "./textMute";
+import { forgetArchivedCopy, useArchiveReadCopies } from "./useArchiveReadCopies";
 import { useChatSend } from "./useChatSend";
 import { useConversationSealing } from "./useConversationSealing";
 import { HISTORY_CAP, type HistoryWindowControls, isWindowPayload, useHistoryWindow, type WindowedHistoryPayload } from "./useHistoryWindow";
@@ -236,6 +237,14 @@ export function useChat({
     nameFor: (id) => (id === currentUserId ? nickname : undefined),
   });
   const mlsMode = mls.mode?.kind ?? null;
+  useArchiveReadCopies({
+    host: serverHost,
+    conversationId: activeConversationId,
+    isConversation: !!conversationMembers,
+    messages: chatMessages,
+    // The live timeline always ends at the present; it starts at the beginning once nothing older is left.
+    span: isLoadingMessages ? null : { toPresent: true, fromStart: !hasOlderMessages },
+  });
   const mlsReportsTaken = useMlsReportsTaken(serverHost);
   /** Blob URLs made for decrypted attachments, revoked on unmount. */
   const objectUrlsRef = useRef<Set<string>>(new Set());
@@ -532,8 +541,10 @@ export function useChat({
     const onReaction = (updatedMessage: ChatMessage) =>
       handleReactionUpdate(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);
 
-    const onDeleted = (payload: { conversation_id: string; message_id: string }) =>
+    const onDeleted = (payload: { conversation_id: string; message_id: string }) => {
       handleMessageDeleted(payload, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages, deletedIdsRef.current);
+      if (serverHost && payload.conversation_id.startsWith("dm_")) forgetArchivedCopy(serverHost, payload.conversation_id, payload.message_id);
+    };
 
     const onEdited = (updatedMessage: ChatMessage) =>
       handleMessageEdited(updatedMessage, activeConversationId, cacheKeyFor, setMessageCache, setChatMessages);

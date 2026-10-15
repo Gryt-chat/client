@@ -20,9 +20,11 @@ export interface ArchivedMessage {
   replyTo?: string;
   /** Reactions sent over MLS, in the server's shape. Left off when there are none. */
   reactions?: { src: string; amount: number; users: string[] }[];
+  /** A message the server holds too, kept so search and previews reach it. Never an MLS row. */
+  copy?: true;
 }
 
-type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions">;
+type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "copy">;
 
 /** Ids and time stay readable for the indexes; the server already knows all four. */
 interface StoredMessage {
@@ -208,6 +210,7 @@ export class MessageArchive {
     if (m.editedAt !== undefined) body.editedAt = m.editedAt;
     if (m.replyTo !== undefined) body.replyTo = m.replyTo;
     if (m.reactions?.length) body.reactions = m.reactions;
+    if (m.copy) body.copy = true;
 
     if (!this.key) {
       row.plain = body;

@@ -152,7 +152,9 @@ export function useMlsConversation({
         if (!live) return;
         setArchiveFacts({ lostHistory: archive.lostHistory, home: archive.home });
         const load = async () => {
-          const page = await archive.messages.page(scope, conversationId, { limit });
+          const read = await archive.messages.page(scope, conversationId, { limit });
+          // Copies of server-held messages are for search; the server's own copy draws them.
+          const page = read.filter((m) => !m.copy);
           const onPage = new Set(page.map((m) => m.messageId));
           const quoted = new Map<string, ChatMessage>();
           for (const m of page) {
@@ -169,7 +171,7 @@ export function useMlsConversation({
               return original ? { ...row, reply_original: original } : row;
             }),
           );
-          setHasMore(page.length === limit);
+          setHasMore(read.length === limit);
         };
         void load();
         off = archive.messages.onChange((change) => {
