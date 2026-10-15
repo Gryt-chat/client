@@ -1532,6 +1532,8 @@ function checkForUpdatesInBackground(
   /* A store package, where there is nothing useful to do. Logged rather than dropped:
      a check reporting nothing is the same shape as a broken one. */
   if (updatesComeFromAStore) {
+    // The Microsoft Store build still says a release is out; the Store installs it.
+    if (updatesAreManagedByWindows) return announceStoreRelease(reason, force);
     startupLog(`Update: skipped (${reason}) — installed from ${STORE_PACKAGE}`);
     /* A press, so the panel gets an answer instead of sitting on "Checking...". */
     if (force) {
@@ -1590,6 +1592,30 @@ function checkForUpdatesInBackground(
         "Background update check failed",
         err instanceof Error ? err : undefined
       );
+    });
+}
+
+/** The version a Microsoft Store build last announced, so a reload can show it again. */
+let storeAnnouncedVersion: string | null = null;
+
+/** The Microsoft Store installs updates, so a newer release is only announced, with a
+    button to the Store instead of a download (GRYT-1763). */
+function announceStoreRelease(reason: string, force: boolean): void {
+  if (!force && Date.now() - lastUpdateCheckAt < UPDATE_CHECK_FLOOR_MS) return;
+  lastUpdateCheckAt = Date.now();
+
+  void newestReleaseWithoutApi()
+    .then((release) => {
+      if (!release) {
+        if (force) sendToMain("store-managed", { message: `${STORE_NAME} keeps this version up to date.` });
+        return;
+      }
+      startupLog(`Update: ${release.version} is out, announced for ${STORE_PACKAGE} (${reason})`);
+      storeAnnouncedVersion = release.version;
+      sendToMain("announced", { version: release.version, from: app.getVersion(), storeManaged: true, reannounce: force });
+    })
+    .catch((err) => {
+      logUpdateFailure("Store update check failed", err instanceof Error ? err : undefined);
     });
 }
 
@@ -4434,7 +4460,7 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "check-for-updates",
         () => {
-          if (updatesComeFromTheAppStore) {
+          if (updatesComeFromAStore) {
             checkForUpdatesInBackground("settings", true);
             return;
           }
@@ -4484,6 +4510,11 @@ if (!gotSingleInstanceLock) {
       ipcMain.on(
         "replay-update-status",
         () => {
+          if (storeAnnouncedVersion) {
+            sendToMain("announced", { version: storeAnnouncedVersion, from: app.getVersion(), storeManaged: true });
+            return;
+          }
+
           const held = updates.held();
 
           if (held) {

@@ -5,7 +5,7 @@ import { Wordmark } from "@/common";
 import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
-import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, UpdateStatus } from "../../../../lib/electron";
+import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, MS_STORE_PAGE, UpdateStatus } from "../../../../lib/electron";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
@@ -256,9 +256,6 @@ function UpdateControls() {
 }
 
 /** The store installs updates here, so none of the switches above would do anything. */
-/** Gryt's page in the Microsoft Store app, where Update shows when there's a new version. */
-const MS_STORE_PAGE = "ms-windows-store://pdp/?productid=9PKPT1C2M95Q";
-
 function AppStoreUpdates({ store, os }: { store: string; os: "macos" | "windows" }) {
   const [appVersion, setAppVersion] = useState<string>("…");
 
