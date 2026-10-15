@@ -188,9 +188,12 @@ export function useChat({
   );
 
   // Voice channel text chat permission checks
-  const isVoiceChannelTextChat = activeConversationId === currentChannelId;
-  const activeVoiceChannel = isVoiceChannelTextChat && currentlyViewingServer
-    ? serverDetailsList[currentlyViewingServer.host]?.channels?.find((c) => c.id === currentChannelId)
+  /* A DM's call is on its own conversation, which is no server channel: its chat stays a DM's. */
+  const callChannels = currentlyViewingServer ? serverDetailsList[currentlyViewingServer.host]?.channels : undefined;
+  const isVoiceChannelTextChat =
+    activeConversationId === currentChannelId && !!callChannels?.some((c) => c.id === currentChannelId);
+  const activeVoiceChannel = isVoiceChannelTextChat
+    ? callChannels?.find((c) => c.id === currentChannelId)
     : undefined;
   const textInVoiceEnabled = activeVoiceChannel?.textInVoice === true;
   const activeChannel = useMemo(() => {

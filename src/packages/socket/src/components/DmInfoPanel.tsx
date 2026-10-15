@@ -119,12 +119,13 @@ function Pinned({ pins, memberList, onJump }: { pins: ReturnType<typeof usePins>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const list = pins.list ?? [];
+  /* Nothing to show, and nothing to promise: a message sent over MLS can't be pinned,
+     which since 1.12 is every new one in a DM. Older conversations keep theirs. */
+  if (list.length === 0) return null;
   return (
     <section className="flex flex-col gap-2">
-      <Heading title="Pinned" detail={list.length ? String(list.length) : undefined} />
-      {list.length === 0 ? (
-        <p className="m-0 px-0.5 text-xs text-gryt-muted">Pin a message and it shows up here.</p>
-      ) : (
+      <Heading title="Pinned" detail={String(list.length)} />
+      {(
         list.slice(0, 5).map((m) => (
           <button
             key={m.message_id}
