@@ -5,6 +5,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import type { Channel } from "@/settings/src/types/server";
 
 import { PiFileFill, PiMagnifyingGlassBold, PiXBold } from "../../../../lib/icons";
+import { type LocalConversation, useLocalDmSearch } from "../hooks/useLocalDmSearch";
 import { type MessageSearchHit, type SearchKind, useMessageSearch } from "../hooks/useMessageSearch";
 import { formatFileSize } from "../utils/formatFileSize";
 import {
@@ -52,6 +53,7 @@ export function SearchPanel({
   focusNonce,
   onClose,
   onOpen,
+  local,
 }: {
   socketConnection: unknown;
   serverHost: string;
@@ -62,9 +64,12 @@ export function SearchPanel({
   focusNonce: number;
   onClose: () => void;
   onOpen: (channel: Channel, hit: MessageSearchHit) => void;
+  /** Search this device's direct messages instead of the server (GRYT-1748). `channels`
+      are then the conversations, and `startIn` the one that was open. */
+  local?: { conversations: LocalConversation[]; startIn?: SearchFilter };
 }) {
   const [text, setText] = useState("");
-  const [filters, setFilters] = useState<SearchFilter[]>([]);
+  const [filters, setFilters] = useState<SearchFilter[]>(local?.startIn ? [local.startIn] : []);
   const [tab, setTab] = useState<SearchKind>("messages");
   const [active, setActive] = useState(0);
   const [option, setOption] = useState(0);
@@ -84,7 +89,9 @@ export function SearchPanel({
   // A half-typed `from:al` is a filter being picked, not words to search for.
   const token = activeFilterToken(text);
   const query = token ? text.slice(0, token.start) : text;
-  const { tabs, loadMore } = useMessageSearch(socketConnection, query, filters);
+  const server = useMessageSearch(local ? null : socketConnection, query, filters);
+  const device = useLocalDmSearch(local?.conversations ?? null, query, filters);
+  const { tabs, loadMore } = local ? device : server;
   const shown = tabs[tab];
   const hits = useMemo(() => shown.items.filter((h) => channelById.has(h.conversation_id)), [shown.items, channelById]);
   const searching = !!query.trim() || filters.length > 0;
@@ -102,7 +109,7 @@ export function SearchPanel({
       return textChannels
         .filter((c) => c.name.toLowerCase().includes(q.replace(/^#/, "")))
         .slice(0, MAX_OPTIONS)
-        .map((c) => ({ filter: { key: "in", value: c.id, label: `#${c.name}` } }));
+        .map((c) => ({ filter: { key: "in", value: c.id, label: local ? c.name : `#${c.name}` } }));
     }
     if (token.key === "has") {
       return (["image", "link", "file"] as const)
@@ -118,7 +125,7 @@ export function SearchPanel({
       const at = token.key === "after" ? new Date(date.getTime() + 86_400_000 - 1) : date;
       return [{ filter: { key: token.key, value: at.toISOString(), label }, detail: d === label ? undefined : d }];
     });
-  }, [token, memberList, textChannels]);
+  }, [token, memberList, textChannels, local]);
 
   useEffect(() => setOption(0), [token?.key, token?.partial]);
   useEffect(() => setActive(0), [query, filters, tab]);
@@ -232,8 +239,8 @@ export function SearchPanel({
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={filters.length ? "" : `Search ${serverName}`}
-              aria-label={`Search ${serverName}`}
+              placeholder={filters.length ? "" : local ? "Search messages" : `Search ${serverName}`}
+              aria-label={local ? "Search direct messages" : `Search ${serverName}`}
               data-gryt="search-input"
               className="min-w-[80px] grow border-0 bg-transparent py-0.5 text-sm outline-none"
               style={{ color: "var(--gryt-neutral-12)" }}
@@ -323,7 +330,11 @@ export function SearchPanel({
               </button>
             ))}
           </div>
-          <div className="mt-2 text-xs" style={muted}>Searches the channels you can read here. Direct messages aren&rsquo;t included.</div>
+          <div className="mt-2 text-xs" style={muted}>
+            {local
+              ? "Searched on this device, in history it has decrypted. Nothing is sent to the server."
+              : "Searches the channels you can read here. Direct messages aren\u2019t included."}
+          </div>
         </div>
       ) : (
         <div ref={listRef} className="flex min-h-0 grow flex-col gap-1.5 overflow-y-auto px-2.5 pb-3" data-gryt="search-results">
@@ -363,7 +374,7 @@ export function SearchPanel({
                       <span className="flex items-baseline gap-1.5 text-xs">
                         <span className="truncate text-sm font-semibold">{hit.file ? hit.file.name || "Unnamed file" : nameOf(hit)}</span>
                         {!hit.file && <span className="shrink-0" style={muted}>{formatTime(new Date(hit.created_at))}</span>}
-                        <span className="ml-auto shrink-0" style={muted}>#{channelById.get(hit.conversation_id)?.name}</span>
+                        <span className="ml-auto shrink-0" style={muted}>{local ? "" : "#"}{channelById.get(hit.conversation_id)?.name}</span>
                       </span>
                       {hit.file ? (
                         <span className="text-xs" style={muted}>
@@ -391,7 +402,7 @@ export function SearchPanel({
           {hits.length === 0 && !shown.loading && (
             <div className="px-1 py-6 text-center text-sm" style={muted}>
               {shown.error === "unsupported"
-                ? "This server doesn't support search yet. It needs an update."
+                ? local ? "This device has no message history to search." : "This server doesn't support search yet. It needs an update."
                 : shown.error === "rate_limited"
                 ? "Searching too fast. Give it a few seconds."
                 : shown.error
@@ -404,6 +415,11 @@ export function SearchPanel({
           {shown.loading && <div className="px-1 py-3 text-center text-xs" style={muted}>Searching…</div>}
           <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
+      )}
+      {local && (
+        <p className="mt-auto flex gap-1.5 px-3.5 pb-3.5 pt-2.5 text-xs" style={{ ...muted, borderTop: "1px solid var(--gryt-neutral-6)" }}>
+          Searched on this device, in history it has decrypted. Nothing is sent to the server. Messages from before this device joined a conversation aren&rsquo;t here.
+        </p>
       )}
     </div>
   );

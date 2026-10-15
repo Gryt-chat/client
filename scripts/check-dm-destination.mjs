@@ -397,22 +397,18 @@ function loadLastView(store) {
   );
 }
 
-/* Opening the space with nothing to go back to opens the most recent conversation,
-   and only one somebody has written in. */
+/* Opening the space with nothing to go back to is Messages home (GRYT-1744), and an
+   empty conversation an earlier visit left selected counts as nothing open. */
 {
   const auto = view.slice(view.indexOf("const visiting = useVisitingConversation();"), view.indexOf("const requestOpenDm"));
   assert.ok(
-    /if \(selectedDmId && !stale\) return;/.test(auto)
-      && /\.filter\(\(entry\) => entry\.conversation\.last_message_at !== null\)\s*\.sort\(/.test(auto),
-    "the space opens on nothing, or on an empty conversation, instead of the most recent",
-  );
-  assert.ok(
-    /const stale = leftOver\(selected\?\.conversation, visiting\);/.test(auto),
+    /if \(leftOver\(selected\?\.conversation, visiting\)\) setSelectedDmId\(null\);/.test(auto),
     "an empty conversation from an earlier visit still counts as open, so it comes back",
   );
+  assert.ok(!/\.sort\(\(a, b\) =>\s*\(b\.conversation\.last_message_at/.test(auto), "the space still jumps to the most recent conversation instead of home");
   assert.ok(
-    /dmSpace && !activeDm \? \(/.test(view),
-    "the space with nothing open renders a bare chat, which reads as a channel",
+    /dmSpace && !activeDm \? \(\s*<MessagesHome/.test(view),
+    "the space with nothing open renders something other than Messages home",
   );
 }
 

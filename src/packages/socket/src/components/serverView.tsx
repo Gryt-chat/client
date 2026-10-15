@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, clearSignedOut, getOwnServerUserId, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
@@ -23,9 +23,10 @@ import {
 } from "../dev/fakeParticipants";
 import { readFakeCallOptions, useFakeCallEvents } from "../dev/fakeServerEvents";
 import { useFakeSpeech } from "../dev/fakeSpeech";
+import { takeCallRequest } from "../hooks/callRequest";
 import { useDirectory } from "../hooks/dmDirectory";
 import { conversationFor, conversationOpened, leftOver, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
-import { hideConversation, isHiddenConversation } from "../hooks/hiddenConversations";
+import { hideConversation } from "../hooks/hiddenConversations";
 import { useOpenThread } from "../hooks/openThreadMemory";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
@@ -45,6 +46,7 @@ import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, 
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
+import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { getCustomEmojis } from "../utils/emojiData";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
@@ -60,6 +62,7 @@ import { IncomingCallCard } from "./IncomingCallCard";
 import { type MemberCardActions, MemberCardActionsContext } from "./memberCard/memberCardContext";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { statusConfig } from "./memberStatus";
+import { MessagesHome } from "./MessagesHome";
 import { MobileServerView } from "./MobileServerView";
 import { PresenceDot } from "./PresenceDot";
 import { ReportsPanel } from "./ReportsPanel";
@@ -106,6 +109,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   } = useSettings();
   const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace } = useServerManagement();
   const directory = useDirectory();
+  /* The conversations as the search panel's "channels", which is what it names a hit by
+     and what `in:` offers. Only the fields it reads. */
+  const dmSearchChannels = useMemo(
+    () => directory.map((e) => ({ id: e.conversation.conversation_id, name: conversationTitle(e.conversation), type: "text" }) as Parameters<typeof SearchPanel>[0]["channels"][number]),
+    [directory],
+  );
   const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
   const { login } = useAccount();
@@ -174,15 +183,21 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   }, [currentlyViewingServer?.host, visibleChannelId, visibleDmId]);
 
   const [searchOpen, setSearchOpen] = useState(false);
+  // The messages space searches this device's own copy instead (GRYT-1748).
+  const [dmSearchOpen, setDmSearchOpen] = useState(false);
+  const openDmSearch = useCallback(() => {
+    setDmSearchOpen(true);
+    setSearchFocus((n) => n + 1);
+  }, []);
   const [searchFocus, setSearchFocus] = useState(0);
   const [pendingJump, setPendingJump] = useState<{ conversationId: string; messageId: string; nonce: number } | null>(null);
-  // Ctrl/Cmd+K, GRYT-1738. Not in the direct messages space: the server can't search sealed DMs.
+  // Ctrl/Cmd+K, GRYT-1738. In the messages space it searches this device's copy (GRYT-1748).
   useEffect(() => {
-    if (dmSpace) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyK") return;
       e.preventDefault();
-      setSearchOpen(true);
+      if (dmSpace) setDmSearchOpen(true);
+      else setSearchOpen(true);
       setSearchFocus((n) => n + 1);
     };
     window.addEventListener("keydown", onKeyDown);
@@ -496,33 +511,18 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     else setSelectedDmId(wanted);
   }, [dmSpace, currentlyViewingServer?.host, pendingConversation, selectedDmId, setSelectedDmId]);
 
-  /* Nothing asked for and nothing open: open the most recent conversation. An
-     empty pane under the space's header reads as a server's channel. */
+  /* Nothing asked for and nothing open is Messages home (GRYT-1744). An empty
+     conversation an earlier visit left selected counts as nothing open. GRYT-1148. */
   const visiting = useVisitingConversation();
   useEffect(() => {
     if (!dmSpace) return;
     const host = currentlyViewingServer?.host;
-    if (!host || conversationFor(host)) return;
-    // An empty one an earlier visit left selected counts as nothing open. GRYT-1148.
-    const selected = selectedDmId
-      ? directory.find((entry) => entry.host === host && entry.conversation.conversation_id === selectedDmId)
-      : undefined;
-    const stale = leftOver(selected?.conversation, visiting);
-    if (selectedDmId && !stale) return;
-    const recent = directory
-      /* Otherwise hiding the one being read picks it straight back up, since
-         the server still sends it and only this device is holding it back. */
-      .filter((entry) => !isHiddenConversation(entry.host, getOwnServerUserId(entry.host) ?? "", entry.conversation))
-      .filter((entry) => entry.conversation.last_message_at !== null)
-      .sort((a, b) =>
-        (b.conversation.last_message_at ?? "").localeCompare(a.conversation.last_message_at ?? ""))[0];
-    if (!recent) {
-      if (stale) setSelectedDmId(null);
-      return;
-    }
-    requestConversation(recent.host, recent.conversation.conversation_id);
-    if (recent.host !== host) viewServerBehindDmSpace(recent.host);
-  }, [dmSpace, selectedDmId, visiting, currentlyViewingServer?.host, directory, viewServerBehindDmSpace, setSelectedDmId]);
+    if (!host || conversationFor(host) || !selectedDmId) return;
+    const selected = directory.find((entry) => entry.host === host && entry.conversation.conversation_id === selectedDmId);
+    if (leftOver(selected?.conversation, visiting)) setSelectedDmId(null);
+  }, [dmSpace, selectedDmId, visiting, currentlyViewingServer?.host, directory, setSelectedDmId]);
+
+
 
   const requestOpenDm = useCallback((targetServerUserId: string) => {
     pendingDmTargetRef.current = targetServerUserId;
@@ -623,6 +623,16 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     connect, applyChannelSettings, setIsMuted, setIsDeafened,
   });
 
+  // Join from an In voice tile on Messages home, once that server is the one on screen.
+  const pendingVoiceJoin = usePendingVoiceJoin();
+  useEffect(() => {
+    const host = currentlyViewingServer?.host;
+    if (!host || dmSpace || pendingVoiceJoin?.host !== host) return;
+    const channelId = takeVoiceJoin(host);
+    const channel = serverDetailsList[host]?.channels?.find((c) => c.id === channelId);
+    if (channel) handleChannelClick(channel);
+  }, [pendingVoiceJoin, currentlyViewingServer?.host, dmSpace, serverDetailsList, handleChannelClick]);
+
   // Without this the DM stays the active conversation and the channel looks
   // selected while showing somebody else's messages.
   const handleChannelClickAndCloseDm = useCallback((channel: Parameters<typeof handleChannelClick>[0]) => {
@@ -639,6 +649,25 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       : undefined;
   const callerAvatarWorn = caller?.avatarWorn ?? null;
 
+  /** The caller is in the room from the moment it rings, or answering joins a
+      room with nobody in it. Cancel is offered until somebody answers. */
+  const startCall = useCallback((conversationId: string) => {
+    ringConversation(conversationId);
+    setShowVoiceView(true);
+    connect(conversationId).catch((error) => {
+      console.error("Could not start the call:", error);
+      // The same id as a refused ring, so their call setting is said once (GRYT-1470).
+      toast.error(error instanceof Error ? error.message : "Could not start the call", { id: "call:start" });
+      cancelCall(conversationId);
+    });
+  }, [ringConversation, setShowVoiceView, connect, cancelCall]);
+
+  // Call from a friend's menu on Messages home: rung once their conversation is the open one.
+  useEffect(() => {
+    if (!activeDm || activeDm.kind !== "dm" || !viewingHost) return;
+    if (takeCallRequest(viewingHost, activeDm.other.server_user_id)) startCall(activeDm.conversation_id);
+  }, [activeDm, viewingHost, startCall]);
+
   /** Built once for both layouts. Calling is offered whether or not one is
       going, and `start_calls` is not the permission for answering. */
   const dmHeaderActions = useMemo(() => {
@@ -647,19 +676,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     const ringing = outgoingCall?.conversation_id === conversationId;
     const mayCall = viewerPermissions.can("send_direct_messages") && viewerPermissions.can("start_calls");
     const friendWith = activeDm.kind === "dm" ? activeDm.other.server_user_id : undefined;
-
-    /** The caller is in the room from the moment it rings, or answering joins a
-        room with nobody in it. Cancel is offered until somebody answers. */
-    const startCall = () => {
-      ringConversation(conversationId);
-      setShowVoiceView(true);
-      connect(conversationId).catch((error) => {
-        console.error("Could not start the call:", error);
-        // The same id as a refused ring, so their call setting is said once (GRYT-1470).
-        toast.error(error instanceof Error ? error.message : "Could not start the call", { id: "call:start" });
-        cancelCall(conversationId);
-      });
-    };
 
     const stopCall = () => {
       cancelCall(conversationId);
@@ -673,7 +689,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
           <Button
             size="small"
             tone={ringing ? "primary" : "ghost"}
-            onClick={() => (ringing ? stopCall() : startCall())}
+            onClick={() => (ringing ? stopCall() : startCall(conversationId))}
           >
             {ringing ? "Cancel" : "Call"}
           </Button>
@@ -689,7 +705,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, ringConversation, setGroupDialog, connect, setShowVoiceView, handleVoiceDisconnect, viewingHost]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost]);
 
   /* The same member list the sidebar reads presence off — someone it hides
      from this viewer has no entry here either (GRYT-1467). */
@@ -904,16 +920,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   /** One element for two layouts: the tiny window renders this and nothing else,
       and a second copy is thirty props to keep in step. */
   const chatView = dmSpace && !activeDm ? (
-    /* The space with nothing open, for the moment before the most recent one is
-       picked or when there are none. A bare ChatView here was read as a channel. */
-    <div
-      className="flex grow items-center justify-center text-sm"
-      style={{ color: "var(--gryt-muted)", padding: "2rem", textAlign: "center" }}
-    >
-      {directory.some((entry) => entry.conversation.last_message_at !== null)
-        ? "Choose a conversation."
-        : "No conversations yet. Start one with the + next to Messages."}
-    </div>
+    <MessagesHome onSearch={openDmSearch} />
   ) : (
       <ChatView
         /* Wide enough for the thread to sit beside the conversation rather than
@@ -1226,6 +1233,33 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                     messageId: hit.thread_root_message_id ?? hit.message_id,
                     nonce: Date.now(),
                   });
+                }}
+              />
+            ) : dmSpace && dmSearchOpen ? (
+              <SearchPanel
+                key={activeDm?.conversation_id ?? "all"}
+                socketConnection={null}
+                serverHost={host}
+                serverName="direct messages"
+                channels={dmSearchChannels}
+                memberList={memberListMap}
+                focusNonce={searchFocus}
+                onClose={() => setDmSearchOpen(false)}
+                local={{
+                  conversations: directory.map((e) => ({ host: e.host, conversationId: e.conversation.conversation_id, title: conversationTitle(e.conversation) })),
+                  startIn: activeDm ? { key: "in", value: activeDm.conversation_id, label: conversationTitle(activeDm) } : undefined,
+                }}
+                onOpen={(_conversation, hit) => {
+                  const entry = directory.find((e) => e.conversation.conversation_id === hit.conversation_id);
+                  if (!entry) return;
+                  if (entry.host === host) {
+                    visitConversation(hit.conversation_id);
+                    setSelectedDmId(hit.conversation_id);
+                  } else {
+                    requestConversation(entry.host, hit.conversation_id);
+                    viewServerBehindDmSpace(entry.host);
+                  }
+                  setPendingJump({ conversationId: hit.conversation_id, messageId: hit.message_id, nonce: Date.now() });
                 }}
               />
             ) : (
