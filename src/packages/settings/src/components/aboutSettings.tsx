@@ -256,6 +256,9 @@ function UpdateControls() {
 }
 
 /** The store installs updates here, so none of the switches above would do anything. */
+/** Gryt's page in the Microsoft Store app, where Update shows when there's a new version. */
+const MS_STORE_PAGE = "ms-windows-store://pdp/?productid=9PKPT1C2M95Q";
+
 function AppStoreUpdates({ store, os }: { store: string; os: "macos" | "windows" }) {
   const [appVersion, setAppVersion] = useState<string>("…");
 
@@ -278,6 +281,13 @@ function AppStoreUpdates({ store, os }: { store: string; os: "macos" | "windows"
           </Button>
         </div>
         <span className="text-gryt-muted">Updates come from {store}. You can check for a new version there.</span>
+        {os === "windows" && (
+          <Button tone="neutral" size="small" className="self-start" render={<a href={MS_STORE_PAGE} target="_blank" rel="noopener noreferrer" />}>
+            <PiArrowsClockwiseFill size={16} />
+            Check for updates in the Microsoft Store
+            <PiArrowSquareOutFill size={14} />
+          </Button>
+        )}
       </div>
 
       <Surface>
