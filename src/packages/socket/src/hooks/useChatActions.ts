@@ -156,9 +156,12 @@ export function useChatActions({
     const el = document.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
+    // A class rather than a background: setting one and then "transparent" wiped a bubble's colour.
     setTimeout(() => {
-      el.style.background = "var(--gryt-accent-4)";
-      setTimeout(() => { el.style.background = "transparent"; }, 1500);
+      el.classList.remove("gryt-jump-flash");
+      void el.offsetWidth;
+      el.classList.add("gryt-jump-flash");
+      setTimeout(() => el.classList.remove("gryt-jump-flash"), 1600);
     }, 300);
   }, []);
 
