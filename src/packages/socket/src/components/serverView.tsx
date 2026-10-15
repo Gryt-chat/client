@@ -31,6 +31,7 @@ import { hideConversation } from "../hooks/hiddenConversations";
 import { useOpenThread } from "../hooks/openThreadMemory";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
+import { callClock, useCallClock } from "../hooks/useCallClock";
 import { useCalls } from "../hooks/useCalls";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
 import { useChat } from "../hooks/useChat";
@@ -123,7 +124,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     () => directory.map((e) => ({ id: e.conversation.conversation_id, name: conversationTitle(e.conversation), type: "text" }) as Parameters<typeof SearchPanel>[0]["channels"][number]),
     [directory],
   );
-  const { connect, currentServerConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
+  const { connect, currentServerConnected, currentChannelConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
   const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
   const { login } = useAccount();
   /** Servers this app hosts, for Manage server. Empty in a browser. */
@@ -606,6 +607,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       : undefined),
     [dmSpace, selectedDmId, directConversations],
   );
+  // While you're in this conversation's call its header says so, and brings the call back (board 11).
+  const inThisCall = !!activeDm && isConnected && currentServerConnected === currentlyViewingServer?.host && currentChannelConnected === activeDm?.conversation_id;
+  const callSeconds = useCallClock(inThisCall, activeDm?.conversation_id ?? "");
 
   /* The conversation the tiny window's list was opened over. Picking another one
      moves the selection off it, so the list goes without being told. */
@@ -704,6 +708,26 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
           </IconButton>
         </Tooltip>
       );
+      if (inThisCall) {
+        return (
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              data-gryt="in-call-pill"
+              onClick={() => setShowVoiceView(true)}
+              className="flex h-8 cursor-pointer items-center gap-1.5 rounded-(--gryt-radius-full) border-0 px-3 text-[13px] font-semibold tabular-nums"
+              style={{ background: "var(--gryt-success-3)", boxShadow: "inset 0 0 0 1px var(--gryt-success-6)", color: "var(--gryt-success-11)" }}
+            >
+              <PiPhoneFill size={14} /> In the call · {callClock(callSeconds)}
+            </button>
+            {icon("Search messages", () => (dmSearchOpen ? setDmSearchOpen(false) : openDmSearch()), <PiMagnifyingGlassBold size={17} />, dmSearchOpen)}
+            {icon("Conversation info", () => {
+              setDmInfoOpen(!dmInfoOpen || dmSearchOpen);
+              setDmSearchOpen(false);
+            }, <PiSidebarSimpleFill size={17} style={{ transform: "scaleX(-1)" }} />, dmInfoOpen && !dmSearchOpen, "dm-info-toggle")}
+          </div>
+        );
+      }
       return (
         <div className="flex items-center gap-0.5">
           {mayCall && (ringing
@@ -745,7 +769,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost, isTiny, isMobile, dmSearchOpen, dmInfoOpen, openDmSearch, setCameraEnabled]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost, isTiny, isMobile, dmSearchOpen, dmInfoOpen, openDmSearch, setCameraEnabled, inThisCall, callSeconds, setShowVoiceView]);
 
   /* The same member list the sidebar reads presence off — someone it hides
      from this viewer has no entry here either (GRYT-1467). */

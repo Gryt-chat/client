@@ -2460,3 +2460,34 @@ body {
 [data-message-id] .gryt-webhook-card-image {
   border-radius: 4px;
 }
+
+/* The rail's call capsule (GRYT-1746). Every colour is the theme's own green, so
+   a theme moves it; the live icon and the ring flip in light mode to keep 3:1+. */
+.gryt-call-capsule {
+  --gryt-call-ring: var(--gryt-success-9);
+  --gryt-call-on-live: var(--gryt-neutral-1);
+  background: var(--gryt-success-3);
+  box-shadow: inset 0 0 0 1px var(--gryt-success-6);
+  border-radius: 9999px;
+  padding: 6px 4px;
+}
+.gryt-call-capsule[data-appearance="light"] {
+  --gryt-call-ring: var(--gryt-success-11);
+  --gryt-call-on-live: var(--gryt-neutral-12);
+}
+/* Not up yet: amber, so the controls being there isn't read as the call being there. */
+.gryt-call-capsule[data-live="false"] {
+  background: var(--gryt-warning-3);
+  box-shadow: inset 0 0 0 1px var(--gryt-warning-6);
+}
+.gryt-call-capsule [data-call-state="idle"] {
+  background: transparent;
+  color: var(--gryt-success-11);
+}
+.gryt-call-capsule [data-call-state="idle"]:hover {
+  background: var(--gryt-success-4);
+}
+.gryt-call-capsule [data-call-state="live"] {
+  background: var(--gryt-success-9);
+  color: var(--gryt-call-on-live);
+}
