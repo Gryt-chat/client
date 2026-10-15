@@ -2072,8 +2072,6 @@ body {
   justify-content: center;
 }
 
-.whats-new-change p,
-.whats-new-plain,
 .whats-new-picture {
   display: block;
   margin-top: 1rem;
@@ -2092,6 +2090,8 @@ body {
   object-position: top;
 }
 
+.whats-new-change p,
+.whats-new-plain,
 .whats-new-line {
   margin: 0;
   font-size: 0.9rem;
