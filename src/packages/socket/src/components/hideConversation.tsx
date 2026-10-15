@@ -1,13 +1,15 @@
 import { Button } from "@gryt/ui";
+import { type ReactNode, useState } from "react";
 import toast from "react-hot-toast";
 
 import { markChannelRead } from "@/common";
 
 import { hideConversation, showConversation } from "../hooks/hiddenConversations";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
- * Hiding, with the way back attached. No confirm: the row is one click from
- * being back, and the Hidden group holds it in the meantime.
+ * Hiding, with the way back attached: an Undo toast, and the Hidden group holds it.
+ * It asks first anyway (GRYT-1759), since the button sits where a click lands by accident.
  */
 
 /* Long enough to notice what happened and reach for Undo, short enough that it
@@ -45,4 +47,26 @@ export function hideConversationWithUndo(
     ),
     { id, duration: UNDO_MS },
   );
+}
+
+/** Asks before hiding. `ask` takes the conversation's name and what to do on Hide. */
+export function useConfirmHide(): [(title: string, hide: () => void) => void, ReactNode] {
+  const [pending, setPending] = useState<{ title: string; hide: () => void } | null>(null);
+  const dialog = (
+    <ConfirmDialog
+      open={!!pending}
+      onOpenChange={(open) => {
+        if (!open) setPending(null);
+      }}
+      title={`Hide ${pending?.title ?? "this conversation"}?`}
+      description="It moves to Hidden at the bottom of your list, on this device only. Nothing is deleted, and a new message brings it back."
+      confirmLabel="Hide"
+      confirmTone="primary"
+      onConfirm={() => {
+        pending?.hide();
+        setPending(null);
+      }}
+    />
+  );
+  return [(title, hide) => setPending({ title, hide }), dialog];
 }

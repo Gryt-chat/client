@@ -26,7 +26,7 @@ import { useSockets } from "../hooks/useSockets";
 import { DmSpaceList } from "./DmSpaceList";
 import { FilteredContacts } from "./FilteredContacts";
 import { FriendsPanel } from "./FriendsPanel";
-import { hideConversationWithUndo } from "./hideConversation";
+import { hideConversationWithUndo, useConfirmHide } from "./hideConversation";
 
 /**
  * The conversation list, in place of the channel sidebar. Every server's, not
@@ -133,7 +133,12 @@ export function DmSpaceSidebar({
     viewServerBehindDmSpace(rowHost);
   }
 
+  const [askHide, hideDialog] = useConfirmHide();
   function hide(entry: DirectoryEntry) {
+    askHide(conversationTitle(entry.conversation), () => hideNow(entry));
+  }
+
+  function hideNow(entry: DirectoryEntry) {
     const conversationId = entry.conversation.conversation_id;
     hideConversationWithUndo(
       entry.host,
@@ -340,6 +345,7 @@ export function DmSpaceSidebar({
       )}
 
       <FilteredContacts onOpen={openFiltered} />
+      {hideDialog}
     </aside>
   );
 }

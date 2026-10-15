@@ -845,31 +845,11 @@ body {
   }
 }
 
-/* The message a jump lands on (search, pins, a reply quote) pulses three times. An outline,
-   not a background, so a bubble keeps its own colour. */
-.gryt-jump-flash {
-  outline: 2px solid transparent;
+/* The message a jump lands on (search, pins, a reply quote) gets a steady outline for five
+   seconds. An outline, not a background, so a bubble keeps its own colour. */
+.gryt-jump-mark {
+  outline: 2px solid var(--gryt-accent-9);
   outline-offset: 2px;
-  animation: gryt-jump-flash 1.5s ease-in-out;
-}
-
-@keyframes gryt-jump-flash {
-  0%, 33%, 66% {
-    outline-color: transparent;
-  }
-  16%, 50%, 83% {
-    outline-color: var(--gryt-accent-9);
-  }
-  100% {
-    outline-color: transparent;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .gryt-jump-flash {
-    animation: none;
-    outline-color: var(--gryt-accent-9);
-  }
 }
 
 /* ── Attachment images in messages ─────────────────────────── */
