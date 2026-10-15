@@ -61,8 +61,9 @@ test("a DM lights no server in the rail, and its header names the server instead
   await expect(header).toContainText(alice.name);
   await expect(header.getByTitle("Gryt E2E")).toBeVisible();
 
-  const row = bob.page.getByRole("button", { name: alice.name });
-  await expect(row.getByRole("img", { name: "Gryt E2E" })).toBeVisible();
+  // The row names the server only when two people share a name (GRYT-1742).
+  const row = bob.page.locator('[data-gryt="dm-row"]', { hasText: alice.name });
+  await expect(row).toBeVisible();
   await expect(row).not.toContainText("Gryt E2E");
 
   await dmButton.click();
@@ -99,7 +100,8 @@ test("a DM in a window too narrow for the rail stays inside it, with the list a 
 async function newMessageDialog(page: Page) {
   const heading = page.getByRole("heading", { name: "Messages" });
   if (!(await heading.isVisible())) await page.getByRole("button", { name: "Direct messages" }).click();
-  await page.getByRole("button", { name: "New message" }).click();
+  // The pill beside Messages; the home has its own New message button too.
+  await page.getByLabel("New message", { exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "New message" })).toBeVisible();
   return dialog;
@@ -139,7 +141,8 @@ test("Create group makes a group everybody in it can see, then asks for a name",
   await dialog.getByRole("textbox").fill(name);
   await dialog.getByRole("button", { name: "Done" }).click();
   await expect(composer(carol.page, `Message ${name}`)).toBeVisible();
-  await expect(carol.page.getByRole("button", { name: "Group settings" })).toBeVisible();
+  // On a desktop window the group's settings are in its info panel (GRYT-1745).
+  await expect(carol.page.locator('[data-gryt="dm-info"]').getByRole("button", { name: "Edit group" })).toBeVisible();
 
   for (const who of [alice, bob]) {
     await who.page.getByRole("button", { name: "Direct messages" }).click();
@@ -147,7 +150,7 @@ test("Create group makes a group everybody in it can see, then asks for a name",
     await expect(composer(who.page, `Message ${name}`)).toBeVisible();
   }
 
-  // A group's header carries Group settings where a DM's has nothing, and still fits.
+  // In the tiny window the header carries Group settings instead, and still fits.
   await carol.page.setViewportSize({ width: 300, height: 800 });
   await expect(carol.page.getByRole("button", { name: "Group settings" })).toBeVisible();
   await expect.poll(() => pastWindowEdge(carol.page), { message: "the group at 300px" }).toEqual([]);

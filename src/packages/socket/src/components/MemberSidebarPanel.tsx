@@ -28,8 +28,6 @@ interface MemberSidebarPanelProps {
   onToggleBlock?: (targetServerUserId: string) => void;
   onReport?: (target: { serverUserId: string; nickname: string }) => void;
   isBlocked?: (serverUserId: string) => boolean;
-  pinned: boolean;
-  onTogglePinned: () => void;
 }
 
 export const MemberSidebarPanel = ({
@@ -39,7 +37,7 @@ export const MemberSidebarPanel = ({
   members, currentConnectionId, currentServerUserId,
   currentUserRole,
   currentServerConnected, serverHost,
-  adminActions, onOpenDm, onToggleBlock, isBlocked, onReport, pinned, onTogglePinned,
+  adminActions, onOpenDm, onToggleBlock, isBlocked, onReport,
 }: MemberSidebarPanelProps) => (
   <div
     // Named the way the other panels are, so a layout check can measure it. The
@@ -121,8 +119,6 @@ export const MemberSidebarPanel = ({
             onToggleBlock={onToggleBlock}
             onReport={onReport}
             isBlocked={isBlocked}
-            pinned={pinned}
-            onTogglePinned={onTogglePinned}
           />
         </div>
       </div>

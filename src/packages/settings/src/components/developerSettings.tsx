@@ -160,6 +160,8 @@ export function DeveloperSettings() {
         <code>
           ?fake=6&amp;fakemembers=8&amp;fakemuted=2&amp;fakeshare=1&amp;fakedeaf=1&amp;fakespeak=0
         </code>
+        <br />
+        <code>?fakedms</code> puts the canvas&rsquo;s friends, conversations and voice channels on the first server you&rsquo;re on.
       </span>
     </SettingsContainer>
   );

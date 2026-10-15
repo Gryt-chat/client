@@ -157,7 +157,8 @@ test("calls from friends by default: a stranger's ring never rings, and writing 
   const either = alice.page.locator('[data-gryt="chat-header"]').getByRole("button", { name: /^(Call|Cancel)$/ });
   await expect
     .poll(async () => {
-      const label = (await either.textContent())?.trim();
+      // Call is an icon button named by its aria-label; Cancel is text.
+      const label = (await either.getAttribute("aria-label")) ?? (await either.textContent())?.trim();
       if (label === "Cancel") await either.click();
       return label;
     })

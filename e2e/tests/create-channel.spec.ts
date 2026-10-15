@@ -117,10 +117,10 @@ test("the + in the server header makes a channel or a folder", async ({ owner })
 
   // Both used to be in the server menu. They are only under the + now.
   await channelsNav(page).getByRole("button", { name: "Server menu" }).click();
-  await expect(page.getByRole("menuitem", { name: "Unpin sidebar" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Hide channels" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /^Create/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("menuitem", { name: "Unpin sidebar" })).toBeHidden();
+  await expect(page.getByRole("menuitem", { name: "Hide channels" })).toBeHidden();
 });
 
 test("the pin is in the server menu, and a member who can't manage channels gets no +", async ({ newMember }) => {
@@ -131,7 +131,7 @@ test("the pin is in the server menu, and a member who can't manage channels gets
   await expect(nav.getByRole("button", { name: /pin sidebar/i })).toHaveCount(0);
 
   await nav.getByRole("button", { name: "Server menu" }).click();
-  await page.getByRole("menuitem", { name: "Unpin sidebar" }).click();
+  await page.getByRole("menuitem", { name: "Hide channels" }).click();
   await expect.poll(() => userValue<boolean>(page, "pinChannelsSidebar")).toBe(false);
 
   // Unpinned, the list folds away once the pointer is somewhere else.

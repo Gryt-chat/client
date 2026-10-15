@@ -1,5 +1,5 @@
 import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
-import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { cloneElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
@@ -80,17 +80,26 @@ const STEP_ICON: Record<FriendStep["icon"], () => ReactElement> = {
   confirm: CardIcon.friend,
 };
 
+/** Popover.Close's shape for a card that isn't in a popover: the button, and the click. */
+function InlineClose({ render, onClick, children }: { render: ReactElement; onClick?: () => void; children?: ReactNode }) {
+  return cloneElement(render as ReactElement<{ onClick?: () => void; children?: ReactNode }>, { onClick }, children);
+}
+
 export function MemberIdentityCard({
   member,
   serverHost,
   voiceChannelName,
+  inline = false,
 }: {
   member: MemberInfo;
   /** Which server this member is shown on, for their key state, roles and uploads. */
   serverHost?: string;
   /** Looked up from the member's channel when a caller does not pass it. */
   voiceChannelName?: string;
+  /** Drawn in a panel rather than a popover, so its buttons have nothing to close (GRYT-1745). */
+  inline?: boolean;
 }) {
+  const Close = inline ? InlineClose : Popover.Close;
   const actions = useMemberCardActions();
   const { memberKeyStates, serverDetailsList, memberLists } = useSockets();
   const serverMembers = serverHost ? memberLists[serverHost] : undefined;
@@ -264,12 +273,12 @@ export function MemberIdentityCard({
 
       <div className="gmc-acts">
         {!isSelf && actions.onOpenDm && can("send_direct_messages") && (
-          <Popover.Close
+          <Close
             render={<button type="button" className="gmc-ib" aria-label="Message" data-tip="Message" />}
             onClick={() => actions.onOpenDm!(member.serverUserId)}
           >
             <CardIcon.chat />
-          </Popover.Close>
+          </Close>
         )}
         {friendSteps.map((step, i) => {
           const Icon = STEP_ICON[step.icon];
@@ -289,7 +298,7 @@ export function MemberIdentityCard({
           );
         })}
         {!isSelf && (
-          <Popover.Close
+          <Close
             render={<button type="button" className="gmc-ib quiet" aria-label="Mention" data-tip="Mention" />}
             onClick={() =>
               window.dispatchEvent(
@@ -298,7 +307,7 @@ export function MemberIdentityCard({
             }
           >
             <CardIcon.at />
-          </Popover.Close>
+          </Close>
         )}
         {worn && (
           <button type="button" className="gmc-ib quiet" aria-label="Copy avatar" data-tip="Copy avatar" onClick={() => copy(worn, "Avatar code copied")}>
@@ -306,12 +315,12 @@ export function MemberIdentityCard({
           </button>
         )}
         {isSelf && (
-          <Popover.Close
+          <Close
             render={<button type="button" className="gmc-ib quiet" aria-label="Edit my card" data-tip="Edit my card" />}
             onClick={() => openSettings("profile/card")}
           >
             <CardIcon.pen />
-          </Popover.Close>
+          </Close>
         )}
         <span className="sp" />
         {!isSelf && actions.onReport && has("report_messages") && (

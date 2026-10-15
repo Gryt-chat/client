@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 
+import { FAKE_CONFIRMED, fakeFriendList, isFakeHost, onFakeHostClaimed } from "../dev/fakeDms.ts";
 import type { FriendGate } from "../utils/contactFilter.ts";
 import {
   confirmFriend,
@@ -38,6 +39,8 @@ const notified = new Map<string, Set<string>>();
 const lists = new Map<string, ServerFriendList>();
 const emitters = new Map<string, (event: string, serverUserId: string) => void>();
 const listeners = new Set<() => void>();
+// `?fakedms`: the boards' friends, whether or not the server sends a list of its own.
+onFakeHostClaimed((host) => setServerFriendList(host, lists.get(host) ?? { friends: [], incoming: [], outgoing: [] }));
 let version = 0;
 
 function changed(): void {
@@ -83,7 +86,14 @@ export function friendGateFor(host: string): FriendGate {
   };
 }
 
-export function setServerFriendList(host: string, list: ServerFriendList): void {
+export function setServerFriendList(host: string, real: ServerFriendList): void {
+  let list = real;
+  if (isFakeHost(host)) {
+    const fake = fakeFriendList();
+    list = { friends: [...real.friends, ...fake.friends], incoming: [...real.incoming, ...fake.incoming], outgoing: real.outgoing };
+    // Held in memory only, so a fake never lands in this device's real book.
+    for (const id of FAKE_CONFIRMED) friendBookFor(host).friends.set(id, { nickname: null, since: 1 });
+  }
   lists.set(host, list);
   changed();
 }
@@ -164,18 +174,4 @@ export function useFriendState(host: string | undefined, serverUserId: string | 
 
 export function useIncomingFriendCount(): number {
   return useAllFriends().reduce((n, h) => n + h.incoming.length, 0);
-}
-
-/* Whether the Friends dialog is up. Here, so a member card on any server can open it. */
-let dialogOpen = false;
-
-export function setFriendsOpen(next: boolean): void {
-  if (dialogOpen === next) return;
-  dialogOpen = next;
-  changed();
-}
-
-export function useFriendsOpen(): boolean {
-  useSyncExternalStore(subscribe, snapshot, snapshot);
-  return dialogOpen;
 }

@@ -3,6 +3,7 @@ import { useCamera, useScreenShare, useSFU } from "@gryt/voice";
 import { AnimatePresence, motion, Variants } from "motion/react";
 import toast from "react-hot-toast";
 
+import { useTheme } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
@@ -10,6 +11,7 @@ import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useVoicePresence } from "../adapters/useVoicePresence";
+import { CallCapsuleFace } from "./CallCapsuleFace";
 import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
 import { ScreenShareControl } from "./ScreenShareControl";
@@ -58,8 +60,9 @@ export function MiniControls({
   const showCamera = cameraEnabled || canIn(currentChannelConnected, "share_video");
   const showScreenShare = screenShareActive || canIn(currentChannelConnected, "share_screen");
 
+  const { resolvedAppearance } = useTheme();
   const isColumn = direction === "column";
-  const iconSize = isColumn ? 14 : 12;
+  const iconSize = isColumn ? 16 : 12;
 
   return (
     <>
@@ -73,22 +76,22 @@ export function MiniControls({
             initial="hidden"
             animate="visible"
             exit="hidden"
+            className={isColumn ? "gryt-call-capsule" : undefined}
+            data-live={isColumn ? String(voice.live) : undefined}
+            data-appearance={isColumn ? resolvedAppearance : undefined}
             style={{
               display: "flex",
               flexDirection: isColumn ? "column" : "row-reverse",
               alignItems: "center",
-              gap: isColumn ? "4px" : "8px",
-              ...(isColumn ? {
-                // Tinted while the call is not up yet, so the controls being
-                // there is not read as the call being there.
-                background: voice.live
-                  ? "var(--gryt-neutral-a3)"
-                  : "var(--gryt-warning-a3)",
-                borderRadius: "9999px",
-                padding: "2px",
-              } : {}),
+              gap: isColumn ? "5px" : "8px",
             }}
           >
+            {/* The capsule says whose call it is, not only that there is one (board 13). */}
+            {isColumn && (
+              <motion.div variants={buttonAnimations}>
+                <CallCapsuleFace host={voice.host} channelId={voice.channelId} live={voice.live} />
+              </motion.div>
+            )}
             <motion.div variants={buttonAnimations}>
               <CallControlButton
                 state={isServerMuted ? "blocked" : isMuted ? "off" : "idle"}

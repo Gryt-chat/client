@@ -1,4 +1,4 @@
-import { Tooltip } from "@gryt/ui";
+import { Menu, Tooltip } from "@gryt/ui";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
 
@@ -7,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiLockOpen, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -90,6 +90,10 @@ export const ChatView = memo(({
   headerAction,
   headerLead,
   headerDetail,
+  headerIcon,
+  headerSubtitle,
+  hidePins = false,
+  moreMenu,
   underHeader,
   flush,
   isRateLimited,
@@ -151,6 +155,14 @@ export const ChatView = memo(({
   headerLead?: React.ReactNode;
   /** Beside the name. A direct message puts the server it's on here. */
   headerDetail?: React.ReactNode;
+  /** In place of the channel-type icon: a DM's face, say. */
+  headerIcon?: React.ReactNode;
+  /** A second line under the name, which puts the name in a column with it. */
+  headerSubtitle?: React.ReactNode;
+  /** Pinned messages live somewhere else, as in a DM's info panel. */
+  hidePins?: boolean;
+  /** Menu items behind a ⋯ after the pins, which then hold Search too (board 7, option A). */
+  moreMenu?: React.ReactNode;
   /** A slot rather than the panel, because this is the same component for a DM
       and knows nothing about servers. */
   underHeader?: React.ReactNode;
@@ -805,22 +817,49 @@ export const ChatView = memo(({
           {channelName && (
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {headerLead}
-              {isForum ? <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
+              {headerIcon ?? (isForum ? <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />)}
               {/* One line that gives way, or a long name pushes the buttons out of a narrow window. */}
-              <span className="min-w-0 truncate text-lg font-bold" title={channelName} style={{ color: "var(--gryt-neutral-12)" }}>
-                <EmojiText text={channelName} />
-              </span>
+              {headerSubtitle ? (
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="min-w-0 truncate font-bold" title={channelName} style={{ fontSize: 17, color: "var(--gryt-neutral-12)" }}>
+                    <EmojiText text={channelName} />
+                  </span>
+                  {headerSubtitle}
+                </span>
+              ) : (
+                <span className="min-w-0 truncate text-lg font-bold" title={channelName} style={{ color: "var(--gryt-neutral-12)" }}>
+                  <EmojiText text={channelName} />
+                </span>
+              )}
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
-                {onSearch && (
+                {onSearch && !moreMenu && (
                   <Tooltip title={`Search (${SEARCH_SHORTCUT})`}>
                     <button type="button" aria-label="Search" data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
                       <PiMagnifyingGlassBold size={16} />
                     </button>
                   </Tooltip>
                 )}
-                {!isForum && (
+                {!isForum && !hidePins && (
                   <PinsButton pins={pins} memberList={memberList} onJump={jumpToMessage} />
+                )}
+                {moreMenu && (
+                  <Menu.Root>
+                    <Tooltip title="More">
+                      <Menu.Trigger
+                        aria-label="More"
+                        data-gryt="chat-more"
+                        render={<button type="button" className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1" style={{ color: "var(--gryt-neutral-11)" }} />}
+                      >
+                        <PiDotsThreeBold size={16} />
+                      </Menu.Trigger>
+                    </Tooltip>
+                    <Menu.Portal>
+                      <Menu.Positioner align="end">
+                        <Menu.Popup className="min-w-60">{moreMenu}</Menu.Popup>
+                      </Menu.Positioner>
+                    </Menu.Portal>
+                  </Menu.Root>
                 )}
                 {headerAction}
               </div>

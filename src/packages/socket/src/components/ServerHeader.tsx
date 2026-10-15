@@ -1,7 +1,7 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
 import toast from "react-hot-toast";
 
-import { PiDotsThreeVerticalBold, PiPlusBold } from "../../../../lib/icons";
+import { PiCopySimpleBold, PiDotsThreeVerticalBold, PiFlagFill, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiSidebarSimpleFill, PiSignOutBold, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
 export const ServerHeader = ({
@@ -128,14 +128,15 @@ export const ServerHeader = ({
               {/* Invite and settings, moderation, the pin, the address, then leaving. Nothing is greyed
                   out for a feature Gryt lacks, and muting is on the channel list's right-click. */}
               {canManage && onOpenInvites && (
-                <Menu.Item onClick={onOpenInvites}>Invite to server</Menu.Item>
+                <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />Invite to server</Menu.Item>
               )}
               {openInvite.available && (
-                <Menu.Item onClick={() => void openInvite.copy()}>Copy invite link</Menu.Item>
+                <Menu.Item onClick={() => void openInvite.copy()}><PiLinkSimpleBold size={16} />Copy invite link</Menu.Item>
               )}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
                   <div className="flex items-center gap-2">
+                    <PiGearSixFill size={16} />
                     Server settings
                     {updateAvailable && (
                       <Chip tone="warning" label="!" />
@@ -146,13 +147,14 @@ export const ServerHeader = ({
               {/* Not gated on role. It is this machine's process, which the server's
                   roles have no say over. */}
               {onManageServer && (
-                <Menu.Item onClick={onManageServer}>Manage server</Menu.Item>
+                <Menu.Item onClick={onManageServer}><PiHardDrivesFill size={16} />Manage server</Menu.Item>
               )}
 
               {canManage && onOpenReports && <Menu.Separator />}
               {canManage && onOpenReports && (
                 <Menu.Item onClick={onOpenReports}>
                   <div className="flex items-center gap-2">
+                    <PiFlagFill size={16} />
                     Reports
                     {!!pendingReportCount && pendingReportCount > 0 && (
                       <Chip tone="danger">
@@ -165,7 +167,11 @@ export const ServerHeader = ({
 
               {onTogglePinned && (hasTopGroup || (canManage && onOpenReports)) && <Menu.Separator />}
               {onTogglePinned && (
-                <Menu.Item onClick={onTogglePinned}>{pinned ? "Unpin sidebar" : "Pin sidebar"}</Menu.Item>
+                <Menu.Item onClick={onTogglePinned}>
+                  {/* Board 7: the sidebar icon means hiding a list; the pin means pinned messages only. */}
+                  <PiSidebarSimpleFill size={16} />
+                  {pinned ? "Hide channels" : "Keep channels open"}
+                </Menu.Item>
               )}
 
               {/* The address, not an id. It is what identifies a Gryt server,
@@ -174,7 +180,7 @@ export const ServerHeader = ({
                   anybody who is here already knows it. */}
               {serverHost && <Menu.Separator />}
               {serverHost && (
-                <Menu.Item onClick={copyHost}>Copy server address</Menu.Item>
+                <Menu.Item onClick={copyHost}><PiCopySimpleBold size={16} />Copy server address</Menu.Item>
               )}
 
               {/* Everyone, not just whoever can manage the place (GRYT-942).
@@ -193,15 +199,18 @@ export const ServerHeader = ({
                     )
                   }
                 >
+                  <PiPuzzlePieceFill size={16} />
                   What this server runs
                 </Menu.Item>
               )}
 
               <Menu.Separator />
               <Menu.Item onClick={() => onLeave("remove")}>
+                <PiMinusCircleFill size={16} />
                 Remove from sidebar
               </Menu.Item>
               <Menu.Item className="text-gryt-danger" onClick={() => onLeave("leave")}>
+                <PiSignOutBold size={16} />
                 Leave server
               </Menu.Item>
             </Menu.Popup>

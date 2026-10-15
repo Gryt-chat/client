@@ -5,13 +5,14 @@ import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
-import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useAccount, useUnreadBadge } from "@/common";
+import { getOwnServerUserId, getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useAccount, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
 import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
+import { fakeDmsOn, fakeHistory } from "../dev/fakeDms";
 import { heldRoleIds } from "../lib/permissions";
 import { useMlsReportsTaken } from "../mls/serverMls";
 import { dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
@@ -702,6 +703,12 @@ export function useChat({
         },
       }));
 
+      // `?fakedms`: the server has never heard of a fake conversation, so answer for it.
+      if (fakeDmsOn && activeConversationId.startsWith("fake-")) {
+        const payload = { conversation_id: activeConversationId, items: fakeHistory(activeConversationId, getOwnServerUserId(currentlyViewingServer?.host)) };
+        for (const listener of currentConnection.listeners("chat:history")) listener(payload);
+        return;
+      }
       currentConnection.emit("chat:fetch", { conversationId: activeConversationId, limit: 50 });
     }, 250);
 

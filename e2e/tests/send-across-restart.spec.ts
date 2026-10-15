@@ -139,7 +139,11 @@ async function dm(alice: Member, bob: Member): Promise<Conversation> {
   return {
     box,
     rows: (text) => alice.page.locator("[data-message-id]").filter({ hasText: text }),
-    reopen: () => expect(box).toBeVisible(),
+    // A reload lands on the messages home now, so the conversation is opened from the list.
+    reopen: async () => {
+      await alice.page.locator('[data-gryt="dm-list"]').getByRole("button", { name: bob.name }).first().click();
+      await expect(box).toBeVisible();
+    },
   };
 }
 

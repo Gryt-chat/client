@@ -172,7 +172,7 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 {
   const header = read(HEADER);
-  assert.match(header, /\{onManageServer && \(\s*<Menu\.Item onClick=\{onManageServer\}>Manage server<\/Menu\.Item>\s*\)\}/, "the header menu gates Manage server on role or something else besides being hosted here");
+  assert.match(header, /\{onManageServer && \(\s*<Menu\.Item onClick=\{onManageServer\}>(?:<PiHardDrivesFill size=\{16\} \/>)?Manage server<\/Menu\.Item>\s*\)\}/, "the header menu gates Manage server on role or something else besides being hosted here");
   assert.equal(header.match(/Manage server<\//g)?.length, 1, `${HEADER} draws Manage server more than once`);
 
   const view = read(VIEW);

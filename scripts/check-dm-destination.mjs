@@ -259,11 +259,9 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
    generated one is only for a server with none, or the row shows a planet. */
 {
   const list = read("src/packages/socket/src/components/DmSpaceList.tsx");
-  assert.ok(
-    /serverIcon=\{serverIconSrc\(entry\.host, servers\[entry\.host\]\?\.name \|\| "", serverDetailsList\)\}/.test(list),
-    "the conversation row does not take the server's icon from where the rail does",
-  );
-  assert.ok(/<ServerMark src=\{serverIcon\} seed=\{serverName\} \/>/.test(list), "the row draws something other than the server's icon");
+  // GRYT-1742: a row names its server only when another row has the same name.
+  assert.ok(/clash=\{entry\.conversation\.kind === "dm" && clashes\.has\(title\)\}/.test(list), "a row names its server whether or not another row shares its name");
+  assert.ok(/\{clash && \(/.test(list) && /· \{serverName\}/.test(list), "a row with a shared name doesn't say which server it's on");
   const chip = read("src/packages/socket/src/components/ServerChip.tsx");
   const mark = chip.slice(chip.indexOf("function ServerMark"), chip.indexOf("function ServerChip"));
   assert.ok(
@@ -399,22 +397,18 @@ function loadLastView(store) {
   );
 }
 
-/* Opening the space with nothing to go back to opens the most recent conversation,
-   and only one somebody has written in. */
+/* Opening the space with nothing to go back to is Messages home (GRYT-1744), and an
+   empty conversation an earlier visit left selected counts as nothing open. */
 {
   const auto = view.slice(view.indexOf("const visiting = useVisitingConversation();"), view.indexOf("const requestOpenDm"));
   assert.ok(
-    /if \(selectedDmId && !stale\) return;/.test(auto)
-      && /\.filter\(\(entry\) => entry\.conversation\.last_message_at !== null\)\s*\.sort\(/.test(auto),
-    "the space opens on nothing, or on an empty conversation, instead of the most recent",
-  );
-  assert.ok(
-    /const stale = leftOver\(selected\?\.conversation, visiting\);/.test(auto),
+    /if \(leftOver\(selected\?\.conversation, visiting\)\) setSelectedDmId\(null\);/.test(auto),
     "an empty conversation from an earlier visit still counts as open, so it comes back",
   );
+  assert.ok(!/\.sort\(\(a, b\) =>\s*\(b\.conversation\.last_message_at/.test(auto), "the space still jumps to the most recent conversation instead of home");
   assert.ok(
-    /dmSpace && !activeDm \? \(/.test(view),
-    "the space with nothing open renders a bare chat, which reads as a channel",
+    /dmSpace && !activeDm \? \(\s*<MessagesHome/.test(view),
+    "the space with nothing open renders something other than Messages home",
   );
 }
 
