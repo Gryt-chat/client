@@ -1,4 +1,4 @@
-import { ContextMenu } from "@gryt/ui";
+import { ContextMenu, Menu } from "@gryt/ui";
 import { useSyncExternalStore } from "react";
 
 import {
@@ -45,6 +45,7 @@ export function NotificationLevelMenu({
   host,
   scope,
   placement = null,
+  inMenu = false,
 }: {
   host: string;
   scope: NotificationScope;
@@ -53,7 +54,11 @@ export function NotificationLevelMenu({
    * currently resolves to. Server and folder scopes do not need it.
    */
   placement?: NotificationScopePlacement | null;
+  /** Inside a dropdown Menu, such as the chat header's ⋯, rather than a right-click one. */
+  inMenu?: boolean;
 }) {
+  // The two share their parts' names and props, so one tree draws either.
+  const M = (inMenu ? Menu : ContextMenu) as typeof ContextMenu;
   /* Subscribed to the whole store rather than the servers map, so picking a
      level and changing the global ceiling both re-render this. */
   useSyncExternalStore(subscribeToPrefs, getStoredSnapshot, getStoredSnapshot);
@@ -90,12 +95,12 @@ export function NotificationLevelMenu({
   ];
 
   return (
-    <ContextMenu.SubmenuRoot>
-      <ContextMenu.SubmenuTrigger>Notifications</ContextMenu.SubmenuTrigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Positioner>
-          <ContextMenu.Popup>
-            <ContextMenu.RadioGroup
+    <M.SubmenuRoot>
+      <M.SubmenuTrigger>Notifications</M.SubmenuTrigger>
+      <M.Portal>
+        <M.Positioner>
+          <M.Popup>
+            <M.RadioGroup
               value={own ?? "default"}
               onValueChange={(value) =>
                 setNotificationLevel(
@@ -106,37 +111,37 @@ export function NotificationLevelMenu({
               }
             >
               {choices.map((choice) => (
-                <ContextMenu.RadioItem
+                <M.RadioItem
                   key={choice.label}
                   value={choice.value ?? "default"}
                 >
                   {choice.label}
-                </ContextMenu.RadioItem>
+                </M.RadioItem>
               ))}
-            </ContextMenu.RadioGroup>
+            </M.RadioGroup>
 
             {/* Said here rather than only in settings. A channel reading
                 "Everything" and making no sound is a bug report waiting to
                 happen, and the menu is where somebody goes to find out why. */}
             {overruled && (
               <>
-                <ContextMenu.Separator />
+                <M.Separator />
                 {/* Inside a Group because Base UI reads the group's id off
                     context to point aria-labelledby at the label, and throws
                     without one. */}
-                <ContextMenu.Group>
-                  <ContextMenu.GroupLabel>
+                <M.Group>
+                  <M.GroupLabel>
                     {global === "none"
                       ? "Everything is muted in settings"
                       : "Settings limits this to mentions"}
-                  </ContextMenu.GroupLabel>
-                </ContextMenu.Group>
+                  </M.GroupLabel>
+                </M.Group>
               </>
             )}
-          </ContextMenu.Popup>
-        </ContextMenu.Positioner>
-      </ContextMenu.Portal>
-    </ContextMenu.SubmenuRoot>
+          </M.Popup>
+        </M.Positioner>
+      </M.Portal>
+    </M.SubmenuRoot>
   );
 }
 

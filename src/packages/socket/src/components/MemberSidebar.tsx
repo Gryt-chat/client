@@ -1,9 +1,8 @@
-import { Avatar, IconButton, Popover, Tooltip } from "@gryt/ui";
+import { Avatar, Popover } from "@gryt/ui";
 import { useCallback, useMemo, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
-import { PiPushPinFill, PiPushPinSlashFill } from "../../../../lib/icons";
 import type { RichActivity } from "../../../../lib/richActivity";
 import { nameTags } from "../../../lib/nameTags";
 import { useDirectory } from "../hooks/dmDirectory";
@@ -129,8 +128,6 @@ interface MemberSidebarProps {
   isBlocked?: (serverUserId: string) => boolean;
   /** Opens the report dialog. The nickname comes along so the dialog can name them. */
   onReport?: (target: { serverUserId: string; nickname: string }) => void;
-  pinned?: boolean;
-  onTogglePinned?: () => void;
 }
 
 
@@ -320,8 +317,6 @@ export const MemberSidebar = ({
   onToggleBlock,
   isBlocked,
   onReport,
-  pinned,
-  onTogglePinned,
 }: MemberSidebarProps) => {
   const { roles } = useServerPermissions(serverHost);
   const { resolvedAppearance } = useTheme();
@@ -387,20 +382,8 @@ export const MemberSidebar = ({
           line that told you where you were and nothing else.
 
           The region keeps `aria-label="Members"`, so nothing is lost to a
-          screen reader. The pin keeps its row.
+          screen reader.
         */}
-        {onTogglePinned && (
-          <div className="flex items-center justify-end pb-1">
-            <Tooltip title={pinned ? "Unpin sidebar" : "Pin sidebar"}>
-              <IconButton tone="neutral" size="xsmall"
-                onClick={onTogglePinned}
-                aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
-              >
-                {pinned ? <PiPushPinFill size={14} /> : <PiPushPinSlashFill size={14} />}
-              </IconButton>
-            </Tooltip>
-          </div>
-        )}
 
         <div className="flex flex-col" style={{ overflow: "auto", flex: 1 }}>
           {groups.map((group, index) => (

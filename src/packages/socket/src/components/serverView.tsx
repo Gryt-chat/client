@@ -1,9 +1,9 @@
-import { Avatar, Button, IconButton, Tooltip } from "@gryt/ui";
+import { Avatar, Button, IconButton, Menu, Tooltip } from "@gryt/ui";
 import { useCamera, useSFU } from "@gryt/voice";
 import { type ReactNode,useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, resolveAvatarSrc, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, NotificationLevelMenu, resolveAvatarSrc, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
@@ -827,6 +827,34 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     );
   }, [activeDm, currentlyViewingServer, serverDetailsList, sealing]);
 
+  /* Board 7, option A: behind ⋯ in a channel's header. The pin button stays beside it. */
+  const channelMoreMenu = useMemo(() => {
+    if (activeDm || !viewingHost || !visibleChannelId || isTiny || isMobile) return undefined;
+    return (
+      <>
+        <Menu.Item onClick={() => { setSearchOpen(true); setSearchFocus((n) => n + 1); }}>
+          <PiMagnifyingGlassBold size={16} /> Search
+          <span className="ml-auto text-xs text-gryt-muted">{navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl K"}</span>
+        </Menu.Item>
+        {viewerPermissions.can("view_members") && (
+          <Menu.Item onClick={() => setPinMembersSidebar(!pinMembersSidebar)}>
+            <PiSidebarSimpleFill size={16} style={{ transform: "scaleX(-1)" }} /> {pinMembersSidebar ? "Hide members" : "Keep members open"}
+          </Menu.Item>
+        )}
+        <Menu.Separator />
+        <NotificationLevelMenu
+          host={viewingHost}
+          scope={{ kind: "channel", id: visibleChannelId }}
+          placement={{
+            channelId: visibleChannelId,
+            parentItemId: effectiveSidebarItems.find((i) => (i.channelId ?? i.id) === visibleChannelId)?.parentItemId ?? null,
+          }}
+          inMenu
+        />
+      </>
+    );
+  }, [activeDm, viewingHost, visibleChannelId, isTiny, isMobile, viewerPermissions, pinMembersSidebar, setPinMembersSidebar, effectiveSidebarItems]);
+
   const tinyBack = useMemo(() => {
     if (!isTiny || !dmSpace || !activeDm) return undefined;
     const over = activeDm.conversation_id;
@@ -996,6 +1024,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     ? () => openSettings(manageServerTab(hostedHere.id))
     : undefined;
 
+
+
   /** One element for two layouts: the tiny window renders this and nothing else,
       and a second copy is thirty props to keep in step. */
   const chatView = dmSpace && !activeDm ? (
@@ -1036,6 +1066,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         headerDetail={activeDm ? (isTiny || isMobile ? dmHeaderDetail : undefined) : <ChannelDescription text={activeChannelDescription} />}
         headerIcon={activeDm && !isTiny && !isMobile ? dmHeaderIcon : undefined}
         headerSubtitle={activeDm && !isTiny && !isMobile ? dmHeaderSubtitle : undefined}
+        moreMenu={channelMoreMenu}
         hidePins={!!activeDm && !isTiny && !isMobile}
         flush={isTiny}
         serverName={serverName}
@@ -1395,8 +1426,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 (isBlocked(targetServerUserId) ? unblock : blockAndHide)(targetServerUserId)
               }
               onReport={setReportTarget}
-              pinned={pinMembersSidebar}
-              onTogglePinned={() => setPinMembersSidebar(!pinMembersSidebar)}
             />
             )}
           </div>

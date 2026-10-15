@@ -1,4 +1,4 @@
-import { Tooltip } from "@gryt/ui";
+import { Menu, Tooltip } from "@gryt/ui";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Socket } from "socket.io-client";
 
@@ -7,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiInfoFill, PiLockOpen, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiLockOpen, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -93,6 +93,7 @@ export const ChatView = memo(({
   headerIcon,
   headerSubtitle,
   hidePins = false,
+  moreMenu,
   underHeader,
   flush,
   isRateLimited,
@@ -157,6 +158,8 @@ export const ChatView = memo(({
   headerSubtitle?: React.ReactNode;
   /** Pinned messages live somewhere else, as in a DM's info panel. */
   hidePins?: boolean;
+  /** Menu items behind a ⋯ after the pins, which then hold Search too (board 7, option A). */
+  moreMenu?: React.ReactNode;
   /** A slot rather than the panel, because this is the same component for a DM
       and knows nothing about servers. */
   underHeader?: React.ReactNode;
@@ -826,7 +829,7 @@ export const ChatView = memo(({
               )}
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
-                {onSearch && (
+                {onSearch && !moreMenu && (
                   <Tooltip title={`Search (${SEARCH_SHORTCUT})`}>
                     <button type="button" aria-label="Search" data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
                       <PiMagnifyingGlassBold size={16} />
@@ -835,6 +838,24 @@ export const ChatView = memo(({
                 )}
                 {!isForum && !hidePins && (
                   <PinsButton pins={pins} memberList={memberList} onJump={jumpToMessage} />
+                )}
+                {moreMenu && (
+                  <Menu.Root>
+                    <Tooltip title="More">
+                      <Menu.Trigger
+                        aria-label="More"
+                        data-gryt="chat-more"
+                        render={<button type="button" className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1" style={{ color: "var(--gryt-neutral-11)" }} />}
+                      >
+                        <PiDotsThreeBold size={16} />
+                      </Menu.Trigger>
+                    </Tooltip>
+                    <Menu.Portal>
+                      <Menu.Positioner align="end">
+                        <Menu.Popup className="min-w-60">{moreMenu}</Menu.Popup>
+                      </Menu.Positioner>
+                    </Menu.Portal>
+                  </Menu.Root>
                 )}
                 {headerAction}
               </div>

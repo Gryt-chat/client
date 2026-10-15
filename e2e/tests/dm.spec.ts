@@ -139,7 +139,8 @@ test("Create group makes a group everybody in it can see, then asks for a name",
   await dialog.getByRole("textbox").fill(name);
   await dialog.getByRole("button", { name: "Done" }).click();
   await expect(composer(carol.page, `Message ${name}`)).toBeVisible();
-  await expect(carol.page.getByRole("button", { name: "Group settings" })).toBeVisible();
+  // On a desktop window the group's settings are in its info panel (GRYT-1745).
+  await expect(carol.page.locator('[data-gryt="dm-info"]').getByRole("button", { name: "Edit group" })).toBeVisible();
 
   for (const who of [alice, bob]) {
     await who.page.getByRole("button", { name: "Direct messages" }).click();
@@ -147,7 +148,7 @@ test("Create group makes a group everybody in it can see, then asks for a name",
     await expect(composer(who.page, `Message ${name}`)).toBeVisible();
   }
 
-  // A group's header carries Group settings where a DM's has nothing, and still fits.
+  // In the tiny window the header carries Group settings instead, and still fits.
   await carol.page.setViewportSize({ width: 300, height: 800 });
   await expect(carol.page.getByRole("button", { name: "Group settings" })).toBeVisible();
   await expect.poll(() => pastWindowEdge(carol.page), { message: "the group at 300px" }).toEqual([]);
