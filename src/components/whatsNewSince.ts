@@ -7,7 +7,8 @@ export interface Release {
   channel?: string;
   note?: boolean;
   /** Slug of the blog post telling this release's story, where there is one. */
-  post?: string;
+  post?: string;  /** A picture for the release, a gryt.chat URL: its own, or its post's. */
+  image?: string;
 }
 
 export interface ReleasesToShow {
