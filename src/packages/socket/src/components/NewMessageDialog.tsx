@@ -1,8 +1,9 @@
-import { Avatar, Button, Checkbox, Dialog, Spinner, TextField } from "@gryt/ui";
+import { Avatar, Button, Checkbox, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { getOwnServerUserId, getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
+import { getOwnServerUserId, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
+import { PiXBold } from "../../../../lib/icons";
 import { useDirectory, useDmsOffHosts } from "../hooks/dmDirectory";
 import { requestConversation } from "../hooks/dmSpace";
 import { setNewMessageOpen, useNewMessageOpen } from "../hooks/newMessageDialog";
@@ -21,7 +22,8 @@ import {
 import { emitAuthenticated } from "../utils/tokenManager";
 import { EmojiText } from "./EmojiText";
 import { GroupFaceFields } from "./GroupDialog";
-import { ServerMark } from "./ServerChip";
+import { statusConfig } from "./memberStatus";
+import { PresenceDot } from "./PresenceDot";
 
 /**
  * The + next to Messages: somebody on any of your servers, or a group on one of them.
@@ -89,9 +91,7 @@ export function NewMessageDialog() {
   );
 
   const everyone = useMemo(() => candidatesFor(people, mode), [people, mode]);
-  const severalServers = useMemo(() => new Set(everyone.map((c) => c.host)).size > 1, [everyone]);
-  const inScope = groupHost ? everyone.filter((c) => c.host === groupHost) : everyone;
-  const shown = matching(inScope, query, serverName);
+  const shown = matching(everyone, query, serverName);
   const canGroupSomewhere = people.some((p) => p.canMessage && p.canGroup);
   const canMessageSomewhere = people.some((p) => p.canMessage);
 
@@ -217,8 +217,16 @@ export function NewMessageDialog() {
     setNewMessageOpen(false);
   };
 
-  const row = (candidate: Candidate) => {
-    const avatar = (
+  const statusLine = (candidate: Candidate) => {
+    const where = serverName(candidate.host);
+    // In a group, somebody on another server can't join this one, so say why they're greyed.
+    if (mode === "group" && groupHost && candidate.host !== groupHost) return `${where} \u00b7 not on ${serverName(groupHost)}`;
+    const quiet = candidate.status === "afk" || candidate.status === "offline";
+    return quiet && candidate.status ? `${where} \u00b7 ${statusConfig[candidate.status].label}` : where;
+  };
+
+  const face = (candidate: Candidate) => (
+    <span className="relative inline-flex shrink-0">
       <Avatar
         size="small"
         fallback={candidate.nickname[0]}
@@ -230,36 +238,39 @@ export function NewMessageDialog() {
           candidate.avatarWorn,
         )}
       />
-    );
-    const server = severalServers && !groupHost ? (
-      <span className="flex shrink-0 items-center gap-1 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
-        <span style={{ width: 12, height: 12, borderRadius: 3, overflow: "hidden", display: "block" }}>
-          <ServerMark
-            src={serverIconSrc(candidate.host, servers[candidate.host]?.name || "", serverDetailsList)}
-            seed={serverName(candidate.host)}
-          />
+      {candidate.status && (
+        <span className="absolute rounded-(--gryt-radius-full)" style={{ bottom: -1, right: -1, padding: 2, background: "var(--gryt-neutral-2)" }}>
+          <PresenceDot status={candidate.status} size={8} />
         </span>
-        {serverName(candidate.host)}
-      </span>
-    ) : null;
+      )}
+    </span>
+  );
+
+  const row = (candidate: Candidate) => {
     const key = `${candidate.host}/${candidate.serverUserId}`;
+    const label = (
+      <span className="flex min-w-0 flex-1 flex-col text-left">
+        <span className="truncate text-sm font-semibold"><EmojiText text={candidate.nickname} /></span>
+        <span className="truncate text-xs" style={{ color: "var(--gryt-neutral-10)" }}>{statusLine(candidate)}</span>
+      </span>
+    );
 
     if (mode === "group") {
+      const checked = picked.includes(candidate.serverUserId) && candidate.host === groupHost;
+      const elsewhere = groupHost !== null && candidate.host !== groupHost;
       return (
         <label
           key={key}
-          className="flex cursor-pointer items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 hover:bg-gryt-surface-raised"
+          className="flex items-center gap-3 rounded-(--gryt-radius-lg) px-2.5 py-2"
+          style={{
+            background: checked ? "var(--gryt-neutral-3)" : undefined,
+            cursor: elsewhere ? "default" : "pointer",
+            opacity: elsewhere ? 0.45 : 1,
+          }}
         >
-          <Checkbox
-            checked={picked.includes(candidate.serverUserId)}
-            disabled={waiting !== null}
-            onCheckedChange={() => toggle(candidate)}
-          />
-          {avatar}
-          <span className="min-w-0 flex-1 truncate text-sm">
-            <EmojiText text={candidate.nickname} />
-          </span>
-          {server}
+          <Checkbox checked={checked} disabled={waiting !== null || elsewhere} onCheckedChange={() => toggle(candidate)} />
+          {face(candidate)}
+          {label}
         </label>
       );
     }
@@ -271,25 +282,34 @@ export function NewMessageDialog() {
         key={key}
         tone="ghost"
         disabled={waiting !== null}
-        style={{ width: "100%", justifyContent: "start", overflow: "hidden", gap: "10px" }}
+        style={{ width: "100%", justifyContent: "start", overflow: "hidden", gap: "12px", height: "auto", padding: "8px 10px" }}
         onClick={() => message(candidate)}
       >
-        {avatar}
-        <span className="min-w-0 flex-1 truncate" style={{ textAlign: "left" }}>
-          <EmojiText text={candidate.nickname} />
-        </span>
-        {asking ? <Spinner size={14} aria-label="Opening the conversation" /> : server}
+        {face(candidate)}
+        {label}
+        {asking && <Spinner size={14} aria-label="Opening the conversation" />}
       </Button>
     );
   };
+
+  const pickedPeople = groupHost
+    ? picked.map((id) => everyone.find((c) => c.host === groupHost && c.serverUserId === id)).filter((c): c is Candidate => !!c)
+    : [];
 
   const emptyText = !canMessageSomewhere
     ? "None of your servers let you start a conversation."
     : mode === "group" && !canGroupSomewhere
       ? "None of your servers let you start a group."
-      : inScope.length === 0
-        ? "There’s nobody else on your servers yet."
-        : `Nobody matches “${query}”.`;
+      : everyone.length === 0
+        ? "There\u2019s nobody else on your servers yet."
+        : `Nobody matches \u201c${query}\u201d.`;
+
+  const switchTo = (next: NewMessageMode) => {
+    setMode(next);
+    setPicked([]);
+    setGroupHost(null);
+    setProblem(null);
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={(next) => { if (!next) close(); }}>
@@ -324,27 +344,53 @@ export function NewMessageDialog() {
             </>
           ) : (
             <>
-              <Dialog.Title>{mode === "group" ? "New group" : "New message"}</Dialog.Title>
-              <Dialog.Description>
-                {mode === "group"
-                  ? groupHost && severalServers
-                    ? `Everybody in a group is on one server, so this one goes on ${serverName(groupHost)}.`
-                    : "Pick two or more people. Everybody in a group has to be on the same server."
-                  : severalServers
-                    ? "Somebody you share two servers with shows up once for each. The conversation stays on the server you pick."
-                    : "Pick somebody to talk to."}
-              </Dialog.Description>
+              <div className="flex items-center justify-between">
+                <Dialog.Title>{mode === "group" ? "New group" : "New message"}</Dialog.Title>
+                <Dialog.Close render={<IconButton tone="ghost" size="small" aria-label="Close" />}>
+                  <PiXBold size={14} />
+                </Dialog.Close>
+              </div>
 
               <div className="flex flex-col gap-3">
-                <TextField
-                  autoFocus
-                  size="small"
-                  placeholder="Search people"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
+                {canGroupSomewhere && (
+                  <Tabs value={mode} onValueChange={(v) => switchTo(v as NewMessageMode)}>
+                    <Tabs.List aria-label="A message or a group" className="grid w-full grid-cols-2">
+                      <Tabs.Tab value="message" disabled={waiting !== null}>Message</Tabs.Tab>
+                      <Tabs.Tab value="group" disabled={waiting !== null}>Group</Tabs.Tab>
+                      <Tabs.Indicator />
+                    </Tabs.List>
+                  </Tabs>
+                )}
 
-                <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+                {/* The people picked sit in the field as chips; Backspace on an empty field takes the last one off. */}
+                <div
+                  className="flex flex-wrap items-center gap-1.5 rounded-(--gryt-radius-control) px-2 py-1.5"
+                  style={{ background: "var(--gryt-neutral-2)", border: "1px solid var(--gryt-neutral-6)" }}
+                >
+                  {pickedPeople.map((c) => (
+                    <span key={c.serverUserId} className="inline-flex items-center gap-1 rounded-(--gryt-radius-full) py-0.5 pl-0.5 pr-1.5 text-sm" style={{ background: "var(--gryt-neutral-4)" }}>
+                      <Avatar size="small" style={{ width: 20, height: 20 }} fallback={c.nickname[0]} src={resolveAvatarSrc(c.avatarFileId ? getUploadsFileUrl(c.host, c.avatarFileId, { thumb: true }) : undefined, c.nickname, c.avatarWorn)} />
+                      <EmojiText text={c.nickname} />
+                      <button type="button" aria-label={`Remove ${c.nickname}`} className="inline-flex cursor-pointer border-0 bg-transparent p-0.5" style={{ color: "var(--gryt-neutral-11)" }} onClick={() => toggle(c)}>
+                        <PiXBold size={10} />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    autoFocus
+                    aria-label="Search people"
+                    placeholder="Search people"
+                    className="min-w-24 flex-1 border-0 bg-transparent px-1 py-1 text-sm outline-none"
+                    style={{ color: "var(--gryt-neutral-12)" }}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && query === "" && pickedPeople.length > 0) toggle(pickedPeople[pickedPeople.length - 1]);
+                    }}
+                  />
+                </div>
+
+                <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
                   {shown.length === 0 ? (
                     <p className="px-2 py-1 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>{emptyText}</p>
                   ) : (
@@ -352,52 +398,26 @@ export function NewMessageDialog() {
                   )}
                 </div>
 
-                {mode === "group" && picked.length === 1 && (
-                  <span className="text-xs text-gryt-muted">
-                    Pick one more. With only two of you, it&rsquo;s a direct message.
+                {mode === "group" && (
+                  <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.5 }}>
+                    {picked.length === 1
+                      ? "Pick one more. With only two of you, it\u2019s a direct message."
+                      : "Everybody in a group has to be on the same server, so people from other servers can\u2019t be added to this one."}
                   </span>
                 )}
                 {problem && <span className="text-xs text-gryt-danger">{problem}</span>}
               </div>
 
-              <Dialog.Footer className="flex-wrap justify-between">
-                {mode === "group" ? (
-                  <Button
-                    tone="ghost"
-                    disabled={waiting !== null}
-                    onClick={() => {
-                      setMode("message");
-                      setPicked([]);
-                      setGroupHost(null);
-                      setProblem(null);
-                    }}
-                  >
-                    Back
+              {mode === "group" && (
+                <Dialog.Footer className="items-center justify-between">
+                  <span className="text-sm">
+                    Name and picture <span className="text-gryt-muted">&middot; Optional</span>
+                  </span>
+                  <Button onClick={createGroup} disabled={picked.length < 2 || waiting !== null}>
+                    {waiting?.kind === "group" ? "Creating\u2026" : "Create group"}
                   </Button>
-                ) : canGroupSomewhere ? (
-                  <Button
-                    tone="ghost"
-                    onClick={() => {
-                      setMode("group");
-                      setProblem(null);
-                    }}
-                  >
-                    Create group
-                  </Button>
-                ) : (
-                  <span />
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button tone="ghost" onClick={close}>
-                    Cancel
-                  </Button>
-                  {mode === "group" && (
-                    <Button onClick={createGroup} disabled={picked.length < 2 || waiting !== null}>
-                      {waiting?.kind === "group" ? "Creating…" : "Create group"}
-                    </Button>
-                  )}
-                </div>
-              </Dialog.Footer>
+                </Dialog.Footer>
+              )}
             </>
           )}
         </Dialog.Popup>

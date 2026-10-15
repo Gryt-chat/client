@@ -127,7 +127,7 @@ test("Create group makes a group everybody in it can see, then asks for a name",
   const carol = await newMember();
 
   const dialog = await newMessageDialog(carol.page);
-  await dialog.getByRole("button", { name: "Create group" }).click();
+  await dialog.getByRole("tab", { name: "Group" }).click();
   await expect(dialog.getByRole("heading", { name: "New group" })).toBeVisible();
   for (const who of [alice, bob]) {
     await dialog.getByPlaceholder("Search people").fill(who.name);
