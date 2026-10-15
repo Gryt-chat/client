@@ -32,3 +32,20 @@ export function removedHereLine(home: "browser" | "app", how: "sign_in" | "recov
     how === "sign_in" ? "To set it up again, sign out and sign back in." : "To set it up again, restore your identity from its recovery key.";
   return `${here} was removed from encrypted DMs on this server. ${again}`;
 }
+
+/** "Last used Oct 9", from when the device last checked in with this server. */
+export function ownDeviceLastUsed(device: Pick<MlsOwnDevice, "lastSeenAt" | "thisDevice">): string | null {
+  if (device.thisDevice) return null;
+  const at = device.lastSeenAt ? new Date(device.lastSeenAt) : null;
+  if (!at || Number.isNaN(at.getTime())) return null;
+  return `Last used ${at.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
+}
+
+/** How long a device can sit unused before "Remove unused devices" offers to remove it. */
+export const UNUSED_DEVICE_DAYS = 30;
+
+export function isUnusedOwnDevice(device: Pick<MlsOwnDevice, "lastSeenAt" | "thisDevice">, now = Date.now()): boolean {
+  if (device.thisDevice || !device.lastSeenAt) return false;
+  const at = Date.parse(device.lastSeenAt);
+  return !Number.isNaN(at) && now - at > UNUSED_DEVICE_DAYS * 24 * 60 * 60 * 1000;
+}
