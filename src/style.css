@@ -2074,6 +2074,24 @@ body {
 
 .whats-new-change p,
 .whats-new-plain,
+.whats-new-picture {
+  display: block;
+  margin-top: 1rem;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--gryt-neutral-a4);
+  border-radius: 12px;
+  background: var(--gryt-neutral-3);
+}
+
+.whats-new-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
 .whats-new-line {
   margin: 0;
   font-size: 0.9rem;

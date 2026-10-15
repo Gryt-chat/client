@@ -1,6 +1,6 @@
 import { Button, Chip, type ChipProps, Dialog } from "@gryt/ui";
 import type { Icon } from "@phosphor-icons/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { LogoIcon } from "@/common";
 
@@ -38,7 +38,8 @@ export interface WhatsNewRelease {
   line: string;
   changes?: WhatsNewChange[];
   /** Slug of the blog post telling this release's story, where there is one. */
-  post?: string;
+  post?: string;  /** A picture for the release, a gryt.chat URL: its own, or its post's. */
+  image?: string;
 }
 
 /**
@@ -205,6 +206,25 @@ function PostLink({ post }: { post?: string }) {
       {" "}
       Read the post
     </a>
+  );
+}
+
+/**
+ * The newest release's picture, linking to its post. Only from gryt.chat, so opening
+ * the dialog tells no other site anything; a picture that fails to load just goes.
+ */
+function ReleasePicture({ releases }: { releases: WhatsNewRelease[] }) {
+  const [failed, setFailed] = useState(false);
+  const release = releases.find((r) => r.image?.startsWith("https://gryt.chat/"));
+  if (!release?.image || failed) return null;
+  const img = <img src={release.image} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  return release.post ? (
+    // Read the post is the same link, so this one stays out of the tab order and focus.
+    <a className="whats-new-picture" href={blogHref(release.post)} target="_blank" rel="noreferrer" tabIndex={-1} aria-hidden>
+      {img}
+    </a>
+  ) : (
+    <span className="whats-new-picture">{img}</span>
   );
 }
 
@@ -418,6 +438,8 @@ export function WhatsNewDialog({
                     </p>
                   </span>
                 </div>
+
+                <ReleasePicture releases={releases} />
 
                 {several ? (
                   <ReleaseList releases={releases} />
