@@ -2,6 +2,7 @@
  * Who the new-message dialog offers, and which conversation answers a request. Pure,
  * so a check can run it without a browser (GRYT-1342).
  */
+import type { UserStatus } from "../types/clients";
 
 /** A member of one server. Two servers can each have a Bob, and the client can't tell if they're one person. */
 export interface Candidate {
@@ -10,6 +11,8 @@ export interface Candidate {
   nickname: string;
   avatarFileId: string | null;
   avatarWorn: string | null;
+  /** What the member list says, for the dot and the line under the name. */
+  status?: UserStatus;
 }
 
 export interface ServerPeople {
@@ -22,6 +25,7 @@ export interface ServerPeople {
     avatarFileId?: string | null;
     avatarWorn?: string | null;
     isBot?: boolean;
+    status?: UserStatus;
   }[];
   /** `send_direct_messages` there, and the server takes new conversations. */
   canMessage: boolean;
@@ -46,6 +50,7 @@ export function candidatesFor(servers: ServerPeople[], mode: NewMessageMode): Ca
         nickname: member.nickname,
         avatarFileId: member.avatarFileId ?? null,
         avatarWorn: member.avatarWorn ?? null,
+        ...(member.status ? { status: member.status } : {}),
       });
     }
   }
