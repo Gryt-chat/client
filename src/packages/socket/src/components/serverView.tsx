@@ -1,9 +1,9 @@
-import { Button, IconButton, Tooltip } from "@gryt/ui";
-import { useSFU } from "@gryt/voice";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Avatar, Button, IconButton, Tooltip } from "@gryt/ui";
+import { useCamera, useSFU } from "@gryt/voice";
+import { type ReactNode,useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
+import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, resolveAvatarSrc, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
 import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
@@ -11,7 +11,7 @@ import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import { SidebarItem } from "@/settings/src/types/server";
 
-import { PiCaretLeftBold, PiGearSixFill } from "../../../../lib/icons";
+import { PiCaretLeftBold, PiGearSixFill, PiLockOpen, PiLockSimpleFill, PiMagnifyingGlassBold, PiPhoneFill, PiSidebarSimpleFill, PiVideoCameraFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import {
@@ -38,6 +38,7 @@ import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { useIsTinyWindow, useRoomForMemberList, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
+import { usePins } from "../hooks/usePins";
 import { useReportUser } from "../hooks/useReportUser";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
@@ -55,9 +56,12 @@ import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { CreateChannelDialog } from "./CreateChannelDialog";
+import { DmGroupPanel, DmPersonPanel } from "./DmInfoPanel";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
 import { GroupDialog } from "./GroupDialog";
+import { GroupFace } from "./GroupFace";
+import { hideConversationWithUndo } from "./hideConversation";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { type MemberCardActions, MemberCardActionsContext } from "./memberCard/memberCardContext";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
@@ -185,6 +189,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   // The messages space searches this device's own copy instead (GRYT-1748).
   const [dmSearchOpen, setDmSearchOpen] = useState(false);
+  // The conversation info panel on the right of the messages space (GRYT-1745).
+  const [dmInfoOpen, setDmInfoOpen] = useState(true);
+  const { setCameraEnabled } = useCamera();
   const openDmSearch = useCallback(() => {
     setDmSearchOpen(true);
     setSearchFocus((n) => n + 1);
@@ -649,6 +656,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       : undefined;
   const callerAvatarWorn = caller?.avatarWorn ?? null;
 
+  const dmPins = usePins(currentConnection, dmSpace && activeDm ? activeDm.conversation_id : "", currentlyViewingServer?.host);
+
   /** The caller is in the room from the moment it rings, or answering joins a
       room with nobody in it. Cancel is offered until somebody answers. */
   const startCall = useCallback((conversationId: string) => {
@@ -682,6 +691,33 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       handleVoiceDisconnect();
     };
 
+    // Board 1: call, video, search, and the info panel. Friends and group settings are in the panel.
+    if (!isTiny && !isMobile) {
+      const icon = (label: string, onClick: () => void, child: ReactNode, pressed?: boolean, dataGryt?: string) => (
+        <Tooltip title={label}>
+          <IconButton aria-label={label} aria-pressed={pressed} data-gryt={dataGryt} size="small" tone={pressed ? "neutral" : "ghost"} onClick={onClick}>
+            {child}
+          </IconButton>
+        </Tooltip>
+      );
+      return (
+        <div className="flex items-center gap-0.5">
+          {mayCall && (ringing
+            ? <Button size="small" tone="primary" onClick={stopCall}>Cancel</Button>
+            : icon("Call", () => startCall(conversationId), <PiPhoneFill size={17} />))}
+          {mayCall && !ringing && icon("Video call", () => {
+            startCall(conversationId);
+            setCameraEnabled(true);
+          }, <PiVideoCameraFill size={17} />)}
+          {icon("Search messages", () => (dmSearchOpen ? setDmSearchOpen(false) : openDmSearch()), <PiMagnifyingGlassBold size={17} />, dmSearchOpen)}
+          {icon("Conversation info", () => {
+            setDmInfoOpen(!dmInfoOpen || dmSearchOpen);
+            setDmSearchOpen(false);
+          }, <PiSidebarSimpleFill size={17} style={{ transform: "scaleX(-1)" }} />, dmInfoOpen && !dmSearchOpen, "dm-info-toggle")}
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center gap-1">
         <FriendButton host={viewingHost} serverUserId={friendWith} compact />
@@ -705,7 +741,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost, isTiny, isMobile, dmSearchOpen, dmInfoOpen, openDmSearch, setCameraEnabled]);
 
   /* The same member list the sidebar reads presence off — someone it hides
      from this viewer has no entry here either (GRYT-1467). */
@@ -747,6 +783,49 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       </>
     );
   }, [activeDm, currentlyViewingServer, serverDetailsList, dmPresence]);
+
+  /* Board 1's header: the face where a channel has its icon, and under the name where
+     the conversation lives and whether it's sealed. */
+  const dmHeaderIcon = useMemo(() => {
+    if (!activeDm || !viewingHost) return undefined;
+    if (activeDm.kind === "group") return <GroupFace host={viewingHost} conversation={activeDm} size={36} />;
+    const status = memberListMap[activeDm.other.server_user_id]?.status;
+    return (
+      <span className="relative inline-flex shrink-0">
+        <Avatar
+          size="small"
+          className="h-9 w-9"
+          fallback={activeDm.other.nickname[0]}
+          src={resolveAvatarSrc(
+            activeDm.other.avatar_file_id ? getUploadsFileUrl(viewingHost, activeDm.other.avatar_file_id, { thumb: true }) : undefined,
+            activeDm.other.nickname,
+            activeDm.other.avatar_worn,
+          )}
+        />
+        {status && (
+          <span className="absolute rounded-(--gryt-radius-full)" style={{ bottom: -1, right: -1, padding: 2.5, background: "var(--gryt-neutral-2)" }}>
+            <PresenceDot status={status} size={9} />
+          </span>
+        )}
+      </span>
+    );
+  }, [activeDm, viewingHost, memberListMap]);
+
+  const dmHeaderSubtitle = useMemo(() => {
+    if (!activeDm || !currentlyViewingServer) return undefined;
+    const { host, name: stored } = currentlyViewingServer;
+    const name = serverDetailsList[host]?.server_info?.name || stored || host;
+    const sealed = sealing?.kind === "seal";
+    return (
+      <span className="flex min-w-0 items-center gap-1.5 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
+        {activeDm.kind === "group" ? <span>{activeDm.members.length + 1} people ·</span> : <span>on</span>}
+        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
+        <span aria-hidden>·</span>
+        {sealed ? <PiLockSimpleFill size={11} aria-hidden /> : <PiLockOpen size={11} aria-hidden />}
+        <span>{sealed ? "Encrypted" : "Not encrypted"}</span>
+      </span>
+    );
+  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing]);
 
   const tinyBack = useMemo(() => {
     if (!isTiny || !dmSpace || !activeDm) return undefined;
@@ -954,7 +1033,10 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         conversationKind={activeDm ? "dm" : "channel"}
         headerAction={dmHeaderActions}
         headerLead={tinyBack}
-        headerDetail={activeDm ? dmHeaderDetail : <ChannelDescription text={activeChannelDescription} />}
+        headerDetail={activeDm ? (isTiny || isMobile ? dmHeaderDetail : undefined) : <ChannelDescription text={activeChannelDescription} />}
+        headerIcon={activeDm && !isTiny && !isMobile ? dmHeaderIcon : undefined}
+        headerSubtitle={activeDm && !isTiny && !isMobile ? dmHeaderSubtitle : undefined}
+        hidePins={!!activeDm && !isTiny && !isMobile}
         flush={isTiny}
         serverName={serverName}
         currentUserNickname={serverNickname}
@@ -1262,6 +1344,33 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   setPendingJump({ conversationId: hit.conversation_id, messageId: hit.message_id, nonce: Date.now() });
                 }}
               />
+            ) : dmSpace && dmInfoOpen && activeDm && !isTiny ? (
+              activeDm.kind === "group" ? (
+                <DmGroupPanel
+                  host={host}
+                  conversation={activeDm}
+                  memberList={memberListMap}
+                  onEdit={() => setGroupDialog(activeDm)}
+                  onAdd={() => setGroupDialog(activeDm)}
+                  onLeave={() => {
+                    setSelectedDmId((current) => (current === activeDm.conversation_id ? null : current));
+                    leaveGroup(activeDm.conversation_id);
+                  }}
+                />
+              ) : (
+                <DmPersonPanel
+                  host={host}
+                  member={memberListMap[activeDm.other.server_user_id]}
+                  conversation={activeDm}
+                  pins={dmPins}
+                  memberList={memberListMap}
+                  onJump={(messageId) => setPendingJump({ conversationId: activeDm.conversation_id, messageId, nonce: Date.now() })}
+                  onHide={() => {
+                    hideConversationWithUndo(host, currentServerUserId ?? "", activeDm.conversation_id, conversationTitle(activeDm));
+                    forgetHiddenDm(activeDm.conversation_id);
+                  }}
+                />
+              )
             ) : (
             <MemberSidebarPanel
               // Closed for good, not collapsed: the server stops sending the list,

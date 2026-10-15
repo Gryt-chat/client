@@ -90,6 +90,9 @@ export const ChatView = memo(({
   headerAction,
   headerLead,
   headerDetail,
+  headerIcon,
+  headerSubtitle,
+  hidePins = false,
   underHeader,
   flush,
   isRateLimited,
@@ -148,6 +151,12 @@ export const ChatView = memo(({
   headerLead?: React.ReactNode;
   /** Beside the name. A direct message puts the server it's on here. */
   headerDetail?: React.ReactNode;
+  /** In place of the channel-type icon: a DM's face, say. */
+  headerIcon?: React.ReactNode;
+  /** A second line under the name, which puts the name in a column with it. */
+  headerSubtitle?: React.ReactNode;
+  /** Pinned messages live somewhere else, as in a DM's info panel. */
+  hidePins?: boolean;
   /** A slot rather than the panel, because this is the same component for a DM
       and knows nothing about servers. */
   underHeader?: React.ReactNode;
@@ -801,11 +810,20 @@ export const ChatView = memo(({
           {channelName && (
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {headerLead}
-              {isForum ? <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />}
+              {headerIcon ?? (isForum ? <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />)}
               {/* One line that gives way, or a long name pushes the buttons out of a narrow window. */}
-              <span className="min-w-0 truncate text-lg font-bold" title={channelName} style={{ color: "var(--gryt-neutral-12)" }}>
-                <EmojiText text={channelName} />
-              </span>
+              {headerSubtitle ? (
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="min-w-0 truncate font-bold" title={channelName} style={{ fontSize: 17, color: "var(--gryt-neutral-12)" }}>
+                    <EmojiText text={channelName} />
+                  </span>
+                  {headerSubtitle}
+                </span>
+              ) : (
+                <span className="min-w-0 truncate text-lg font-bold" title={channelName} style={{ color: "var(--gryt-neutral-12)" }}>
+                  <EmojiText text={channelName} />
+                </span>
+              )}
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
                 {onSearch && (
@@ -815,7 +833,7 @@ export const ChatView = memo(({
                     </button>
                   </Tooltip>
                 )}
-                {!isForum && (
+                {!isForum && !hidePins && (
                   <PinsButton pins={pins} memberList={memberList} onJump={jumpToMessage} />
                 )}
                 {headerAction}
