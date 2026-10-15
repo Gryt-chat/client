@@ -100,7 +100,8 @@ export function useLocalDmSearch(conversations: LocalConversation[] | null, quer
                 files.push({ ...hit, snippet: "", file: { file_id: fileId, name: k.name ?? null, mime: k.mime ?? null, size: k.size ?? null } });
               }
             }
-            if (page.length < BATCH || messages.length + files.length > MAX_HITS) break;
+            // Empty, not short, is the end: `page` leaves out rows it can't open.
+            if (page.length === 0 || messages.length + files.length > MAX_HITS) break;
             before = { sentAt: page[0].sentAt, messageId: page[0].messageId };
           }
         }
