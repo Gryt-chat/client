@@ -256,7 +256,8 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
   await expect(messageRow(alice.page, reply).getByRole("button", { name: "👍 1" })).toBeVisible();
   await expect(image).toHaveAttribute("src", /^blob:/);
   await expect(alice.page.getByText("Update Gryt to read it")).toHaveCount(0);
-  await expect(alice.page.locator(CONFIRMED_ROW).filter({ hasText: "Not encrypted" })).toHaveCount(0);
+  // The red dot (board 5), which is an image named "Not encrypted" rather than text.
+  await expect(alice.page.locator(CONFIRMED_ROW).filter({ has: alice.page.getByRole("img", { name: "Not encrypted" }) })).toHaveCount(0);
   await expect(messageRow(alice.page, edited)).toHaveCount(0);
 });
 
