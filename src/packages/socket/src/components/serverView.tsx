@@ -15,6 +15,7 @@ import { SidebarItem } from "@/settings/src/types/server";
 import { PiCaretLeftBold, PiGearSixFill, PiLockOpen, PiLockSimpleFill, PiMagnifyingGlassBold, PiPhoneFill, PiSidebarSimpleFill, PiVideoCameraFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
+import { fakeConversations, fakeDmsOn, fakeHostNow } from "../dev/fakeDms";
 import {
   fakeChatSendersFrom,
   fakeParticipantOptionsFromSettings,
@@ -326,7 +327,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   /* Ahead of `useChat`, which needs the members to know whether the next message
      can be encrypted. Both unconditional, so the order is free. */
   const {
-    conversations: directConversations,
+    conversations: realDirectConversations,
     openDm,
     updateGroup,
     addToGroup,
@@ -336,7 +337,13 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     accessToken,
     isConnected: currentConnectionStatus === "connected",
   });
-
+  // `?fakedms` in dev: the fake conversations open like real ones on the server carrying them.
+  const directConversations = useMemo(
+    () => (fakeDmsOn && fakeHostNow() === currentlyViewingServer?.host ? [...realDirectConversations, ...fakeConversations()] : realDirectConversations),
+    // The directory rebuilds when the fake host is claimed, which is the moment to look again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [realDirectConversations, currentlyViewingServer?.host, directory],
+  );
   const { isBlocked, block, unblock } = useBlocks({
     socket: currentConnection,
     accessToken,
@@ -600,6 +607,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   /** The group whose settings are open, or null. Starting one is the + next to
       Messages, in `NewMessageDialog`. */
   const [groupDialog, setGroupDialog] = useState<DirectConversation | null>(null);
+
 
   const activeDm = useMemo(
     () => (dmSpace && selectedDmId

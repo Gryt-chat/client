@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { getOwnServerUserId, identityScopeFor, openLocalArchive } from "@/common";
 
+import { FAKE_PREVIEWS, fakeDmsOn } from "../dev/fakeDms";
 import type { DirectoryEntry } from "./dmDirectory";
 
 /** The last message this device holds for a conversation, as one line for its row. */
@@ -45,7 +46,7 @@ export function useConversationPreviews(entries: DirectoryEntry[]): ReadonlyMap<
       .then((archive) => {
         if (!live) return;
         const load = async (only?: DirectoryEntry[]) => {
-          const found = await Promise.all(
+          const found: (readonly [string, ConversationPreview | null])[] = await Promise.all(
             (only ?? entries).map(async (entry) => {
               const [last] = await archive.messages.page(identityScopeFor(entry.host), entry.conversation.conversation_id, { limit: 1 });
               const text = last ? previewLine(entry, last, getOwnServerUserId(entry.host)) : "";
@@ -53,6 +54,12 @@ export function useConversationPreviews(entries: DirectoryEntry[]): ReadonlyMap<
             }),
           );
           if (!live) return;
+          if (fakeDmsOn) {
+            for (const entry of only ?? entries) {
+              const text = FAKE_PREVIEWS[entry.conversation.conversation_id];
+              if (text) found.push([key(entry.host, entry.conversation.conversation_id), { text, sentAt: Date.now() }]);
+            }
+          }
           setPreviews((prev) => {
             const next = new Map(only ? prev : []);
             for (const [k, p] of found) {

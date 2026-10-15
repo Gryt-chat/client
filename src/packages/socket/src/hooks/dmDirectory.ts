@@ -1,6 +1,8 @@
 import type { DirectConversation } from "@gryt/core";
 import { useSyncExternalStore } from "react";
 
+import { fakeConversations, fakeHostNow, onFakeHostClaimed } from "../dev/fakeDms.ts";
+
 /**
  * Every direct conversation, across every connected server. Only the direct
  * messages space needs all of them at once (GRYT-1134).
@@ -15,6 +17,7 @@ export interface DirectoryEntry {
 let byHost = new Map<string, DirectConversation[]>();
 let flat: DirectoryEntry[] = [];
 const listeners = new Set<() => void>();
+onFakeHostClaimed(() => rebuild());
 
 /* Rebuilt on write rather than on read: `useSyncExternalStore` compares the
    snapshot by identity, and a fresh array every read is an infinite loop. */
@@ -23,6 +26,9 @@ function rebuild() {
   for (const [host, conversations] of byHost) {
     for (const conversation of conversations) next.push({ host, conversation });
   }
+  // `?fakedms` in dev puts the boards' conversations beside the real ones (GRYT-1741).
+  const fake = fakeHostNow();
+  if (fake) for (const conversation of fakeConversations()) next.push({ host: fake, conversation });
   next.sort(newestFirst);
   flat = next;
   for (const listener of listeners) listener();

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
 
@@ -22,6 +22,7 @@ import {
 import { type EmbeddedServerState, getElectronAPI } from "../../../../lib/electron";
 import { showReconnectGaveUpToast, showReconnectingToast } from "../components/connectionToasts";
 import { MemberInfo } from "../components/MemberSidebar";
+import { claimFakeHost, FAKE_VOICE_CHANNELS, fakeDmsOn, fakeHostNow, fakeMembers } from "../dev/fakeDms";
 import { Clients, ServerProfile } from "../types/clients";
 import { installContactGuard } from "../utils/contactFilter";
 import { browserAwayDeps, watchAway } from "../utils/desktopAway";
@@ -816,7 +817,25 @@ function useSocketsHook() {
     socket.emit("server:leave");
   };
 
-  return { sockets, serverDetailsList, clients, memberLists, memberKeyStates, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, refusalHelpUrl, reconnectServer, leaveServer, tokenRevision };
+  // `?fakedms` in dev: the boards' people and voice channels on the first server that answered.
+  const [fakeHost, setFakeHost] = useState<string | null>(null);
+  useEffect(() => {
+    const first = Object.keys(serverDetailsList)[0];
+    if (!fakeDmsOn || !first) return;
+    claimFakeHost(first);
+    setFakeHost(fakeHostNow());
+  }, [serverDetailsList]);
+  const shownDetails = useMemo<typeof serverDetailsList>(() => {
+    const details = fakeHost ? serverDetailsList[fakeHost] : undefined;
+    return fakeHost && details ? { ...serverDetailsList, [fakeHost]: { ...details, channels: [...(details.channels ?? []), ...FAKE_VOICE_CHANNELS] } } : serverDetailsList;
+  }, [serverDetailsList, fakeHost]);
+  const shownMembers = useMemo<typeof memberLists>(
+    // Even with no list from the server: the messages space doesn't ask for one.
+    () => (fakeHost ? { ...memberLists, [fakeHost]: [...(memberLists[fakeHost] ?? []), ...fakeMembers()] } : memberLists),
+    [memberLists, fakeHost],
+  );
+
+  return { sockets, serverDetailsList: shownDetails, clients, memberLists: shownMembers, memberKeyStates, serverProfiles, setServerProfiles, getChannelDetails, requestMemberList, failedServerDetails, serverConnectionStatus, refusalReason, refusalHelpUrl, reconnectServer, leaveServer, tokenRevision };
 }
 
 export const useSockets = singletonHook(

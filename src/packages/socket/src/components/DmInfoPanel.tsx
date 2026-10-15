@@ -163,7 +163,7 @@ export function DmPersonPanel({
       style={{ width: PANEL_WIDTH, background: "var(--gryt-neutral-2)", borderRadius: "var(--gryt-radius-lg)" }}
     >
       {member ? (
-        <MemberIdentityCard member={member} serverHost={host} />
+        <MemberIdentityCard member={member} serverHost={host} inline />
       ) : (
         <div className="flex items-center gap-3 p-3">
           <Avatar size="large" fallback={conversation.other.nickname[0]} src={resolveAvatarSrc(conversation.other.avatar_file_id ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true }) : undefined, conversation.other.nickname, conversation.other.avatar_worn)} />
