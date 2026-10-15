@@ -5,12 +5,15 @@ import toast from "react-hot-toast";
 
 import { GeneratedServerIcon, serverIconSrc, useAccount } from "@/common";
 import {
+  groupLinkedDeviceNotices,
+  isUnusedOwnDevice,
+  type LinkedDeviceGroup,
   linkedDeviceLine,
-  type LinkedDeviceNotice,
   linkedDeviceNotices,
   orderOwnDevices,
   ownDeviceAdded,
   ownDeviceLabel,
+  ownDeviceLastUsed,
   type OwnDevicesAnswer,
   ownMlsDevices,
   removedHereLine,
@@ -31,7 +34,7 @@ type Loaded = OwnDevicesAnswer | { kind: "loading" } | { kind: "failed" };
 function DeviceRow({ device, serverName, onRemove }: { device: MlsOwnDevice; serverName: string; onRemove: () => Promise<void> }) {
   const [confirming, setConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const added = ownDeviceAdded(device);
+  const added = [ownDeviceAdded(device), ownDeviceLastUsed(device)].filter(Boolean).join(" · ");
 
   return (
     <div
@@ -135,17 +138,21 @@ function ServerDevices({ host, name, icon }: { host: string; name: string; icon:
   );
 }
 
-/** Stays until dismissed or the device is removed (GRYT-1583). */
-function LinkedDeviceNoticeRow({ notice, serverName }: { notice: LinkedDeviceNotice; serverName: string }) {
+/** Stays until dismissed or the device is removed (GRYT-1583). One row per device, however many
+    servers it turned up on (GRYT-1764). */
+function LinkedDeviceNoticeRow({ group, serverName }: { group: LinkedDeviceGroup; serverName: (host: string) => string }) {
   const [confirming, setConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const names = group.notices.map((n) => serverName(n.host));
+  const where = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0];
+  const ids = group.notices.map((n) => n.deviceId);
 
   const remove = async () => {
     setRemoving(true);
     try {
-      await removeOwnMlsDevice(notice.host, notice.deviceId);
-      linkedDeviceNotices.dismiss(notice.deviceId);
-      toast.success("Device removed");
+      for (const n of group.notices) await removeOwnMlsDevice(n.host, n.deviceId);
+      linkedDeviceNotices.dismissAll(ids);
+      toast.success(group.notices.length > 1 ? "Device removed from every server" : "Device removed");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't remove the device");
     } finally {
@@ -157,13 +164,13 @@ function LinkedDeviceNoticeRow({ notice, serverName }: { notice: LinkedDeviceNot
     <Alert severity="warning">
       <div className="flex flex-col gap-2">
         <span>
-          {linkedDeviceLine(notice, true)} It&rsquo;s on {serverName}.
+          {linkedDeviceLine(group, true)} It&rsquo;s on {where}.
         </span>
         <div className="flex flex-wrap gap-2">
           <Button size="xsmall" tone="danger" disabled={removing} onClick={() => setConfirming(true)}>
             Remove
           </Button>
-          <Button size="xsmall" tone="neutral" onClick={() => linkedDeviceNotices.dismiss(notice.deviceId)}>
+          <Button size="xsmall" tone="neutral" onClick={() => linkedDeviceNotices.dismissAll(ids)}>
             It was me
           </Button>
         </div>
@@ -172,11 +179,57 @@ function LinkedDeviceNoticeRow({ notice, serverName }: { notice: LinkedDeviceNot
         open={confirming}
         onOpenChange={setConfirming}
         title="Remove device?"
-        description={removeOwnDeviceWarning(notice, serverName)}
+        description={removeOwnDeviceWarning(group, where)}
         confirmLabel="Remove"
         onConfirm={() => void remove()}
       />
     </Alert>
+  );
+}
+
+/** Every server's devices that haven't been used in a while, removed in one go (GRYT-1764). */
+function RemoveUnusedDevices({ hosts, serverName }: { hosts: string[]; serverName: (host: string) => string }) {
+  const [found, setFound] = useState<{ host: string; device: MlsOwnDevice }[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const look = async () => {
+    setBusy(true);
+    const all: { host: string; device: MlsOwnDevice }[] = [];
+    for (const host of hosts) {
+      const answer = await ownMlsDevices(host).catch(() => null);
+      if (answer?.kind === "devices") for (const device of answer.devices) if (isUnusedOwnDevice(device)) all.push({ host, device });
+    }
+    setBusy(false);
+    if (all.length === 0) toast("No devices have gone unused for 30 days.");
+    else setFound(all);
+  };
+
+  const remove = async () => {
+    if (!found) return;
+    setBusy(true);
+    let failed = 0;
+    for (const { host, device } of found) await removeOwnMlsDevice(host, device.deviceId).catch(() => failed++);
+    setBusy(false);
+    setFound(null);
+    if (failed) toast.error(`Removed ${found.length - failed}, ${failed} didn't go through.`);
+    else toast.success(`Removed ${found.length} unused ${found.length === 1 ? "device" : "devices"}`);
+  };
+
+  const servers = found ? [...new Set(found.map((f) => serverName(f.host)))] : [];
+  return (
+    <>
+      <Button size="xsmall" tone="neutral" className="self-start" disabled={busy || hosts.length === 0} onClick={() => void look()}>
+        {busy && !found ? "Looking…" : "Remove devices not used in 30 days"}
+      </Button>
+      <ConfirmDialog
+        open={!!found}
+        onOpenChange={(open) => { if (!open) setFound(null); }}
+        title={`Remove ${found?.length ?? 0} unused ${found?.length === 1 ? "device" : "devices"}?`}
+        description={`None of them has been used for 30 days, on ${servers.join(", ")}. They won't get new encrypted DMs there anymore, and if one connects again it deletes the encrypted DMs it has from there.`}
+        confirmLabel="Remove"
+        onConfirm={() => void remove()}
+      />
+    </>
   );
 }
 
@@ -191,9 +244,12 @@ export function OwnDevicesSection() {
       title="Your devices"
       description="Each app or browser you use for encrypted DMs is a device. Every server has its own list."
     >
-      {notices.map((n) => (
-        <LinkedDeviceNoticeRow key={n.deviceId} notice={n} serverName={servers[n.host]?.name || n.host} />
+      {groupLinkedDeviceNotices(notices).map((g) => (
+        <LinkedDeviceNoticeRow key={g.key} group={g} serverName={(host) => servers[host]?.name || host} />
       ))}
+      {orderedServerHosts.length > 0 && (
+        <RemoveUnusedDevices hosts={orderedServerHosts} serverName={(host) => servers[host]?.name || host} />
+      )}
       {orderedServerHosts.length === 0 ? (
         <span className="text-xs text-gryt-muted">No servers yet. Join one and it will show up here.</span>
       ) : (

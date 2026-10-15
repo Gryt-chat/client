@@ -19,9 +19,9 @@ import {
   subscribeToLocalArchive,
 } from "@/common";
 
-import { isElectron } from "../../../../lib/electron";
 import { showLinkedDeviceToast } from "../components/linkedDeviceToast";
 import { readMlsCapability, readMlsReports } from "./capability";
+import { thisDeviceCertificateName } from "./deviceName";
 import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
 import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
@@ -314,7 +314,7 @@ async function refresh(host: string): Promise<void> {
         pinStore: localPeerPinStore,
         seen: seenOnMlsFor(scope),
         ownPersonKey,
-        newDevice: () => newMlsDevice(host, isElectron() ? "Desktop" : "Web browser"),
+        newDevice: () => newMlsDevice(host, thisDeviceCertificateName()),
         onDelivered: (m) => {
           for (const listener of deliveredListeners) listener({ host, ...m });
         },

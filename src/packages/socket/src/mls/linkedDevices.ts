@@ -24,6 +24,27 @@ export function newOwnDevices(
   return { known: [...seen, ...ids.filter((id) => !seen.has(id))], fresh };
 }
 
+/** One install shows up on every server within moments, so notices with the same name a couple of
+    minutes apart are one device to the reader, and one line. */
+export interface LinkedDeviceGroup {
+  key: string;
+  name: string | null;
+  at: number;
+  notices: LinkedDeviceNotice[];
+}
+
+const SAME_DEVICE_MS = 2 * 60 * 1000;
+
+export function groupLinkedDeviceNotices(all: readonly LinkedDeviceNotice[]): LinkedDeviceGroup[] {
+  const groups: LinkedDeviceGroup[] = [];
+  for (const n of [...all].sort((a, b) => a.at - b.at)) {
+    const g = groups.find((x) => x.name === n.name && Math.abs(n.at - x.at) <= SAME_DEVICE_MS && !x.notices.some((y) => y.host === n.host));
+    if (g) g.notices.push(n);
+    else groups.push({ key: n.deviceId, name: n.name, at: n.at, notices: [n] });
+  }
+  return groups;
+}
+
 export function linkedDeviceLine(notice: Pick<LinkedDeviceNotice, "name" | "at">, withTime: boolean): string {
   const name = notice.name ? `: ${notice.name}` : "";
   if (!withTime) return `New device linked${name}. Not you? Remove it.`;
@@ -70,6 +91,9 @@ export const linkedDeviceNotices = {
   },
   dismiss(deviceId: string): void {
     setNotices(notices.filter((n) => n.deviceId !== deviceId));
+  },
+  dismissAll(deviceIds: readonly string[]): void {
+    setNotices(notices.filter((n) => !deviceIds.includes(n.deviceId)));
   },
 };
 
