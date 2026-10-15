@@ -66,7 +66,7 @@ const statusLines = (() => {
 
 /* The hover card's connection words, each with the condition it is drawn under. A new one
    fails here until somebody adds it to the list. */
-const CARD_LABELS = ["Offline", "Reconnecting", "Starting your server", "No answer yet", "Connecting"];
+const CARD_LABELS = ["Can&rsquo;t reach it", "Reconnecting", "Starting your server", "No answer yet", "Connecting"];
 const cardLabels = (() => {
   const found = [...sidebar.matchAll(/\{([^{}]+?) && \(\s*<span[^>]*>\s*• ([A-Z][^<{\n]*?)\s*<\/span>/g)]
     .map((m) => ({ condition: m[1].trim(), label: m[2] }))
@@ -126,22 +126,23 @@ for (const [call, voice] of Object.entries(CALLS)) {
 }
 
 /* A socket that gave up while the server was stopped, then Start: the card said Offline and
-   Starting your server at once, and the icon took no click. GRYT-1207. */
+   Starting your server at once. GRYT-1207. */
 for (const socket of SOCKET) {
   for (const settleExpired of [false, true]) {
     const got = rail({ embedded: "starting", voice: CALLS["no call"], socket, settleExpired });
     const where = `a booting server with socket ${socket ?? "unset"}${settleExpired ? ", settle expired" : ""}`;
-    assert.equal(got.isUnavailable, false, `${where} is unavailable, so its icon takes no click`);
+    assert.equal(got.isUnavailable, false, `${where} reads as unreachable`);
     assert.deepEqual(got.labels, ["Starting your server"], `${where} says ${got.labels.join(" and ")}`);
   }
 }
 
-// Once the manager is not booting it, the card says what the socket says, and that is still Offline.
+// Once the manager is not booting it, the card says what the socket says: it can't be reached.
 for (const embedded of ["running", "stopped", "error", undefined]) {
   const said = (socket, settleExpired = false) => rail({ embedded, voice: CALLS["no call"], socket, settleExpired }).labels;
-  assert.deepEqual(said("disconnected"), ["Offline"], `a ${embedded ?? "remote"} server with a socket that gave up is not Offline`);
-  assert.deepEqual(said(undefined, true), ["Offline"], `a ${embedded ?? "remote"} server that never answered is not Offline`);
-  assert.equal(rail({ embedded, voice: CALLS["no call"], socket: "disconnected" }).isUnavailable, true, `a ${embedded ?? "remote"} server that is offline takes a click`);
+  const down = ["Can&rsquo;t reach it"];
+  assert.deepEqual(said("disconnected"), down, `a ${embedded ?? "remote"} server with a socket that gave up doesn't say it can't be reached`);
+  assert.deepEqual(said(undefined, true), down, `a ${embedded ?? "remote"} server that never answered doesn't say it can't be reached`);
+  assert.equal(rail({ embedded, voice: CALLS["no call"], socket: "disconnected" }).isUnavailable, true, `a ${embedded ?? "remote"} server that gave up isn't marked unreachable`);
   assert.deepEqual(said("reconnecting"), ["Reconnecting"]);
   assert.deepEqual(said("connecting"), ["Connecting"]);
   assert.deepEqual(said("connected"), []);

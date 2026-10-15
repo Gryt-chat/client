@@ -205,18 +205,18 @@ try {
   for (const server of servers) await server.down().catch(() => {});
 }
 
-/* ── and the hook uses it, for the toast as well as the status ─────────────── */
+/* ── and the hook uses it for the status; no toast either way (GRYT-1751) ──── */
 
 assert.ok(hook.includes("watchReconnects(socket, RECONNECT_GRACE_MS, {"), `${HOOK} no longer watches its sockets through watchReconnects`);
 assert.ok(!/socket\.on\("disconnect"/.test(hook), `${HOOK} handles disconnect itself again, ahead of the grace`);
-assert.ok(!/socket\.io\.on\("reconnect",/.test(hook), `${HOOK} handles reconnect itself again, so the toast ignores whether the drop was shown`);
-assert.ok(hook.includes("if (wasShown) toast.success(`Reconnected to ${serverName}`"), "the Reconnected toast is raised for a drop nobody saw");
+assert.ok(!/socket\.io\.on\("reconnect",/.test(hook), `${HOOK} handles reconnect itself again, ahead of the grace`);
+assert.ok(!hook.includes("Reconnected to ${serverName}"), "a Reconnected toast is back, on top of the ring and the header line");
 {
   const at = hook.indexOf("onReconnecting: () => {");
   assert.notEqual(at, -1, `${HOOK} has no onReconnecting. Move this check with it.`);
   const body = hook.slice(at, hook.indexOf("onReconnected", at));
   assert.ok(body.includes("'reconnecting'"), "onReconnecting does not set the status the rail greys on");
-  assert.ok(body.includes("showReconnectingToast(toastId, serverName)"), "onReconnecting does not raise the toast");
+  assert.ok(!body.includes("toast"), "onReconnecting raises a toast again, on top of the ring and the header line");
 }
 
-console.log("reconnect grace: ok, a short drop shows nothing, a long one is announced once");
+console.log("reconnect grace: ok, a short drop shows nothing, a long one shows on the rail and the header");

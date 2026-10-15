@@ -148,7 +148,8 @@ async function joinCall(
     },
     ui: async () => {
       const inVoice = (await leaveVoiceButton(page).count()) > 0;
-      const banner = page.getByText(/^(Reconnecting to server\.\.\.|Server is unreachable)$/).first();
+      // The line under the server name, since the banner went (GRYT-1751).
+      const banner = page.getByText(/^(Reconnecting…|Can’t reach it)$/).first();
       // A tile is drawing when its video has a frame. A placeholder tile has no video at all.
       const videos = await page.evaluate(() => {
         const all = [...document.querySelectorAll("video")];

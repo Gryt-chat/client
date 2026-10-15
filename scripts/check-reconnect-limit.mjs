@@ -59,16 +59,14 @@ function constant(text, name, where) {
   );
 }
 
-// The reconnecting toast goes away on its own, and can be sent away sooner.
+/* A blip raises no toast: the rail's ring and the line under the server name say it
+   (GRYT-1751). Giving up still does, since nothing else tells a server you aren't on. */
 {
-  const ms = constant(toasts, "RECONNECT_TOAST_MS", TOASTS);
-  assert.ok(Number.isFinite(ms) && ms > 0, "the reconnecting toast never expires");
-  assert.ok(ms >= 3_000 && ms <= 15_000, `${ms}ms is not a readable toast`);
-
-  const raise = bodyOf(toasts, "export function showReconnectingToast", TOASTS);
-  assert.ok(raise.includes("duration: RECONNECT_TOAST_MS"), "the toast is raised without its duration");
-  assert.ok(raise.includes("DismissibleToast"), "the toast has no way to dismiss it");
-  assert.ok(raise.includes("toast.dismiss(toastId)"), "the close button dismisses something other than this toast");
+  assert.ok(!toasts.includes("showReconnectingToast"), "the reconnecting toast is back, on top of the ring and the header line");
+  assert.ok(
+    bodyOf(hook, 'socket.io.on("reconnect_failed"', HOOK).includes("showReconnectGaveUpToast"),
+    "giving up no longer says so",
+  );
 }
 
 /* Who gets asked to try again when the app comes back or the network returns.
@@ -149,4 +147,4 @@ function constant(text, name, where) {
   assert.deepEqual(quiet.reconnected, [], "a socket nobody said had given up was reconnected anyway");
 }
 
-console.log("reconnect limit: ok, capped, dismissable, and only a socket that gave up is retried");
+console.log("reconnect limit: ok, capped, quiet until it gives up, and only a socket that gave up is retried");
