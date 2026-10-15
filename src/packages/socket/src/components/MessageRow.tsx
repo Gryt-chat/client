@@ -18,6 +18,7 @@ import { BotTag } from "./BotTag";
 import { MessageHoverToolbar } from "./ChatMessage";
 import type { ChatMessage, Reaction } from "./chatUtils";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
+import { ADDED_LINE } from "./chatViewHelpers";
 import { CollapsibleText } from "./CollapsibleText";
 import { EmojiPicker } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
@@ -46,7 +47,7 @@ export interface MessageMeta {
   isFirstEdited: boolean;
   isSystem: boolean;
   /** Which way the arrow points on a system event row. */
-  systemEvent?: "joined" | "left";
+  systemEvent?: "joined" | "left" | "added";
   isWebhook: boolean;
   /** Whether a bot wrote it. Server-derived; see BotTag. */
   isBot?: boolean;
@@ -96,6 +97,10 @@ interface MessageRowProps {
   threadSummary?: ThreadSummary;
   /** This message went out in the clear (GRYT-729). */
   unencrypted?: boolean;
+  /** For the "added" line: whether the person added can read what came before (GRYT-1753). */
+  conversationEncrypted?: boolean;
+  /** The group's name, for the line the person added sees. */
+  conversationTitle?: string;
   /** Start a thread from this message. Absent in DMs and on pending rows. */
   onStartThread?: (msg: ChatMessage) => void;
   /** Open an existing thread by its root message id. */
@@ -141,6 +146,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   onLightboxOpen,
   threadSummary,
   unencrypted,
+  conversationEncrypted,
+  conversationTitle,
   onStartThread,
   onOpenThread,
   threadUnread,
@@ -422,7 +429,18 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
       {meta.showNewMessageDivider && <NewMessagesDivider />}
       {meta.dayBreak && <DateSeparator date={meta.dayBreak} />}
 
-      {meta.isSystem ? (
+      {meta.systemEvent === "added" ? (
+        <AddedLine
+          text={m.text ?? ""}
+          at={m.created_at}
+          currentUserId={currentUserId}
+          memberList={memberList}
+          encrypted={!!conversationEncrypted}
+          title={conversationTitle}
+          rowRef={rowRef}
+          messageId={m.message_id}
+        />
+      ) : meta.isSystem ? (
         /* An event, not a message: one quiet row keeping the left edge every
            message shares, and a right-click carrying Delete only (GRYT-896, GRYT-908). */
         look === "compact" ? (
@@ -1048,6 +1066,59 @@ function hoverBarPlacement(
   // The 4px above the message is the bar's own padding, so the pointer never crosses a gap to reach it.
   const lift: CSSProperties = { bottom: "100%", paddingBottom: 4 };
   return short ? { ...lift, left: 0 } : { ...lift, right: 0 };
+}
+
+/**
+ * Boards 7 and 7b: who added whom to a group, and whether the person added can read what
+ * came before. Everybody sees it; the person added sees it addressed to them.
+ */
+function AddedLine({
+  text, at, currentUserId, memberList, encrypted, title, rowRef, messageId,
+}: {
+  text: string;
+  at: string | Date;
+  currentUserId: string | undefined;
+  memberList?: Record<string, MemberInfo>;
+  encrypted: boolean;
+  title?: string;
+  rowRef: React.Ref<HTMLDivElement>;
+  messageId: string;
+}) {
+  const parts = ADDED_LINE.exec(text);
+  const name = (id: string, fallback: string) => memberList?.[id]?.nickname ?? fallback;
+  const by = parts ? name(parts[2], parts[1]) : "Somebody";
+  const addedId = parts?.[4];
+  const added = parts && addedId ? name(addedId, parts[3]) : "somebody";
+  const you = !!addedId && addedId === currentUserId;
+  const time = new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+  const history = you
+    ? encrypted
+      ? "You\u2019ll see what\u2019s said from now on. Messages from before you were added stay with the people who were there, since they were encrypted for them."
+      : "This conversation isn\u2019t encrypted, so you can read what was said before you were added."
+    : encrypted
+      ? `${added} only sees messages from here on. What was said before stays encrypted for the people who were here.`
+      : `This conversation isn\u2019t encrypted, so ${added} can read what was said before.`;
+
+  return (
+    <div ref={rowRef} data-message-id={messageId} role="note" className="flex items-center gap-3 py-3 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
+      <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
+      <span className="text-center" style={{ maxWidth: 460, lineHeight: 1.55 }}>
+        {you ? (
+          <>
+            <b style={{ color: "var(--gryt-neutral-12)" }}>{by}</b> added you{title ? <> to <b style={{ color: "var(--gryt-neutral-12)" }}>{title}</b></> : null} &middot; {time}
+          </>
+        ) : (
+          <>
+            <b style={{ color: "var(--gryt-neutral-12)" }}>{by}</b> added <b style={{ color: "var(--gryt-neutral-12)" }}>{added}</b> &middot; {time}
+          </>
+        )}
+        <br />
+        {history}
+      </span>
+      <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
+    </div>
+  );
 }
 
 /** Board 5: a small red dot beside a message that went out in the clear. */

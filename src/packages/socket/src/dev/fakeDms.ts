@@ -122,7 +122,10 @@ export function fakeHostNow(): string | null {
 /** Board 1's conversation, as `chat:history` would carry it. Every fake conversation gets it. */
 export function fakeHistory(conversationId: string, ownId: string | undefined): Record<string, unknown>[] {
   const other = conversationId === "fake-group-saturday-raid" ? id("Justin") : id(conversationId.replace("fake-dm-", ""));
+  const group = conversationId === "fake-group-saturday-raid";
   const lines: [string, string][] = [
+    // Board 7b: the server's line when somebody is added to a group.
+    ...(group ? ([["system", `[@Al](mention:${id("Al")}) added [@Carlo](mention:${id("Carlo")})`]] as [string, string][]) : []),
     [other, "you still up for deep rock tonight?"],
     [other, "I want to try Haz 5 again, the new overclock should help with the dreadnought"],
     [ownId ?? "me", "yes! 20:00?"],
@@ -135,7 +138,7 @@ export function fakeHistory(conversationId: string, ownId: string | undefined): 
     sender_server_id: sender,
     text,
     attachments: null,
-    created_at: minutesAgo(30 - i * 5),
+    created_at: minutesAgo(35 - i * 5),
     edited_at: null,
     reply_to_message_id: null,
     reactions: null,

@@ -995,7 +995,9 @@ export const ChatView = memo(({
                       onOpenThread={threads.openThread}
                       /* Channels are never sealed, so the mark would be on every
                          message and mean nothing. */
-                      unencrypted={conversationKind === "dm" && !m.sealed && !m.mls && !marksHidden}
+                      unencrypted={conversationKind === "dm" && !m.sealed && !m.mls && !marksHidden && m.sender_server_id !== "system"}
+                      conversationEncrypted={sealing?.kind === "seal"}
+                      conversationTitle={channelName}
                       mlsReports={!!mls?.reportsTaken}
                       pinned={pins.isPinned(m)}
                       onTogglePin={mayPin ? pins.setPinned : undefined}
