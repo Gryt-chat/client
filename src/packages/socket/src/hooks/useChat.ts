@@ -242,6 +242,8 @@ export function useChat({
     conversationId: activeConversationId,
     isConversation: !!conversationMembers,
     messages: chatMessages,
+    // The live timeline always ends at the present; it starts at the beginning once nothing older is left.
+    span: isLoadingMessages ? null : { toPresent: true, fromStart: !hasOlderMessages },
   });
   const mlsReportsTaken = useMlsReportsTaken(serverHost);
   /** Blob URLs made for decrypted attachments, revoked on unmount. */

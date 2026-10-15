@@ -21,11 +21,14 @@ export function useArchiveReadCopies({
   conversationId,
   isConversation,
   messages,
+  span,
 }: {
   host: string | undefined;
   conversationId: string | undefined;
   isConversation: boolean;
   messages: ChatMessage[];
+  /** What `messages` covers, or null while it's still loading and can't vouch for anything. */
+  span: { toPresent: boolean; fromStart: boolean } | null;
 }): void {
   /** `message_id:edited_at`, so a message is written once and again only when edited. */
   const written = useRef(new Set<string>());
@@ -35,12 +38,11 @@ export function useArchiveReadCopies({
     const fresh = messages.filter(
       (m) => m.conversation_id === conversationId && copyable(m) && !written.current.has(`${m.message_id}:${m.edited_at ?? ""}`),
     );
-    if (fresh.length === 0) return;
     const timer = setTimeout(() => {
       void openLocalArchive()
         .then(async (archive) => {
           const scope = identityScopeFor(host);
-          await archive.messages.put(
+          if (fresh.length) await archive.messages.put(
             fresh.map((m) => ({
               scope,
               conversationId,
@@ -55,11 +57,43 @@ export function useArchiveReadCopies({
             })),
           );
           for (const m of fresh) written.current.add(`${m.message_id}:${m.edited_at ?? ""}`);
+          if (span) await pruneDeleted(archive, scope, conversationId, messages, span);
         })
         .catch((e) => console.warn("[Archive] Couldn't keep a copy for search:", e));
     }, SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [host, conversationId, isConversation, messages]);
+    // `span` is read through the messages it describes; they change together.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [host, conversationId, isConversation, messages, span === null]);
+}
+
+/** Copies inside the span the server just sent that it no longer has were deleted while we
+    were away (GRYT-1761). Only that span: outside it, absent just means not loaded. */
+async function pruneDeleted(
+  archive: Awaited<ReturnType<typeof openLocalArchive>>,
+  scope: string,
+  conversationId: string,
+  messages: ChatMessage[],
+  span: { toPresent: boolean; fromStart: boolean },
+): Promise<void> {
+  const loaded = messages.filter((m) => m.conversation_id === conversationId && !m.pending && !m.failed && !m.mls);
+  if (loaded.length === 0 && !(span.toPresent && span.fromStart)) return;
+  const times = loaded.map((m) => new Date(m.created_at).getTime());
+  const from = span.fromStart ? -Infinity : Math.min(...times);
+  const to = span.toPresent ? Infinity : Math.max(...times);
+  const present = new Set(loaded.map((m) => m.message_id));
+  let before: { sentAt: number; messageId: string } | undefined;
+  for (;;) {
+    const page = await archive.messages.page(scope, conversationId, { before, limit: 500 });
+    if (page.length === 0) return;
+    for (const m of page) {
+      if (m.copy && m.sentAt >= from && m.sentAt <= to && !present.has(m.messageId)) {
+        await archive.messages.remove(scope, conversationId, m.messageId);
+      }
+    }
+    if (page[0].sentAt < from) return;
+    before = { sentAt: page[0].sentAt, messageId: page[0].messageId };
+  }
 }
 
 /** A deleted message leaves search too. */
