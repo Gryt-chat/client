@@ -165,17 +165,3 @@ export function useFriendState(host: string | undefined, serverUserId: string | 
 export function useIncomingFriendCount(): number {
   return useAllFriends().reduce((n, h) => n + h.incoming.length, 0);
 }
-
-/* Whether the Friends dialog is up. Here, so a member card on any server can open it. */
-let dialogOpen = false;
-
-export function setFriendsOpen(next: boolean): void {
-  if (dialogOpen === next) return;
-  dialogOpen = next;
-  changed();
-}
-
-export function useFriendsOpen(): boolean {
-  useSyncExternalStore(subscribe, snapshot, snapshot);
-  return dialogOpen;
-}

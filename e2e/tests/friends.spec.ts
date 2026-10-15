@@ -20,30 +20,35 @@ async function addFriend(from: Member, to: Member): Promise<void> {
   await item.click();
 }
 
-function friendsDialog(page: Page): Locator {
-  return page.locator('[data-gryt="friends-dialog"]');
+function friendsPanel(page: Page): Locator {
+  return page.locator('[data-gryt="friends-panel"]');
 }
 
-/** From the messages space, going in first if needed: the rail button goes back out when you're in. */
+/** The Friends tab of the messages list, going in first if needed: the rail button goes back out when you're in. */
 async function openFriends(member: Member): Promise<Locator> {
   const open = member.page.locator('[data-gryt="friends-open"]');
   if (!(await open.isVisible())) await member.page.getByRole("button", { name: "Direct messages" }).click();
   await open.click();
-  const dialog = friendsDialog(member.page);
-  await expect(dialog).toBeVisible();
-  return dialog;
+  const panel = friendsPanel(member.page);
+  await expect(panel).toBeVisible();
+  return panel;
 }
 
-/** Out of the Friends list and the messages space, back to the server and its member list. */
+/** Back to Chats and out of the messages space, to the server and its member list. */
 async function closeFriends(member: Member): Promise<void> {
-  await member.page.keyboard.press("Escape");
-  await expect(friendsDialog(member.page)).toBeHidden();
+  await member.page.locator('[data-gryt="chats-tab"]').click();
+  await expect(friendsPanel(member.page)).toBeHidden();
   await member.page.locator('[data-gryt="sidebar"]').getByRole("button", { name: "Gryt E2E", exact: true }).click();
   await expect(membersPanel(member.page)).toBeVisible();
 }
 
-function row(dialog: Locator, who: Member): Locator {
-  return dialog.locator('[data-gryt="friend-row"]', { hasText: who.name });
+function row(panel: Locator, who: Member): Locator {
+  return panel.locator('[data-gryt="friend-row"]', { hasText: who.name });
+}
+
+/** A friend's row, under Friends rather than Requests. */
+function friendRow(panel: Locator, who: Member): Locator {
+  return panel.locator('[data-gryt="friend-row"][data-state="friend"]', { hasText: who.name });
 }
 
 async function write(from: Member, to: Member, text: string): Promise<void> {
@@ -81,14 +86,14 @@ test("a request, accepted: friends on both sides, and a friend's ring rings", as
   await expect(bob.page.locator('[data-gryt="friends-waiting"]')).toHaveText("1");
   const bobs = await openFriends(bob);
   await row(bobs, alice).getByRole("button", { name: "Accept" }).click();
-  await expect(row(bobs, alice).getByRole("button", { name: "Remove" })).toBeVisible();
+  await expect(friendRow(bobs, alice)).toBeVisible();
   await expect(bob.page.locator('[data-gryt="friends-waiting"]')).toHaveCount(0);
   await closeFriends(bob);
 
   const alices = await openFriends(alice);
-  await expect(row(alices, bob).getByRole("button", { name: "Remove" })).toBeVisible();
-  // Added on this device, so there's nothing to confirm.
-  await expect(row(alices, bob).getByRole("button", { name: "Confirm" })).toHaveCount(0);
+  await expect(friendRow(alices, bob)).toBeVisible();
+  // Added on this device, so there's nothing to add again.
+  await expect(row(alices, bob).getByRole("button", { name: "Add" })).toHaveCount(0);
   await closeFriends(alice);
 
   // Bob never wrote to Alice, and she can ring him because they're friends.
@@ -114,7 +119,7 @@ test("once you have a friend, somebody you only wrote to can't ring", async ({ n
   await addFriend(alice, bob);
   const bobs = await openFriends(bob);
   await row(bobs, alice).getByRole("button", { name: "Accept" }).click();
-  await expect(row(bobs, alice).getByRole("button", { name: "Remove" })).toBeVisible();
+  await expect(friendRow(bobs, alice)).toBeVisible();
   await closeFriends(bob);
 
   await carol.page.locator('[data-gryt="chat-header"]').getByRole("button", { name: "Call", exact: true }).click();
@@ -131,12 +136,9 @@ test("declined: gone for the recipient, still waiting for the sender, who can ca
   await expect(row(bobs, alice)).toHaveCount(0);
   await closeFriends(bob);
 
-  const alices = await openFriends(alice);
-  const sent = row(alices, bob);
-  await expect(sent.getByRole("button", { name: "Cancel" })).toBeVisible();
-  await sent.getByRole("button", { name: "Cancel" }).click();
-  await expect(row(alices, bob)).toHaveCount(0);
-  await closeFriends(alice);
+  // Still waiting for Alice. The Friends tab lists no sent requests, so she cancels from his menu.
+  const page = await memberMenu(alice, bob);
+  await page.getByRole("menuitem", { name: "Cancel friend request" }).click();
 
   // The menu offers it again once nothing is waiting.
   await memberMenu(alice, bob);

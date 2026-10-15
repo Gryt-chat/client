@@ -259,11 +259,9 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
    generated one is only for a server with none, or the row shows a planet. */
 {
   const list = read("src/packages/socket/src/components/DmSpaceList.tsx");
-  assert.ok(
-    /serverIcon=\{serverIconSrc\(entry\.host, servers\[entry\.host\]\?\.name \|\| "", serverDetailsList\)\}/.test(list),
-    "the conversation row does not take the server's icon from where the rail does",
-  );
-  assert.ok(/<ServerMark src=\{serverIcon\} seed=\{serverName\} \/>/.test(list), "the row draws something other than the server's icon");
+  // GRYT-1742: a row names its server only when another row has the same name.
+  assert.ok(/clash=\{entry\.conversation\.kind === "dm" && clashes\.has\(title\)\}/.test(list), "a row names its server whether or not another row shares its name");
+  assert.ok(/\{clash && \(/.test(list) && /· \{serverName\}/.test(list), "a row with a shared name doesn't say which server it's on");
   const chip = read("src/packages/socket/src/components/ServerChip.tsx");
   const mark = chip.slice(chip.indexOf("function ServerMark"), chip.indexOf("function ServerChip"));
   assert.ok(

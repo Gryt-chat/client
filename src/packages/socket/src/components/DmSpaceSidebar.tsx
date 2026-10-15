@@ -1,15 +1,16 @@
 import { conversationTitle, type DirectConversation } from "@gryt/core";
-import { Badge, IconButton, TextField, Tooltip } from "@gryt/ui";
+import { Badge, Button, Tabs, TextField } from "@gryt/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getOwnServerUserId, getServerAccessToken } from "@/common";
 
-import { PiCaretDownFill, PiCaretRightFill, PiPlus, PiUsersFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiLockSimpleFill, PiPlus } from "../../../../lib/icons";
 import { admitConversation, dismissFiltered, type FilteredItem } from "../hooks/contactFilterStore";
 import { type DirectoryEntry,listedConversations, useDirectory } from "../hooks/dmDirectory";
+import { pinFor, reorderPins, usePins } from "../hooks/dmPins";
 import { requestConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
-import { setFriendsOpen, useIncomingFriendCount } from "../hooks/friendsStore";
+import { useAllFriends } from "../hooks/friendsStore";
 import {
   setHiddenExpanded,
   showConversation,
@@ -18,11 +19,13 @@ import {
   useHiddenExpanded,
 } from "../hooks/hiddenConversations";
 import { setNewMessageOpen } from "../hooks/newMessageDialog";
+import { useConversationPreviews } from "../hooks/useConversationPreviews";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
 import { DmSpaceList } from "./DmSpaceList";
 import { FilteredContacts } from "./FilteredContacts";
+import { FriendsPanel } from "./FriendsPanel";
 import { hideConversationWithUndo } from "./hideConversation";
 
 /**
@@ -45,7 +48,10 @@ export function DmSpaceSidebar({
   const { countFor } = useDirectoryUnread();
   const { servers, viewServerBehindDmSpace } = useServerManagement();
   const [query, setQuery] = useState("");
-  const incomingFriends = useIncomingFriendCount();
+  const friends = useAllFriends();
+  // Requests and friends the server lists that this device never added: both wait on you.
+  const waitingOnYou = friends.reduce((n, h) => n + h.incoming.length + h.friends.filter((f) => !f.confirmed).length, 0);
+  const [tab, setTab] = useState<"chats" | "friends">("chats");
   const reduceMotion = useReducedMotion();
 
   /* A conversation nobody has written in is listed only while it is the open one,
@@ -81,6 +87,25 @@ export function DmSpaceSidebar({
     if (!needle) return { shown: visible, shownHidden: hidden };
     return { shown: visible.filter(match), shownHidden: hidden.filter(match) };
   }, [visible, hidden, query, servers]);
+
+  /* Pinned rows on top in the order they were dragged into, the rest by recent activity. */
+  const pins = usePins();
+  const { pinned, unpinned } = useMemo(() => {
+    const order = new Map(pins.map((p, i) => [JSON.stringify([p.host, p.serverUserId, p.conversationId]), i]));
+    const at = (e: DirectoryEntry) => order.get(JSON.stringify(Object.values(pinFor(e))));
+    const pinned = matching.shown.filter((e) => at(e) !== undefined).sort((a, b) => at(a)! - at(b)!);
+    return { pinned, unpinned: matching.shown.filter((e) => at(e) === undefined) };
+  }, [matching.shown, pins]);
+
+  const previews = useConversationPreviews(listed);
+
+  /* A 1:1 whose name is on another row names its server: the client can't tell
+     whether two people with one name are one person (GRYT-1134). */
+  const clashes = useMemo(() => {
+    const seen = new Map<string, number>();
+    for (const e of listed) if (e.conversation.kind === "dm") seen.set(conversationTitle(e.conversation), (seen.get(conversationTitle(e.conversation)) ?? 0) + 1);
+    return new Set([...seen].filter(([, n]) => n > 1).map(([name]) => name));
+  }, [listed]);
 
   /* Open while the conversation being read is one of the hidden ones, whatever
      this device last chose: a selected row nobody can see is a lost cursor. */
@@ -152,55 +177,55 @@ export function DmSpaceSidebar({
     <aside
       data-gryt="dm-list"
       className={`flex shrink-0 flex-col overflow-hidden${fill ? "" : " rounded-(--gryt-radius-lg)"}`}
-      style={{ width: fill ? "100%" : 300, height: fill ? "100%" : undefined, background: "var(--gryt-neutral-2)" }}
+      style={{ width: fill ? "100%" : 320, height: fill ? "100%" : undefined, background: "var(--gryt-neutral-2)" }}
     >
-      <div className="flex items-center justify-between gap-2 pb-3 pl-4 pr-3 pt-4">
-        <h1 className="text-lg" style={{ fontWeight: 700, letterSpacing: "-0.01em" }}>
-          Messages
-        </h1>
-        <div className="flex items-center gap-1">
-        <Tooltip title={incomingFriends > 0 ? `Friends, ${incomingFriends} waiting` : "Friends"}>
-          <IconButton
-            tone="ghost"
-            size="xsmall"
-            aria-label={incomingFriends > 0 ? `Friends, ${incomingFriends} waiting` : "Friends"}
-            data-gryt="friends-open"
-            onClick={() => setFriendsOpen(true)}
-            style={{ position: "relative" }}
-          >
-            <PiUsersFill size={16} />
-            {incomingFriends > 0 && (
-              <span data-gryt="friends-waiting" className="pointer-events-none absolute -right-2 -top-2">
-                <Badge badgeContent={incomingFriends} tone="unread" />
-              </span>
-            )}
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="New message">
-          <IconButton
-            tone="ghost"
-            size="xsmall"
-            aria-label="New message"
-            onClick={() => setNewMessageOpen(true)}
-          >
-            <PiPlus size={16} />
-          </IconButton>
-        </Tooltip>
-        </div>
+      <div className="flex items-center gap-1.5 pb-2 pl-4 pr-3.5 pt-3.5">
+        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em" }}>Messages</h1>
+        <Button
+          size="small"
+          className="ml-auto"
+          aria-label="New message"
+          onClick={() => setNewMessageOpen(true)}
+        >
+          <PiPlus size={15} />
+          New
+        </Button>
       </div>
 
-      {listed.length > 0 && (
-        <div className="px-3 pb-2">
-          <TextField
-            size="small"
-            placeholder="Search conversations"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-      )}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "chats" | "friends")} className="px-3.5 pb-2.5">
+        <Tabs.List aria-label="Messages or friends" className="grid w-full grid-cols-2">
+          <Tabs.Tab value="chats" data-gryt="chats-tab">Chats</Tabs.Tab>
+          <Tabs.Tab
+            value="friends"
+            data-gryt="friends-open"
+            aria-label={waitingOnYou > 0 ? `Friends, ${waitingOnYou} waiting` : "Friends"}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              Friends
+              {waitingOnYou > 0 && (
+                <span data-gryt="friends-waiting" className="pointer-events-none inline-flex">
+                  <Badge badgeContent={waitingOnYou} tone="unread" />
+                </span>
+              )}
+            </span>
+          </Tabs.Tab>
+          <Tabs.Indicator />
+        </Tabs.List>
+      </Tabs>
 
-      {listed.length === 0 ? (
+      <div className="px-3.5 pb-1.5">
+        <TextField
+          size="small"
+          placeholder={tab === "chats" ? "Find a person" : "Find a friend"}
+          aria-label={tab === "chats" ? "Find a person" : "Find a friend"}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
+      {tab === "friends" ? (
+        <FriendsPanel query={query} />
+      ) : listed.length === 0 ? (
         <p className="px-4 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
           No conversations yet.
         </p>
@@ -209,15 +234,35 @@ export function DmSpaceSidebar({
           Nothing matches &ldquo;{query}&rdquo;.
         </p>
       ) : (
-        <div className="flex flex-col overflow-y-auto px-2 pb-2">
+        <div className="flex flex-1 flex-col overflow-y-auto px-2 pb-2">
+          {pinned.length > 0 && (
+            <>
+              <div className="flex items-center px-3 pb-1.5 pt-3.5 text-xs font-semibold text-gryt-muted">
+                Pinned
+                <span className="ml-auto font-normal">Drag to reorder</span>
+              </div>
+              <DmSpaceList
+                entries={pinned}
+                selected={selected}
+                unreadFor={countFor}
+                onOpen={open}
+                onHide={hide}
+                previews={previews}
+                clashes={clashes}
+                reorder={(order) => reorderPins(order.map(pinFor))}
+              />
+              <div className="px-3 pb-1.5 pt-3.5 text-xs font-semibold text-gryt-muted">Messages</div>
+            </>
+          )}
           <DmSpaceList
-            entries={matching.shown}
+            entries={unpinned}
             selected={selected}
             unreadFor={countFor}
             onOpen={open}
             onHide={hide}
+            previews={previews}
+            clashes={clashes}
           />
-
           {/* No row at all when nothing is hidden: an empty group would be a
               permanent reminder of a feature most people never use. */}
           {matching.shownHidden.length > 0 && (
@@ -257,6 +302,8 @@ export function DmSpaceSidebar({
                       onOpen={open}
                       onShow={show}
                       hidden
+                      previews={previews}
+                      clashes={clashes}
                     />
                   </motion.div>
                 )}
@@ -264,6 +311,15 @@ export function DmSpaceSidebar({
             </>
           )}
         </div>
+      )}
+
+      {tab === "chats" && listed.length > 0 && (
+        <p
+          className="mt-auto flex items-center gap-1.5 border-t border-gryt-border px-4.5 pb-3.5 pt-2.5 text-xs text-gryt-muted"
+        >
+          <PiLockSimpleFill size={12} aria-hidden />
+          Previews come from this device&rsquo;s history
+        </p>
       )}
 
       <FilteredContacts onOpen={openFiltered} />
