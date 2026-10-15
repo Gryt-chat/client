@@ -199,6 +199,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   // The conversation info panel on the right of the messages space (GRYT-1745).
   const [dmInfoOpen, setDmInfoOpen] = useState(true);
   const [askHide, hideDialog] = useConfirmHide();
+  const [pendingLeave, setPendingLeave] = useState<{ title: string; leave: () => void } | null>(null);
+  const askLeave = (title: string, leave: () => void) => setPendingLeave({ title, leave });
   const { setCameraEnabled } = useCamera();
   const openDmSearch = useCallback(() => {
     setDmSearchOpen(true);
@@ -620,6 +622,43 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   // While you're in this conversation's call its header says so, and brings the call back (board 11).
   const inThisCall = !!activeDm && isConnected && currentServerConnected === currentlyViewingServer?.host && currentChannelConnected === activeDm?.conversation_id;
   const callSeconds = useCallClock(inThisCall, activeDm?.conversation_id ?? "");
+
+  /* A DM call shows beside its own conversation only. Opening another one puts the call in
+     the rail capsule, and coming back to it brings the call back (board 14). */
+  const dmCallId =
+    dmSpace && isConnected && currentServerConnected === currentlyViewingServer?.host && currentChannelConnected &&
+    !(currentlyViewingServer ? serverDetailsList[currentlyViewingServer.host]?.channels ?? [] : []).some((c) => c.id === currentChannelConnected)
+      ? currentChannelConnected
+      : null;
+  const callTuckedAway = useRef(false);
+  useEffect(() => {
+    if (!dmCallId) {
+      callTuckedAway.current = false;
+      return;
+    }
+    const onCall = activeDm?.conversation_id === dmCallId;
+    if (!onCall && showVoiceView) {
+      callTuckedAway.current = true;
+      setShowVoiceView(false);
+    } else if (onCall && callTuckedAway.current) {
+      callTuckedAway.current = false;
+      setShowVoiceView(true);
+    }
+  }, [dmCallId, activeDm?.conversation_id, showVoiceView, setShowVoiceView]);
+
+  /* The call, the chat and the panel don't fit side by side, so the panel steps aside for
+     the call and comes back when it ends. */
+  const infoBeforeCall = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (inThisCall && infoBeforeCall.current === null) {
+      infoBeforeCall.current = dmInfoOpen;
+      setDmInfoOpen(false);
+    } else if (!inThisCall && infoBeforeCall.current !== null) {
+      setDmInfoOpen(infoBeforeCall.current);
+      infoBeforeCall.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inThisCall]);
 
   /* The conversation the tiny window's list was opened over. Picking another one
      moves the selection off it, so the list goes without being told. */
@@ -1051,6 +1090,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const canViewMembers = viewerPermissions.can("view_members");
 
   const hostChannels = serverDetails.channels || [];
+
+
 
   const { clients: hostClients, videoStreams: voiceVideoStreams } =
     withFakeParticipants(
@@ -1509,8 +1550,11 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   onEdit={() => setGroupDialog(activeDm)}
                   onAdd={() => setGroupDialog(activeDm)}
                   onLeave={() => {
-                    setSelectedDmId((current) => (current === activeDm.conversation_id ? null : current));
-                    leaveGroup(activeDm.conversation_id);
+                    const group = activeDm;
+                    askLeave(conversationTitle(group), () => {
+                      setSelectedDmId((current) => (current === group.conversation_id ? null : current));
+                      leaveGroup(group.conversation_id);
+                    });
                   }}
                 />
               ) : (
@@ -1618,6 +1662,20 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
 
       {hideDialog}
+      <ConfirmDialog
+        open={!!pendingLeave}
+        onOpenChange={(open) => {
+          if (!open) setPendingLeave(null);
+        }}
+        title={`Leave ${pendingLeave?.title ?? "this group"}?`}
+        description="You stop getting its messages and drop off its member list. Anybody still in it can add you back."
+        confirmLabel="Leave group"
+        confirmTone="danger"
+        onConfirm={() => {
+          pendingLeave?.leave();
+          setPendingLeave(null);
+        }}
+      />
       <ServerConfirmDialogs
         pendingDeleteItem={pendingDeleteItem}
         channelById={channelById}
