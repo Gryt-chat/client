@@ -13,6 +13,8 @@ interface ChatEditorBarProps {
   editingMessage: ChatMessage | null;
   editorRef: RefObject<ChatEditorHandle | null>;
   placeholder: string;
+  /** Board 5: a DM going out in the clear, which turns the box red. */
+  unencrypted?: boolean;
   disabled: boolean;
   allowFiles?: boolean;
   maxFileSize?: number | null;
@@ -34,6 +36,7 @@ export function ChatEditorBar({
   editingMessage,
   editorRef,
   placeholder,
+  unencrypted,
   disabled,
   allowFiles,
   maxFileSize,
@@ -105,6 +108,7 @@ export function ChatEditorBar({
       <ChatEditor
         ref={editorRef}
         placeholder={placeholder}
+        unencrypted={unencrypted}
         disabled={disabled}
         allowFiles={allowFiles}
         maxFileSize={maxFileSize}

@@ -12,7 +12,7 @@ import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import { SidebarItem } from "@/settings/src/types/server";
 
-import { PiCaretLeftBold, PiGearSixFill, PiLockOpen, PiLockSimpleFill, PiMagnifyingGlassBold, PiPhoneFill, PiSidebarSimpleFill, PiVideoCameraFill } from "../../../../lib/icons";
+import { PiCaretLeftBold, PiGearSixFill, PiLockSimpleFill, PiMagnifyingGlassBold, PiPhoneFill, PiSidebarSimpleFill, PiVideoCameraFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import { fakeConversations, fakeDmsOn, fakeHostNow } from "../dev/fakeDms";
@@ -70,6 +70,7 @@ import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { statusConfig } from "./memberStatus";
 import { MessagesHome } from "./MessagesHome";
 import { MobileServerView } from "./MobileServerView";
+import { NotEncryptedPopover } from "./NotEncryptedPopover";
 import { PresenceDot } from "./PresenceDot";
 import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
@@ -857,11 +858,26 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         {activeDm.kind === "group" ? <span>{activeDm.members.length + 1} people ·</span> : <span>on</span>}
         <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
         <span aria-hidden>·</span>
-        {sealed ? <PiLockSimpleFill size={11} aria-hidden /> : <PiLockOpen size={11} aria-hidden />}
-        <span>{sealed ? "Encrypted" : "Not encrypted"}</span>
+        {sealed ? (
+          <>
+            <PiLockSimpleFill size={11} aria-hidden />
+            <span>Encrypted</span>
+          </>
+        ) : (
+          /* Boards 5b and 5c: why, what to do, and turning the dots off. */
+          <NotEncryptedPopover
+            decision={sealing}
+            serverName={name}
+            host={host}
+            conversationId={activeDm.conversation_id}
+            memberNames={memberNames}
+            onAsk={(text) => sendChat(text, [])}
+            onCompare={() => setDmInfoOpen(true)}
+          />
+        )}
       </span>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat]);
 
   /* Board 7, option A: behind ⋯ in a channel's header. The pin button stays beside it. */
   const channelMoreMenu = useMemo(() => {
@@ -1106,7 +1122,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         conversationKey={activeConversationId}
         sealing={activeDm ? sealing : undefined}
         mls={activeDm ? mlsView : undefined}
-        memberNames={memberNames}
         canSend={canSend}
         sendChat={sendChat}
         editMessage={editMessage}
@@ -1247,7 +1262,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             chatMessages={visibleChatMessages}
             sealing={activeDm ? sealing : undefined}
             mls={activeDm ? mlsView : undefined}
-            memberNames={memberNames}
             canSend={canSend}
             sendChat={sendChat}
             editMessage={editMessage}

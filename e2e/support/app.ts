@@ -30,8 +30,9 @@ export function recordFrames(page: Page): string[] {
     often before the callee's app has drawn it. Dropping the cancel keeps it ringing. */
 export const ringCancel = (frame: string): boolean => frame.startsWith('42["call:cancel",');
 
+/** By how its placeholder starts: an unencrypted DM's ends in "(not encrypted)" (board 5). */
 export function composer(page: Page, placeholder: string): Locator {
-  return page.locator(`[role="textbox"][aria-placeholder="${placeholder}"]`);
+  return page.locator(`[role="textbox"][aria-placeholder^="${placeholder}"]`);
 }
 
 export function channelComposer(page: Page, channel = "General"): Locator {
