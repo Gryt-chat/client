@@ -20,7 +20,7 @@ import {
 } from "@/settings/src/types/server";
 
 import { type EmbeddedServerState, getElectronAPI } from "../../../../lib/electron";
-import { showReconnectGaveUpToast, showReconnectingToast } from "../components/connectionToasts";
+import { showReconnectGaveUpToast } from "../components/connectionToasts";
 import { MemberInfo } from "../components/MemberSidebar";
 import { Clients, ServerProfile } from "../types/clients";
 import { installContactGuard } from "../utils/contactFilter";
@@ -393,13 +393,13 @@ function useSocketsHook() {
         /* A drop that is back within the grace shows nothing. A one-second blip
            used to grey the server, spin the ring and raise two toasts (GRYT-1301). */
         watchReconnects(socket, RECONNECT_GRACE_MS, {
+          /* No toast either way: the rail's ring and the line under the server name
+             say it, where you'd look (GRYT-1751). */
           onReconnecting: () => {
             setServerConnectionStatus(prev => ({ ...prev, [host]: 'reconnecting' }));
-            showReconnectingToast(toastId, serverName);
           },
-          onReconnected: (wasShown) => {
+          onReconnected: () => {
             setServerConnectionStatus(prev => ({ ...prev, [host]: 'connected' }));
-            if (wasShown) toast.success(`Reconnected to ${serverName}`, { id: toastId });
             socket.emit("server:details");
             socket.emit("members:fetch");
             /* Unconditionally too, for a reconnect with no stash to restore, where

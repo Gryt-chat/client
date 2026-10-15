@@ -108,6 +108,7 @@ export const ChatView = memo(({
   threadBeside = false,
   onSearch,
   pendingJump,
+  offlineLine,
 }: {
   chatMessages: ChatMessage[];
   conversationKey?: string;
@@ -115,6 +116,8 @@ export const ChatView = memo(({
   onSearch?: () => void;
   /** A search hit to scroll to once its conversation has loaded. `nonce` lets the same message be picked twice. */
   pendingJump?: { conversationId: string; messageId: string; nonce: number } | null;
+  /** The server dropped: the box says so and takes nothing until it's back (GRYT-1751). */
+  offlineLine?: string;
   canSend: boolean;
   sendChat: (text: string, files: File[], replyToMessageId?: string) => void;
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
@@ -752,8 +755,9 @@ export const ChatView = memo(({
   );
 
 
-  const editorPlaceholder =
-    !canViewVoiceChannelText && isVoiceChannelTextChat
+  const editorPlaceholder = offlineLine
+    ? offlineLine
+    : !canViewVoiceChannelText && isVoiceChannelTextChat
       ? "Text chat is not available in this voice channel"
       : !mayRead
         ? "This channel is not readable with your role."
@@ -767,7 +771,7 @@ export const ChatView = memo(({
               : `Message #${channelName}`
             : "Chat with your friends!";
 
-  const editorDisabled = (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
+  const editorDisabled = !!offlineLine || (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = mayRead && !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;

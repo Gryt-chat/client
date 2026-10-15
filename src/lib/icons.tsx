@@ -99,8 +99,10 @@ import {
   PhoneDisconnect,
   PhoneX,
   Play,
+  Plugs,
   Plus,
   Prohibit,
+  Pulse,
   PushPin,
   PushPinSlash,
   PuzzlePiece,
@@ -299,3 +301,5 @@ export const PiWifiSlashFill: Icon = weighted(WifiSlash, "fill", "PiWifiSlashFil
 export const PiX: Icon = X;
 export const PiXBold: Icon = weighted(X, "bold", "PiXBold");
 export const PiXCircleFill: Icon = weighted(XCircle, "fill", "PiXCircleFill");
+export const PiPlugsFill: Icon = weighted(Plugs, "fill", "PiPlugsFill");
+export const PiPulseBold: Icon = weighted(Pulse, "bold", "PiPulseBold");

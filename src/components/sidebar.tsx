@@ -480,14 +480,10 @@ function ServerItem({
                       // The icon is the only content, so without this every server is an unnamed button.
                       aria-label={servers[host]?.name || host}
                       aria-current={currentlyViewingServer?.host === host ? "true" : undefined}
-                      style={{
-                        cursor: isUnavailable ? "not-allowed" : "pointer",
-                      }}
-                      onClick={() => {
-                        if (!isUnavailable) {
-                          switchToServer(host);
-                        }
-                      }}
+                      style={{ cursor: "pointer" }}
+                      /* Open even when it can't be reached: inside is where Try now
+                         and the connection check are (GRYT-1751). */
+                      onClick={() => switchToServer(host)}
                     />
                   }
                   fallback={<GeneratedServerIcon seed={servers[host]?.name || host} />}
@@ -498,7 +494,7 @@ function ServerItem({
                       currentlyViewingServer?.host === host || isStarting
                         ? 1
                         : isUnavailable
-                        ? 0.3
+                        ? 0.45
                         : awaitingApproval
                         ? 0.4
                         : isReconnecting
@@ -516,6 +512,23 @@ function ServerItem({
                 />
 
                 <ServerStatusRing state={ringState} settleMs={UNKNOWN_SETTLE_MS} />
+
+                {/* Can't reach it: a warning dot, the same colour as the line inside. */}
+                {isUnavailable && !awaitingApproval && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute"
+                    style={{
+                      right: -3,
+                      bottom: -3,
+                      width: 11,
+                      height: 11,
+                      borderRadius: "50%",
+                      background: "var(--gryt-warning-9)",
+                      boxShadow: "0 0 0 2px var(--gryt-neutral-1)",
+                    }}
+                  />
+                )}
 
                 {/* Whether you are in a call here, and whether sound is leaving
                     this machine. It used to appear only once the call was up,
@@ -737,8 +750,8 @@ function ServerItem({
                 </span>
               )}
               {isUnavailable && !awaitingApproval && (
-                <span style={{ color: "var(--gryt-danger-9)", marginLeft: "8px" }}>
-                  • Offline
+                <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
+                  • Can&rsquo;t reach it
                 </span>
               )}
               {isReconnecting && !isStarting && (
