@@ -32,7 +32,9 @@ export function IncomingCallCard({
     <div
       role="alertdialog"
       aria-label={`${call.from.nickname} is calling`}
-      className="fixed bottom-4 right-4 z-50 flex w-72 flex-col gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface-raised p-4 shadow-lg"
+      className="fixed bottom-4 right-4 flex w-72 flex-col gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface-raised p-4 shadow-lg"
+      // Above the toasts, which share this corner: one covered Decline in testing (GRYT-1759).
+      style={{ zIndex: "calc(var(--gryt-z-toast) + 1)" }}
     >
       <div className="flex items-center gap-3">
         <Avatar
