@@ -1,5 +1,6 @@
 import { Avatar, Button, IconButton, Menu, Tooltip } from "@gryt/ui";
 import { useCamera, useSFU } from "@gryt/voice";
+import { motion } from "motion/react";
 import { type ReactNode,useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -92,6 +93,9 @@ const fakeParticipantOptionsFromUrl = readFakeParticipantOptions(
 /** `?fakering=1` rings the open conversation, `?fakepeer=1` puts somebody in the
     call, and `&fakecallmembers=0` reproduces a call that drew nobody. */
 const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
+
+/** The messages list is wider than the channel list: two lines a row, with previews. */
+const DM_LIST_WIDTH_PX = 320;
 
 /**
  * `dmSpace` swaps the channel sidebar for every server's conversations and drops
@@ -1224,12 +1228,39 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               transition: "opacity 0.3s ease",
             }}>
             {dmSpace ? (
-              <DmSpaceSidebar
-                host={host}
-                selectedConversationId={visibleDmId}
-                onOpen={handleSelectDm}
-                onHidden={forgetHiddenDm}
-              />
+              /* Folds like the channel list, on the same setting: one left list, one choice. */
+              <div
+                role="navigation"
+                aria-label="Direct messages"
+                onMouseEnter={openLeftSidebar}
+                onMouseLeave={closeLeftSidebar}
+                style={{ flexShrink: 0, display: "flex" }}
+              >
+                <motion.div
+                  animate={{ width: leftSidebarOpen ? DM_LIST_WIDTH_PX : 0 }}
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                  style={{ overflow: "hidden", display: "flex" }}
+                >
+                  <DmSpaceSidebar
+                    host={host}
+                    selectedConversationId={visibleDmId}
+                    onOpen={handleSelectDm}
+                    onHidden={forgetHiddenDm}
+                    listPinned={pinChannelsSidebar}
+                    onToggleList={() => setPinChannelsSidebar(!pinChannelsSidebar)}
+                  />
+                </motion.div>
+                <motion.div
+                  aria-hidden
+                  data-gryt="dm-list-grip"
+                  animate={{ width: leftSidebarOpen ? 0 : SIDEBAR_HOVER_PX }}
+                  initial={false}
+                  style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}
+                >
+                  <span style={{ width: 4, height: "33%", borderRadius: 9999, background: "var(--gryt-neutral-a4)", opacity: 0.5 }} />
+                </motion.div>
+              </div>
             ) : (
             <ServerSidebar
               sidebarOpen={leftSidebarOpen}

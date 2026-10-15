@@ -1,11 +1,11 @@
 import { conversationTitle, type DirectConversation } from "@gryt/core";
-import { Badge, Button, Tabs, TextField } from "@gryt/ui";
+import { Badge, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getOwnServerUserId, getServerAccessToken } from "@/common";
 
-import { PiCaretDownFill, PiCaretRightFill, PiLockSimpleFill, PiPlus } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiLockSimpleFill, PiPlus, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { admitConversation, dismissFiltered, type FilteredItem } from "../hooks/contactFilterStore";
 import { type DirectoryEntry,listedConversations, useDirectory } from "../hooks/dmDirectory";
 import { pinFor, reorderPins, usePins } from "../hooks/dmPins";
@@ -33,7 +33,7 @@ import { hideConversationWithUndo } from "./hideConversation";
  * this one's: it is the only column in Gryt that crosses servers (GRYT-1134).
  */
 export function DmSpaceSidebar({
-  host, selectedConversationId, onOpen, onHidden, fill = false,
+  host, selectedConversationId, onOpen, onHidden, fill = false, listPinned, onToggleList,
 }: {
   /** The server currently rendered beside this, so a row on it opens directly. */
   host: string;
@@ -43,6 +43,9 @@ export function DmSpaceSidebar({
   onHidden?: (conversationId: string) => void;
   /** The whole of what it's in, for the phone's sheet and the tiny window, rather than a 300px column. */
   fill?: boolean;
+  /** Whether the list stays open, or folds to a grip that opens on hover (board 19). */
+  listPinned?: boolean;
+  onToggleList?: () => void;
 }) {
   const entries = useDirectory();
   const { countFor } = useDirectoryUnread();
@@ -179,7 +182,21 @@ export function DmSpaceSidebar({
       className={`flex shrink-0 flex-col overflow-hidden${fill ? "" : " rounded-(--gryt-radius-lg)"}`}
       style={{ width: fill ? "100%" : 320, height: fill ? "100%" : undefined, background: "var(--gryt-neutral-2)" }}
     >
-      <div className="flex items-center gap-1.5 pb-2 pl-4 pr-3.5 pt-3.5">
+      <div className={`flex items-center gap-1.5 pb-2 pr-3.5 pt-3.5 ${onToggleList ? "pl-2.5" : "pl-4"}`}>
+        {onToggleList && (
+          <Tooltip title={listPinned ? "Hide messages" : "Keep messages open"}>
+            <IconButton
+              tone="ghost"
+              size="small"
+              aria-label={listPinned ? "Hide messages" : "Keep messages open"}
+              aria-pressed={!listPinned}
+              data-gryt="dm-list-toggle"
+              onClick={onToggleList}
+            >
+              <PiSidebarSimpleFill size={17} />
+            </IconButton>
+          </Tooltip>
+        )}
         <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em" }}>Messages</h1>
         <Button
           size="small"
