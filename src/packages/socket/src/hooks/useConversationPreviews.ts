@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { getOwnServerUserId, identityScopeFor, openLocalArchive } from "@/common";
 
+import { ADDED_LINE } from "../components/chatViewHelpers";
 import { FAKE_PREVIEWS, fakeDmsOn } from "../dev/fakeDms";
 import type { DirectoryEntry } from "./dmDirectory";
 
@@ -21,6 +22,9 @@ export function previewLine(
   message: { senderId: string; text: string; attachments: Record<string, unknown> },
   ownId: string | undefined,
 ): string {
+  // A group's "added" line reads as words, not mention markup (board 7: "Al added you").
+  const added = ADDED_LINE.exec(message.text.trim());
+  if (added) return `${added[1]} added ${added[4] === ownId ? "you" : added[3]}`;
   const body = message.text.trim().replace(/\s+/g, " ") || (Object.keys(message.attachments).length > 0 ? "Sent a file" : "");
   if (!body) return "";
   if (ownId && message.senderId === ownId) return `You: ${body}`;

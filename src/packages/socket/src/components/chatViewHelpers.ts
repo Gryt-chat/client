@@ -7,6 +7,9 @@ import { toDate } from "./chatUtils";
 import type { MemberInfo } from "./MemberSidebar";
 import type { MessageMeta } from "./MessageRow";
 
+/** A group's "Al added Sivert" line from the server (GRYT-1753): two mentions either side of "added". */
+export const ADDED_LINE = /^\[@(.+?)\]\(mention:([^)]+)\) added \[@(.+?)\]\(mention:([^)]+)\)$/;
+
 export const GROUP_GAP_MS = 5 * 60 * 1000;
 export const SYSTEM_SENDER_ID = "system";
 export const WEBHOOK_PREFIX = "webhook:";
@@ -71,8 +74,10 @@ export function buildMessageMetadata(
 
     /* Which arrow the event row draws, read off the text rather than a field:
        the server sends these as ordinary message rows. */
-    const systemEvent: "joined" | "left" | undefined = isSystem
-      ? (/\bleft the server\b/.test(m.text ?? "") ? "left" : "joined")
+    const systemEvent: "joined" | "left" | "added" | undefined = isSystem
+      ? /\bleft the server\b/.test(m.text ?? "")
+        ? "left"
+        : ADDED_LINE.test(m.text ?? "") ? "added" : "joined"
       : undefined;
 
     const senderName = isSystem ? "System" : getSenderName(m);
