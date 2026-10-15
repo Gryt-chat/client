@@ -1,3 +1,4 @@
+import { base64Url } from "@gryt/crypto";
 import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
 import { cloneElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -10,6 +11,7 @@ import {
   identityScopeFor,
   markPeerCompared,
   ownComparisonSide,
+  pinPeerKey,
   resolveAvatarSrc,
   useTheme,
 } from "@/common";
@@ -101,7 +103,7 @@ export function MemberIdentityCard({
 }) {
   const Close = inline ? InlineClose : Popover.Close;
   const actions = useMemberCardActions();
-  const { memberKeyStates, serverDetailsList, memberLists } = useSockets();
+  const { memberKeyStates, serverDetailsList, memberLists, sockets } = useSockets();
   const serverMembers = serverHost ? memberLists[serverHost] : undefined;
   const nameTag = useMemo(() => nameTags(serverMembers ?? []).get(member.serverUserId), [serverMembers, member.serverUserId]);
   const { roles: roleSummaries, has, can } = useServerPermissions(serverHost ?? "");
@@ -144,6 +146,22 @@ export function MemberIdentityCard({
           dmPublicKey: keyState.decision.pin.dmPublicKey,
         })
       : null;
+
+  /* Board 5c: the code for the key they have now, so a changed key can be checked and then trusted. */
+  const newKeys = keyState?.decision.kind === "changed"
+    ? { thumbprint: keyState.decision.verified.identityThumbprint, dmPublicKey: base64Url(keyState.decision.verified.dmPublicKey) }
+    : null;
+  const newCode = ownKeys && newKeys ? comparisonCode(ownKeys, newKeys) : null;
+  const trustNewKey = () => {
+    if (!serverHost || keyState?.decision.kind !== "changed" || !newKeys) return;
+    const scope = identityScopeFor(serverHost);
+    pinPeerKey(scope, member.serverUserId, keyState.decision.verified);
+    // Compared, since that is what the button says happened.
+    markPeerCompared(scope, member.serverUserId, newKeys);
+    // Key decisions are made on each member list, so ask for one rather than wait.
+    sockets[serverHost]?.emit("members:fetch");
+    toast.success(`Trusted ${member.nickname}\u2019s new key`);
+  };
 
   const profile = useMemo(
     () => cardProfileFor(member, member.nickname),
@@ -455,6 +473,15 @@ export function MemberIdentityCard({
               That happens when somebody restores their identity on another device. It is also what a server
               substituting a key looks like. Ask them somewhere other than here before treating messages as private.
             </span>
+            {newCode && (
+              <>
+                <span className="gmc-note">Ask them to read you the code on their side, somewhere other than Gryt.</span>
+                <code className="gmc-code" style={{ textAlign: "center", letterSpacing: ".06em" }}>{newCode}</code>
+                <button type="button" className="gmc-btn" data-gryt="trust-new-key" onClick={trustNewKey}>
+                  The codes match, trust it
+                </button>
+              </>
+            )}
           </div>
         )}
         {(code || (!identityIsTheQuestion && fingerprint)) && (
