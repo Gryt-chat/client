@@ -14,11 +14,8 @@ function copyable(m: ChatMessage): boolean {
   return !m.sealed || m.sealedState === "open";
 }
 
-/**
- * Keeps this device's copy of the DM and group messages it has read, so search and the
- * list's previews reach conversations that aren't on MLS (GRYT-1760). Sealed at rest like
- * the rest of the archive, and written only from what is already decrypted on screen.
- */
+/** Keeps this device's copy of the DM and group messages it has read, so search reaches
+    conversations that aren't on MLS (GRYT-1760). Sealed at rest like the rest of the archive. */
 export function useArchiveReadCopies({
   host,
   conversationId,
