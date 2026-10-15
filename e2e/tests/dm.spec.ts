@@ -61,8 +61,9 @@ test("a DM lights no server in the rail, and its header names the server instead
   await expect(header).toContainText(alice.name);
   await expect(header.getByTitle("Gryt E2E")).toBeVisible();
 
+  // The row names the server only when two people share a name (GRYT-1742).
   const row = bob.page.getByRole("button", { name: alice.name });
-  await expect(row.getByRole("img", { name: "Gryt E2E" })).toBeVisible();
+  await expect(row).toBeVisible();
   await expect(row).not.toContainText("Gryt E2E");
 
   await dmButton.click();
@@ -99,7 +100,8 @@ test("a DM in a window too narrow for the rail stays inside it, with the list a 
 async function newMessageDialog(page: Page) {
   const heading = page.getByRole("heading", { name: "Messages" });
   if (!(await heading.isVisible())) await page.getByRole("button", { name: "Direct messages" }).click();
-  await page.getByRole("button", { name: "New message" }).click();
+  // The pill beside Messages; the home has its own New message button too.
+  await page.getByLabel("New message", { exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "New message" })).toBeVisible();
   return dialog;
