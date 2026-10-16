@@ -169,6 +169,13 @@
   top: var(--titlebar-inset, 0px);
 }
 
+/* The dialog too: centred in the space under the title bar, or a short window
+   puts it flush against the bar with the gap all at the bottom (GRYT-1780). */
+.gryt-dialog {
+  top: calc(50% + var(--titlebar-inset, 0px) / 2);
+  max-height: calc(100dvh - 3rem - var(--titlebar-inset, 0px));
+}
+
 /* And give it back its clicks.
  *
  * A modal dialog puts pointer-events: none on the body to make the rest of the
