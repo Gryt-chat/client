@@ -376,7 +376,7 @@ export function useSidebarEditor({
   }, [pendingFolderMove, sendMove]);
 
   const insertFromPalette = useCallback(
-    async (paletteKind: string, index: number) => {
+    async (paletteKind: string, index: number, label?: string) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected)
         return toast.error("Not connected to the server yet.");
@@ -432,7 +432,7 @@ export function useSidebarEditor({
           itemId,
           kind: "folder",
           position: pos,
-          label: "New folder",
+          label: label || "New folder",
         });
         return;
       }
