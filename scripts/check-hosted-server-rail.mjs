@@ -146,9 +146,9 @@ const removed = (joined, server = SERVER) => railEntriesFor(server, joined).sort
   const settings = read(SETTINGS);
   assert.ok(/import \{ railEntriesFor \} from "\.\.\/hostedServerRail";/.test(settings), `${SETTINGS} no longer imports railEntriesFor from ${MODULE}`);
   assert.ok(!/function railEntriesFor/.test(settings), `${SETTINGS} has its own railEntriesFor again, which this check does not run`);
-  assert.ok(/servers: joinedServers, removeServers \} =\s*useServerManagement\(\);/.test(settings), `${SETTINGS} no longer hands railEntriesFor the rail's own servers`);
+  assert.ok(/servers: joinedServers, removeServers \} = useServerManagement\(\);/.test(settings), `${SETTINGS} no longer hands railEntriesFor the rail's own servers`);
   assert.ok(
-    /onDelete=\{\(\) => \{[^}]*removeServers\(railEntriesFor\(server, joinedServers\)\);\s*void deleteServer\(server\.id\);/.test(settings),
+    /onDelete=\{\(\) => \{[^}]*removeServers\(railEntriesFor\(server, joinedServers\)\);\s*void embedded\.deleteServer\(server\.id\);/.test(settings),
     `${SETTINGS} no longer removes the rail entries when a server is deleted`,
   );
 

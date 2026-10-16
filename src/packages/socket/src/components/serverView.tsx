@@ -72,7 +72,6 @@ import { MessagesHome } from "./MessagesHome";
 import { MobileServerView } from "./MobileServerView";
 import { NotEncryptedPopover } from "./NotEncryptedPopover";
 import { PresenceDot } from "./PresenceDot";
-import { ReportsPanel } from "./ReportsPanel";
 import { ReportUserDialog } from "./ReportUserDialog";
 import { SearchPanel } from "./SearchPanel";
 import { SecurityNoticeBanner } from "./SecurityNoticeBanner";
@@ -442,7 +441,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   const viewerPermissions = useServerPermissions(currentlyViewingServer?.host || "");
 
-  const { reportsOpen, setReportsOpen, pendingReportCount, memberListMap } = useServerReports({
+  const { pendingReportCount, memberListMap } = useServerReports({
     currentConnection, accessToken, currentlyViewingServer, memberLists,
     /* `has`, not `can`: this drives an automatic `reports:list` on join, before
        `server:details` arrives, so `can` made a refusal a new member's first sight. */
@@ -1269,7 +1268,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             onOpenSettings={onOpenSettings}
             onOpenInvites={onOpenInvites}
             onManageServer={onManageServer}
-            onOpenReports={() => setReportsOpen(true)}
             pendingReportCount={pendingReportCount}
             updateAvailable={updateAvailable}
             onLeave={(mode) => setShowRemoveServer({ host, mode })}
@@ -1401,7 +1399,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onOpenSettings={onOpenSettings}
               onOpenInvites={onOpenInvites}
               onManageServer={onManageServer}
-              onOpenReports={() => setReportsOpen(true)}
               pendingReportCount={pendingReportCount}
               updateAvailable={updateAvailable}
               onLeave={(mode) => setShowRemoveServer({ host, mode })}
@@ -1703,13 +1700,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         answerFolderMove={sidebarEditor.answerFolderMove}
       />
 
-      <ReportsPanel
-        isOpen={reportsOpen}
-        onClose={() => setReportsOpen(false)}
-        socket={currentConnection}
-        serverHost={host}
-        memberList={memberLists[host]}
-      />
       {/* Asked once per conversation per blocking state, not every send. */}
       {/* No onOpenChange: confirmPlaintextSend and cancelPlaintextSend each
           clear the prompt, and putting the cancel in onOpenChange would fire it

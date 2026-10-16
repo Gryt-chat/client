@@ -40,7 +40,6 @@ interface MobileServerViewProps {
   onOpenInvites: () => void;
   /** This app's controls for the server. Absent unless this app hosts it. */
   onManageServer?: () => void;
-  onOpenReports: () => void;
   pendingReportCount: number;
   updateAvailable: boolean;
   /**
@@ -279,7 +278,6 @@ export const MobileServerView = (props: MobileServerViewProps) => {
               onOpenInvites={props.onOpenInvites}
               onOpenSettings={props.onOpenSettings}
               onManageServer={props.onManageServer}
-              onOpenReports={props.onOpenReports}
               pendingReportCount={props.pendingReportCount}
               updateAvailable={props.updateAvailable}
               onLeave={props.onLeave}

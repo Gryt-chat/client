@@ -18,7 +18,6 @@ interface UseServerReportsParams {
 export function useServerReports({
   currentConnection, accessToken, currentlyViewingServer, memberLists, canViewReports,
 }: UseServerReportsParams) {
-  const [reportsOpen, setReportsOpen] = useState(false);
   const [pendingReportCount, setPendingReportCount] = useState(0);
 
   useEffect(() => {
@@ -52,5 +51,5 @@ export function useServerReports({
     return map;
   }, [currentlyViewingServer, memberLists]);
 
-  return { reportsOpen, setReportsOpen, pendingReportCount, memberListMap };
+  return { pendingReportCount, memberListMap };
 }

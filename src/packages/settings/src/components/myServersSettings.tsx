@@ -28,23 +28,10 @@ import { HIGHLIGHT_MS, SettingsContainer } from "./settingsComponents";
  * SFU, so a second one costs a server process and an image worker.
  */
 export function MyServersSettings() {
-  const {
-    isAvailable,
-    servers,
-    lanIp,
-    autoStart,
-    setAutoStart,
-    startServer,
-    stopServer,
-    updateAdvertisedAddresses,
-    updatePorts,
-    deleteServer,
-    isBusy,
-    dismissError,
-  } = useEmbeddedServer();
+  const embedded = useEmbeddedServer();
+  const { isAvailable, servers } = embedded;
   const { setShowSettings, settingsTab, setSettingsTab } = useSettings();
-  const { setShowAddServer, servers: joinedServers, removeServers } =
-    useServerManagement();
+  const { setShowAddServer } = useServerManagement();
   /** The server Manage server was pressed on, until its card has been shown. */
   const managing = serverToManage(settingsTab);
   const managingShown = useCallback(() => setSettingsTab("my-servers"), [setSettingsTab]);
@@ -100,32 +87,7 @@ export function MyServersSettings() {
                 managing={server.id === managing}
                 onShown={managingShown}
               >
-                <HostedServerCard
-                  server={server}
-                  lanIp={lanIp}
-                  autoStart={autoStart[server.id] ?? false}
-                  busy={isBusy(server.id)}
-                  onAutoStart={(enabled) => setAutoStart(server.id, enabled)}
-                  onStart={() => {
-                    void startServer(server.id);
-                  }}
-                  onStop={() => {
-                    void stopServer(server.id);
-                  }}
-                  onUpdateAdvertisedAddresses={(addresses) =>
-                    updateAdvertisedAddresses(server.id, addresses)
-                  }
-                  onUpdatePorts={(ports) => updatePorts(server.id, ports)}
-                  onDelete={() => {
-                    // The rail entries go with it. Left behind they point at an
-                    // address nothing answers on, and look merely offline.
-                    removeServers(railEntriesFor(server, joinedServers));
-                    void deleteServer(server.id);
-                  }}
-                  onDismissError={() => {
-                    void dismissError(server.id);
-                  }}
-                />
+                <WiredHostedServerCard server={server} embedded={embedded} />
               </ManageTarget>
             ))}
 
@@ -139,6 +101,51 @@ export function MyServersSettings() {
         )}
       </div>
     </SettingsContainer>
+  );
+}
+
+/** One hosted server's controls, for the Hosting page of its Server settings (GRYT-1768). */
+export function HostedServerControls({ serverId }: { serverId: string }) {
+  const embedded = useEmbeddedServer();
+  const server = embedded.servers.find((s) => s.id === serverId);
+  return server ? <WiredHostedServerCard server={server} embedded={embedded} /> : null;
+}
+
+function WiredHostedServerCard({
+  server,
+  embedded,
+}: {
+  server: EmbeddedServerState;
+  embedded: ReturnType<typeof useEmbeddedServer>;
+}) {
+  const { servers: joinedServers, removeServers } = useServerManagement();
+  return (
+    <HostedServerCard
+      server={server}
+      lanIp={embedded.lanIp}
+      autoStart={embedded.autoStart[server.id] ?? false}
+      busy={embedded.isBusy(server.id)}
+      onAutoStart={(enabled) => embedded.setAutoStart(server.id, enabled)}
+      onStart={() => {
+        void embedded.startServer(server.id);
+      }}
+      onStop={() => {
+        void embedded.stopServer(server.id);
+      }}
+      onUpdateAdvertisedAddresses={(addresses) =>
+        embedded.updateAdvertisedAddresses(server.id, addresses)
+      }
+      onUpdatePorts={(ports) => embedded.updatePorts(server.id, ports)}
+      onDelete={() => {
+        // The rail entries go with it. Left behind they point at an
+        // address nothing answers on, and look merely offline.
+        removeServers(railEntriesFor(server, joinedServers));
+        void embedded.deleteServer(server.id);
+      }}
+      onDismissError={() => {
+        void embedded.dismissError(server.id);
+      }}
+    />
   );
 }
 

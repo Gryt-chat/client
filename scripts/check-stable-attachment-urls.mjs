@@ -220,7 +220,7 @@ for (const wire of ['type="video"', "src={url}", "onError={refreshUrl}", "onPost
 }
 assert.match(reports, /<img\b[^>]*?onError=\{refreshUrl\}/, `${REPORTS}'s image lost onError, so a stale token never recovers`);
 // The player is 480px wide, and content sized to fit it pushed Dismiss, Delete and Ban out of view.
-assert.match(reports, /<ScrollArea\.Content style=\{\{ minWidth: 0 \}\}>/, `${REPORTS} lets its content grow past the dialog again`);
+assert.match(reports, /<div className="flex flex-col gap-3" style=\{\{ minWidth: 0 \}\}>/, `${REPORTS} lets its content grow past the page again`);
 
 /* ── an encrypted video fetches and decrypts on the press ───────────────── */
 
