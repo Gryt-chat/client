@@ -46,7 +46,14 @@ export function PinsButton({
                 Pinned messages
               </div>
               <div className="max-h-96 overflow-y-auto">
-                {pins.list === null ? (
+                {pins.list === null && pins.failed ? (
+                  <div className="flex items-center gap-3 px-3 py-4 text-sm" style={{ color: "var(--gryt-neutral-10)" }}>
+                    <span className="flex-1">Couldn&rsquo;t load the pinned messages.</span>
+                    <button type="button" className="gryt-link cursor-pointer border-0 bg-transparent p-0 text-sm" onClick={pins.fetchList}>
+                      Try again
+                    </button>
+                  </div>
+                ) : pins.list === null ? (
                   <div className="px-3 py-4 text-sm" style={{ color: "var(--gryt-neutral-10)" }}>Loading…</div>
                 ) : pins.list.length === 0 ? (
                   <div className="px-3 py-4 text-sm" style={{ color: "var(--gryt-neutral-10)" }}>
