@@ -53,6 +53,7 @@ import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { getCustomEmojis } from "../utils/emojiData";
+import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
 import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
@@ -207,6 +208,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     setSearchFocus((n) => n + 1);
   }, []);
   const [searchFocus, setSearchFocus] = useState(0);
+  /* The header's button starts in its channel; Ctrl/Cmd+K starts on the whole server. */
+  const [searchStartIn, setSearchStartIn] = useState<SearchFilter | undefined>(undefined);
   const [pendingJump, setPendingJump] = useState<{ conversationId: string; messageId: string; nonce: number } | null>(null);
   // Ctrl/Cmd+K, GRYT-1738. In the messages space it searches this device's copy (GRYT-1748).
   useEffect(() => {
@@ -214,7 +217,10 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.code !== "KeyK") return;
       e.preventDefault();
       if (dmSpace) setDmSearchOpen(true);
-      else setSearchOpen(true);
+      else {
+        setSearchStartIn(undefined);
+        setSearchOpen(true);
+      }
       setSearchFocus((n) => n + 1);
     };
     window.addEventListener("keydown", onKeyDown);
@@ -924,10 +930,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     if (activeDm || !viewingHost || !visibleChannelId || isTiny || isMobile) return undefined;
     return (
       <>
-        <Menu.Item onClick={() => { setSearchOpen(true); setSearchFocus((n) => n + 1); }}>
-          <PiMagnifyingGlassBold size={16} /> Search
-          <span className="ml-auto text-xs text-gryt-muted">{navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl K"}</span>
-        </Menu.Item>
         {viewerPermissions.can("view_members") && (
           <Menu.Item onClick={() => setPinMembersSidebar(!pinMembersSidebar)}>
             <PiSidebarSimpleFill size={16} style={{ transform: "scaleX(-1)" }} /> {pinMembersSidebar ? "Hide members" : "Keep members open"}
@@ -1200,6 +1202,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         hasOlderMessages={hasOlderMessages}
         historyWindow={historyWindow}
         onSearch={dmSpace || isTiny || isMobile ? undefined : () => {
+          setSearchStartIn(visibleChannelId ? { key: "in", value: visibleChannelId, label: `#${activeChannelName}` } : undefined);
           setSearchOpen((open) => !open);
           setSearchFocus((n) => n + 1);
         }}
@@ -1487,6 +1490,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             </div>
             {searchOpen && !dmSpace ? (
               <SearchPanel
+                key={searchStartIn?.value ?? "all"}
+                startIn={searchStartIn}
                 socketConnection={currentConnection}
                 serverHost={host}
                 serverName={serverName}

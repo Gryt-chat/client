@@ -54,6 +54,7 @@ export function SearchPanel({
   onClose,
   onOpen,
   local,
+  startIn,
 }: {
   socketConnection: unknown;
   serverHost: string;
@@ -67,9 +68,14 @@ export function SearchPanel({
   /** Search this device's direct messages instead of the server (GRYT-1748). `channels`
       are then the conversations, and `startIn` the one that was open. */
   local?: { conversations: LocalConversation[]; startIn?: SearchFilter };
+  /** A filter to start with on a server: the channel whose header opened it. */
+  startIn?: SearchFilter;
 }) {
   const [text, setText] = useState("");
-  const [filters, setFilters] = useState<SearchFilter[]>(local?.startIn ? [local.startIn] : []);
+  const [filters, setFilters] = useState<SearchFilter[]>(() => {
+    const first = local ? local.startIn : startIn;
+    return first ? [first] : [];
+  });
   const [tab, setTab] = useState<SearchKind>("messages");
   const [active, setActive] = useState(0);
   const [option, setOption] = useState(0);
