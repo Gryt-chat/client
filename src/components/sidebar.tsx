@@ -249,7 +249,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                     padding: "0 4px",
                     borderRadius: 8,
                     backgroundColor: "var(--gryt-accent-9)",
-                    color: "var(--gryt-on-accent)",
+                    color: "var(--color-gryt-on-accent)",
                     border: "2px solid var(--gryt-neutral-1)",
                     fontSize: 10,
                     fontWeight: 700,
@@ -546,9 +546,9 @@ function ServerItem({
                       justifyContent: "center",
                       zIndex: 1 }}>
                     {voice.transmitting ? (
-                      <PiMicrophoneFill size={8} color="var(--gryt-on-accent)" />
+                      <PiMicrophoneFill size={8} color="var(--color-gryt-on-accent)" />
                     ) : (
-                      <PiMicrophoneSlashFill size={8} color="var(--gryt-on-accent)" />
+                      <PiMicrophoneSlashFill size={8} color="var(--color-gryt-on-accent)" />
                     )}
                   </div>
                 )}
