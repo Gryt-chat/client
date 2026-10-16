@@ -110,6 +110,8 @@ export interface Settings {
   /** The first-run coach-mark tour, shown in place of force-opening Settings. */
   showTour: boolean;
   dismissTour: () => void;
+  /** Take the tour again, from Settings › About (GRYT-1779). */
+  startTour: () => void;
 
   showVoiceView: boolean;
   setShowVoiceView: (value: boolean) => void;
@@ -307,6 +309,7 @@ export const settingsInit: Settings = {
   completeWelcome: noop,
   showTour: false,
   dismissTour: noop,
+  startTour: noop,
   showVoiceView: true,
   setShowVoiceView: noop,
 

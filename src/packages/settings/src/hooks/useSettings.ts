@@ -514,6 +514,11 @@ function useSettingsHook() {
     setUserValue("hasSeenTour", true);
   }
 
+  /** Its first step closes Settings, so this can be pressed from inside them. */
+  function startTour() {
+    setShowTour(true);
+  }
+
   function openSettings(tab: string = "appearance") {
     setSettingsTab(tab);
     setShowSettings(true);
@@ -582,6 +587,7 @@ function useSettingsHook() {
     settingsLoaded,
     completeWelcome,
     showTour,
+    startTour,
     dismissTour,
     showVoiceView,
     setShowVoiceView,
