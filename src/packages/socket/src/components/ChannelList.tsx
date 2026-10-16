@@ -24,7 +24,7 @@ import {
 import { channelHref } from "@/lib/mentionTokens";
 import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiCaretDownFill, PiCaretRightFill, PiChatCircleFill, PiChatsFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiChatTeardropTextFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
 import { EmojiText } from "./EmojiText";
@@ -358,8 +358,8 @@ export const ChannelList = ({
             {locked
               ? <PiLockSimpleFill size={16} />
               : channel?.automated ? <PiRobotFill size={16} />
-              : channel?.layout === "forum" ? <PiChatsFill size={16} />
-              : channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatCircleFill size={16} />}
+              : channel?.layout === "forum" ? <PiChatsTeardropFill size={16} />
+              : channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatTeardropTextFill size={16} />}
           </div>
           {/* A ghost row's label is muted, so an unread channel looked exactly
               like a read one until you found the badge at the far end. */}

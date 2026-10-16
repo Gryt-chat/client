@@ -3,7 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
 
-import { PiChatCircleFill } from "../../../../lib/icons";
+import { PiChatTeardropTextFill } from "../../../../lib/icons";
 import { confirmServerFriend, friendAction, useAllFriends } from "../hooks/friendsStore";
 import { useMessagePerson } from "../hooks/useMessagePerson";
 import { useServerManagement } from "../hooks/useServerManagement";
@@ -183,7 +183,7 @@ export function FriendsPanel({ query }: { query: string }) {
               aria-label={`Message ${r.name}`}
               onClick={() => messagePerson(r.host, r.person.serverUserId)}
             >
-              <PiChatCircleFill size={14} />
+              <PiChatTeardropTextFill size={14} />
             </IconButton>
           </div>
         </ContextMenu.Trigger>

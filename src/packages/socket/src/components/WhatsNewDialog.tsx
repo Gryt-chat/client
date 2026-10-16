@@ -6,7 +6,7 @@ import { LogoIcon } from "@/common";
 
 import {
   PiBellFill,
-  PiChatCircleFill,
+  PiChatTeardropTextFill,
   PiCloudArrowDownFill,
   PiDeviceMobileFill,
   PiDotsThreeCircleFill,
@@ -95,7 +95,7 @@ const AREAS = new Map([
  */
 const AREA_ICONS = new Map<string, Icon>([
   ["voice", PiMicrophoneFill],
-  ["chat", PiChatCircleFill],
+  ["chat", PiChatTeardropTextFill],
   ["notifications", PiBellFill],
   ["servers", PiHardDrivesFill],
   ["settings", PiGearFill],

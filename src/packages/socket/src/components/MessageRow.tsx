@@ -4,7 +4,7 @@ import { type CSSProperties, forwardRef, memo, useCallback, useLayoutEffect, use
 
 import { type MessageStyle, useTheme } from "@/common";
 
-import { PiChatsFill, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { TINY_MAX_WIDTH } from "../lib/narrowLayout";
@@ -907,7 +907,7 @@ function MessageContent({
           onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
-          <PiChatsFill size={14} />
+          <PiChatsTeardropFill size={14} />
           {messageActions.replyCount ?? 0} {(messageActions.replyCount ?? 0) === 1 ? "reply" : "replies"}
           {/* The same badge a forum topic row draws, for the same reason. A
               thread on a text channel had the counts and nowhere to put them:

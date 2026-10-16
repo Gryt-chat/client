@@ -3,7 +3,7 @@ import type { CSSProperties, MouseEvent } from "react";
 
 import type { SealDecision } from "@/common";
 
-import { PiArrowBendUpLeftBold, PiChatCircleFill, PiDotsThreeBold, PiSmileyBold, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftBold, PiChatTeardropTextFill, PiDotsThreeBold, PiSmileyBold, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 /* Sized to the GRYT-1722 drafts: 36px buttons, 21px emoji, 20px icons. */
@@ -151,7 +151,7 @@ export const MessageSkeleton = () => {
 };
 
 const ChannelIcon = ({ type, size }: { type: "text" | "voice"; size: number }) =>
-  type === "voice" ? <PiSpeakerHighFill size={size} /> : <PiChatCircleFill size={size} />;
+  type === "voice" ? <PiSpeakerHighFill size={size} /> : <PiChatTeardropTextFill size={size} />;
 
 /* Hallmark · component: empty-chat-state · genre: playful · theme: Gryt UI
  * interaction: the existing composer remains the single primary action */
@@ -185,7 +185,7 @@ export const WelcomeMessage = ({
         }}
         aria-hidden="true"
       >
-        {conversationKind === "dm" ? <PiChatCircleFill size={22} /> : <ChannelIcon type={channelType} size={22} />}
+        {conversationKind === "dm" ? <PiChatTeardropTextFill size={22} /> : <ChannelIcon type={channelType} size={22} />}
       </div>
 
       <div className="min-w-0">

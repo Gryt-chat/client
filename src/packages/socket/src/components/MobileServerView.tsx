@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiChatsFill, PiList, PiUsersFill } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiList, PiUsersFill } from "../../../../lib/icons";
 import { useNewMessageOpen } from "../hooks/newMessageDialog";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import type { HistoryWindowControls } from "../hooks/useHistoryWindow";
@@ -294,7 +294,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
                 setChannelsOpen(false);
               }}
             >
-              <PiChatsFill size={18} />
+              <PiChatsTeardropFill size={18} />
               <span style={{ flex: 1, textAlign: "left" }}>Direct messages</span>
               {dmUnread > 0 && <Badge tone="unread">{dmUnread > 99 ? "99+" : dmUnread}</Badge>}
             </Button>

@@ -6,7 +6,7 @@ import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
 import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, MS_STORE_PAGE, UpdateStatus } from "../../../../lib/electron";
-import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiSignpost, PiXCircleFill } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatTeardropDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiSignpost, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { useSettings } from "../hooks/useSettings";
@@ -406,7 +406,7 @@ export function AboutSettings() {
             and Fider is for public feature requests people vote on, which is
             not what most of what arrived there was. */}
         <Button size="small" tone="neutral" onClick={() => openReport("feedback")}>
-          <PiChatCircleDotsFill size={16} />
+          <PiChatTeardropDotsFill size={16} />
           Give feedback
         </Button>
         <Button size="small" tone="neutral" onClick={() => openReport("bug")}>

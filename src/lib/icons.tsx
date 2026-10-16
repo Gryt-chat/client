@@ -26,9 +26,9 @@ import {
   CaretRight,
   CaretUp,
   ChartBar,
-  ChatCircle,
-  ChatCircleDots,
-  Chats,
+  ChatsTeardrop,
+  ChatTeardropDots,
+  ChatTeardropText,
   Check,
   CheckCircle,
   Circle,
@@ -139,6 +139,7 @@ import {
   X,
   XCircle,
 } from "@phosphor-icons/react";
+import { useId } from "react";
 
 /**
  * A phosphor icon fixed at one weight. Fixed rather than defaulted, because these
@@ -176,9 +177,9 @@ export const PiCaretLeftFill: Icon = weighted(CaretLeft, "fill", "PiCaretLeftFil
 export const PiCaretRightBold: Icon = weighted(CaretRight, "bold", "PiCaretRightBold");
 export const PiCaretRightFill: Icon = weighted(CaretRight, "fill", "PiCaretRightFill");
 export const PiCaretUpFill: Icon = weighted(CaretUp, "fill", "PiCaretUpFill");
-export const PiChatCircleDotsFill: Icon = weighted(ChatCircleDots, "fill", "PiChatCircleDotsFill");
-export const PiChatCircleFill: Icon = weighted(ChatCircle, "fill", "PiChatCircleFill");
-export const PiChatsFill: Icon = weighted(Chats, "fill", "PiChatsFill");
+export const PiChatTeardropDotsFill: Icon = weighted(ChatTeardropDots, "fill", "PiChatTeardropDotsFill");
+export const PiChatTeardropTextFill: Icon = weighted(ChatTeardropText, "fill", "PiChatTeardropTextFill");
+export const PiChatsTeardropFill: Icon = weighted(ChatsTeardrop, "fill", "PiChatsTeardropFill");
 export const PiChartBarFill: Icon = weighted(ChartBar, "fill", "PiChartBarFill");
 export const PiCheck: Icon = Check;
 export const PiCheckBold: Icon = weighted(Check, "bold", "PiCheckBold");
@@ -305,3 +306,21 @@ export const PiXCircleFill: Icon = weighted(XCircle, "fill", "PiXCircleFill");
 export const PiSidebarSimpleFill: Icon = weighted(SidebarSimple, "fill", "PiSidebarSimpleFill");
 export const PiPlugsFill: Icon = weighted(Plugs, "fill", "PiPlugsFill");
 export const PiPulseBold: Icon = weighted(Pulse, "bold", "PiPulseBold");
+
+/** A teardrop message with a pin cut into its corner, for the pinned messages list (GRYT-1783).
+    Masked rather than outlined in the background colour, so it holds on any surface. */
+export const PiPinnedMessages = (({ size = "1em", color = "currentColor", ...rest }: IconProps) => {
+  const mask = `pin-${useId().replace(/:/g, "")}`;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" fill={color} {...rest}>
+      <mask id={mask}>
+        <rect width="256" height="256" fill="white" />
+        <circle cx="200" cy="58" r="80" fill="black" />
+      </mask>
+      <g mask={`url(#${mask})`}>
+        <ChatTeardropText size={256} />
+      </g>
+      <PushPin weight="fill" size={120} x={140} y={-2} />
+    </svg>
+  );
+}) as Icon;

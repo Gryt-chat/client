@@ -1,7 +1,7 @@
 import { Popover, Tooltip } from "@gryt/ui";
 import { useState } from "react";
 
-import { PiPushPinFill } from "../../../../lib/icons";
+import { PiPinnedMessages } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { type ChatMessage, MessageTimestamp, toDate } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
@@ -35,7 +35,7 @@ export function PinsButton({
           data-gryt="pins-button"
           render={<button type="button" className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }} />}
         >
-          <PiPushPinFill size={16} />
+          <PiPinnedMessages size={16} />
         </Popover.Trigger>
       </Tooltip>
       {open && (
