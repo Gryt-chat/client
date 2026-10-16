@@ -653,16 +653,16 @@ export function Settings() {
           /* The pinned Support row is the rail's one accent CTA, not a danger state. */
           .gryt-settings-nav-cta {
             background: var(--gryt-accent-9);
-            color: var(--gryt-on-accent);
+            color: var(--color-gryt-on-accent);
             font-weight: 600;
           }
           .gryt-settings-nav-cta:hover {
             background: var(--gryt-accent-10);
-            color: var(--gryt-on-accent);
+            color: var(--color-gryt-on-accent);
           }
           .gryt-settings-nav-cta[data-active="true"] {
             background: var(--gryt-accent-10);
-            color: var(--gryt-on-accent);
+            color: var(--color-gryt-on-accent);
           }
           .gryt-settings-nav-cta svg { color: currentColor; }
           .gryt-settings-result {
