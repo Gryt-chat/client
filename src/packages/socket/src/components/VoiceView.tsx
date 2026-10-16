@@ -31,7 +31,7 @@ import toast from "react-hot-toast";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
-import { PiArrowLineLeftFill, PiArrowLineRightFill, PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
+import { PiArrowLineLeftFill, PiArrowLineRightFill, PiCameraSlashFill,PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "../../../../lib/icons";
 import { useAloneInCall } from "../hooks/useAloneInCall";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
@@ -485,7 +485,7 @@ export const VoiceView = ({
         // Same fixed-id reasoning as the microphone toasts above.
         id: "camera-unavailable",
         duration: 12000,
-        icon: <PiVideoCameraSlashFill size={18} />,
+        icon: <PiCameraSlashFill size={18} />,
       },
     );
   }, [cameraError, retryCamera, setSettingsTab, setShowSettings]);

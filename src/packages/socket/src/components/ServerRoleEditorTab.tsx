@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
-import { PiPlusBold, PiTrashBold } from "../../../../lib/icons";
+import { PiPlusBold, PiTrashSimpleBold } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { nextUnusedPreset,ROLE_COLOR_PRESETS } from "./roleColorPresets";
 import { byRank, OWNER_ROLE, ranksAfterMove } from "./roleOrder";
@@ -598,7 +598,7 @@ export function ServerRoleEditorTab({
                     onClick={remove}
                     disabled={saving}
                   >
-                    <PiTrashBold size={14} />
+                    <PiTrashSimpleBold size={14} />
                   </IconButton>
                 )}
               </div>

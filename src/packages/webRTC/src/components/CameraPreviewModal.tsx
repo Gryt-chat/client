@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSettings } from "@/settings";
 
-import { PiArrowsClockwiseFill, PiVideoCameraFill, PiX } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiCameraFill, PiX } from "../../../../lib/icons";
 
 interface CameraPreviewModalProps {
   open: boolean;
@@ -267,7 +267,7 @@ export function CameraPreviewModal({
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <PiVideoCameraFill size={16} />
+              <PiCameraFill size={16} />
               <Dialog.Title>Camera Preview</Dialog.Title>
             </div>
             <Dialog.Close>

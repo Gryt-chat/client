@@ -1,7 +1,7 @@
 import { useCamera, useScreenShare, useSFU } from "@gryt/voice";
 import { useEffect, useRef, useState } from "react";
 
-import { PiVideoCameraFill } from "../lib/icons";
+import { PiCameraFill } from "../lib/icons";
 import { DebugOverlay } from "./debugOverlay";
 import {
   type ConnectionDiagnostics,
@@ -373,7 +373,7 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
     <DebugOverlay
       isVisible={isVisible}
       title="Video Debug"
-      icon={<PiVideoCameraFill size={16} />}
+      icon={<PiCameraFill size={16} />}
       status={{
         active: isConnected && hasVideo,
         label: isConnected ? (hasVideo ? "Streaming" : "No video") : "Disconnected",

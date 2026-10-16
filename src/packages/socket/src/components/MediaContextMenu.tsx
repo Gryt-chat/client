@@ -1,7 +1,7 @@
 import { ContextMenu } from "@gryt/ui";
 import React, { type ReactNode, useCallback, useMemo, useState } from "react";
 
-import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsTeardropFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiPushPinFill, PiPushPinSlashFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsTeardropFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiPushPinFill, PiPushPinSlashFill, PiSmileyWinkFill, PiTrashSimpleFill } from "../../../../lib/icons";
 import { saveOpenedFile, triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getFrequentReactions } from "../utils/recentReactions";
@@ -164,7 +164,7 @@ function QuickReactions({
               color: "var(--gryt-neutral-10)",
             }}
           >
-            <PiSmileyFill size={20} />
+            <PiSmileyWinkFill size={20} />
           </ContextMenu.SubmenuTrigger>
           <ContextMenu.Portal>
             <ContextMenu.Positioner sideOffset={2} alignOffset={-6}>
@@ -252,7 +252,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       {actions.canDelete && actions.onDelete && (
         <ContextMenu.Item onClick={actions.onDelete}>
           <div className="flex items-center gap-1">
-            <PiTrashFill size={14} />
+            <PiTrashSimpleFill size={14} />
             Delete Message
           </div>
         </ContextMenu.Item>

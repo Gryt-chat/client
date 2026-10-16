@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 
 import { NotificationLevelMenu } from "@/common";
 
-import { PiCopySimpleBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiSignOutBold, PiUserPlusFill } from "../../../../lib/icons";
+import { PiCopySimpleBold, PiDoorOpenBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
 export const ServerHeader = ({
@@ -184,7 +184,7 @@ export const ServerHeader = ({
                 Remove from sidebar
               </Menu.Item>
               <Menu.Item className="text-gryt-danger" onClick={() => onLeave("leave")}>
-                <PiSignOutBold size={16} />
+                <PiDoorOpenBold size={16} />
                 Leave server
               </Menu.Item>
             </Menu.Popup>

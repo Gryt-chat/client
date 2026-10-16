@@ -1,7 +1,7 @@
 import { Button, Surface } from "@gryt/ui";
 
 import { FaGithub, SiKofi } from "../../../../lib/brandIcons";
-import { PiArrowSquareOutFill, PiHeartFill } from "../../../../lib/icons";
+import { PiArrowSquareOutFill, PiGiftFill } from "../../../../lib/icons";
 import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
@@ -44,7 +44,7 @@ export function SupportSettings() {
       <Surface className="p-4">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <PiHeartFill size={18} />
+            <PiGiftFill size={18} />
             <span className="text-base font-medium">Sponsor on GitHub</span>
           </div>
           <span className="text-sm text-gryt-muted">
@@ -57,7 +57,7 @@ export function SupportSettings() {
                 <a href={SPONSORS_URL} target="_blank" rel="noopener noreferrer" />
               }
             >
-              <PiHeartFill size={16} />
+              <PiGiftFill size={16} />
               Sponsor Gryt
               <PiArrowSquareOutFill size={14} />
             </Button>

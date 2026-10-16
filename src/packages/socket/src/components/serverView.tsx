@@ -11,8 +11,9 @@ import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import { SidebarItem } from "@/settings/src/types/server";
+import { setInACall } from "@/webRTC";
 
-import { PiCaretLeftBold, PiGearSixFill, PiLockSimpleFill, PiMagnifyingGlassBold, PiPhoneFill, PiSidebarSimpleFill, PiVideoCameraFill } from "../../../../lib/icons";
+import { PiCameraFill,PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import { fakeConversations, fakeDmsOn, fakeHostNow } from "../dev/fakeDms";
@@ -682,6 +683,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       && directConversations.some((c) => c.conversation_id === currentChannelId),
     [currentChannelId, directConversations],
   );
+  useEffect(() => setInACall(connectedToACall), [connectedToACall]);
 
   const handleChannelClick = useHandleChannelClick({
     currentlyViewingServer, isConnected, currentServerConnected,
@@ -790,7 +792,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
           {mayCall && !ringing && icon("Video call", () => {
             startCall(conversationId);
             setCameraEnabled(true);
-          }, <PiVideoCameraFill size={17} />)}
+          }, <PiCameraFill size={17} />)}
           {icon("Search messages", () => (dmSearchOpen ? setDmSearchOpen(false) : openDmSearch()), <PiMagnifyingGlassBold size={17} />, dmSearchOpen)}
           {icon("Conversation info", () => {
             setDmInfoOpen(!dmInfoOpen || dmSearchOpen);
@@ -905,7 +907,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         <span aria-hidden>·</span>
         {sealed ? (
           <>
-            <PiLockSimpleFill size={11} aria-hidden />
+            <PiShieldCheckFill size={11} aria-hidden />
             <span>Encrypted</span>
           </>
         ) : (

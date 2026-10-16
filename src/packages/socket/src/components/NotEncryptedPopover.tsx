@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import type { SealDecision } from "@/common";
 
-import { PiLockOpen } from "../../../../lib/icons";
+import { PiShieldSlashFill } from "../../../../lib/icons";
 import { setMarksHidden, useMarksHidden } from "../lib/unencryptedMarks";
 
 /**
@@ -53,7 +53,7 @@ export function NotEncryptedPopover({
         className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-xs underline decoration-dotted underline-offset-2"
         style={{ color: "var(--gryt-danger-11)" }}
       >
-        <PiLockOpen size={11} aria-hidden /> Not encrypted
+        <PiShieldSlashFill size={11} aria-hidden /> Not encrypted
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner side="bottom" align="start" sideOffset={8}>

@@ -11,8 +11,9 @@ import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { getElectronAPI } from "../../../../lib/electron";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiSignOutFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
+import { useInACall } from "../adapters/inACall";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
@@ -48,6 +49,8 @@ function MaybeTooltip({
 }
 
 export function Controls({ onDisconnect }: ControlsProps) {
+  // A call is hung up; a voice channel is only left (GRYT-1785).
+  const inACall = useInACall();
   const [isBrowserSupported] = useState(getIsBrowserSupported());
   const {
     disconnect,
@@ -506,8 +509,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS} aria-label="Leave voice channel" onClick={handleDisconnect}>
-            <PiPhoneDisconnectFill size={16} />
+          <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS} aria-label={inACall ? "Hang up" : "Leave voice channel"} onClick={handleDisconnect}>
+            {inACall ? <PiPhoneDisconnectFill size={16} /> : <PiSignOutFill size={16} />}
           </IconButton>
         </div>
       )}

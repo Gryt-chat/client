@@ -3,7 +3,7 @@ import type { CSSProperties, MouseEvent } from "react";
 
 import type { SealDecision } from "@/common";
 
-import { PiArrowBendUpLeftBold, PiChatTeardropTextFill, PiDotsThreeBold, PiSmileyBold, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftBold, PiChatTeardropTextFill, PiDotsThreeBold, PiSmileyWinkBold, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 /* Sized to the GRYT-1722 drafts: 36px buttons, 21px emoji, 20px icons. */
@@ -87,7 +87,7 @@ export const MessageHoverToolbar = ({
           onMouseEnter={hoverOn}
           onMouseLeave={hoverOff}
         >
-          <PiSmileyBold size={20} />
+          <PiSmileyWinkBold size={20} />
         </button>
       )}
       {(showQuick || onOpenEmojiPicker) && (onReply || onMore) && (

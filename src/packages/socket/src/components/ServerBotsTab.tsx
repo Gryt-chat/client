@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
-import { PiCopyBold, PiTrashBold } from "../../../../lib/icons";
+import { PiCopyBold, PiTrashSimpleBold } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { describePermission } from "../lib/permissions";
 
@@ -303,7 +303,7 @@ export function ServerBotsTab({
                   disabled={busy}
                   onClick={() => emit("server:bots:revoke", { registrationId: bot.registrationId })}
                 >
-                  <PiTrashBold size={14} />
+                  <PiTrashSimpleBold size={14} />
                 </IconButton>
               </div>
             </Surface>

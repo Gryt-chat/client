@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiMonitorArrowUpFill, PiMonitorFill } from "../../../../lib/icons";
+import { PiMonitorArrowUpFill } from "../../../../lib/icons";
 import { presetKey, presetLabel, SCREEN_PRESETS } from "../utils/streamQuality";
 import { CallControlButton } from "./CallControlButton";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
@@ -117,12 +117,12 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
       ) : isStarting ? (
         <Tooltip title="Starting screen share…">
           <CallControlButton state="idle" aria-label="Starting screen share" disabled>
-            <PiMonitorFill size={iconSize} />
+            <PiMonitorArrowUpFill size={iconSize} />
           </CallControlButton>
         </Tooltip>
       ) : (
         <CallControlButton state="idle" aria-label="Share your screen" onClick={() => openPicker("start")}>
-          <PiMonitorFill size={iconSize} />
+          <PiMonitorArrowUpFill size={iconSize} />
         </CallControlButton>
       )}
 

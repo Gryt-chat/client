@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { EmbeddedLogLine, EmbeddedLogSource } from "../../../../lib/electron";
 import { getElectronAPI } from "../../../../lib/electron";
-import { PiTrashFill } from "../../../../lib/icons";
+import { PiTrashSimpleFill } from "../../../../lib/icons";
 
 const SOURCE_LABEL: Record<EmbeddedLogSource, string> = {
   server: "Server",
@@ -97,7 +97,7 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
             setLines([]);
           }}
         >
-          <PiTrashFill size={14} />
+          <PiTrashSimpleFill size={14} />
           Clear
         </Button>
       </div>

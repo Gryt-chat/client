@@ -10,7 +10,7 @@ import {
   PiCheckBold,
   PiLinkSimpleBold,
   PiPencilSimpleBold,
-  PiTrashBold,
+  PiTrashSimpleBold,
 } from "../../../../../lib/icons";
 import { ConfirmDialog } from "../../../../socket/src/components/ConfirmDialog";
 import { ImportThemeDialog } from "./importThemeDialog";
@@ -313,7 +313,7 @@ function ThemeRow({
             tone="ghost"
             onClick={() => setConfirming(true)}
           >
-            <PiTrashBold />
+            <PiTrashSimpleBold />
           </Button>
           <ConfirmDialog
             open={confirming}

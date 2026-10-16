@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getOwnServerUserId, getServerAccessToken } from "@/common";
 
-import { PiCaretDownFill, PiCaretRightFill, PiLockSimpleFill, PiPlus, PiSidebarSimpleFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiPlus, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { admitConversation, dismissFiltered, type FilteredItem } from "../hooks/contactFilterStore";
 import { type DirectoryEntry,listedConversations, useDirectory } from "../hooks/dmDirectory";
 import { pinFor, reorderPins, usePins } from "../hooks/dmPins";
@@ -339,7 +339,7 @@ export function DmSpaceSidebar({
         <p
           className="mt-auto flex items-center gap-1.5 border-t border-gryt-border px-4.5 pb-3.5 pt-2.5 text-xs text-gryt-muted"
         >
-          <PiLockSimpleFill size={12} aria-hidden />
+          <PiShieldCheckFill size={12} aria-hidden />
           Previews come from this device&rsquo;s history
         </p>
       )}

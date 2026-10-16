@@ -6,7 +6,7 @@ import { GeneratedServerIcon, getServerAccessToken, getServerHttpBase } from "@/
 import { useSettings } from "@/settings";
 import type { Channel } from "@/settings/src/types/server";
 
-import { PiCameraFill, PiTrashFill } from "../../../../lib/icons";
+import { PiCameraFill, PiTrashSimpleFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -547,7 +547,7 @@ export function ServerOverviewTab({
               onClick={() => setShowClearIconConfirm(true)}
               style={{ alignSelf: "center" }}
             >
-              <PiTrashFill size={16} />
+              <PiTrashSimpleFill size={16} />
               Clear icon
             </Button>
             <ConfirmDialog

@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 
 import { getServerHttpBase } from "@/common";
 
-import { PiCheck, PiPencilSimpleFill, PiTrashFill, PiX } from "../../../../lib/icons";
+import { PiCheck, PiPencilSimpleFill, PiTrashSimpleFill, PiX } from "../../../../lib/icons";
 import { getCustomEmojiUrl } from "../utils/emojiData";
 import type { EmojiItem } from "../utils/emojiFileUtils";
 import { EMOJI_NAME_RE } from "../utils/emojiFileUtils";
@@ -164,7 +164,7 @@ export function EmojiList({
         {emojis.length > 0 && (
           <>
             <Button size="xsmall" disabled={deletingAll} onClick={() => setConfirmDeleteAll(true)}>
-              <PiTrashFill size={14} />
+              <PiTrashSimpleFill size={14} />
               {deletingAll ? "Deleting..." : "Delete all"}
             </Button>
             <ConfirmDialog
@@ -264,7 +264,7 @@ export function EmojiList({
                     title={`Delete :${e.name}:`}
                     style={{ cursor: "pointer" }}
                   >
-                    <PiTrashFill size={14} />
+                    <PiTrashSimpleFill size={14} />
                   </IconButton>
                 </>
               )}

@@ -25,7 +25,7 @@ import {
 } from "@/socket";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiDevicesFill, PiTrashFill } from "../../../../lib/icons";
+import { PiDevicesFill, PiTrashSimpleFill } from "../../../../lib/icons";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { SettingGroup } from "./settingsComponents";
 
@@ -52,7 +52,7 @@ function DeviceRow({ device, serverName, onRemove }: { device: MlsOwnDevice; ser
       {!device.thisDevice && (
         <Tooltip title="Remove device">
           <IconButton tone="ghost" size="xsmall" disabled={removing} onClick={() => setConfirming(true)}>
-            <PiTrashFill size={16} />
+            <PiTrashSimpleFill size={16} />
           </IconButton>
         </Tooltip>
       )}

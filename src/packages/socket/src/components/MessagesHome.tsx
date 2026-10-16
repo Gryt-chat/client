@@ -3,7 +3,7 @@ import { type ReactNode, useMemo, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
 
-import { PiChatTeardropTextFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiPhoneFill, PiSpeakerHighFill, PiUsersFill } from "../../../../lib/icons";
+import { PiChatTeardropTextFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiPhoneFill, PiSpeakerHighFill, PiUsersThreeFill } from "../../../../lib/icons";
 import { requestCall } from "../hooks/callRequest";
 import { useDirectory } from "../hooks/dmDirectory";
 import { useAllFriends } from "../hooks/friendsStore";
@@ -108,7 +108,7 @@ function MiniCard({
             <Menu.Popup className="min-w-60">
               <Menu.Item onClick={onMessage}><PiChatTeardropTextFill size={16} /> Message</Menu.Item>
               <Menu.Item onClick={onCall}><PiPhoneFill size={16} /> Call</Menu.Item>
-              {f.member && <Menu.Item onClick={() => onCard(true)}><PiUsersFill size={16} /> Open card</Menu.Item>}
+              {f.member && <Menu.Item onClick={() => onCard(true)}><PiUsersThreeFill size={16} /> Open card</Menu.Item>}
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>

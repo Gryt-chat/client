@@ -8,7 +8,8 @@ import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSignOutFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { useInACall } from "../adapters/inACall";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useVoicePresence } from "../adapters/useVoicePresence";
 import { CallCapsuleFace } from "./CallCapsuleFace";
@@ -35,6 +36,7 @@ export function MiniControls({
 }: {
   direction: "row" | "column";
 }) {
+  const inACall = useInACall();
   const {
     isMuted,
     setIsMuted,
@@ -154,13 +156,13 @@ export function MiniControls({
 
             <motion.div variants={buttonAnimations}>
               <IconButton tone="danger" size="xsmall" className={LEAVE_CLASS}
-                aria-label="Leave voice channel"
+                aria-label={inACall ? "Hang up" : "Leave voice channel"}
                 onClick={() => {
                   // Local capture is stopped inside disconnect(). GRYT-305.
                   void disconnect();
                 }}
               >
-                <PiPhoneDisconnectFill size={iconSize} />
+                {inACall ? <PiPhoneDisconnectFill size={iconSize} /> : <PiSignOutFill size={iconSize} />}
               </IconButton>
             </motion.div>
           </motion.div>

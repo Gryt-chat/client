@@ -6,7 +6,7 @@ import { HostedServerControls } from "@/settings/src/components/myServersSetting
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt } from "@/settings/src/hostedServers";
 
-import { PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
 import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
@@ -199,7 +199,7 @@ export function ServerSettingsModal() {
       value: "roles",
       group: "People",
       label: "Members",
-      icon: PiUsersFill,
+      icon: PiUsersThreeFill,
       needs: ["manage_roles"],
       content: <ServerRolesTab host={host} socket={socket} accessToken={accessToken} />,
     },
@@ -223,7 +223,7 @@ export function ServerSettingsModal() {
       value: "emojis",
       group: "General",
       label: "Emojis",
-      icon: PiSmileyFill,
+      icon: PiSmileyWinkFill,
       needs: ["manage_emojis"],
       content: <ServerEmojisTab host={host} socket={socket} accessToken={accessToken} />,
     },

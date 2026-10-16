@@ -6,7 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiChatsTeardropFill, PiFadersHorizontalFill, PiFlaskFill, PiHardDrivesFill, PiHeartFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiFadersHorizontalFill, PiFlaskFill, PiGiftFill, PiHardDrivesFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
 import { SettingsPicker } from "../../../socket/src/components/SettingsPicker";
 import { useRoomForSettingsRail } from "../../../socket/src/hooks/useNarrowWindow";
 import { USER_SETTINGS_CHROME } from "../../../socket/src/lib/narrowLayout";
@@ -210,7 +210,7 @@ const DESTINATIONS: SettingsDestination[] = [
   {
     value: "support",
     label: "Support Gryt",
-    icon: PiHeartFill,
+    icon: PiGiftFill,
     pinBottom: true,
     content: <SupportSettings />,
   },

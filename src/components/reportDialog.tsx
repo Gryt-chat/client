@@ -8,7 +8,7 @@ import {
 import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
 import { useMemo, useState } from "react";
 
-import { PiBugFill, PiChatTeardropDotsFill, PiPaperPlaneRightFill } from "../lib/icons";
+import { PiArrowCircleUpFill,PiBugFill, PiChatTeardropDotsFill } from "../lib/icons";
 import { callTimeline } from "../lib/reports/callTimeline";
 import { useDiagnostics } from "../lib/reports/diagnostics";
 import { recentLogs } from "../lib/reports/logs";
@@ -146,7 +146,7 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
         <div className="flex justify-end gap-3">
           <Dialog.Close render={<Button tone="neutral" size="small">Cancel</Button>} />
           <Button size="small" disabled={empty || sending} onClick={() => void send()}>
-            <PiPaperPlaneRightFill size={14} />
+            <PiArrowCircleUpFill size={14} />
             {sending ? "Sending…" : copy.send}
           </Button>
         </div>
