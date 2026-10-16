@@ -159,7 +159,7 @@ export const ChatView = memo(({
   headerSubtitle?: React.ReactNode;
   /** Pinned messages live somewhere else, as in a DM's info panel. */
   hidePins?: boolean;
-  /** Menu items behind a ⋯ after the pins, which then hold Search too (board 7, option A). */
+  /** Menu items behind a ⋯ after the pins. Search stays a button beside them (GRYT-1770). */
   moreMenu?: React.ReactNode;
   /** A slot rather than the panel, because this is the same component for a DM
       and knows nothing about servers. */
@@ -846,7 +846,7 @@ export const ChatView = memo(({
               )}
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
-                {onSearch && !moreMenu && (
+                {onSearch && (
                   <Tooltip title={`Search (${SEARCH_SHORTCUT})`}>
                     <button type="button" aria-label="Search" data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
                       <PiMagnifyingGlassBold size={16} />
