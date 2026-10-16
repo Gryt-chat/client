@@ -766,7 +766,7 @@ export const ChatView = memo(({
 
 
   /* Board 5: a DM that will go out in the clear says so in the box, which is red. */
-  const inClear = conversationKind === "dm" && sealing?.kind === "plaintext";
+  const inClear = conversationKind === "dm" && sealing?.kind === "plaintext" && !mls?.held;
   const marksHidden = useMarksHidden(serverHost, conversationKey);
 
   /* Seen switching to encrypted by itself while open: a line in the chat says so from then on. */
