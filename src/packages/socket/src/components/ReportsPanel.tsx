@@ -6,7 +6,7 @@ import type { Socket } from "socket.io-client";
 import { getServerAccessToken } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle } from "../../../../lib/icons";
+import { PiBootFill, PiCheck, PiProhibitFill, PiTrashSimpleFill, PiWarningCircle } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useStableFileUrl } from "../hooks/useStableFileUrl";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
@@ -706,7 +706,7 @@ function ReportCard({
                 onClick={onDelete}
                 style={{ cursor: "pointer" }}
               >
-                <PiTrashFill size={18} />
+                <PiTrashSimpleFill size={18} />
               </IconButton>
             </Tooltip>
 

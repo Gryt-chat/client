@@ -7,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiLockSimpleFill, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -959,7 +959,7 @@ export const ChatView = memo(({
                     {encryptedHere && (
                       <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
-                        <span className="flex items-center gap-1.5"><PiLockSimpleFill size={11} aria-hidden /> Encrypted from here on</span>
+                        <span className="flex items-center gap-1.5"><PiShieldCheckFill size={11} aria-hidden /> Encrypted from here on</span>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
                       </div>
                     )}

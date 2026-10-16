@@ -5,7 +5,7 @@ import type { Socket } from "socket.io-client";
 
 import type { ChannelRule } from "@/settings/src/channelPermissionRules";
 
-import { PiPlusBold, PiTrashBold } from "../../../../lib/icons";
+import { PiPlusBold, PiTrashSimpleBold } from "../../../../lib/icons";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { ChannelPermissionMatrix } from "./ChannelPermissionMatrix";
 
@@ -175,7 +175,7 @@ export function ServerPermissionTemplatesTab({
                 aria-label={`Delete ${template.name}`}
                 onClick={() => remove(template)}
               >
-                <PiTrashBold size={13} />
+                <PiTrashSimpleBold size={13} />
               </IconButton>
             )}
           </Surface>

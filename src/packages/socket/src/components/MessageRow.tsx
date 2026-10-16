@@ -4,7 +4,7 @@ import { type CSSProperties, forwardRef, memo, useCallback, useLayoutEffect, use
 
 import { type MessageStyle, useTheme } from "@/common";
 
-import { PiChatsTeardropFill, PiPushPinFill, PiSignInBold, PiSignOutBold } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiDoorOpenBold,PiPushPinFill, PiSignInBold } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { TINY_MAX_WIDTH } from "../lib/narrowLayout";
@@ -449,7 +449,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           <div ref={rowRef} data-message-id={m.message_id} className="text-sm" style={{ width: "100%", padding: "4px 0", color: "var(--gryt-neutral-11)", wordBreak: "break-word", ...(tiny ? { display: "flow-root", paddingInline: 8 } : { display: "flex", gap: 8, alignItems: "baseline" }) }}>
             <span style={tiny ? { float: "left", display: "inline-flex", alignItems: "baseline", gap: 6, marginRight: 6 } : { display: "contents" }}>
               <span style={tiny ? undefined : { width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, textAlign: "right" }}>{compactTime}</span>
-              <span aria-hidden="true" style={{ flex: "none", color: "var(--gryt-neutral-9)", position: "relative", top: 2 }}>{meta.systemEvent === "left" ? <PiSignOutBold size={13} /> : <PiSignInBold size={13} />}</span>
+              <span aria-hidden="true" style={{ flex: "none", color: "var(--gryt-neutral-9)", position: "relative", top: 2 }}>{meta.systemEvent === "left" ? <PiDoorOpenBold size={13} /> : <PiSignInBold size={13} />}</span>
             </span>
             <span style={{ minWidth: 0 }}>
               <MarkdownRenderer
@@ -474,7 +474,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
             style={{ width: 51, color: "var(--gryt-neutral-9)", position: "relative", top: 2 }}
             aria-hidden="true"
           >
-            {meta.systemEvent === "left" ? <PiSignOutBold size={13} /> : <PiSignInBold size={13} />}
+            {meta.systemEvent === "left" ? <PiDoorOpenBold size={13} /> : <PiSignInBold size={13} />}
           </span>
 
           {/* A row rather than a span, because MarkdownRenderer emits a block

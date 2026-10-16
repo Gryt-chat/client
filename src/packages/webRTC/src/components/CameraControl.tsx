@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { useSettings } from "@/settings";
 
-import { PiVideoCameraFill, PiVideoCameraSlashFill } from "../../../../lib/icons";
+import { PiCameraFill, PiCameraSlashFill } from "../../../../lib/icons";
 import { CAMERA_PRESETS, presetKey, presetLabel } from "../utils/streamQuality";
 import { CallControlButton } from "./CallControlButton";
 import { CameraPreviewModal } from "./CameraPreviewModal";
@@ -43,7 +43,7 @@ export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: C
       {cameraEnabled ? (
         <Menu.Root>
           <Menu.Trigger render={<CallControlButton state="live" aria-label="Camera is on" />}>
-            <PiVideoCameraFill size={iconSize} />
+            <PiCameraFill size={iconSize} />
           </Menu.Trigger>
           <Menu.Portal>
             <Menu.Positioner side={side}>
@@ -88,7 +88,7 @@ export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: C
         </Menu.Root>
       ) : (
         <CallControlButton state="idle" aria-label="Turn camera on" onClick={() => setShowPreview(true)}>
-          <PiVideoCameraSlashFill size={iconSize} />
+          <PiCameraSlashFill size={iconSize} />
         </CallControlButton>
       )}
 

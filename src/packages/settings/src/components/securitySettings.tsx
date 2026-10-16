@@ -15,7 +15,7 @@ import {
   useLocalArchive,
 } from "@/common";
 
-import { PiCheck, PiKeyFill, PiPencilSimpleFill, PiPlus, PiTrashFill, PiX } from "../../../../lib/icons";
+import { PiCheck, PiFingerprintFill, PiPencilSimpleFill, PiPlus, PiTrashSimpleFill, PiX } from "../../../../lib/icons";
 import { useApproveDevice } from "../../../../lib/pairing/useApproveDevice";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { dmKeyWarningsOff, setDmKeyWarningsOff } from "../../../socket/src/components/dmKeyWarningToast";
@@ -81,7 +81,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
           background: "var(--gryt-accent-a3)",
           flexShrink: 0,
         }}>
-        <PiKeyFill size={18} style={{ color: "var(--gryt-accent-11)" }} />
+        <PiFingerprintFill size={18} style={{ color: "var(--gryt-accent-11)" }} />
       </div>
 
       <div className="flex flex-col gap-1" style={{ flex: 1, minWidth: 0 }}>
@@ -137,7 +137,7 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
           disabled={deleting}
           onClick={() => setConfirmDelete(true)}
         >
-          <PiTrashFill size={16} />
+          <PiTrashSimpleFill size={16} />
         </IconButton>
       </Tooltip>
       <ConfirmDialog
@@ -336,7 +336,7 @@ export function SecuritySettings() {
                   border: "1px dashed var(--gryt-neutral-a6)",
                 }}
               >
-                <PiKeyFill
+                <PiFingerprintFill
                   size={32}
                   style={{ color: "var(--gryt-neutral-a8)" }}
                 />

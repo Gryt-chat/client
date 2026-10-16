@@ -10,7 +10,7 @@ import {
   PiPlayFill,
   PiPlusBold,
   PiStopFill,
-  PiTrashFill,
+  PiTrashSimpleFill,
   PiWarningFill,
   PiX,
 } from "../../../../lib/icons";
@@ -347,7 +347,7 @@ function HostedServerCard({
             disabled={busy}
             onClick={() => setConfirmDelete(true)}
           >
-            <PiTrashFill size={12} />
+            <PiTrashSimpleFill size={12} />
             Delete
           </Button>
 

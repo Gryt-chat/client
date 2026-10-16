@@ -1,6 +1,6 @@
 import type { SealDecision } from "@/common";
 
-import { PiLockOpen, PiLockSimpleFill } from "../../../../lib/icons";
+import { PiShieldCheckFill,PiShieldSlashFill } from "../../../../lib/icons";
 
 /**
  * What a direct message does and does not protect you from. **Quiet, and not
@@ -43,7 +43,7 @@ export function DirectMessagePrivacyNotice({
    * Unknown reads as unencrypted on purpose. Of the two ways to be wrong while
    * the keys are fetched, understating the protection costs nothing.
    */
-  const Icon = sealed && !oneWay ? PiLockSimpleFill : PiLockOpen;
+  const Icon = sealed && !oneWay ? PiShieldCheckFill : PiShieldSlashFill;
 
   return (
     <div

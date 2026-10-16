@@ -5,14 +5,14 @@ import { type ReactNode, useState } from "react";
 import { LogoIcon } from "@/common";
 
 import {
-  PiBellFill,
+  PiBellSimpleFill,
   PiChatTeardropTextFill,
   PiCloudArrowDownFill,
   PiDeviceMobileFill,
   PiDotsThreeCircleFill,
   PiGearFill,
   PiHardDrivesFill,
-  PiHouseFill,
+  PiHouseLineFill,
   PiMicrophoneFill,
   PiShieldCheckFill,
 } from "../../../../lib/icons";
@@ -96,11 +96,11 @@ const AREAS = new Map([
 const AREA_ICONS = new Map<string, Icon>([
   ["voice", PiMicrophoneFill],
   ["chat", PiChatTeardropTextFill],
-  ["notifications", PiBellFill],
+  ["notifications", PiBellSimpleFill],
   ["servers", PiHardDrivesFill],
   ["settings", PiGearFill],
   ["phone", PiDeviceMobileFill],
-  ["self-hosting", PiHouseFill],
+  ["self-hosting", PiHouseLineFill],
 ]);
 
 /** For Other, and for an area the site has added since this build. */

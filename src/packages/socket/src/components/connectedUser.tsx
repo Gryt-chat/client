@@ -1,7 +1,7 @@
 import { Avatar, Skeleton, Tooltip } from "@gryt/ui";
 import { motion } from "motion/react";
 
-import { PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
+import { PiCameraFill,PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { SpeakingHalo } from "./SpeakingHalo";
 import {
   speakingRingStyle,
@@ -142,14 +142,14 @@ export function ConnectedUser({
           {screenShareEnabled && (
             <Tooltip title="Streaming">
               <div className="flex items-center">
-                <PiScreencastFill size={14} color="var(--gryt-accent-9)" />
+                <PiMonitorArrowUpFill size={14} color="var(--gryt-accent-9)" />
               </div>
             </Tooltip>
           )}
           {cameraEnabled && (
             <Tooltip title="Camera on">
               <div className="flex items-center">
-                <PiVideoCameraFill size={14} color="var(--gryt-accent-9)" />
+                <PiCameraFill size={14} color="var(--gryt-accent-9)" />
               </div>
             </Tooltip>
           )}

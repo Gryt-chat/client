@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
-import { PiEyeFill, PiEyeSlashFill, PiMicrophoneSlashFill, PiScreencastFill, PiSpeakerSlashFill, PiVideoCameraFill } from "../../../../lib/icons";
+import { PiCameraFill,PiEyeFill, PiEyeSlashFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import { cameraStreamFor } from "../lib/cameraStream";
@@ -478,7 +478,7 @@ export function VoiceParticipantCard({
             className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center"
             style={{ borderRadius: tileRadius, background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
           >
-            <PiScreencastFill size={28} />
+            <PiMonitorArrowUpFill size={28} />
             <span className="text-sm">{client.nickname} is sharing their screen</span>
             <Button size="small" onClick={() => shareId && watchShare(shareId)}>
               <PiEyeFill size={14} /> Watch stream
@@ -504,7 +504,7 @@ export function VoiceParticipantCard({
                   ? "Your screen isn't coming through"
                   : `${client.nickname}'s screen isn't coming through`
               }
-              statusIcons={<PiScreencastFill size={10} color="var(--gryt-secondary-9)" />}
+              statusIcons={<PiMonitorArrowUpFill size={10} color="var(--gryt-secondary-9)" />}
               onClick={
                 screenStream
                   ? () =>
@@ -578,11 +578,11 @@ export function VoiceParticipantCard({
       )}
 
       {(client.cameraEnabled || fallbackCameraStreamID) && (
-        <PiVideoCameraFill size={10} color="var(--gryt-success-9)" />
+        <PiCameraFill size={10} color="var(--gryt-success-9)" />
       )}
 
       {client.screenShareEnabled && (
-        <PiScreencastFill size={10} color="var(--gryt-secondary-9)" />
+        <PiMonitorArrowUpFill size={10} color="var(--gryt-secondary-9)" />
       )}
 
       {/* Beside the name, the way the avatar tile does it. It used to sit
@@ -674,7 +674,7 @@ export function VoiceParticipantCard({
           <div className="flex absolute" style={{ top: "-4px", right: "-4px", background: "var(--gryt-success-9)",
               borderRadius: "50%",
               padding: "2px" }}>
-            <PiVideoCameraFill size={10} color="white" />
+            <PiCameraFill size={10} color="white" />
           </div>
         )}
 
@@ -682,7 +682,7 @@ export function VoiceParticipantCard({
           <div className="flex absolute" style={{ top: "-4px", left: "-4px", background: "var(--gryt-secondary-9)",
               borderRadius: "50%",
               padding: "2px" }}>
-            <PiScreencastFill size={10} color="white" />
+            <PiMonitorArrowUpFill size={10} color="white" />
           </div>
         )}
 

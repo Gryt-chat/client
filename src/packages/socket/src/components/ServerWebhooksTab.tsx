@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 
 import { getServerAccessToken, getServerHttpBase, getUploadsFileUrl } from "@/common";
 
-import { PiCopyFill, PiPlus, PiTrashFill } from "../../../../lib/icons";
+import { PiCopyFill, PiPlus, PiTrashSimpleFill } from "../../../../lib/icons";
 import { uploadWebhookAvatar } from "../utils/uploadWebhookAvatar";
 
 type WebhookItem = {
@@ -310,7 +310,7 @@ function WebhookCard({
               </Tooltip>
               <Tooltip title="Delete webhook">
                 <IconButton size="xsmall" onClick={() => onDelete(webhook.webhook_id)}>
-                  <PiTrashFill size={16} />
+                  <PiTrashSimpleFill size={16} />
                 </IconButton>
               </Tooltip>
             </div>

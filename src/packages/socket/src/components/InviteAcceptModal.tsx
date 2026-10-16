@@ -9,7 +9,7 @@ import {
   type JoinOutcome,
 } from "@/settings/src/hooks/useServerJoin";
 
-import { PiEnvelopeFill, PiSignInFill, PiUsersFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { PiEnvelopeFill, PiSignInFill, PiUsersThreeFill, PiWarningFill, PiX } from "../../../../lib/icons";
 import { type InviteDialogMessage, inviteDialogView } from "../lib/inviteDialog";
 
 export interface InviteJoinRequest {
@@ -178,7 +178,7 @@ export function InviteAcceptModal({
 
               {info?.members && (
                 <div className="flex items-center gap-1">
-                  <PiUsersFill size={14} style={{ color: "var(--gryt-neutral-9)" }} />
+                  <PiUsersThreeFill size={14} style={{ color: "var(--gryt-neutral-9)" }} />
                   <span className="text-sm text-gryt-muted">
                     {info.members} members
                   </span>

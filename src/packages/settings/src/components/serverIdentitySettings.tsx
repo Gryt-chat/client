@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import type { BlockedServer, ServerPin } from "@/common";
 import { forgetPin, listBlocked, listHostExpectations, listPins, unblockServer } from "@/common";
 
-import { PiHardDrivesFill, PiShieldCheckFill, PiTrashFill, PiWarningFill } from "../../../../lib/icons";
+import { PiHardDrivesFill, PiShieldCheckFill, PiTrashSimpleFill, PiWarningFill } from "../../../../lib/icons";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { SettingsContainer } from "./settingsComponents";
 
@@ -145,7 +145,7 @@ function KnownRow({ pin, onForget }: { pin: ServerPin; onForget: (keyId: string)
 
       <Tooltip title="Forget this server">
         <IconButton tone="danger" size="xsmall" onClick={() => setConfirm(true)}>
-          <PiTrashFill size={16} />
+          <PiTrashSimpleFill size={16} />
         </IconButton>
       </Tooltip>
       <ConfirmDialog

@@ -86,7 +86,7 @@ assert.match(notice, /You are encrypting, \{peerInClear\} isn&rsquo;t\./, `${NOT
    was the whole complaint. */
 assert.match(
   notice,
-  /const Icon = sealed && !oneWay \? PiLockSimpleFill : PiLockOpen;/,
+  /const Icon = sealed && !oneWay \? PiShieldCheckFill : PiShieldSlashFill;/,
   `${NOTICE} draws a closed padlock while the other side sends in the clear`,
 );
 

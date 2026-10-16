@@ -2,6 +2,7 @@
  * What is left of the client's webRTC package. The engine is `@gryt/voice` now;
  * what remains is the client's half of the boundary, plus the UI.
  */
+export { setInACall } from "./src/adapters/inACall";
 export { createRoomCoordinator } from "./src/adapters/roomCoordinator";
 export { type ScreenAudioMute, useScreenAudioMute } from "./src/adapters/useScreenAudioMute";
 export { useVoicePresence,type VoicePresence } from "./src/adapters/useVoicePresence";

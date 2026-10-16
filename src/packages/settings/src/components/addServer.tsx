@@ -12,7 +12,7 @@ import {
 
 import {
   PiCaretRightBold,
-  PiHouseFill,
+  PiHouseLineFill,
   PiInfoFill,
   PiLinkSimpleBold,
   PiUsersThreeFill,
@@ -399,7 +399,7 @@ export function AddNewServer({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <EntryCard
                     tour="choose-host"
-                    icon={<PiHouseFill size={17} />}
+                    icon={<PiHouseLineFill size={17} />}
                     name={hasOwnServer ? "Create another" : "Create my own"}
                     hint="Runs on this machine. Best for a few friends."
                     onPick={() => setMode("host")}

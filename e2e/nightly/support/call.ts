@@ -13,12 +13,13 @@ export interface Guest {
 /** The default server's voice channel, which test.gryt.chat still has. */
 export const VOICE_CHANNEL = process.env.GRYT_TEST_VOICE_CHANNEL || "Voice Chat";
 
-function callButton(page: Page, name: string): Locator {
+function callButton(page: Page, name: string | RegExp): Locator {
   return page.locator('[data-gryt="voice-view"]').getByRole("button", { name, exact: true });
 }
 
 export function leaveVoiceButton(page: Page): Locator {
-  return callButton(page, "Leave voice channel");
+  // "Hang up" in a DM or group call, "Leave voice channel" in a channel (GRYT-1785).
+  return callButton(page, /^(Leave voice channel|Hang up)$/);
 }
 
 /** Whether a click at the element's centre lands on it. The voice panel clips its controls to nothing while minimized. */

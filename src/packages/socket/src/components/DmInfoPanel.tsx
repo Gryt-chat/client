@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { getUploadsFileUrl, identityScopeFor, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey } from "@/common";
 
-import { PiEyeSlashFill, PiFileFill, PiPlus, PiSignOutBold } from "../../../../lib/icons";
+import { PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
 import { EmojiText } from "./EmojiText";
@@ -233,7 +233,7 @@ export function DmGroupPanel({
       </section>
       <SharedFiles host={host} conversationId={conversation.conversation_id} />
       <button type="button" onClick={onLeave} className={`${footerButton} text-gryt-danger hover:opacity-80`}>
-        <PiSignOutBold size={16} /> Leave group
+        <PiDoorOpenBold size={16} /> Leave group
       </button>
     </aside>
   );

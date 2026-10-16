@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiChatsTeardropFill, PiList, PiUsersFill } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiList, PiUsersThreeFill } from "../../../../lib/icons";
 import { useNewMessageOpen } from "../hooks/newMessageDialog";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import type { HistoryWindowControls } from "../hooks/useHistoryWindow";
@@ -198,7 +198,7 @@ export const MobileServerView = (props: MobileServerViewProps) => {
             onClick={() => setMembersOpen(true)}
             aria-label="Open members"
           >
-            <PiUsersFill size={22} />
+            <PiUsersThreeFill size={22} />
           </IconButton>
         )}
       </div>

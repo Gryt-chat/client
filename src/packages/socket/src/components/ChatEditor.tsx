@@ -9,7 +9,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
-import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPaperclipFill, PiPlusBold, PiSmileyFill, PiX } from "../../../../lib/icons";
+import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFilePlusFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPlusBold, PiSmileyWinkFill, PiX } from "../../../../lib/icons";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
@@ -680,7 +680,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                 <Menu.Popup className="chat-editor-plus-menu">
                   {allowFiles !== false && (
                     <Menu.Item onClick={() => fileInputRef.current?.click()}>
-                      <span className="chat-editor-plus-icon" data-accent><PiPaperclipFill size={18} /></span>
+                      <span className="chat-editor-plus-icon" data-accent><PiFilePlusFill size={18} /></span>
                       Attach files
                     </Menu.Item>
                   )}
@@ -814,7 +814,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               disabled={disabled}
               onClick={() => setEmojiPickerOpen((v) => !v)}
             >
-              <PiSmileyFill size={20} />
+              <PiSmileyWinkFill size={20} />
             </button>
             {emojiPickerOpen && (
               <EmojiPicker

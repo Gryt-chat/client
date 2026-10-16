@@ -194,7 +194,7 @@ async function cameraOn(page: Page): Promise<void> {
 
 async function leaveCall(page: Page): Promise<void> {
   if ((await leaveVoiceButton(page).count()) === 0) return;
-  await press(page, "Leave voice channel");
+  await leaveVoiceButton(page).click();
   await expect(leaveVoiceButton(page)).toHaveCount(0);
 }
 
