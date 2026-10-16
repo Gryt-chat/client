@@ -1,6 +1,7 @@
 import "./style.css";
 
 import { createGrytTheme, grytThemeToOptions } from "@gryt/ui";
+import { OverlayInsetProvider } from "@gryt/ui";
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
@@ -34,11 +35,11 @@ import { VoiceProvider } from "@/webRTC";
 import { App } from "./App.tsx";
 import { BrowserBanner } from "./components/browserBanner";
 import { ServiceStatusBanner } from "./components/serviceStatusBanner";
-import { Titlebar } from "./components/titlebar";
+import { Titlebar, TITLEBAR_HEIGHT } from "./components/titlebar";
 import { UpdateAnnouncement } from "./components/updateAnnouncement";
 import { WhatsNew } from "./components/whatsNew";
 import { installAiToolkit } from "./devtools/aiToolkit";
-import { setNativeZoom } from "./lib/electron";
+import { drawsWindowChrome, isElectron, setNativeZoom } from "./lib/electron";
 import { initGlobalStorage } from "./lib/globalStorage";
 import { syncGoogleFonts } from "./lib/googleFonts";
 import { captureLogs } from "./lib/reports/logs";
@@ -225,7 +226,10 @@ initGlobalStorage().then(() => {
           because it reads useSockets and useServerManagement, which are the
           client's own singletons. */}
       <VoiceProvider>
-        <ThemedApp />
+        {/* Popups flip below their trigger rather than open over the title bar (GRYT-1784). */}
+        <OverlayInsetProvider top={isElectron() && drawsWindowChrome() ? TITLEBAR_HEIGHT : 0}>
+          <ThemedApp />
+        </OverlayInsetProvider>
       </VoiceProvider>
     </React.StrictMode>,
   );
