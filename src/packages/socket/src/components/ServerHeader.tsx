@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 
 import { NotificationLevelMenu } from "@/common";
 
-import { PiCopySimpleBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiSidebarSimpleFill, PiSignOutBold, PiUserPlusFill } from "../../../../lib/icons";
+import { PiCopySimpleBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiSignOutBold, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
 export const ServerHeader = ({
@@ -19,8 +19,6 @@ export const ServerHeader = ({
   canManageChannels,
   pendingReportCount,
   updateAvailable,
-  pinned,
-  onTogglePinned,
   statusLine,
 }: {
   serverName?: string;
@@ -44,15 +42,10 @@ export const ServerHeader = ({
   canManageChannels?: boolean;
   pendingReportCount?: number;
   updateAvailable?: boolean;
-  pinned?: boolean;
-  onTogglePinned?: () => void;
 }) => {
   const canManage = role === "owner" || role === "admin";
   /* Everyone's, not just managers': on a server anyone can join, sharing it gives nothing away. */
   const openInvite = useOpenInviteLink(serverHost);
-  const hasTopGroup = Boolean(
-    (canManage && (onOpenInvites || onOpenSettings)) || onManageServer || openInvite.available,
-  );
   const canCreate = Boolean(canManageChannels && (onCreateChannel || onCreateFolder));
 
   const copyHost = async () => {
@@ -125,7 +118,7 @@ export const ServerHeader = ({
             <Menu.Portal>
               <Menu.Positioner>
                 <Menu.Popup>
-              {/* Invite and settings (reports and hosting live there), the pin, the address, then leaving. Nothing is greyed
+              {/* Invite and settings (reports and hosting live there), the address, then leaving. Nothing is greyed
                   out for a feature Gryt lacks. Per-channel levels are on the channel's right-click. */}
               {canManage && onOpenInvites && (
                 <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />Invite to server</Menu.Item>
@@ -155,15 +148,6 @@ export const ServerHeader = ({
                 <Menu.Item onClick={onManageServer}><PiHardDrivesFill size={16} />Manage server</Menu.Item>
               )}
 
-              {onTogglePinned && hasTopGroup && <Menu.Separator />}
-              {onTogglePinned && (
-                <Menu.Item onClick={onTogglePinned}>
-                  {/* Board 7: the sidebar icon means hiding a list; the pin means pinned messages only. */}
-                  <PiSidebarSimpleFill size={16} />
-                  {pinned ? "Hide channels" : "Keep channels open"}
-                </Menu.Item>
-              )}
-
               {/* The address, not an id. It is what identifies a Gryt server,
                   it is what somebody else needs to reach it, and unlike a
                   snowflake it is worth pasting to a person. Everyone gets it:
@@ -190,7 +174,7 @@ export const ServerHeader = ({
                   }
                 >
                   <PiPuzzlePieceFill size={16} />
-                  What this server runs
+                  Plugins
                 </Menu.Item>
               )}
 

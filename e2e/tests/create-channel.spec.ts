@@ -117,20 +117,21 @@ test("the + in the server header makes a channel or a folder", async ({ owner })
 
   // Both used to be in the server menu. They are only under the + now.
   await channelsNav(page).getByRole("button", { name: "Server menu" }).click();
-  await expect(page.getByRole("menuitem", { name: "Hide channels" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Plugins" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /^Create/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("menuitem", { name: "Hide channels" })).toBeHidden();
+  await expect(page.getByRole("menuitem", { name: "Plugins" })).toBeHidden();
 });
 
-test("the pin is in the server menu, and a member who can't manage channels gets no +", async ({ newMember }) => {
+test("the pin is in the channel's ⋯ menu, and a member who can't manage channels gets no +", async ({ newMember }) => {
   const { page } = await newMember();
   const nav = channelsNav(page);
   await expect(nav.getByRole("button", { name: "Server menu" })).toBeVisible();
   await expect(nav.getByRole("button", { name: "Create channel or folder" })).toHaveCount(0);
   await expect(nav.getByRole("button", { name: /pin sidebar/i })).toHaveCount(0);
 
-  await nav.getByRole("button", { name: "Server menu" }).click();
+  // Beside Hide members, since both are about this view rather than the server (GRYT-1781).
+  await page.locator('[data-gryt="chat-more"]').click();
   await page.getByRole("menuitem", { name: "Hide channels" }).click();
   await expect.poll(() => userValue<boolean>(page, "pinChannelsSidebar")).toBe(false);
 
