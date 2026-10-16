@@ -1,6 +1,8 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
 import toast from "react-hot-toast";
 
+import { NotificationLevelMenu } from "@/common";
+
 import { PiCopySimpleBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiSidebarSimpleFill, PiSignOutBold, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
@@ -124,13 +126,15 @@ export const ServerHeader = ({
               <Menu.Positioner>
                 <Menu.Popup>
               {/* Invite and settings (reports and hosting live there), the pin, the address, then leaving. Nothing is greyed
-                  out for a feature Gryt lacks, and muting is on the channel list's right-click. */}
+                  out for a feature Gryt lacks. Per-channel levels are on the channel's right-click. */}
               {canManage && onOpenInvites && (
                 <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />Invite to server</Menu.Item>
               )}
               {openInvite.available && (
                 <Menu.Item onClick={() => void openInvite.copy()}><PiLinkSimpleBold size={16} />Copy invite link</Menu.Item>
               )}
+              {/* The same control as the rail's right-click and a channel's ⋯ (GRYT-1771). */}
+              {serverHost && <NotificationLevelMenu host={serverHost} scope={{ kind: "server" }} inMenu />}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
                   <div className="flex items-center gap-2">

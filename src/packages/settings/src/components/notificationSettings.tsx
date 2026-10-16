@@ -11,6 +11,7 @@ import {
 import { useSettings } from "@/settings";
 
 import { NoticeDialog } from "../../../socket/src/components/NoticeDialog";
+import { NotificationOverrideList } from "./notificationOverrideList";
 import { ServerNotificationList } from "./serverNotificationList";
 import { SettingGroup, SettingsContainer, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
@@ -101,6 +102,15 @@ export function NotificationSettings() {
         description="How loud each server is on its own. Set from the right-click menu too — this is the same setting, in one place."
       >
         <ServerNotificationList />
+      </SettingGroup>
+
+      <Divider />
+
+      <SettingGroup
+        title="Channels and folders set differently"
+        description="Everything you've changed from its server's level, in one place."
+      >
+        <NotificationOverrideList />
       </SettingGroup>
 
       <Divider />
