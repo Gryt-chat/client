@@ -1,4 +1,4 @@
-import { Button, Chip, Dialog, IconButton, ScrollArea, Spinner, Tooltip } from "@gryt/ui";
+import { Button, Chip, IconButton, Spinner, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -6,7 +6,7 @@ import type { Socket } from "socket.io-client";
 import { getServerAccessToken } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle, PiWarningFill } from "../../../../lib/icons";
+import { PiBootFill, PiCheck, PiProhibitFill, PiTrashFill, PiWarningCircle } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useStableFileUrl } from "../hooks/useStableFileUrl";
 import { ChatMediaPlayer } from "./ChatMediaPlayer";
@@ -51,15 +51,14 @@ export interface AggregatedReport {
   unverified?: boolean;
 }
 
+/** The Reports page of Server settings (GRYT-1768). Fetches whenever it is shown. */
 export function ReportsPanel({
   isOpen,
-  onClose,
   socket,
   serverHost,
   memberList,
 }: {
   isOpen: boolean;
-  onClose: () => void;
   socket: Socket | null;
   serverHost: string;
   memberList?: Array<{ nickname: string; serverUserId: string }>;
@@ -269,26 +268,19 @@ export function ReportsPanel({
 
   return (
     <>
-      <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <Dialog.Portal>
-          <Dialog.Backdrop />
-          <Dialog.Popup className="w-[43.75rem] max-h-[80vh]">
-          <Dialog.Title>
-            <div className="flex items-center gap-2">
-              <PiWarningFill size={16} />
-              Reports
-              {reports.length + userReports.length > 0 && (
-                <Chip tone="danger">
-                  {reports.length + userReports.length}
-                </Chip>
-              )}
-            </div>
-          </Dialog.Title>
-          <Dialog.Description>
-            Reported messages, and people reported for something with no single
-            message behind it.
-          </Dialog.Description>
-
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg flex items-center gap-2">
+          Reports
+          {reports.length + userReports.length > 0 && (
+            <Chip tone="danger">
+              {reports.length + userReports.length}
+            </Chip>
+          )}
+        </h2>
+        <span className="text-sm text-gryt-muted">
+          Reported messages, and people reported for something with no single
+          message behind it.
+        </span>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Spinner size={24} />
@@ -311,11 +303,7 @@ export function ReportsPanel({
               </span>
             </div>
           ) : (
-            <ScrollArea.Root className="max-h-[55vh]">
-              <ScrollArea.Viewport className="max-h-[55vh]">
-               {/* Base UI lets content grow past the viewport, and a 480px player pushed the moderation buttons out of view. */}
-               <ScrollArea.Content style={{ minWidth: 0 }}>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3" style={{ minWidth: 0 }}>
                 {/* People first. A report about a person is the one with a
                     reader waiting on it — there is no message sitting in a
                     channel doing the work of being the evidence. */}
@@ -361,22 +349,9 @@ export function ReportsPanel({
                   />
                 ))}
               </div>
-              </ScrollArea.Content>
-              </ScrollArea.Viewport>
-              <ScrollArea.Scrollbar orientation="vertical" />
-            </ScrollArea.Root>
           )}
 
-          <div className="flex justify-end mt-4">
-            <Dialog.Close>
-              <Button tone="neutral" size="small">
-                Close
-              </Button>
-            </Dialog.Close>
-          </div>
-        </Dialog.Popup>
-        </Dialog.Portal>
-      </Dialog.Root>
+      </div>
 
       <ConfirmDialog
         open={!!confirmAction}

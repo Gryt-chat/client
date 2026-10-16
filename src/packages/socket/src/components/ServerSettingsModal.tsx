@@ -1,14 +1,18 @@
 import { Chip, Dialog, IconButton, Spinner, Tabs } from "@gryt/ui";
-import { type ReactNode,useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { getServerAccessToken } from "@/common";
+import { HostedServerControls } from "@/settings/src/components/myServersSettings";
+import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
+import { hostedServerAt } from "@/settings/src/hostedServers";
 
-import { PiArrowsLeftRightFill, PiGearFill, PiHandWavingFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyFill, PiUsersFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
 import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { useVersionStatus } from "../hooks/useVersionStatus";
 import { SERVER_SETTINGS_CHROME } from "../lib/narrowLayout";
+import { ReportsPanel } from "./ReportsPanel";
 import { ServerAuditTab } from "./ServerAuditTab";
 import { ServerBansTab } from "./ServerBansTab";
 import { ServerBotsTab } from "./ServerBotsTab";
@@ -44,8 +48,13 @@ type SetupRequiredDetail = {
  */
 type SettingsOpenDetail = { host: string; tab?: string };
 
+/** The rail's headings, in order. A tab names the one it sits under. */
+const GROUPS = ["General", "People", "Channels", "Moderation", "Integrations", "Hosting"] as const;
+type Group = (typeof GROUPS)[number];
+
 export function ServerSettingsModal() {
-  const { sockets, serverDetailsList, tokenRevision } = useSockets();
+  const { sockets, serverDetailsList, tokenRevision, memberLists } = useSockets();
+  const { servers: hostedServers } = useEmbeddedServer();
 
   const [isOpen, setIsOpen] = useState(false);
   const [host, setHost] = useState<string>("");
@@ -61,6 +70,7 @@ export function ServerSettingsModal() {
 
   const serverInfo = host ? serverDetailsList[host]?.server_info : undefined;
   const { has: hasPermission, known: permissionKnown } = useServerPermissions(host);
+  const hostedHere = hostedServerAt(host, hostedServers);
 
   // Every tab needs one permission, and the modal opens if any of them do. The
   // old "owner or admin" gate kept a purpose-built role off the screen it lives on.
@@ -80,7 +90,9 @@ export function ServerSettingsModal() {
       "manage_sidebar",
       "replace_identity",
       "manage_bots",
-    ].some((p) => hasPermission(p));
+      "view_reports",
+    ].some((p) => hasPermission(p)) ||
+    !!hostedHere;
   const allowTabs = canManage;
   const railFits = useRoomForSettingsRail(SERVER_SETTINGS_CHROME);
 
@@ -147,12 +159,14 @@ export function ServerSettingsModal() {
     value: string;
     label: string;
     icon: typeof PiGearFill;
+    group: Group;
     /** Any one of these is enough. Absent means everybody who got this far. */
     needs?: string[];
     content: ReactNode;
   }[] = [
     {
       value: "overview",
+      group: "General",
       label: "Overview",
       icon: PiGearFill,
       content: (
@@ -167,6 +181,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "invites",
+      group: "General",
       label: "Invites",
       icon: PiLinkFill,
       needs: ["create_invite", "manage_invites"],
@@ -174,6 +189,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "requests",
+      group: "General",
       label: "Requests",
       icon: PiHandWavingFill,
       needs: ["manage_join_requests"],
@@ -181,6 +197,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "roles",
+      group: "People",
       label: "Members",
       icon: PiUsersFill,
       needs: ["manage_roles"],
@@ -188,6 +205,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "role-editor",
+      group: "People",
       label: "Role editor",
       icon: PiShieldCheckFill,
       needs: ["manage_roles"],
@@ -195,6 +213,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "permission-templates",
+      group: "Channels",
       label: "Channel permissions",
       icon: PiShieldCheckFill,
       needs: ["manage_roles"],
@@ -202,13 +221,30 @@ export function ServerSettingsModal() {
     },
     {
       value: "emojis",
+      group: "General",
       label: "Emojis",
       icon: PiSmileyFill,
       needs: ["manage_emojis"],
       content: <ServerEmojisTab host={host} socket={socket} accessToken={accessToken} />,
     },
     {
+      value: "reports",
+      group: "Moderation",
+      label: "Reports",
+      icon: PiFlagFill,
+      needs: ["view_reports"],
+      content: (
+        <ReportsPanel
+          isOpen={isOpen && tab === "reports"}
+          socket={socket ?? null}
+          serverHost={host}
+          memberList={memberLists[host]}
+        />
+      ),
+    },
+    {
       value: "bans",
+      group: "Moderation",
       label: "Bans",
       icon: PiProhibitFill,
       needs: ["view_bans", "ban_members"],
@@ -223,6 +259,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "audit",
+      group: "Moderation",
       label: "Audit Log",
       icon: PiListChecksFill,
       needs: ["view_audit_log"],
@@ -230,6 +267,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "bots",
+      group: "Integrations",
       label: "Bots",
       icon: PiRobotFill,
       needs: ["manage_bots"],
@@ -237,6 +275,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "webhooks",
+      group: "Integrations",
       label: "Webhooks",
       icon: PiWebhooksLogoFill,
       needs: ["manage_webhooks"],
@@ -249,6 +288,7 @@ export function ServerSettingsModal() {
     },
     {
       value: "replace-user",
+      group: "People",
       label: "Replace User",
       icon: PiArrowsLeftRightFill,
       // Was owner-only by role name. It has its own permission now, which the
@@ -256,13 +296,28 @@ export function ServerSettingsModal() {
       needs: ["replace_identity"],
       content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
     },
+    ...(hostedHere
+      ? [
+          {
+            value: "hosting",
+            group: "Hosting" as const,
+            label: "This machine",
+            icon: PiHardDrivesFill,
+            content: <HostedServerControls serverId={hostedHere.id} />,
+          },
+        ]
+      : []),
   ];
 
   // A tab whose events the server would refuse is not shown. Against a server
   // that predates permissions nothing is filtered, because it sends no list.
   const TAB_CONFIG = ALL_TABS.filter(
     (t) => !permissionKnown || !t.needs || t.needs.some((p) => hasPermission(p)),
-  );
+  ).sort((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group));
+  const TAB_GROUPS = GROUPS.map((label) => ({
+    label,
+    options: TAB_CONFIG.filter((t) => t.group === label),
+  })).filter((g) => g.options.length > 0);
 
   /*
    * Fall back when the selected tab is not one of the visible ones: the list
@@ -388,7 +443,7 @@ export function ServerSettingsModal() {
                 {/* min-w-0 because Tabs is a flex row: without it the widest page
                     set the width, and a webhook URL pushed everything off the edge. */}
                 <div className={`flex gap-4 h-full min-w-0 flex-1 ${railFits ? "" : "flex-col"}`}>
-                  {!railFits && <SettingsPicker value={tab} onValueChange={setTab} options={TAB_CONFIG} />}
+                  {!railFits && <SettingsPicker value={tab} onValueChange={setTab} options={TAB_GROUPS} />}
                   {!railFits && hasVersionLines && (
                     <div
                       data-settings-versions="narrow"
@@ -400,11 +455,21 @@ export function ServerSettingsModal() {
                   )}
                   <div hidden={!railFits} style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
                     <Tabs.List aria-label="Server settings" className="gap-1">
-                      {TAB_CONFIG.map(({ value, label, icon: Icon }) => (
-                        <Tabs.Tab key={value} value={value}>
-                          <Icon size={16} />
-                          {label}
-                        </Tabs.Tab>
+                      {TAB_GROUPS.map((group, i) => (
+                        <Fragment key={group.label}>
+                          <span
+                            className="text-xs font-bold text-gryt-muted"
+                            style={{ padding: "0 12px", marginTop: i ? 12 : 0 }}
+                          >
+                            {group.label}
+                          </span>
+                          {group.options.map(({ value, label, icon: Icon }) => (
+                            <Tabs.Tab key={value} value={value}>
+                              <Icon size={16} />
+                              {label}
+                            </Tabs.Tab>
+                          ))}
+                        </Fragment>
                       ))}
                       <Tabs.Indicator />
                     </Tabs.List>

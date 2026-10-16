@@ -172,7 +172,11 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 
 {
   const header = read(HEADER);
-  assert.match(header, /\{onManageServer && \(\s*<Menu\.Item onClick=\{onManageServer\}>(?:<PiHardDrivesFill size=\{16\} \/>)?Manage server<\/Menu\.Item>\s*\)\}/, "the header menu gates Manage server on role or something else besides being hosted here");
+  // Somebody who can open Server settings finds these controls on its Hosting page instead (GRYT-1768).
+  assert.match(header, /\{onManageServer && !\(canManage && onOpenSettings\) && \(\s*<Menu\.Item onClick=\{onManageServer\}>(?:<PiHardDrivesFill size=\{16\} \/>)?Manage server<\/Menu\.Item>\s*\)\}/, "the header menu gates Manage server on something besides being hosted here and Server settings");
+  const modal = read("src/packages/socket/src/components/ServerSettingsModal.tsx");
+  assert.match(modal, /\.\.\.\(hostedHere\s*\?/, "Server settings no longer has a Hosting page for a server this app runs");
+  assert.match(modal, /<HostedServerControls serverId=\{hostedHere\.id\} \/>/, "the Hosting page no longer shows this server's controls");
   assert.equal(header.match(/Manage server<\//g)?.length, 1, `${HEADER} draws Manage server more than once`);
 
   const view = read(VIEW);

@@ -1,7 +1,7 @@
 import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
 import toast from "react-hot-toast";
 
-import { PiCopySimpleBold, PiDotsThreeVerticalBold, PiFlagFill, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiSidebarSimpleFill, PiSignOutBold, PiUserPlusFill } from "../../../../lib/icons";
+import { PiCopySimpleBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiSidebarSimpleFill, PiSignOutBold, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
 export const ServerHeader = ({
@@ -13,7 +13,6 @@ export const ServerHeader = ({
   onOpenInvites,
   onOpenSettings,
   onManageServer,
-  onOpenReports,
   role,
   canManageChannels,
   pendingReportCount,
@@ -36,9 +35,8 @@ export const ServerHeader = ({
   onCreateFolder?: () => void;
   onOpenInvites?: () => void;
   onOpenSettings?: () => void;
-  /** This app's controls for the server. Only passed when this app hosts it. */
+  /** This app's controls for the server. Only passed when this app hosts it. Server settings has them too. */
   onManageServer?: () => void;
-  onOpenReports?: () => void;
   role?: string;
   /** `manage_channels`, which the + is for. `role` gates the server's own settings. */
   canManageChannels?: boolean;
@@ -125,7 +123,7 @@ export const ServerHeader = ({
             <Menu.Portal>
               <Menu.Positioner>
                 <Menu.Popup>
-              {/* Invite and settings, moderation, the pin, the address, then leaving. Nothing is greyed
+              {/* Invite and settings (reports and hosting live there), the pin, the address, then leaving. Nothing is greyed
                   out for a feature Gryt lacks, and muting is on the channel list's right-click. */}
               {canManage && onOpenInvites && (
                 <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />Invite to server</Menu.Item>
@@ -141,31 +139,19 @@ export const ServerHeader = ({
                     {updateAvailable && (
                       <Chip tone="warning" label="!" />
                     )}
+                    {!!pendingReportCount && pendingReportCount > 0 && (
+                      <Chip tone="danger">{pendingReportCount}</Chip>
+                    )}
                   </div>
                 </Menu.Item>
               )}
               {/* Not gated on role. It is this machine's process, which the server's
                   roles have no say over. */}
-              {onManageServer && (
+              {onManageServer && !(canManage && onOpenSettings) && (
                 <Menu.Item onClick={onManageServer}><PiHardDrivesFill size={16} />Manage server</Menu.Item>
               )}
 
-              {canManage && onOpenReports && <Menu.Separator />}
-              {canManage && onOpenReports && (
-                <Menu.Item onClick={onOpenReports}>
-                  <div className="flex items-center gap-2">
-                    <PiFlagFill size={16} />
-                    Reports
-                    {!!pendingReportCount && pendingReportCount > 0 && (
-                      <Chip tone="danger">
-                        {pendingReportCount}
-                      </Chip>
-                    )}
-                  </div>
-                </Menu.Item>
-              )}
-
-              {onTogglePinned && (hasTopGroup || (canManage && onOpenReports)) && <Menu.Separator />}
+              {onTogglePinned && hasTopGroup && <Menu.Separator />}
               {onTogglePinned && (
                 <Menu.Item onClick={onTogglePinned}>
                   {/* Board 7: the sidebar icon means hiding a list; the pin means pinned messages only. */}
