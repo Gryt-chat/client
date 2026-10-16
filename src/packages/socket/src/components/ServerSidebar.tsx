@@ -28,8 +28,6 @@ interface ServerSidebarProps {
   onMouseLeave: () => void;
   serverName: string | undefined;
   serverRole: Role | undefined;
-  pinned: boolean;
-  onTogglePinned: () => void;
   onOpenSettings: () => void;
   /** Settings, opened straight on the invites tab. */
   onOpenInvites: () => void;
@@ -77,7 +75,7 @@ export const ServerSidebar = ({
   sidebarOpen, sidebarWidthPx, hoverPx, contentRef,
   isUnreachableWhileConnected, statusLine,
   onMouseEnter, onMouseLeave,
-  serverName, serverRole, pinned, onTogglePinned,
+  serverName, serverRole,
   onOpenSettings, onOpenInvites, onManageServer, pendingReportCount, updateAvailable, onLeave,
   channels, sidebarItems, serverHost, clients, members,
   currentChannelId, currentServerConnected, showVoiceView,
@@ -123,8 +121,6 @@ export const ServerSidebar = ({
               statusLine={statusLine}
               role={serverRole}
               canManageChannels={canManage}
-              pinned={pinned}
-              onTogglePinned={onTogglePinned}
               serverHost={serverHost}
               onCreateChannel={() => onAddItem("channel:text")}
               onCreateFolder={() => onAddItem("folder")}

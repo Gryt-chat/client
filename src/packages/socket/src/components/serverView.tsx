@@ -929,6 +929,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     if (activeDm || !viewingHost || !visibleChannelId || isTiny || isMobile) return undefined;
     return (
       <>
+        {/* Both side panels, together: they're about this view, not the server (GRYT-1781). */}
+        <Menu.Item
+          onClick={() => {
+            if (pinChannelsSidebar) hideLeftSidebarNow();
+            setPinChannelsSidebar(!pinChannelsSidebar);
+          }}
+        >
+          <PiSidebarSimpleFill size={16} /> {pinChannelsSidebar ? "Hide channels" : "Keep channels open"}
+        </Menu.Item>
         {viewerPermissions.can("view_members") && (
           <Menu.Item onClick={() => setPinMembersSidebar(!pinMembersSidebar)}>
             <PiSidebarSimpleFill size={16} style={{ transform: "scaleX(-1)" }} /> {pinMembersSidebar ? "Hide members" : "Keep members open"}
@@ -946,7 +955,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         />
       </>
     );
-  }, [activeDm, viewingHost, visibleChannelId, isTiny, isMobile, viewerPermissions, pinMembersSidebar, setPinMembersSidebar, effectiveSidebarItems]);
+  }, [activeDm, viewingHost, visibleChannelId, isTiny, isMobile, viewerPermissions, pinMembersSidebar, setPinMembersSidebar, pinChannelsSidebar, setPinChannelsSidebar, hideLeftSidebarNow, effectiveSidebarItems]);
 
   const tinyBack = useMemo(() => {
     if (!isTiny || !dmSpace || !activeDm) return undefined;
@@ -1394,11 +1403,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               onMouseLeave={closeLeftSidebar}
               serverName={serverName}
               serverRole={currentUserRole}
-              pinned={pinChannelsSidebar}
-              onTogglePinned={() => {
-                if (pinChannelsSidebar) hideLeftSidebarNow();
-                setPinChannelsSidebar(!pinChannelsSidebar);
-              }}
               onOpenSettings={onOpenSettings}
               onOpenInvites={onOpenInvites}
               onManageServer={onManageServer}
