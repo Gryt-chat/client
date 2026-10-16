@@ -295,15 +295,15 @@ export function AddonsSettings() {
           */}
           <span className="text-xs text-gryt-muted text-center" style={{ maxWidth: 380 }}>
             {inElectron
-              ? "Addons are folders in your addons directory, each with an addon.json manifest."
+              ? "Addons are folders in your addons directory, each with a manifest.json."
               : "Addons load from a mounted addons directory. The desktop app can open that folder for you."}
           </span>
           <a className="gryt-link"
-            href="https://docs.gryt.chat/docs"
+            href="https://gryt.chat/developers/addons"
             target="_blank"
             rel="noreferrer"
           >
-            Read the addon docs
+            How addons work
           </a>
         </div>
       ) : (

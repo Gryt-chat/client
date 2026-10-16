@@ -136,8 +136,9 @@ export function scanAddons(): AddonManifest[] {
       continue;
     }
 
-    const manifestPath = join(entryPath, "addon.json");
-    if (!existsSync(manifestPath)) continue;
+    // manifest.json is what the docs and examples say; addon.json is what this read before.
+    const manifestPath = ["manifest.json", "addon.json"].map((name) => join(entryPath, name)).find(existsSync);
+    if (!manifestPath) continue;
 
     try {
       const raw = JSON.parse(readFileSync(manifestPath, "utf8")) as unknown;
