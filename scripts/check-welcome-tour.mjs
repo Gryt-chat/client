@@ -95,12 +95,17 @@ const firstRun = { nickname: "Iron" };
     /\[showTour, setShowTour\] = useState\(false\)/,
     "the tour should start closed",
   );
-  const outside = plain.replace(completeWelcome, "");
+  // And Settings › About's "Show me around", which somebody presses (GRYT-1779).
+  const startTour = bodyOf("function startTour(");
+  assert.match(startTour, /^\{\s*setShowTour\(true\);\s*\}$/, "startTour should only open the tour");
+  const about = readFileSync(join(root, "src/packages/settings/src/components/aboutSettings.tsx"), "utf8");
+  assert.match(about, /onClick=\{startTour\}/, "About's Show me around should be what calls startTour");
+  const outside = plain.replace(completeWelcome, "").replace(startTour, "");
   const opens = [...outside.matchAll(/setShowTour\(\s*([^)]*?)\s*\)/g)].filter((m) => m[1] !== "false");
   assert.deepEqual(
     opens.map((m) => m[0]),
     [],
-    "only completeWelcome({ startTour: true }) should open the tour, not the settings load",
+    "only completeWelcome({ startTour: true }) and startTour should open the tour, not the settings load",
   );
 }
 

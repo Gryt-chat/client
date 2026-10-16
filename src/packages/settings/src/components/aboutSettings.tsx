@@ -6,9 +6,10 @@ import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
 import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, MS_STORE_PAGE, UpdateStatus } from "../../../../lib/electron";
-import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatCircleDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiSignpost, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
+import { useSettings } from "../hooks/useSettings";
 import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
@@ -340,6 +341,7 @@ function DesktopAppCard() {
 
 export function AboutSettings() {
   const { open: openReport } = useReportForm();
+  const { startTour } = useSettings();
 
   return (
     <SettingsContainer>
@@ -410,6 +412,10 @@ export function AboutSettings() {
         <Button size="small" tone="neutral" onClick={() => openReport("bug")}>
           <PiBugFill size={16} />
           Report a bug
+        </Button>
+        <Button size="small" tone="neutral" onClick={startTour}>
+          <PiSignpost size={16} />
+          Show me around
         </Button>
       </div>
 
