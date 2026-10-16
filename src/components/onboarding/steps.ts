@@ -58,6 +58,8 @@ export const tourSteps: TourStep[] = [
     // The honest route: the avatar opens its menu, and Settings is in the menu.
     // Nothing here is simulated — these are the two presses a person makes.
     via: ["profile", "menu-settings"],
+    // Settings reopens on the last tab, which is About when the tour starts from there.
+    enter: (app) => app.openSettings("profile"),
   },
   {
     id: "account",
