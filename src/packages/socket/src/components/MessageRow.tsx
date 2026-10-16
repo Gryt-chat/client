@@ -553,7 +553,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   return (
     /* Full height from the first frame, fading and sliding in on the compositor. Growing from 0
        left the bottom pin aiming short of a tall message, and layout springs re-measured every row. */
-    <div ref={mergedRef} className={isNew && !isOwnMessage ? "gryt-message-enter" : undefined} style={{ width: "100%", paddingRight: 14 }}>
+    <div ref={mergedRef} className={isNew ? "gryt-message-enter" : undefined} style={{ width: "100%", paddingRight: 14 }}>
       {content}
       {isReactionPickerOpen && (
         <EmojiPicker
@@ -771,7 +771,7 @@ function MessageContent({
         </div>
       )}
       <motion.div
-        // Your own message is there at once; a slow one says so below, a failed one dims (GRYT-1786).
+        // Not dimmed while it sends: a slow one says so below, a failed one dims (GRYT-1786).
         animate={{ opacity: m.failed ? 0.5 : 1 }}
         transition={{ duration: 0.2 }}
         className="message-body"

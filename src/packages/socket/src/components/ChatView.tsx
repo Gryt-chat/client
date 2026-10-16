@@ -47,6 +47,9 @@ import { PollDialog } from "./PollDialog";
 import { ThreadPanel } from "./ThreadPanel";
 import { TypingIndicator } from "./TypingIndicator";
 
+/** Room for the 160ms fade in style.css to start late on a busy frame and still finish. */
+const MESSAGE_ENTER_MS = 600;
+
 export type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 
 /** What a DM on MLS adds: the line above the composer, and deleting over MLS. */
@@ -243,6 +246,8 @@ export const ChatView = memo(({
       [historyWindow],
     ),
   );
+  /** When each row first appeared, so its fade survives the re-renders that follow (GRYT-1786). */
+  const enteringRef = useRef<Map<string, number>>(new Map());
 
   // Threads live here so both the desktop and mobile chat views get them for
   // free — the socket, conversation and member list are all already in hand.
@@ -946,8 +951,12 @@ export const ChatView = memo(({
                   /* Your own send is drawn at once and swapped for the server's copy, with a new id
                      but the same nonce. Keyed by that, the row stays put rather than remounting. */
                   const rowKey = m.nonce ?? m.message_id;
-                  const isNew = !seenMessageIdsRef.current.has(rowKey) && i >= chatMessages.length - 10;
+                  // Marked for the length of the fade, not one render: a send re-renders when the server confirms it.
+                  if (!seenMessageIdsRef.current.has(rowKey) && i >= chatMessages.length - 10) enteringRef.current.set(rowKey, Date.now());
                   seenMessageIdsRef.current.add(rowKey);
+                  const enteredAt = enteringRef.current.get(rowKey);
+                  const isNew = enteredAt !== undefined && Date.now() - enteredAt < MESSAGE_ENTER_MS;
+                  if (enteredAt !== undefined && !isNew) enteringRef.current.delete(rowKey);
 
                   // The first message after it switched to encrypted on its own gets the line above it.
                   const prev = chatMessages[i - 1];
