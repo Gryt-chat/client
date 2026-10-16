@@ -64,6 +64,8 @@ export interface MlsView {
   reportsTaken: boolean;
   /** This device's history won't open. Says why, with a retry and the way out. */
   archiveFailed: boolean;
+  /** Opens the key check, when somebody here has a changed key (GRYT-1789). */
+  checkKey?: () => void;
 }
 
 /** Where the composer would be, for somebody who may read a channel and not post. */
@@ -1055,7 +1057,17 @@ export const ChatView = memo(({
               style={{ color: "var(--gryt-neutral-11)" }}
             >
               <PiInfoFill aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
-              <span>{mls.notice}</span>
+              <span>
+                {mls.notice}
+                {mls.checkKey && (
+                  <>
+                    {" "}
+                    <button type="button" className="gryt-link cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold" onClick={mls.checkKey}>
+                      Check their key
+                    </button>
+                  </>
+                )}
+              </span>
             </div>
           )}
 

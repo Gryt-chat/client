@@ -1,17 +1,13 @@
-import { base64Url } from "@gryt/crypto";
 import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
-import { cloneElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
+import { cloneElement, type ReactElement, type ReactNode, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
-  comparisonCode,
   generatedAvatarColor,
   getOwnServerUserId,
   getUploadsFileUrl,
   identityScopeFor,
   markPeerCompared,
-  ownComparisonSide,
-  pinPeerKey,
   resolveAvatarSrc,
   useTheme,
 } from "@/common";
@@ -20,6 +16,7 @@ import { useSettings } from "@/settings";
 import { openLightbox } from "../../../../lib/lightboxStore";
 import { nameTags } from "../../../lib/nameTags";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
+import { useKeyCheck } from "../hooks/useKeyCheck";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { encodeCardStyle } from "../lib/memberCard/cardStyle";
@@ -103,7 +100,7 @@ export function MemberIdentityCard({
 }) {
   const Close = inline ? InlineClose : Popover.Close;
   const actions = useMemberCardActions();
-  const { memberKeyStates, serverDetailsList, memberLists, sockets } = useSockets();
+  const { serverDetailsList, memberLists } = useSockets();
   const serverMembers = serverHost ? memberLists[serverHost] : undefined;
   const nameTag = useMemo(() => nameTags(serverMembers ?? []).get(member.serverUserId), [serverMembers, member.serverUserId]);
   const { roles: roleSummaries, has, can } = useServerPermissions(serverHost ?? "");
@@ -117,51 +114,7 @@ export function MemberIdentityCard({
     // The name the rest of the app shows, or the id where the server sent none.
     .map((role) => ({ id: role, name: roleSummaries.find((r) => r.id === role)?.name ?? role }));
   const [, setCompared] = useState(false);
-  const [ownKeys, setOwnKeys] = useState<{ thumbprint: string; dmPublicKey: string } | null>(null);
-  const keyState = serverHost ? memberKeyStates[serverHost]?.[member.serverUserId] : undefined;
-
-  /* Our own half of the comparison code, which needs what we published here. */
-  useEffect(() => {
-    if (!serverHost) {
-      setOwnKeys(null);
-      return;
-    }
-    let live = true;
-    void ownComparisonSide(serverHost)
-      .then((side) => {
-        if (live) setOwnKeys(side);
-      })
-      .catch(() => {
-        if (live) setOwnKeys(null);
-      });
-    return () => {
-      live = false;
-    };
-  }, [serverHost]);
-
-  const code =
-    ownKeys && keyState?.decision.kind === "known"
-      ? comparisonCode(ownKeys, {
-          thumbprint: keyState.decision.pin.thumbprint,
-          dmPublicKey: keyState.decision.pin.dmPublicKey,
-        })
-      : null;
-
-  /* Board 5c: the code for the key they have now, so a changed key can be checked and then trusted. */
-  const newKeys = keyState?.decision.kind === "changed"
-    ? { thumbprint: keyState.decision.verified.identityThumbprint, dmPublicKey: base64Url(keyState.decision.verified.dmPublicKey) }
-    : null;
-  const newCode = ownKeys && newKeys ? comparisonCode(ownKeys, newKeys) : null;
-  const trustNewKey = () => {
-    if (!serverHost || keyState?.decision.kind !== "changed" || !newKeys) return;
-    const scope = identityScopeFor(serverHost);
-    pinPeerKey(scope, member.serverUserId, keyState.decision.verified);
-    // Compared, since that is what the button says happened.
-    markPeerCompared(scope, member.serverUserId, newKeys);
-    // Key decisions are made on each member list, so ask for one rather than wait.
-    sockets[serverHost]?.emit("members:fetch");
-    toast.success(`Trusted ${member.nickname}\u2019s new key`);
-  };
+  const { keyState, code, newCode, trustNewKey } = useKeyCheck(serverHost, member.serverUserId, member.nickname);
 
   const profile = useMemo(
     () => cardProfileFor(member, member.nickname),

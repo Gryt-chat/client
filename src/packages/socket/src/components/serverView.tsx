@@ -13,7 +13,7 @@ import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import { SidebarItem } from "@/settings/src/types/server";
 import { setInACall } from "@/webRTC";
 
-import { PiCameraFill,PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
+import { PiCameraFill,PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiShieldWarningFill, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import { fakeConversations, fakeDmsOn, fakeHostNow } from "../dev/fakeDms";
@@ -67,6 +67,7 @@ import { GroupDialog } from "./GroupDialog";
 import { GroupFace } from "./GroupFace";
 import { hideConversationWithUndo, useConfirmHide } from "./hideConversation";
 import { IncomingCallCard } from "./IncomingCallCard";
+import { KeyCheckDialog, openKeyCheck } from "./KeyCheckDialog";
 import { type MemberCardActions, MemberCardActionsContext } from "./memberCard/memberCardContext";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { statusConfig } from "./memberStatus";
@@ -129,7 +130,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     [directory],
   );
   const { connect, currentServerConnected, currentChannelConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
-  const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
+  const { serverDetailsList, clients, memberLists, serverProfiles, memberKeyStates } = useSockets();
   const { login } = useAccount();
   /** Servers this app hosts, for Manage server. Empty in a browser. */
   const { servers: hostedServers } = useEmbeddedServer();
@@ -382,6 +383,14 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     [directConversations, activeConversationId],
   );
   const conversationMembers = activeConversation?.members ?? null;
+  /* Somebody here whose key changed and isn't checked, so nothing encrypted reaches them (GRYT-1789). */
+  const keyToCheck = useMemo(() => {
+    if (!activeConversation || !currentlyViewingServer) return null;
+    const host = currentlyViewingServer.host;
+    const others = activeConversation.kind === "group" ? activeConversation.members : [activeConversation.other];
+    const who = others.find((p) => memberKeyStates[host]?.[p.server_user_id]?.decision.kind === "changed");
+    return who ? { host, serverUserId: who.server_user_id, nickname: who.nickname } : null;
+  }, [activeConversation, currentlyViewingServer, memberKeyStates]);
 
   const {
     chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
@@ -406,8 +415,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       react: reactMlsMessage,
       reportsTaken: mlsReportsTaken,
       archiveFailed,
+      checkKey: keyToCheck ? () => openKeyCheck(keyToCheck) : undefined,
     }),
-    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed],
+    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, keyToCheck],
   );
 
   /** The server already withholds new messages, so this covers what was drawn
@@ -912,7 +922,18 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         {activeDm.kind === "group" ? <span>{activeDm.members.length + 1} people ·</span> : <span>on</span>}
         <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
         <span aria-hidden>·</span>
-        {sealed ? (
+        {keyToCheck ? (
+          <button
+            type="button"
+            data-gryt="check-key"
+            onClick={() => openKeyCheck(keyToCheck)}
+            className="inline-flex cursor-pointer items-center gap-1 rounded-full border-0 px-2 py-0.5 text-xs font-semibold"
+            style={{ background: "var(--gryt-warning-a4)", color: "var(--gryt-warning-11)" }}
+          >
+            <PiShieldWarningFill size={12} aria-hidden />
+            Check {keyToCheck.nickname}&rsquo;s key
+          </button>
+        ) : sealed ? (
           <>
             <PiShieldCheckFill size={11} aria-hidden />
             <span>Encrypted</span>
@@ -931,7 +952,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         )}
       </span>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, keyToCheck]);
 
   /* Board 7, option A: behind ⋯ in a channel's header. The pin button stays beside it. */
   const channelMoreMenu = useMemo(() => {
@@ -1656,6 +1677,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
 
       <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
+      <KeyCheckDialog />
       <NewFolderDialog
         open={newFolderOpen}
         onOpenChange={setNewFolderOpen}
