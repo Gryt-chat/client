@@ -60,11 +60,17 @@ interface SettingsDestination {
   pages?: SettingsPage[];
   content?: ReactNode;
   pinBottom?: boolean;
+  /** The rail's heading above it (GRYT-1772). The pinned one has none. */
+  section?: SettingsSection;
 }
+
+/** You, then this app, then the servers, the same three the phone uses. */
+type SettingsSection = "You" | "App" | "Servers";
 
 const DESTINATIONS: SettingsDestination[] = [
   {
     value: "profile",
+    section: "You",
     label: "Profile",
     icon: PiUserFill,
     pages: [
@@ -74,6 +80,7 @@ const DESTINATIONS: SettingsDestination[] = [
   },
   {
     value: "account",
+    section: "You",
     label: "Account & security",
     icon: PiShieldCheckFill,
     pages: [
@@ -83,27 +90,8 @@ const DESTINATIONS: SettingsDestination[] = [
     ],
   },
   {
-    value: "servers",
-    label: "Servers",
-    icon: PiHardDrivesFill,
-    pages: [
-      ...(isElectron()
-        ? [{ value: "my-servers", label: "My servers", content: <MyServersSettings /> }]
-        : []),
-      {
-        value: "adding-servers",
-        label: "Adding servers",
-        content: <ServerPreferencesSettings />,
-      },
-      {
-        value: "identities",
-        label: "Server identities",
-        content: <ServerIdentitySettings />,
-      },
-    ],
-  },
-  {
     value: "chat-notifications",
+    section: "App",
     label: "Chat & notifications",
     icon: PiChatsFill,
     pages: [
@@ -117,6 +105,7 @@ const DESTINATIONS: SettingsDestination[] = [
   },
   {
     value: "sound-video",
+    section: "App",
     label: "Voice & video",
     icon: PiMicrophoneFill,
     pages: [
@@ -142,6 +131,7 @@ const DESTINATIONS: SettingsDestination[] = [
   },
   {
     value: "appearance",
+    section: "App",
     label: "Appearance",
     icon: PiPaletteFill,
     pages: [
@@ -152,7 +142,8 @@ const DESTINATIONS: SettingsDestination[] = [
   },
   {
     value: "behaviour",
-    label: "App",
+    section: "App",
+    label: "General",
     icon: PiFadersHorizontalFill,
     pages: [
       ...(isElectron()
@@ -171,6 +162,7 @@ const DESTINATIONS: SettingsDestination[] = [
     ? [
         {
           value: "developer",
+          section: "App" as const,
           label: "Developer",
           icon: PiFlaskFill,
           content: <DeveloperSettings />,
@@ -179,17 +171,40 @@ const DESTINATIONS: SettingsDestination[] = [
     : []),
   {
     value: "extensions",
+    section: "App",
     label: "Addons",
     icon: PiPuzzlePieceFill,
     content: <AddonsSettings />,
   },
   {
     value: "about",
+    section: "App",
     label: "About",
     icon: PiInfoFill,
     pages: [
       { value: "about", label: "About", content: <AboutSettings /> },
       { value: "updates", label: "Updates", content: <UpdatesSettings /> },
+    ],
+  },
+  {
+    value: "servers",
+    section: "Servers",
+    label: "Your servers",
+    icon: PiHardDrivesFill,
+    pages: [
+      ...(isElectron()
+        ? [{ value: "my-servers", label: "My servers", content: <MyServersSettings /> }]
+        : []),
+      {
+        value: "adding-servers",
+        label: "Adding servers",
+        content: <ServerPreferencesSettings />,
+      },
+      {
+        value: "identities",
+        label: "Server identities",
+        content: <ServerIdentitySettings />,
+      },
     ],
   },
   {
@@ -473,8 +488,16 @@ export function Settings() {
                     <SearchResults results={results} onPick={jumpTo} picked={picked} />
                   ) : (
                     <div className="flex flex-col gap-1 h-full">
-                      {MAIN_DESTINATIONS.map(({ value, label, icon: Icon, pages }) => (
+                      {MAIN_DESTINATIONS.map(({ value, label, icon: Icon, pages, section }, i) => (
                         <Fragment key={value}>
+                          {section && section !== MAIN_DESTINATIONS[i - 1]?.section && (
+                            <span
+                              className="text-xs font-bold text-gryt-muted"
+                              style={{ padding: "0 12px", marginTop: i ? 12 : 0 }}
+                            >
+                              {section}
+                            </span>
+                          )}
                           {/* A category holding the page you are on is marked
                               open, not active: two filled rows read as two
                               selections. */}
