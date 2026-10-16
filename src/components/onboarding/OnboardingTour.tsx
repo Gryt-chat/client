@@ -220,6 +220,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
   // A mark pointing where a button used to be is worse than none. An absent or
   // zero-sized target is waited for and then skipped.
+  const scrolledTo = useRef<string | null>(null);
   const measure = useCallback(() => {
     if (!step) {
       return;
@@ -230,6 +231,14 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       return;
     }
     const next = readRect(step.target);
+    if (next && scrolledTo.current !== step.target) {
+      // Once per step: inside a scrolled pane the target can sit below the fold.
+      scrolledTo.current = step.target;
+      document.querySelector(`[data-tour="${step.target}"]`)?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "nearest",
+      });
+    }
     if (next) {
       // Only when it actually moved, or the poll below would re-render forever.
       setRect((current) =>
@@ -254,7 +263,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     } else {
       setIndex((current) => current + 1);
     }
-  }, [step, isLast, onFinish]);
+  }, [step, isLast, onFinish, reduceMotion]);
 
   useLayoutEffect(measure, [measure]);
 

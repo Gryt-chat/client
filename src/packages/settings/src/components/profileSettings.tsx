@@ -858,18 +858,6 @@ export function ProfileSettings() {
         Profile
       </h2>
 
-      <ActivityField />
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-base font-bold">What you&rsquo;re playing</span>
-          <span className="text-xs text-gryt-muted">
-            Two ways to show it: games that report it themselves, and programs you add by hand.
-          </span>
-        </div>
-        <RichPresenceSettings />
-        <WatchedPrograms />
-      </div>
-
       {serverHosts.length > 0 && (
         <div className="flex justify-center" style={{ paddingTop: 4, paddingBottom: 4 }}>
           {/* The tab row does not wrap or scroll, so past a handful of servers
@@ -979,6 +967,19 @@ export function ProfileSettings() {
           );
         })()
       )}
+
+      {/* After the name and picture, which are what somebody opens Profile for (GRYT-1776). */}
+      <ActivityField />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-base font-bold">What you&rsquo;re playing</span>
+          <span className="text-xs text-gryt-muted">
+            Two ways to show it: games that report it themselves, and programs you add by hand.
+          </span>
+        </div>
+        <RichPresenceSettings />
+        <WatchedPrograms />
+      </div>
 
       {userId && (
         <div className="flex items-center justify-center gap-1" style={{ marginTop: "auto", paddingTop: 16 }}>
