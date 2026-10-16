@@ -6,7 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiChatsFill, PiFadersHorizontalFill, PiFlaskFill, PiHardDrivesFill, PiHeartFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiFadersHorizontalFill, PiFlaskFill, PiHardDrivesFill, PiHeartFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
 import { SettingsPicker } from "../../../socket/src/components/SettingsPicker";
 import { useRoomForSettingsRail } from "../../../socket/src/hooks/useNarrowWindow";
 import { USER_SETTINGS_CHROME } from "../../../socket/src/lib/narrowLayout";
@@ -93,7 +93,7 @@ const DESTINATIONS: SettingsDestination[] = [
     value: "chat-notifications",
     section: "App",
     label: "Chat & notifications",
-    icon: PiChatsFill,
+    icon: PiChatsTeardropFill,
     pages: [
       { value: "chat", label: "Chat", content: <ChatSettings /> },
       {

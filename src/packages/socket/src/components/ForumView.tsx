@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useThreadMentions, useThreadUnread } from "@/common";
 import type { ForumTag } from "@/settings/src/types/server";
 
-import { PiChatsFill, PiCheck, PiLockSimpleFill, PiPlus, PiX } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiCheck, PiLockSimpleFill, PiPlus, PiX } from "../../../../lib/icons";
 import { type ForumFilter, type ForumTopic,useForum } from "../hooks/useForum";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { EmojiText } from "./EmojiText";
@@ -177,7 +177,7 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
           <div style={{ padding: 24, color: "var(--gryt-neutral-10)", fontSize: 13 }}>Loading topics…</div>
         ) : shown.length === 0 ? (
           <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--gryt-neutral-10)" }}>
-            <PiChatsFill size={28} style={{ opacity: 0.5 }} />
+            <PiChatsTeardropFill size={28} style={{ opacity: 0.5 }} />
             <p style={{ marginTop: 8, fontSize: 14 }}>
               {topics.length === 0 ? "No topics yet. Start the first one." : "Nothing matches this filter."}
             </p>

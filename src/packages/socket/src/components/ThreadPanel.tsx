@@ -2,7 +2,7 @@ import { Button, Divider, IconButton, Menu, Tooltip } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 
-import { PiCaretLeftBold, PiChatsFill, PiCheck, PiDotsThreeVerticalBold, PiX } from "../../../../lib/icons";
+import { PiCaretLeftBold, PiChatsTeardropFill, PiCheck, PiDotsThreeVerticalBold, PiX } from "../../../../lib/icons";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import type { ChatMessage } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
@@ -139,7 +139,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
         {/* Taking the pane leaves nothing else on screen, so the icon gives way
             to the way back. */}
         {beside ? (
-          <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />
+          <PiChatsTeardropFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />
         ) : (
           <Tooltip title="Back to the conversation">
             <IconButton size="xsmall" tone="ghost" aria-label="Back to the conversation" onClick={onClose}>

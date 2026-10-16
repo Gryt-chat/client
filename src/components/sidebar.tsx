@@ -39,8 +39,8 @@ import { useVoicePresence,type VoicePresence } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
-import { PiChatsFill } from "../lib/icons";
-import { PiBroadcastFill, PiBugFill, PiChatCircleDotsFill, PiGearFill, PiMicrophoneFill, PiMicrophoneSlashFill, PiPlus, PiSignInFill } from "../lib/icons";
+import { PiChatsTeardropFill } from "../lib/icons";
+import { PiBroadcastFill, PiBugFill, PiChatTeardropDotsFill, PiGearFill, PiMicrophoneFill, PiMicrophoneSlashFill, PiPlus, PiSignInFill } from "../lib/icons";
 import { useReportForm } from "../lib/reports/useReportForm";
 import { inVoiceLine, voiceNicknames } from "./serverVoiceLine";
 
@@ -149,7 +149,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                  whatever you went in from. GRYT-1146, GRYT-1148. */
               onClick={dmSpaceOpen ? leaveDmSpace : openDmSpace}
             >
-              <PiChatsFill size={20} />
+              <PiChatsTeardropFill size={20} />
             </IconButton>
             {dmUnread > 0 && (
               <span className="pointer-events-none absolute -top-1 -right-1">
@@ -297,7 +297,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             <Menu.Separator />
             <Menu.Item onClick={() => openReport("feedback")}>
               <div className="flex items-center gap-1">
-                <PiChatCircleDotsFill size={14} />
+                <PiChatTeardropDotsFill size={14} />
                 Give feedback
               </div>
             </Menu.Item>

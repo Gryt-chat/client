@@ -1,10 +1,10 @@
-import { PiChatCircleFill, PiChatsFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiChatTeardropTextFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import type { ChannelKind } from "./channelKind";
 
-const KINDS: { key: ChannelKind; label: string; desc: string; Icon: typeof PiChatCircleFill }[] = [
-  { key: "chat", label: "Chat", desc: "Normal real-time messages.", Icon: PiChatCircleFill },
+const KINDS: { key: ChannelKind; label: string; desc: string; Icon: typeof PiChatTeardropTextFill }[] = [
+  { key: "chat", label: "Chat", desc: "Normal real-time messages.", Icon: PiChatTeardropTextFill },
   { key: "voice", label: "Voice", desc: "Talk and screen share.", Icon: PiSpeakerHighFill },
-  { key: "forum", label: "Forum", desc: "Topics you can browse and solve.", Icon: PiChatsFill },
+  { key: "forum", label: "Forum", desc: "Topics you can browse and solve.", Icon: PiChatsTeardropFill },
   { key: "automated", label: "Automated", desc: "Only bots and the system post.", Icon: PiRobotFill },
 ];
 

@@ -3,7 +3,7 @@ import { type ReactNode, useMemo, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
 
-import { PiChatCircleFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiPhoneFill, PiSpeakerHighFill, PiUsersFill } from "../../../../lib/icons";
+import { PiChatTeardropTextFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiPhoneFill, PiSpeakerHighFill, PiUsersFill } from "../../../../lib/icons";
 import { requestCall } from "../hooks/callRequest";
 import { useDirectory } from "../hooks/dmDirectory";
 import { useAllFriends } from "../hooks/friendsStore";
@@ -106,7 +106,7 @@ function MiniCard({
         <Menu.Portal>
           <Menu.Positioner side="right" align="start" sideOffset={8}>
             <Menu.Popup className="min-w-60">
-              <Menu.Item onClick={onMessage}><PiChatCircleFill size={16} /> Message</Menu.Item>
+              <Menu.Item onClick={onMessage}><PiChatTeardropTextFill size={16} /> Message</Menu.Item>
               <Menu.Item onClick={onCall}><PiPhoneFill size={16} /> Call</Menu.Item>
               {f.member && <Menu.Item onClick={() => onCard(true)}><PiUsersFill size={16} /> Open card</Menu.Item>}
             </Menu.Popup>
@@ -265,7 +265,7 @@ export function MessagesHome({ onSearch }: { onSearch: () => void }) {
 
       <div className="flex flex-wrap gap-2.5">
         <Button size="large" onClick={() => setNewMessageOpen(true)}>
-          <PiChatCircleFill size={18} /> New message
+          <PiChatTeardropTextFill size={18} /> New message
         </Button>
         <Button size="large" tone="ghost" onClick={onSearch} className="border border-gryt-border">
           <PiMagnifyingGlassBold size={18} /> Search messages

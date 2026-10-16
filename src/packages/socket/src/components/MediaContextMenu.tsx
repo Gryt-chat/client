@@ -1,7 +1,7 @@
 import { ContextMenu } from "@gryt/ui";
 import React, { type ReactNode, useCallback, useMemo, useState } from "react";
 
-import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiPushPinFill, PiPushPinSlashFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsTeardropFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiPushPinFill, PiPushPinSlashFill, PiSmileyFill, PiTrashFill } from "../../../../lib/icons";
 import { saveOpenedFile, triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getFrequentReactions } from "../utils/recentReactions";
@@ -208,7 +208,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       {actions.onOpenThread ? (
         <ContextMenu.Item onClick={actions.onOpenThread}>
           <div className="flex items-center gap-1">
-            <PiChatsFill size={14} />
+            <PiChatsTeardropFill size={14} />
             {/* What is waiting beats how big it is. The reply count says the
                 thread is nine long, which is the same the tenth time you look
                 at it; the unread count is the reason to open it (GRYT-1026). */}
@@ -220,7 +220,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
       ) : actions.onStartThread ? (
         <ContextMenu.Item onClick={actions.onStartThread}>
           <div className="flex items-center gap-1">
-            <PiChatsFill size={14} />
+            <PiChatsTeardropFill size={14} />
             Start thread
           </div>
         </ContextMenu.Item>

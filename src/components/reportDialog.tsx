@@ -8,7 +8,7 @@ import {
 import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
 import { useMemo, useState } from "react";
 
-import { PiBugFill, PiChatCircleDotsFill, PiPaperPlaneRightFill } from "../lib/icons";
+import { PiBugFill, PiChatTeardropDotsFill, PiPaperPlaneRightFill } from "../lib/icons";
 import { callTimeline } from "../lib/reports/callTimeline";
 import { useDiagnostics } from "../lib/reports/diagnostics";
 import { recentLogs } from "../lib/reports/logs";
@@ -110,7 +110,7 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
     <>
       <Dialog.Title>
         <span className="flex items-center gap-2">
-          {type === "bug" ? <PiBugFill size={18} /> : <PiChatCircleDotsFill size={18} />}
+          {type === "bug" ? <PiBugFill size={18} /> : <PiChatTeardropDotsFill size={18} />}
           {copy.title}
         </span>
       </Dialog.Title>

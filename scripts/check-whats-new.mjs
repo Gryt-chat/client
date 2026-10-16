@@ -696,7 +696,7 @@ function marks(html) {
     [
       "Security: PiShieldCheckFill",
       "Voice & video: PiMicrophoneFill",
-      "Chat: PiChatCircleFill",
+      "Chat: PiChatTeardropTextFill",
       "Notifications: PiBellFill",
       "Servers & invites: PiHardDrivesFill",
       "Settings & app: PiGearFill",

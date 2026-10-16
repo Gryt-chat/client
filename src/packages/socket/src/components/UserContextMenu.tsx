@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
 
-import { PiAtFill, PiChatCircleFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill, PiUserPlusFill } from "../../../../lib/icons";
+import { PiAtFill, PiChatTeardropTextFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill, PiUserPlusFill } from "../../../../lib/icons";
 import { friendAction, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { makeRankOf } from "../lib/memberFacts";
@@ -215,7 +215,7 @@ export function UserContextMenu({
         {onOpenDm && can("send_direct_messages") && (
           <ContextMenu.Item onClick={onOpenDm}>
             <div className="flex items-center gap-2">
-              <PiChatCircleFill size={14} /> Message
+              <PiChatTeardropTextFill size={14} /> Message
             </div>
           </ContextMenu.Item>
         )}

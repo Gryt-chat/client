@@ -7,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatCircleFill, PiChatsFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiLockSimpleFill, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiLockSimpleFill, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -830,7 +830,7 @@ export const ChatView = memo(({
           {channelName && (
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {headerLead}
-              {headerIcon ?? (isForum ? <PiChatsFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatCircleFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />)}
+              {headerIcon ?? (isForum ? <PiChatsTeardropFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatTeardropTextFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />)}
               {/* One line that gives way, or a long name pushes the buttons out of a narrow window. */}
               {headerSubtitle ? (
                 <span className="flex min-w-0 flex-col gap-0.5">
