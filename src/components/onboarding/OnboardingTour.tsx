@@ -24,9 +24,9 @@ const TARGET_WAIT_MS = 2500;
 /** Focus off the old thing before anything moves. */
 const FADE_MS = 260;
 /** Long enough to be followed across the window. */
-const TRAVEL_MS = 900;
+const TRAVEL_MS = 675;
 /** The press, and a moment to register it landed. */
-const PRESS_MS = 320;
+const PRESS_MS = 220;
 /** After the app acts, before the focus returns, so they do not overlap. */
 const SETTLE_MS = 650;
 /** Between hops, for the menu or panel the last press opened to arrive. */

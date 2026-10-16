@@ -94,7 +94,7 @@ export const tourSteps: TourStep[] = [
     id: "community",
     target: "official-server",
     title: "Or join our official server 👋",
-    body: "Gryt Chat is the server I run myself. Come say hi, ask anything, or tell me what's broken.",
+    body: "Gryt Chat is the server we host. Come say hi, ask anything, or tell us what's broken.",
     side: "top",
     // Already on the join screen. Hidden, joined or unreachable, and the tour ends a step early.
   },

@@ -9,11 +9,11 @@ import { useEffect, useRef, useState } from "react";
  */
 
 /** Unhurried, and damped hard enough never to overshoot onto a neighbour. */
-const TRAVEL = { type: "spring", stiffness: 130, damping: 22, mass: 1 } as const;
+const TRAVEL = { type: "spring", stiffness: 203, damping: 27.5, mass: 1 } as const;
 /** How far the inner dot leans out of centre while it is moving. */
 const LEAD = 6;
 /** Long enough to cover the travel; the lean springs back to nothing after. */
-const LEAD_MS = 520;
+const LEAD_MS = 390;
 
 export function TourCursor({
   x,
