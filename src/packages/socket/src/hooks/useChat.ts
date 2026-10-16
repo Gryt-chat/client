@@ -39,6 +39,7 @@ import { forgetArchivedCopy, useArchiveReadCopies } from "./useArchiveReadCopies
 import { useChatSend } from "./useChatSend";
 import { useConversationSealing } from "./useConversationSealing";
 import { HISTORY_CAP, type HistoryWindowControls, isWindowPayload, useHistoryWindow, type WindowedHistoryPayload } from "./useHistoryWindow";
+import { useSockets } from "./useSockets";
 
 interface UseChatParams {
   currentConnection: Socket | null;
@@ -787,12 +788,16 @@ export function useChat({
   /* On MLS, or refused by it, nothing goes through the version 1 path. It reads as
      encrypted, which it is, and the composer line says why it can't send. */
   const onMlsPath = !!dmPeer && (mlsMode === "mls" || mlsMode === "refused");
+  /* Until somebody checks it, their new devices can't be added, so nothing reads as encrypted. */
+  const { memberKeyStates } = useSockets();
+  const peerKey = dmPeer ? memberKeyStates[serverHost]?.[dmPeer] : undefined;
+  const peerKeyChanged = peerKey?.decision.kind === "changed" || peerKey?.personKey.kind === "changed";
   const shownSealing = useMemo<SealDecision>(
-    () => (onMlsPath ? { kind: "seal", recipients: [] } : sealing.decision),
-    [onMlsPath, sealing.decision],
+    () => (onMlsPath && !peerKeyChanged ? { kind: "seal", recipients: [] } : sealing.decision),
+    [onMlsPath, peerKeyChanged, sealing.decision],
   );
 
-  const composer = dmComposer({ dmPeer, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed });
+  const composer = dmComposer({ dmPeer, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed, peerKeyChanged });
   const sendPath = composer.path;
   const sendOnEitherPath = useCallback(
     (text: string, files: File[], replyToMessageId?: string) => {
@@ -854,6 +859,7 @@ export function useChat({
           home: mls.home,
           peerName: dmPeerName ?? "The other person",
           signedIn: isSignedIn,
+          peerKeyChanged,
         })
       : null,
     composerHeld: composer.held,

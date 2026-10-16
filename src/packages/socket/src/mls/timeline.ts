@@ -115,15 +115,19 @@ export function dmComposer({
   mode,
   waiting,
   archiveFailed,
+  peerKeyChanged = false,
 }: {
   dmPeer: string | null;
   mode: DmSealingMode | null;
   waiting: boolean;
   archiveFailed: boolean;
+  /** Their key changed and nobody has checked it: none of their devices can be added. */
+  peerKeyChanged?: boolean;
 }): { path: "server" | "mls" | "none"; held: boolean; archiveProblem: boolean } {
   if (!dmPeer) return { path: "server", held: false, archiveProblem: false };
-  const held = waiting || mode?.kind === "refused";
-  const path = mode?.kind === "sealed-v1" ? "server" : mode?.kind === "mls" ? "mls" : "none";
+  const disputed = peerKeyChanged && mode?.kind === "mls";
+  const held = waiting || mode?.kind === "refused" || disputed;
+  const path = mode?.kind === "sealed-v1" ? "server" : mode?.kind === "mls" && !disputed ? "mls" : "none";
   return { path, held, archiveProblem: archiveFailed && held };
 }
 
@@ -136,7 +140,8 @@ export function mlsNotice(
     home,
     peerName,
     signedIn = false,
-  }: { lostHistory: boolean; home: "browser" | "app"; peerName: string; signedIn?: boolean },
+    peerKeyChanged = false,
+  }: { lostHistory: boolean; home: "browser" | "app"; peerName: string; signedIn?: boolean; peerKeyChanged?: boolean },
 ): string | null {
   const here = home === "browser" ? "this browser" : "this device";
   const Here = home === "browser" ? "This browser" : "This device";
@@ -148,6 +153,9 @@ export function mlsNotice(
     if (mode.reason === "peer_left_mls") return `Can't send. ${peerName}'s app stopped using end-to-end encryption here.`;
     if (mode.reason === "server_dropped_mls") return "Can't send. This server stopped supporting end-to-end encryption.";
     return `Can't send yet. ${Here} isn't set up for end-to-end encryption here.`;
+  }
+  if (mode?.kind === "mls" && peerKeyChanged) {
+    return `Can't send. ${peerName}'s key changed. Check it's really them on their card first.`;
   }
   if (problems.lost === "removed") return `${Here} was taken out of this conversation, so new messages won't show here.`;
   if (problems.lost) return `${Here} lost track of this conversation's encryption, so new messages won't show here.`;
@@ -163,7 +171,7 @@ export function mlsNotice(
 /** What a failed MLS send says on its row. */
 export function sendFailure(e: unknown, home: "browser" | "app"): string {
   const code = (e as { code?: string })?.code;
-  if (code === "peer_unverified") return "Not sent. Their keys couldn't be checked.";
+  if (code === "peer_unverified") return "Not sent. Their key couldn't be checked. Look at their card to see why.";
   if (code === "waiting_for_welcome") {
     return `Not sent. ${home === "browser" ? "This browser" : "This device"} hasn't been added to the conversation yet.`;
   }

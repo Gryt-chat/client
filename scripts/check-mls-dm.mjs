@@ -119,6 +119,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   const none = { undecryptable: 0, lost: null };
   const app = { lostHistory: false, home: "app", peerName: "Ola" };
   assert.equal(mlsNotice({ kind: "mls" }, none, app), null);
+  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }), /Ola's key changed/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, app), null);
   assert.match(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, app), /Ola/);
   assert.equal(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, app), "1 message couldn't be decrypted on this device.");
@@ -130,7 +131,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
 });
 
 test("a failed send names what somebody can do something about", () => {
-  assert.match(sendFailure({ code: "peer_unverified" }, "app"), /keys/);
+  assert.match(sendFailure({ code: "peer_unverified" }, "app"), /their card/);
   assert.match(sendFailure({ code: "waiting_for_welcome" }, "browser"), /This browser/);
   assert.equal(sendFailure(new Error("socket"), "app"), "Not sent.");
 });
@@ -391,10 +392,13 @@ test("with the archive shut and MLS on the server, only a peer without MLS gets 
   assert.deepEqual(composer, { path: "none", held: true, archiveProblem: true });
 });
 
-test("the composer holds only a DM waiting on its mode or refused", () => {
+test("the composer holds only a DM waiting on its mode, refused, or with a changed key", () => {
   const base = { dmPeer: "kari", waiting: false, archiveFailed: false };
   assert.deepEqual(dmComposer({ ...base, dmPeer: null, mode: null }), { path: "server", held: false, archiveProblem: false });
   assert.equal(dmComposer({ ...base, mode: { kind: "mls" } }).path, "mls");
+  // A changed key nobody checked: their devices can't be added, so nothing is sent.
+  assert.deepEqual(dmComposer({ ...base, mode: { kind: "mls" }, peerKeyChanged: true }), { path: "none", held: true, archiveProblem: false });
+  assert.equal(dmComposer({ ...base, mode: { kind: "sealed-v1", reason: "peer_without_mls" }, peerKeyChanged: true }).path, "server");
   assert.deepEqual(dmComposer({ ...base, mode: { kind: "refused", reason: "peer_left_mls" } }), {
     path: "none",
     held: true,
