@@ -32,7 +32,7 @@ export interface TourStep {
 }
 
 /**
- * Five steps, in the order somebody actually needs them. Each points at the real
+ * Six steps, in the order somebody actually needs them. Each points at the real
  * control, so what they learn here still applies tomorrow.
  */
 export const tourSteps: TourStep[] = [
@@ -89,5 +89,13 @@ export const tourSteps: TourStep[] = [
     // Two hops now that the dialog asks which errand you are on: open it, then
     // choose Join. The cursor makes the same choice a person would.
     via: ["add-server", "choose-join"],
+  },
+  {
+    id: "community",
+    target: "official-server",
+    title: "Or join our official server 👋",
+    body: "Gryt Chat is the server I run myself. Come say hi, ask anything, or tell me what's broken.",
+    side: "top",
+    // Already on the join screen. Hidden, joined or unreachable, and the tour ends a step early.
   },
 ];

@@ -492,11 +492,13 @@ export function AddNewServer({
                     step above it is skipped when there is no embedded server to
                     create with. */}
                 {showOfficial && officialServer && serverHost.length === 0 && (
-                  <OfficialServerOffer
-                    server={officialServer}
-                    onPick={() => pickOfficialServer(officialServer.host)}
-                    onHide={() => setOfficialServerHidden(true)}
-                  />
+                  <div data-tour="official-server">
+                    <OfficialServerOffer
+                      server={officialServer}
+                      onPick={() => pickOfficialServer(officialServer.host)}
+                      onHide={() => setOfficialServerHidden(true)}
+                    />
+                  </div>
                 )}
 
                 {/* The preview, and it stays a preview. There used to be a
