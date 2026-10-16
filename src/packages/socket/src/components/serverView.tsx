@@ -72,6 +72,7 @@ import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { statusConfig } from "./memberStatus";
 import { MessagesHome } from "./MessagesHome";
 import { MobileServerView } from "./MobileServerView";
+import { NewFolderDialog } from "./NewFolderDialog";
 import { NotEncryptedPopover } from "./NotEncryptedPopover";
 import { PresenceDot } from "./PresenceDot";
 import { ReportUserDialog } from "./ReportUserDialog";
@@ -159,6 +160,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [createChannelType, setCreateChannelType] = useState<"chat" | "voice" | "forum" | "automated">("chat");
   const [createChannelPlacement, setCreateChannelPlacement] = useState<ChannelPlacement>({});
   const toggleFocusedChat = useCallback(() => setFocusedChatHidden((v) => !v), []);
@@ -441,6 +443,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         folderId: afterItemId ? folderOf(effectiveSidebarItems, afterItemId) : placement?.folderId ?? null,
       });
       setCreateChannelOpen(true);
+      return;
+    }
+    // A folder is named first too, and only exists once Create is pressed (GRYT-1787).
+    if (kind === "folder") {
+      setNewFolderOpen(true);
       return;
     }
     insertFromPalette(kind, effectiveSidebarItems.length);
@@ -1649,6 +1656,11 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
 
       <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
+      <NewFolderDialog
+        open={newFolderOpen}
+        onOpenChange={setNewFolderOpen}
+        onCreate={(name) => void insertFromPalette("folder", effectiveSidebarItems.length, name)}
+      />
       <CreateChannelDialog
         open={createChannelOpen}
         onOpenChange={setCreateChannelOpen}

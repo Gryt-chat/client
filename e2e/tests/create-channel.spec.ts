@@ -109,11 +109,23 @@ test("the + in the server header makes a channel or a folder", async ({ owner })
   await expect.poll(async () => (await drawnRows(page)).at(-1)?.name, "the new channel should be the last row").toBe(name);
   expect(await leftOf(page, name)).toBe(await topLevelLeft(page));
 
-  const folders = channelsNav(page).getByRole("button", { name: "New folder", exact: true });
-  const before = await folders.count();
+  // A folder is named first, and Cancel makes nothing (GRYT-1787).
+  const folderName = `Folder ${Date.now().toString(36)}`;
+  const folder = channelsNav(page).getByRole("button", { name: folderName, exact: true });
+  const newFolder = page.getByRole("dialog", { name: "New folder" });
   await plus.click();
   await page.getByRole("menuitem", { name: "Folder", exact: true }).click();
-  await expect(folders).toHaveCount(before + 1);
+  await newFolder.getByRole("textbox", { name: "Folder name" }).fill(folderName);
+  await newFolder.getByRole("button", { name: "Cancel" }).click();
+  await expect(newFolder).toBeHidden();
+  await expect(folder).toHaveCount(0);
+
+  await plus.click();
+  await page.getByRole("menuitem", { name: "Folder", exact: true }).click();
+  await expect(newFolder.getByRole("button", { name: "Create folder" })).toBeDisabled();
+  await newFolder.getByRole("textbox", { name: "Folder name" }).fill(folderName);
+  await newFolder.getByRole("button", { name: "Create folder" }).click();
+  await expect(folder).toHaveCount(1);
 
   // Both used to be in the server menu. They are only under the + now.
   await channelsNav(page).getByRole("button", { name: "Server menu" }).click();
