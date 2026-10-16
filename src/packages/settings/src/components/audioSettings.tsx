@@ -5,7 +5,6 @@ import { voiceLog } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
-import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
 import { PiArrowsClockwiseFill, PiWarningFill } from "../../../../lib/icons";
@@ -78,16 +77,14 @@ export function AudioSettings() {
   const { isConnected } = useSFU();
   const { devices, microphoneBuffer, getDevices, audioContext, getGateLevel } =
     useMicrophone(true);
-  const { devices: outputDevices, getOutputDevices, applyOutputDevice } = useSpeakers();
+  const { devices: outputDevices, getOutputDevices } = useSpeakers();
   const { nativeAudioActive } = useScreenShare();
 
   const muteStateBeforeLoopback = useRef<boolean | null>(null);
 
   const handleOutputDeviceChange = useCallback((id: string) => {
     setOutputDeviceID(id);
-    applyOutputDevice(id);
-    setNotificationOutputDevice(id);
-  }, [setOutputDeviceID, applyOutputDevice]);
+  }, [setOutputDeviceID]);
 
   const handleLoopbackChange = useCallback((enabled: boolean) => {
     voiceLog.divider(enabled ? "LOOPBACK ON" : "LOOPBACK OFF");
