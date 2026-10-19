@@ -39,6 +39,6 @@ assert.equal(parseSearchDate("yesterday", now).getTime(), new Date(2026, 9, 13).
 assert.equal(parseSearchDate("2026-02-31", now), null);
 assert.equal(parseSearchDate("soon", now), null);
 
-const at = (d, h) => new Date(2026, 9, d, h).toISOString();
-assert.deepEqual(groupByDay([{ created_at: at(14, 20) }, { created_at: at(14, 9) }, { created_at: at(3, 23) }]).map((g) => g.hits.length), [2, 1]);
+const at = (d: number, h: number) => new Date(2026, 9, d, h).toISOString();
+assert.deepEqual(groupByDay([{ created_at: at(14, 20) }, { created_at: at(14, 9) }, { created_at: at(3, 23) }]).map((g: { hits: object[] }) => g.hits.length), [2, 1]);
 console.log("search snippet: ok");

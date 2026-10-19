@@ -17,7 +17,7 @@ const SOURCE = "src/packages/socket/src/hooks/useDirectoryUnread.ts";
 const plain = stripTypeScriptTypes(readFileSync(join(root, SOURCE), "utf8"));
 
 /** A function declaration's body, from its brace to the one that closes it. */
-function bodyOf(signature) {
+function bodyOf(signature: string) {
   const at = plain.indexOf(signature);
   assert.notEqual(at, -1, `${SOURCE} no longer has "${signature}". Move this check with it.`);
   const start = plain.indexOf("{", at + signature.length);
@@ -31,7 +31,10 @@ function bodyOf(signature) {
 
 /* The two hooks, run with useMemo and useCallback doing the plain thing. `muted`
    is "host:id" strings, empty unless a case is checking GRYT-1465. */
-function run(signature, { directory, unread, threads = {}, muted = new Set() }) {
+type Counts = Record<string, Record<string, number>>;
+type Case = { directory: ReturnType<typeof entry>[]; unread: Counts; threads?: Counts; muted?: Set<string> };
+
+function run(signature: string, { directory, unread, threads = {}, muted = new Set() }: Case) {
   const counts = new Map(Object.entries(unread).map(([h, m]) => [h, new Map(Object.entries(m))]));
   const inThreads = new Map(Object.entries(threads).map(([h, m]) => [h, new Map(Object.entries(m))]));
   return new Function(
@@ -45,19 +48,19 @@ function run(signature, { directory, unread, threads = {}, muted = new Set() }) 
   )(
     () => directory,
     () => ({
-      getUnreadCounts: (host) => counts.get(host) ?? new Map(),
-      channelUnreadCount: (host, id) => counts.get(host)?.get(id) ?? 0,
+      getUnreadCounts: (host: string) => counts.get(host) ?? new Map(),
+      channelUnreadCount: (host: string, id: string) => counts.get(host)?.get(id) ?? 0,
     }),
     () => ({
-      getConversationThreadUnreadCounts: (host) => inThreads.get(host) ?? new Map(),
+      getConversationThreadUnreadCounts: (host: string) => inThreads.get(host) ?? new Map(),
     }),
-    (host, id) => muted.has(`${host}:${id}`),
-    (factory) => factory(),
-    (fn) => fn,
+    (host: string, id: string) => muted.has(`${host}:${id}`),
+    <T>(factory: () => T) => factory(),
+    <T>(fn: T) => fn,
   );
 }
 
-const entry = (host, id) => ({ host, conversation: { conversation_id: id } });
+const entry = (host: string, id: string) => ({ host, conversation: { conversation_id: id } });
 
 /* A server carrying both kinds. Two messages in channels, three in a direct
    conversation: the icon says two, the rail button says three, and neither says five. */

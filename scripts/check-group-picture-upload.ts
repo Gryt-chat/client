@@ -10,18 +10,20 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (path) => readFileSync(join(root, path), "utf8");
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const HELPER = "src/packages/socket/src/utils/uploadGroupPicture.ts";
 const DIALOG = "src/packages/socket/src/components/GroupDialog.tsx";
 
 const helperSource = stripTypeScriptTypes(read(HELPER)).replace(/^export /gm, "");
-const load = (fetch) =>
+const load = (fetch: ReturnType<typeof fakeServer>["fetch"]) =>
   new Function("fetch", `${helperSource}\nreturn { uploadGroupPicture, GROUP_PICTURE_NEEDS_UPDATE };`)(fetch);
 
-function fakeServer(answer) {
-  const calls = [];
-  const fetch = async (url, init) => {
+type Init = { headers: Record<string, string>; body: FormData };
+
+function fakeServer(answer: (url: string) => { status: number; body: object | string }) {
+  const calls: { url: string; init: Init }[] = [];
+  const fetch = async (url: string, init: Init) => {
     calls.push({ url, init });
     const { status, body } = answer(url);
     return {
@@ -59,14 +61,14 @@ const picture = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
 
 /* ── an older server: no route, and no second try at the avatar one ─────── */
 {
-  const server = fakeServer((url) =>
+  const server = fakeServer((url: string) =>
     url.endsWith("/api/uploads/avatar")
       ? { status: 201, body: { avatarFileId: "would-be-your-avatar" } }
       : { status: 404, body: "<pre>Cannot POST /api/uploads/group-icon</pre>" },
   );
   const { uploadGroupPicture, GROUP_PICTURE_NEEDS_UPDATE } = load(server.fetch);
 
-  await assert.rejects(uploadGroupPicture("http://h", "tok", picture, "g.png"), (e) => e.message === GROUP_PICTURE_NEEDS_UPDATE);
+  await assert.rejects(uploadGroupPicture("http://h", "tok", picture, "g.png"), (e: Error) => e.message === GROUP_PICTURE_NEEDS_UPDATE);
   assert.deepEqual(server.calls.map((c) => c.url), ["http://h/api/uploads/group-icon"], "it fell back to the avatar route");
 }
 
