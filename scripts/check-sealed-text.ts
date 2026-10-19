@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * A message this client cannot read says so. The four answers have to match the
  * mobile app's `src/chat/sealedText.ts` (GRYT-729, GRYT-758).
@@ -39,12 +37,12 @@ import { sealedPlaceholder } from "../src/packages/socket/src/utils/sealedText.t
 
   // Joining a group conversation that already had messages in it produces one
   // of these per message. An alarm there would go off constantly, about nothing.
-  assert.doesNotMatch(locked, /error|failed|could not|broken/i,
+  assert.doesNotMatch(locked ?? "", /error|failed|could not|broken/i,
     "a message from before you joined is not a failure");
 
   // The two reasons a message does not open — tampering, or the wrong
   // conversation — are identical from here, so neither gets named.
-  assert.doesNotMatch(broken, /tamper|attack|server/i,
+  assert.doesNotMatch(broken ?? "", /tamper|attack|server/i,
     "broken must not pick a cause it cannot tell apart");
 }
 

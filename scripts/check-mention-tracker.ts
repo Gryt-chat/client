@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What the mention badge counts, checked without a browser. Every way the number
  * can be wrong tells somebody they were asked something, or fails to.
@@ -15,7 +13,7 @@ const {
 } = await import("../src/packages/common/src/hooks/useMentionTracker.ts");
 
 /** Peek at the store the way the hook does, without rendering anything. */
-async function counts(host) {
+async function counts(host: string) {
   const { getMentionSnapshot } = await import(
     "../src/packages/common/src/hooks/useMentionTracker.ts"
   );

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Which message-key offer a device gets, if any. Offering needlessly costs a
  * dismissal; staying quiet costs everyone's encryption (GRYT-783, GRYT-1130).
@@ -9,7 +7,7 @@ import assert from "node:assert/strict";
 
 import { shouldOfferMessageKey } from "../src/packages/common/src/auth/message-vault-adoption.ts";
 
-const offer = (o) => shouldOfferMessageKey(o);
+const offer = (o: Parameters<typeof shouldOfferMessageKey>[0]) => shouldOfferMessageKey(o);
 
 // ── the account has a sealed copy this device has not taken ─────────────────
 assert.equal(

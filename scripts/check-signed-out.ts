@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The note that keeps a signed-out device signed out across a restart. The
  * chokepoint that reads it is JSX and is called out in the PR instead.
@@ -8,19 +6,21 @@
 import assert from "node:assert/strict";
 
 // A localStorage good enough for the module, and for the ways it can fail.
-let store = new Map();
+const store = new Map<string, string>();
 let throwing = false;
-globalThis.localStorage = {
-  getItem: (k) => {
-    if (throwing) throw new Error("site data blocked");
-    return store.has(k) ? store.get(k) : null;
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => {
+      if (throwing) throw new Error("site data blocked");
+      return store.has(k) ? store.get(k) : null;
+    },
+    setItem: (k: string, v: string) => {
+      if (throwing) throw new Error("site data blocked");
+      store.set(k, String(v));
+    },
+    removeItem: (k: string) => store.delete(k),
   },
-  setItem: (k, v) => {
-    if (throwing) throw new Error("site data blocked");
-    store.set(k, String(v));
-  },
-  removeItem: (k) => store.delete(k),
-};
+});
 
 const { clearSignedOut, isSignedOut, markSignedOut, signedOutAt } = await import(
   "../src/packages/common/src/utils/signedOut.ts"
@@ -39,9 +39,8 @@ assert.ok(signedOutAt(HOST), "and records when, for a device list to show later"
 
 // The point of the whole thing: it is on disk, not in a component. A fresh
 // import with the same storage still knows.
-const reloaded = await import(
-  "../src/packages/common/src/utils/signedOut.ts?restart"
-);
+const fresh = "../src/packages/common/src/utils/signedOut.ts?restart";
+const reloaded: typeof import("../src/packages/common/src/utils/signedOut.ts") = await import(fresh);
 assert.equal(reloaded.isSignedOut(HOST), true, "restarting the app must not undo it");
 
 // ── it is about one server ─────────────────────────────────────────

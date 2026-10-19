@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * A muted channel, folder or server shows nothing: no unread count, no badge.
  * The global ceiling is a different question and does not count as "muted".
@@ -7,12 +5,14 @@
 
 import assert from "node:assert/strict";
 
-const store = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: (k) => store.delete(k),
-};
+const store = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
+  },
+});
 
 const {
   isChannelMuted,

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Which of the three kinds of avatar wins, checked against the real generator.
  * The designed look beats the upload, because saving a design uploads a PNG too.
@@ -20,7 +18,7 @@ const look = encodeWorn({
   wearing: {},
 });
 
-const isDrawn = (src) => typeof src === "string" && src.startsWith("data:image/svg+xml");
+const isDrawn = (src: string | null | undefined) => typeof src === "string" && src.startsWith("data:image/svg+xml");
 
 // A designed look outranks an uploaded picture. Both are set at once whenever
 // somebody saves from the editor, so this is the ordinary case, not an edge one.

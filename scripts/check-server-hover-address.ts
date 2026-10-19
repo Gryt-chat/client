@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Hovering a server in the rail showed its address, and a stream shows whatever the
 // cursor is resting on. A private server's address is not for the audience.
 
@@ -9,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 const RAIL = "src/components/sidebar.tsx";
 const rail = read(RAIL);

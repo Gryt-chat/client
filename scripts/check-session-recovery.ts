@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * How a client answers a server that says the session is over. A deliberate
  * sign-out stays ended, and recovering has a budget. The clock is passed in.
@@ -53,7 +51,7 @@ assert.equal(isDeliberateRevocation(undefined), false);
 // ── the backoff ────────────────────────────────────────────────────
 
 /** Walks a run of revocations arriving back to back, and reports each answer. */
-function hammer(count, { reason = "token_version_mismatch", gapMs = 0 } = {}) {
+function hammer(count: number, { reason = "token_version_mismatch", gapMs = 0 }: { reason?: string; gapMs?: number } = {}) {
   let state = idleRecovery();
   let now = 0;
   const plans = [];
@@ -117,6 +115,7 @@ function hammer(count, { reason = "token_version_mismatch", gapMs = 0 } = {}) {
   assert.equal(state.retries, 2);
 
   const { plan } = planRecovery(idleRecovery(), "token_version_mismatch", state.lastRetryAt + 5_000);
+  assert.ok(plan.act === "retry", `a recovery that worked planned ${plan.act}`);
   assert.equal(plan.retry, 1, "a recovery that worked hands the budget back");
 }
 

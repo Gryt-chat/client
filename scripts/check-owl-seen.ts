@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Which cosmetics read as new. The whole feature turns on the first run: treating
  * "not in the record" as new would badge everything, which badges nothing.
@@ -7,13 +5,15 @@
 
 import assert from "node:assert/strict";
 
-const store = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: (k) => store.delete(k),
-  clear: () => store.clear(),
-};
+const store = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
+    clear: () => store.clear(),
+  },
+});
 
 const { readNewCosmetics, markCosmeticSeen, markAllCosmeticsSeen } = await import("@gryt/ui");
 
@@ -62,11 +62,13 @@ store.set("gryt.owlSeen", JSON.stringify({ not: "an array" }));
 assert.deepEqual([...readNewCosmetics(shipped)], []);
 
 // Storage that throws outright — a private window with it disabled.
-globalThis.localStorage = {
-  getItem() { throw new Error("nope"); },
-  setItem() { throw new Error("nope"); },
-  removeItem() { throw new Error("nope"); },
-};
+Object.assign(globalThis, {
+  localStorage: {
+    getItem() { throw new Error("nope"); },
+    setItem() { throw new Error("nope"); },
+    removeItem() { throw new Error("nope"); },
+  },
+});
 assert.deepEqual([...readNewCosmetics(shipped)], [], "a broken store should show nothing as new");
 assert.deepEqual([...markCosmeticSeen("hat-winter", shipped)], [], "and should not throw");
 

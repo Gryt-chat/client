@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Poll helpers (GRYT-1732): picks after a click, percentages of voters, and the countdown.
 
 import assert from "node:assert/strict";
@@ -26,7 +24,7 @@ assert.equal(pollPercent(1, 3), 33);
 assert.equal(pollPercent(0, 0), 0);
 
 const now = Date.parse("2026-10-13T12:00:00Z");
-const later = (ms) => new Date(now + ms).toISOString();
+const later = (ms: number) => new Date(now + ms).toISOString();
 assert.equal(endsInText(null, now), null);
 assert.equal(endsInText(later(-1000), now), null);
 assert.equal(endsInText(later(40 * 60_000), now), "ends in 40 minutes");

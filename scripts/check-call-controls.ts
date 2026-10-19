@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Every layout that drops the voice panel still offers a way out of the call.
  * A source check, because the failure is a branch that renders one element too few.
@@ -8,7 +6,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 const serverView = read("../src/packages/socket/src/components/serverView.tsx");
 const mobileView = read("../src/packages/socket/src/components/MobileServerView.tsx");

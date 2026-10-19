@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Exporting an owl to a file, without a browser. The raster paths need a canvas
  * and are checked by `check-owl-export-raster.mjs`. The code ships in @gryt/ui.
@@ -8,7 +6,6 @@
 import assert from "node:assert/strict";
 
 import { decodeWorn, encodeWorn } from "@gryt/owl";
-
 import {
   EXPORT_FORMATS,
   EXPORT_SIZE,
@@ -35,7 +32,7 @@ const mimes = EXPORT_FORMATS.map((f) => f.mime);
 assert.equal(new Set(mimes).size, mimes.length, "duplicate mime");
 
 // JPEG's extension is jpg, which is what people expect to see on a file.
-assert.equal(EXPORT_FORMATS.find((f) => f.id === "jpeg").extension, "jpg");
+assert.equal(EXPORT_FORMATS.find((f) => f.id === "jpeg")?.extension, "jpg");
 
 const svg = EXPORT_FORMATS[0];
 const blob = await renderOwl("sivert", look, svg);

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What the card says about a key, and about a key that changed. Both are wrong in
  * ways that look fine — an off-by-one boundary, or a guessed cause (GRYT-728).
@@ -13,7 +11,7 @@ import {
 } from "../src/packages/socket/src/utils/memberKeyWording.ts";
 
 const DAY = 86_400_000;
-const ago = (ms) => Date.now() - ms;
+const ago = (ms: number) => Date.now() - ms;
 
 /* ── the day boundaries ─────────────────────────────────────────────────── */
 

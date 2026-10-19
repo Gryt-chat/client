@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * That a plugin runs somewhere it cannot reach the app. Two things hold it up:
  * the loader must not put a plugin on the page, and the worker imports nothing.
@@ -8,11 +6,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const read = (p) => readFileSync(new URL(`../src/packages/addons/src/${p}`, import.meta.url), "utf8");
+const read = (p: string) => readFileSync(new URL(`../src/packages/addons/src/${p}`, import.meta.url), "utf8");
 
 /* The comments in these files name the things a plugin no longer has. Checking
    the prose for them finds the explanation rather than the code. */
-const codeOnly = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+const codeOnly = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
 /* ── the loader must not put a plugin on the page ────────────────────────── */
 
