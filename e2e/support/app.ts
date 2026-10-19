@@ -154,7 +154,8 @@ export async function clipboardHoldsImage(page: Page, name: string): Promise<boo
     const pixels = async (blob: Blob) => {
       const bitmap = await createImageBitmap(blob);
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-      const context = canvas.getContext("2d")!;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("No 2D canvas context");
       context.drawImage(bitmap, 0, 0);
       return { width: bitmap.width, height: bitmap.height, data: context.getImageData(0, 0, bitmap.width, bitmap.height).data };
     };

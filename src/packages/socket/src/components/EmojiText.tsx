@@ -22,7 +22,7 @@ export const EmojiText = memo(({ text, emojiSize, disableTooltip }: EmojiTextPro
 
   for (const match of text.matchAll(/:([a-zA-Z0-9_+-]+):/g)) {
     const code = match[1];
-    const start = match.index!;
+    const start = match.index;
     const emojiId = `:${code}:`;
 
     if (start > lastIndex) {

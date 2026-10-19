@@ -299,8 +299,11 @@ export function useChatScroll(
 
     if (conversationSwitched) {
       setNewMessageMarkerId(null);
-    } else if (lastId !== prevLastIdRef.current && prevLastIdRef.current && !windowFocusedRef.current) {
-      setNewMessageMarkerId((prev) => prev ?? prevLastIdRef.current!);
+    } else {
+      const prevLastId = prevLastIdRef.current;
+      if (lastId !== prevLastId && prevLastId && !windowFocusedRef.current) {
+        setNewMessageMarkerId((prev) => prev ?? prevLastId);
+      }
     }
 
     prevConversationIdRef.current = currentConvId;

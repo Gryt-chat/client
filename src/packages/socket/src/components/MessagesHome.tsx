@@ -161,8 +161,10 @@ export function MessagesHome({ onSearch }: { onSearch: () => void }) {
   const rooms = useMemo(() => {
     const byRoom = new Map<string, { host: string; channelId: string; people: Friend[] }>();
     for (const f of inVoice) {
-      const id = `${f.host}/${f.member!.voiceChannelId}`;
-      const room = byRoom.get(id) ?? { host: f.host, channelId: f.member!.voiceChannelId!, people: [] };
+      const channelId = f.member?.voiceChannelId;
+      if (!channelId) continue;
+      const id = `${f.host}/${channelId}`;
+      const room = byRoom.get(id) ?? { host: f.host, channelId, people: [] };
       room.people.push(f);
       byRoom.set(id, room);
     }

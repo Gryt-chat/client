@@ -65,7 +65,7 @@ export function useRememberView({
       writeLastView({
         kind: "dm",
         host: conversation?.host ?? host,
-        conversationId: written ? conversation!.conversationId : null,
+        conversationId: written && conversation ? conversation.conversationId : null,
       });
       return;
     }

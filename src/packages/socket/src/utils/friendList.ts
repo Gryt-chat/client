@@ -66,8 +66,10 @@ export function reconcile(book: FriendBook, list: ServerFriendList, now = Date.n
       book.friends.set(id, { nickname: p.nickname, since: Date.parse(p.at) || now });
       book.asked.delete(id);
       changed = true;
-    } else if (book.friends.has(id) && p.nickname && book.friends.get(id)?.nickname !== p.nickname) {
-      book.friends.set(id, { ...book.friends.get(id)!, nickname: p.nickname });
+    } else {
+      const known = book.friends.get(id);
+      if (!known || !p.nickname || known.nickname === p.nickname) continue;
+      book.friends.set(id, { ...known, nickname: p.nickname });
       changed = true;
     }
   }

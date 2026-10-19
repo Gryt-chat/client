@@ -356,7 +356,7 @@ function loadLastView(store) {
     "the page is written before the last one has been read back",
   );
   assert.ok(
-    /conversationId: written \? conversation!\.conversationId : null/.test(remember),
+    /conversationId: written && conversation \? conversation\.conversationId : null/.test(remember),
     "an empty conversation is saved to reopen, though the list drops it on the way out",
   );
 }

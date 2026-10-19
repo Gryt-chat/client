@@ -63,15 +63,16 @@ export async function syncAvatarToHost(
   if (currentAvatarFileId && localHash === lastUploadedHash) return;
 
   const result = await uploadAvatarToServer(host, accessToken, stored.blob);
-  if (result.avatarFileId) {
-    localStorage.setItem(`avatarFileId:${host}`, result.avatarFileId);
+  const { avatarFileId } = result;
+  if (avatarFileId) {
+    localStorage.setItem(`avatarFileId:${host}`, avatarFileId);
     localStorage.setItem(`avatarHash:${host}`, localHash);
     setServerProfiles(prev => ({
       ...prev,
       [host]: {
         ...prev[host],
-        avatarFileId: result.avatarFileId!,
-        avatarUrl: getUploadsFileUrl(host, result.avatarFileId!),
+        avatarFileId,
+        avatarUrl: getUploadsFileUrl(host, avatarFileId),
       },
     }));
     socket.emit("avatar:updated");

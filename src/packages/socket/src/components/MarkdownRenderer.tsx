@@ -414,7 +414,7 @@ export const MarkdownRenderer = memo(({
 
   const markedContent = useMemo(() => {
     if (!content) return null;
-    if (hasProfanity) return insertProfanityMarkers(content, profanityMatches!);
+    if (hasProfanity && profanityMatches) return insertProfanityMarkers(content, profanityMatches);
     return content;
   }, [content, hasProfanity, profanityMatches]);
 

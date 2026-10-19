@@ -135,7 +135,7 @@ export function useChatActions({
     if (!message.text) return;
     setEditingMessage(message);
     setReplyingTo(null);
-    requestAnimationFrame(() => { editorRef.current?.setContent(message.text!); });
+    requestAnimationFrame(() => { editorRef.current?.setContent(message.text ?? ""); });
   }, [editorRef]);
 
   const cancelEditing = useCallback(() => {
