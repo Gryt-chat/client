@@ -93,11 +93,8 @@ module.exports = {
     {
       files: [
         "src/packages/common/src/auth/keycloak.ts",
-        "src/packages/socket/src/components/ChannelList.tsx",
         "src/packages/socket/src/components/ChatView.tsx",
         "src/packages/socket/src/components/MessageRow.tsx",
-        "src/packages/socket/src/components/ServerOverviewTab.tsx",
-        "src/packages/socket/src/components/VoiceView.tsx",
         "src/packages/socket/src/components/serverView.tsx",
       ],
       rules: { "no-nested-ternary": "off" },

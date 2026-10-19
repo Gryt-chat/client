@@ -21,12 +21,23 @@ function normalizeSpamSensitivity(v: unknown): SpamSensitivity {
 /** Mirrors the server's `JoinPolicy`. `approval` exists there as room to grow. */
 type JoinPolicy = "invite" | "request" | "open";
 
+function responseError(data: Record<string, unknown>, raw: string, resp: Response): string {
+  const said = [data.message, data.error].find((v): v is string => typeof v === "string" && v.trim().length > 0);
+  return said ?? (raw.trim() || `HTTP ${resp.status} ${resp.statusText || ""}`.trim());
+}
+
+function iconHint(s: { isUploadingIcon: boolean; isClearingIcon: boolean; canEdit: boolean }): string {
+  if (s.isUploadingIcon) return "Uploading...";
+  if (s.isClearingIcon) return "Clearing...";
+  return s.canEdit ? "Click to change icon" : "Server icon";
+}
+
 /**
  * Anything unrecognised reads as `invite`, matching the server's own
  * normaliseJoinPolicy. A newer value must leave a server harder to get into.
  */
 function normalizeJoinPolicy(v: unknown): JoinPolicy {
-  return v === "open" ? "open" : v === "request" ? "request" : "invite";
+  return v === "open" || v === "request" ? v : "invite";
 }
 type CensorStyle = "grawlix" | "emoji" | "asterisks" | "block" | "hearts";
 
@@ -361,14 +372,7 @@ export function ServerOverviewTab({
         data = {};
       }
       if (!resp.ok) {
-        const msg =
-          (typeof data?.message === "string" && data.message.trim().length > 0)
-            ? data.message
-            : (typeof data?.error === "string" && data.error.trim().length > 0)
-              ? data.error
-              : (raw && raw.trim().length > 0)
-                ? raw.trim()
-                : `HTTP ${resp.status} ${resp.statusText || ""}`.trim();
+        const msg = responseError(data, raw, resp);
         throw new Error(msg);
       }
       toast.success("Icon updated");
@@ -413,14 +417,7 @@ export function ServerOverviewTab({
         data = {};
       }
       if (!resp.ok) {
-        const msg =
-          (typeof data?.message === "string" && data.message.trim().length > 0)
-            ? data.message
-            : (typeof data?.error === "string" && data.error.trim().length > 0)
-              ? data.error
-              : (raw && raw.trim().length > 0)
-                ? raw.trim()
-                : `HTTP ${resp.status} ${resp.statusText || ""}`.trim();
+        const msg = responseError(data, raw, resp);
         throw new Error(msg);
       }
 
@@ -530,13 +527,7 @@ export function ServerOverviewTab({
             </div>
           </button>
           <span className="text-xs">
-            {isUploadingIcon
-              ? "Uploading..."
-              : isClearingIcon
-                ? "Clearing..."
-                : canEdit
-                  ? "Click to change icon"
-                  : "Server icon"}
+            {iconHint({ isUploadingIcon, isClearingIcon, canEdit })}
           </span>
         </div>
 

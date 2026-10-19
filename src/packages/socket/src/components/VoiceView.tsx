@@ -961,10 +961,9 @@ export const VoiceView = ({
 
     const fallbackCameraStreamID = fallbackCameraStreamIdByClientId[clientId];
 
+    const screenStream = client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] : undefined;
     const currentStream = isScreenTile
-      ? client.screenShareVideoStreamID
-        ? videoStreams?.[client.screenShareVideoStreamID]
-        : undefined
+      ? screenStream
       : (cameraStreamFor(
           client.cameraStreamID,
           fallbackCameraStreamID,
@@ -1011,19 +1010,12 @@ export const VoiceView = ({
 
       const fallbackCameraStreamID = fallbackCameraStreamIdByClientId[clientId];
 
-      const currentStream = isScreenTile
-        ? isSelf
-          ? localScreenStream
-          : client.screenShareVideoStreamID
-            ? videoStreams?.[client.screenShareVideoStreamID]
-            : null
-        : isSelf
-          ? localCameraStream
-          : cameraStreamFor(
-              client.cameraStreamID,
-              fallbackCameraStreamID,
-              videoStreams,
-            );
+      const remoteScreen = client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] : null;
+      const screenStream = isSelf ? localScreenStream : remoteScreen;
+      const cameraStream = isSelf
+        ? localCameraStream
+        : cameraStreamFor(client.cameraStreamID, fallbackCameraStreamID, videoStreams);
+      const currentStream = isScreenTile ? screenStream : cameraStream;
 
       if (currentStream) {
         updatePopoutStream(itemId, currentStream);
@@ -1204,6 +1196,8 @@ export const VoiceView = ({
     );
   };
 
+  const openWidth = showVoiceView ? voiceWidth : 0;
+
   return (
     <motion.div
       data-gryt="voice-view"
@@ -1216,7 +1210,7 @@ export const VoiceView = ({
       animate={{
         // Fullscreen sizes the element itself, so an animated pixel width
         // would fight the browser for it.
-        width: isFullscreen ? "100%" : showVoiceView ? voiceWidth : 0,
+        width: isFullscreen ? "100%" : openWidth,
         paddingRight:
           isFullscreen || !showVoiceView || voiceWidth === "0px" ? 0 : 8,
       }}
@@ -1388,13 +1382,14 @@ export const VoiceView = ({
                       }
                 }
               >
-                {currentServerConnected !== serverHost ? null : isFocused ? (
+                {currentServerConnected === serverHost && isFocused && (
                   <AnimatePresence>
                     {displayItems.map((itemId) =>
                       renderTile(itemId, { flexShrink: 0, width: 140 }),
                     )}
                   </AnimatePresence>
-                ) : (
+                )}
+                {currentServerConnected === serverHost && !isFocused && (
                   <>
                     {/* A share sits above the grid at sidebar proportions and
                         below the participant strip at stage proportions — the
@@ -1458,7 +1453,7 @@ export const VoiceView = ({
                       </div>
                     )}
 
-                    {isHeroPip ? (
+                    {isHeroPip && (
                       <div
                         style={{
                           position: "relative",
@@ -1501,7 +1496,8 @@ export const VoiceView = ({
                           )}
                         </AnimatePresence>
                       </div>
-                    ) : shareLayout?.orientation === "strip-above" ? null : (
+                    )}
+                    {!isHeroPip && shareLayout?.orientation !== "strip-above" && (
                       <div
                         style={{
                           // Each row has its own tile size, so a flex-wrap trick no

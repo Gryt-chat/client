@@ -88,6 +88,27 @@ function stableKeys(
   return keys;
 }
 
+function folderTone(holdsSelected: boolean, waiting: boolean): string {
+  if (holdsSelected) return "text-gryt-accent";
+  return waiting ? "text-gryt-text" : "text-gryt-muted hover:text-gryt-text active:text-gryt-text";
+}
+
+function ChannelGlyph({ channel, locked }: { channel: Channel | undefined; locked: boolean }) {
+  if (locked) return <PiLockSimpleFill size={16} />;
+  if (channel?.automated) return <PiRobotFill size={16} />;
+  if (channel?.layout === "forum") return <PiChatsTeardropFill size={16} />;
+  return channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatTeardropTextFill size={16} />;
+}
+
+function remoteAnalyser<T>(sources: Record<string, { analyser?: T }> | undefined, streamID: string | undefined): T | undefined {
+  return streamID ? sources?.[streamID]?.analyser : undefined;
+}
+
+function rowLabel(item: SidebarItem, channelById: Map<string, Channel>): string {
+  if (item.kind === "channel") return channelById.get(item.channelId ?? item.id)?.name || "channel";
+  return item.kind === "folder" ? item.label || "Folder" : item.kind;
+}
+
 export const ChannelList = ({
   channels,
   items,
@@ -284,9 +305,7 @@ export const ChannelList = ({
             "flex w-full items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 text-left",
             "text-xs font-semibold tracking-wide transition-colors",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light",
-            holdsSelected ? "text-gryt-accent"
-              : unread > 0 || mentions > 0 ? "text-gryt-text"
-              : "text-gryt-muted hover:text-gryt-text active:text-gryt-text",
+            folderTone(holdsSelected, unread > 0 || mentions > 0),
           ].join(" ")}
         >
           <span className="min-w-0 shrink truncate">
@@ -325,7 +344,7 @@ export const ChannelList = ({
       (channel ? threadUnreadCounts?.get(channel.id) ?? 0 : 0);
     // Shown even for the open channel: a mention is cleared by reading rather
     // than by having it open, so one still counted has not been cleared.
-    const mentions = muted ? 0 : (channel ? mentionCounts?.get(channel.id) ?? 0 : 0);
+    const mentions = muted || !channel ? 0 : mentionCounts?.get(channel.id) ?? 0;
     /* Visible and not enterable has always been expressible; the row never said
        so, and the refusal arrived from the media stack after the press. */
     const locked = channel?.type === "voice" && channel.canJoin === false;
@@ -355,11 +374,7 @@ export const ChannelList = ({
             {/* The lock replaces the speaker rather than sitting beside it.
                 Two glyphs on a row this narrow read as two things, and there
                 is only one thing to say: this room is not for you. */}
-            {locked
-              ? <PiLockSimpleFill size={16} />
-              : channel?.automated ? <PiRobotFill size={16} />
-              : channel?.layout === "forum" ? <PiChatsTeardropFill size={16} />
-              : channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatTeardropTextFill size={16} />}
+            <ChannelGlyph channel={channel} locked={locked} />
           </div>
           {/* A ghost row's label is muted, so an unread channel looked exactly
               like a read one until you found the badge at the far end. */}
@@ -452,9 +467,7 @@ export const ChannelList = ({
                           speakingAnalyser={
                             id === currentConnectionId
                               ? microphoneBuffer.finalAnalyser
-                              : clients[id].streamID
-                                ? streamSources?.[clients[id].streamID]?.analyser
-                                : undefined
+                              : remoteAnalyser(streamSources, clients[id].streamID)
                           }
                           isMuted={clients[id].isMuted}
                           isDeafened={clients[id].isDeafened}
@@ -561,9 +574,7 @@ export const ChannelList = ({
 
     const isFirst = hiding ? !moveAmongDrawn(rows, item.id, "up") : index === 0;
     const isLast = hiding ? !moveAmongDrawn(rows, item.id, "down") : index === effectiveItems.length - 1;
-    const label = item.kind === "channel"
-      ? (channelById.get(item.channelId ?? item.id)?.name || "channel")
-      : item.kind === "folder" ? item.label || "Folder" : item.kind;
+    const label = rowLabel(item, channelById);
 
     return (
       <ContextMenu.Root>
