@@ -15,12 +15,12 @@ const { compareVersions, releasesToShow, MAX_RELEASES } = await import(pathToFil
 const whatsNew = readFileSync(join(root, WHATS_NEW), "utf8");
 const dialog = readFileSync(join(root, DIALOG), "utf8");
 
-const rel = (version, extra = {}) => ({ version, date: "2026-09-14", line: `Line for ${version}.`, ...extra });
-const versions = (picked) => picked.releases.map((r) => r.version);
+const rel = (version: string, extra: object = {}) => ({ version, date: "2026-09-14", line: `Line for ${version}.`, ...extra });
+const versions = (picked: { releases: { version: string }[] }) => picked.releases.map((r) => r.version);
 
 /* ── semver order ────────────────────────────────────────────────────────── */
 {
-  const lt = (a, b) => assert.ok(compareVersions(a, b) < 0 && compareVersions(b, a) > 0, `${a} should sort below ${b}`);
+  const lt = (a: string, b: string) => assert.ok(compareVersions(a, b) < 0 && compareVersions(b, a) > 0, `${a} should sort below ${b}`);
   lt("1.11.9", "1.11.10");
   lt("1.9.24", "1.10.0");
   lt("1.11.99", "1.12.0");
@@ -136,7 +136,7 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
   const p = releasesToShow([spread, unsorted, rel("1.11.30")], "1.11.30", "1.11.32", false);
   assert.deepEqual(p.releases, [spread, unsorted], "the range lost a release, or rebuilt one without its areas");
   assert.deepEqual(
-    p.releases.map((r) => r.changes.map((c) => c.area)),
+    p.releases.map((r: { changes: { area?: string }[] }) => r.changes.map((c) => c.area)),
     [["servers", "voice"], [undefined]],
     "a release's areas changed on the way through the range",
   );
@@ -148,7 +148,7 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
   const withoutPost = rel("1.11.46");
   const p = releasesToShow([withPost, withoutPost], "1.11.45", "1.12.0", false);
   assert.deepEqual(
-    p.releases.map((r) => r.post),
+    p.releases.map((r: { post?: string }) => r.post),
     ["direct-messages-now-run-on-mls", undefined],
     "a release's post slug changed on the way through the range",
   );

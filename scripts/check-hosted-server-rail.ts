@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeHost } from "@gryt/core";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 const MODULE = "src/packages/settings/src/hostedServerRail.ts";
 const SETTINGS = "src/packages/settings/src/components/myServersSettings.tsx";
 const MANAGEMENT = "src/packages/socket/src/hooks/useServerManagement.ts";
@@ -17,7 +17,7 @@ const MANAGEMENT = "src/packages/socket/src/hooks/useServerManagement.ts";
 const { railEntriesFor } = await import(`../${MODULE}`);
 
 /** A hosted server the way the embedded manager hands it to the renderer. */
-function hosted(id, serverName, serverPort) {
+function hosted(id: string, serverName: string, serverPort: number) {
   return {
     id,
     status: "stopped",
@@ -46,9 +46,9 @@ const LOOPBACK = "127.0.0.1:5040";
 const LAN = "192.168.1.20:5040";
 const DOT_LOCAL = "Siverts-MacBook-Pro.local:5040";
 
-const entry = (host, serverId) => ({ host, name: "Test Den", serverId });
-const rail = (...entries) => Object.fromEntries(entries.map((e) => [e.host, e]));
-const removed = (joined, server = SERVER) => railEntriesFor(server, joined).sort();
+const entry = (host: string, serverId?: string) => ({ host, name: "Test Den", serverId });
+const rail = (...entries: ReturnType<typeof entry>[]) => Object.fromEntries(entries.map((e) => [e.host, e]));
+const removed = (joined: Record<string, ReturnType<typeof entry>>, server: Omit<typeof SERVER, "config"> & { config: (typeof SERVER)["config"] | null } = SERVER) => railEntriesFor(server, joined).sort();
 
 /* ── the report ─────────────────────────────────────────────────────────────
    server_info.server_id is what the rail holds once the socket is up. */

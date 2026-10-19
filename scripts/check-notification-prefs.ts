@@ -1,11 +1,11 @@
-/* eslint-env node */
-
 /**
  * Which scope wins, and what a corrupt file falls back to. Most specific first,
  * and everything unrecognised falls back to hearing more rather than less.
  */
 
 import assert from "node:assert/strict";
+
+import type { ChannelPlacement } from "../src/packages/common/src/hooks/notificationPrefs.ts";
 
 const {
   globalOverrules,
@@ -78,8 +78,8 @@ assert.equal(resolveLevel({ [HOST]: { server: "none" } }, HOST, null), "none");
 
 // ── The default the server carries for a channel ────────────────────────────
 
-const feed = { channelId: "feed", parentItemId: "f1", defaultLevel: "none" };
-const loudFeed = { channelId: "feed", parentItemId: "f1", defaultLevel: "all" };
+const feed: ChannelPlacement = { channelId: "feed", parentItemId: "f1", defaultLevel: "none" };
+const loudFeed: ChannelPlacement = { channelId: "feed", parentItemId: "f1", defaultLevel: "all" };
 
 // Nothing set anywhere: the channel's default is the answer.
 assert.equal(resolveLevel({}, HOST, feed), "none");

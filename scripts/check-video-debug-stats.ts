@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // What the video debug overlay reads out of getStats. Chromium names an outbound track only on
 // its media-source entry, and rates come from the stats' own timestamps (GRYT-1319).
 
@@ -10,12 +8,24 @@ import { readVideoStats } from "../src/components/videoDebugStats.ts";
 const tracks = { camera: "camera-track", screen: "screen-track" };
 
 /** Averages divide floats, so compare them to a hair. */
-function near(actual, expected) {
+function near(actual: number | null | undefined, expected: number) {
   assert.ok(actual != null && Math.abs(actual - expected) < 1e-9, `${actual} is not ${expected}`);
 }
 
 /** A report shaped like Chromium's: outbound-rtp carries mediaSourceId and no trackIdentifier. */
-function report(t, { screenBytes, cameraBytes, receivedBytes, decoded, dropped, received, lost, rtt = 0.062, rttMeasurements = 59 }) {
+interface Counters {
+  screenBytes: number;
+  cameraBytes: number;
+  receivedBytes: number;
+  decoded: number;
+  dropped: number;
+  received: number;
+  lost: number;
+  rtt?: number | null;
+  rttMeasurements?: number;
+}
+
+function report(t: number, { screenBytes, cameraBytes, receivedBytes, decoded, dropped, received, lost, rtt = 0.062, rttMeasurements = 59 }: Counters) {
   return [
     // Nominated too, and listed first. The transport's selected pair is the one in use.
     { id: "CPstale", type: "candidate-pair", timestamp: t, state: "succeeded", nominated: true, currentRoundTripTime: 0.5, localCandidateId: "L1", remoteCandidateId: "R1" },
@@ -115,7 +125,9 @@ assert.equal(restarted.inbound[0].recentDecodedFps, null);
 
 // The camera stopped: its bytes stand still and it reports no frame rate.
 const stopped = report(12_000, { ...counters, screenBytes: 350_000, cameraBytes: 100_000 });
-delete stopped.find((stat) => stat.id === "OT01V2").framesPerSecond;
+const stoppedCamera = stopped.find((stat) => stat.id === "OT01V2");
+assert.ok(stoppedCamera, "the report has no camera row");
+Reflect.deleteProperty(stoppedCamera, "framesPerSecond");
 assert.deepEqual(readVideoStats(stopped, second.samples, tracks).outbound.map((row) => row.label), ["screen"]);
 
 near(first.connection.rttMs, 12);

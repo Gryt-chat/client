@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // A failed link preview: a 429 waits and asks again, a 5xx or a dropped connection gets
 // two more tries, and only the other 4xx refuse the URL for the session.
 
@@ -15,8 +13,15 @@ const { nextPreviewStep, retryAfterHint, RATE_LIMIT_CAP_MS, RATE_LIMIT_FLOOR_MS,
 const NOW = Date.parse("2026-09-14T12:00:00Z");
 const noJitter = () => 0;
 const fullJitter = () => 1;
-const step = (failure, attempt, random = noJitter) => nextPreviewStep(failure, attempt, random, NOW);
-const limited = (extra = {}) => ({ kind: "status", status: 429, ...extra });
+// The fixtures write only the fields each case is about.
+const step = (failure: object, attempt: number, random = noJitter) =>
+  nextPreviewStep(failure as Parameters<typeof nextPreviewStep>[0], attempt, random, NOW);
+/** How long a step waits, asserting it is a retry at all. */
+const delayOf = (s: ReturnType<typeof nextPreviewStep>) => {
+  assert.ok(s.action === "retry", `expected a retry, got ${s.action}`);
+  return s.delayMs;
+};
+const limited = (extra: object = {}) => ({ kind: "status", status: 429, ...extra });
 
 /* ── 429 waits, and is never a refusal ──────────────────────────────────── */
 {
@@ -51,7 +56,7 @@ const limited = (extra = {}) => ({ kind: "status", status: 429, ...extra });
     "the ban's Retry-After: 1 has the card hammering a banned endpoint every second",
   );
   assert.ok(
-    step(limited(), 2).delayMs > step(limited(), 1).delayMs && step(limited(), 1).delayMs > step(limited(), 0).delayMs,
+    delayOf(step(limited(), 2)) > delayOf(step(limited(), 1)) && delayOf(step(limited(), 1)) > delayOf(step(limited(), 0)),
     "repeated 429s with no hint do not back off",
   );
   for (const bad of ["soon", "-5", ""]) {
@@ -68,16 +73,16 @@ const limited = (extra = {}) => ({ kind: "status", status: 429, ...extra });
     { action: "retry", delayMs: RATE_LIMIT_CAP_MS },
     "an hour-long Retry-After is not capped",
   );
-  assert.equal(step(limited(), 6).delayMs, RATE_LIMIT_CAP_MS, "the growing floor runs past the cap");
+  assert.equal(delayOf(step(limited(), 6)), RATE_LIMIT_CAP_MS, "the growing floor runs past the cap");
   assert.equal(
-    step(limited({ retryAfter: "3600" }), 0, fullJitter).delayMs,
+    delayOf(step(limited({ retryAfter: "3600" }), 0, fullJitter)),
     Math.round(RATE_LIMIT_CAP_MS * (1 + JITTER_SHARE)),
     "jitter is unbounded, or missing at the cap",
   );
-  const spread = new Set([0, 0.3, 0.7, 0.99].map((r) => step(limited({ retryAfter: "30" }), 0, () => r).delayMs));
+  const spread = new Set([0, 0.3, 0.7, 0.99].map((r) => delayOf(step(limited({ retryAfter: "30" }), 0, () => r))));
   assert.equal(spread.size, 4, "cards limited together all retry on the same tick");
   for (const r of [0, 0.5, 0.99]) {
-    const { delayMs } = step(limited({ retryAfter: "30" }), 0, () => r);
+    const delayMs = delayOf(step(limited({ retryAfter: "30" }), 0, () => r));
     assert.ok(delayMs >= 30_000, `jitter shortened the wait the server asked for: ${delayMs}`);
   }
 }
@@ -89,7 +94,7 @@ const limited = (extra = {}) => ({ kind: "status", status: 429, ...extra });
     assert.deepEqual(step(failure, 0), { action: "retry", delayMs: 2_000 }, `${label} does not retry after ~2s`);
     assert.deepEqual(step(failure, 1), { action: "retry", delayMs: 8_000 }, `${label} does not retry after ~8s the second time`);
     assert.deepEqual(step(failure, 2), { action: "give-up" }, `${label} keeps retrying past the third try`);
-    assert.ok(step(failure, 0, fullJitter).delayMs > 2_000, `${label} retries with no jitter`);
+    assert.ok(delayOf(step(failure, 0, fullJitter)) > 2_000, `${label} retries with no jitter`);
   }
 }
 

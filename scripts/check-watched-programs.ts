@@ -11,8 +11,8 @@ import { fileURLToPath } from "node:url";
 
 import {
   createProcessWatcher,
-  MAX_WATCHED,
   matchWatched,
+  MAX_WATCHED,
   normaliseExecutable,
   readWatchList,
 } from "../electron/processWatcher.ts";
@@ -20,23 +20,23 @@ import {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
 /* Comments out first. A check a comment can trip is also a check a comment can
    satisfy, and this file searches for strings its neighbours describe in prose. */
-function withoutComments(source) {
+function withoutComments(source: string) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 }
 
-const read = (p) => withoutComments(readFileSync(`${ROOT}/${p}`, "utf8"));
+const read = (p: string) => withoutComments(readFileSync(`${ROOT}/${p}`, "utf8"));
 
 console.log("watched programs");
 
@@ -121,18 +121,18 @@ check("a name off disk cannot be a paragraph", () => {
    so the assertions need the microtasks to settle first. */
 const settle = () => new Promise((r) => setImmediate(r));
 
-async function watcherCheck(name, run) {
+async function watcherCheck(name: string, run: () => Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
 await watcherCheck("adding a program you already have open says so at once", async () => {
-  const changes = [];
+  const changes: string[][] = [];
   const watcher = createProcessWatcher({
     onChange: (running) => changes.push(running),
     list: async () => ["factorio", "firefox"],
@@ -147,7 +147,7 @@ await watcherCheck("adding a program you already have open says so at once", asy
 });
 
 await watcherCheck("nothing is announced when nothing changed", async () => {
-  const changes = [];
+  const changes: string[][] = [];
   const watcher = createProcessWatcher({
     intervalMs: 5,
     onChange: (running) => changes.push(running),
@@ -164,7 +164,7 @@ await watcherCheck("nothing is announced when nothing changed", async () => {
 
 await watcherCheck("emptying the list stops the polling and clears the answer", async () => {
   let polls = 0;
-  const changes = [];
+  const changes: string[][] = [];
   const watcher = createProcessWatcher({
     intervalMs: 5,
     onChange: (running) => changes.push(running),
@@ -187,7 +187,7 @@ await watcherCheck("emptying the list stops the polling and clears the answer", 
 });
 
 await watcherCheck("a failed read is one empty poll, not a dead watcher", async () => {
-  const changes = [];
+  const changes: string[][] = [];
   let call = 0;
   const watcher = createProcessWatcher({
     intervalMs: 5,

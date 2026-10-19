@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The direct messages redesign landed in the wide layout and not the narrow one, and
 // nothing said so. This asserts the two stay in step. GRYT-1144.
 
@@ -9,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 const MOBILE = "src/packages/socket/src/components/MobileServerView.tsx";
 const WIDE = "src/packages/socket/src/components/ServerSidebar.tsx";
@@ -75,7 +73,7 @@ const view = read(VIEW);
 }
 
 /** The `useCallback(...)` argument list after a marker, parens balanced. */
-function callbackAfter(marker) {
+function callbackAfter(marker: string) {
   const at = mobile.indexOf(marker);
   assert.notEqual(at, -1, `${MOBILE} no longer has "${marker}". Move this check with it.`);
   const CALL = "useCallback(";
@@ -92,7 +90,7 @@ function callbackAfter(marker) {
 /* A sheet covers what it just opened. Both handlers close theirs, or the conversation
    sits behind the list that chose it and it reads as nothing having happened. */
 {
-  const run = (marker, arg) => {
+  const run = (marker: string, arg: string | { conversation_id: string }) => {
     /* These two carry annotations only in their parameter lists, and the bodies are
        plain JavaScript. Asserting the strip landed, so a silent miss cannot pass. */
     const source = callbackAfter(marker)
@@ -100,7 +98,7 @@ function callbackAfter(marker) {
       .replace(/: \{ conversation_id[^}]*\}/g, "");
     assert.ok(!/:\s*(string|\{)/.test(source.split("=>")[0]), `types left in ${marker}`);
 
-    const calls = [];
+    const calls: string[] = [];
     const made = new Function(
       "useCallback",
       "onOpenDm",
@@ -109,11 +107,11 @@ function callbackAfter(marker) {
       "setChannelsOpen",
       `return useCallback(${source});`,
     )(
-      (fn) => fn,
-      (id) => calls.push(`open:${id}`),
-      { onSelectDm: (c) => calls.push(`select:${c.conversation_id}`) },
-      (v) => calls.push(`members:${v}`),
-      (v) => calls.push(`channels:${v}`),
+      (fn: () => void) => fn,
+      (id: string) => calls.push(`open:${id}`),
+      { onSelectDm: (c: { conversation_id: string }) => calls.push(`select:${c.conversation_id}`) },
+      (v: boolean) => calls.push(`members:${v}`),
+      (v: boolean) => calls.push(`channels:${v}`),
     );
     made(arg);
     return calls;

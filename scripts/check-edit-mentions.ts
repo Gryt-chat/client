@@ -3,14 +3,16 @@
 
 import assert from "node:assert/strict";
 
+import type { EditorSegment } from "../src/packages/socket/src/utils/chatEditorMentions.ts";
+
 const { parseEditSegments, reserializeEditSegments } = await import(
   "../src/packages/socket/src/utils/chatEditorMentions.ts"
 );
 
-const channels = { chan_a: "general" };
-const channelName = (id, host) => (host ? null : channels[id] ?? null);
+const channels: Record<string, string> = { chan_a: "general" };
+const channelName = (id: string, host: string | null) => (host ? null : channels[id] ?? null);
 
-function roundTrip(text) {
+function roundTrip(text: string) {
   return reserializeEditSegments(parseEditSegments(text, channelName));
 }
 
@@ -36,11 +38,13 @@ for (const text of cases) {
 {
   const segments = parseEditSegments("go to [#channel](channel:chan_a) now", channelName);
   const pill = segments.find((s) => "pill" in s);
+  assert.ok(pill && "pill" in pill, "no pill");
   assert.equal(pill.pill.text, "#general");
 }
 {
   const segments = parseEditSegments("go to [#channel](channel:chan_z) now", channelName);
   const pill = segments.find((s) => "pill" in s);
+  assert.ok(pill && "pill" in pill, "no pill");
   assert.equal(pill.pill.text, "#private-channel");
 }
 
@@ -51,8 +55,9 @@ for (const text of cases) {
   const mentionIndex = segments.findIndex((s) => "pill" in s);
   assert.ok(mentionIndex > 0, "mention should not be the first segment");
 
-  segments[0] = { text: "please " + segments[0].text };
-  segments[segments.length - 1] = { text: segments[segments.length - 1].text + " today" };
+  const textOf = (segment: EditorSegment | undefined) => (segment && "text" in segment ? segment.text : "");
+  segments[0] = { text: "please " + textOf(segments[0]) };
+  segments[segments.length - 1] = { text: textOf(segments[segments.length - 1]) + " today" };
 
   const edited = reserializeEditSegments(segments);
   assert.equal(

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * White text stays readable on every tile a person's avatar can produce. The band
  * is swept rather than argued about: every hue at its lightest (GRYT-648).
@@ -10,30 +8,26 @@ import assert from "node:assert/strict";
 import { tintFromAvatarColor } from "../src/packages/socket/src/components/tileColor.ts";
 
 /** sRGB relative luminance, the WCAG definition. */
-function luminance(r, g, b) {
-  const channel = (v) => {
+function luminance(r: number, g: number, b: number) {
+  const channel = (v: number) => {
     const c = v / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   };
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
-function hslToRgb(h, s, l) {
+function hslToRgb(h: number, s: number, l: number) {
   const sat = s / 100;
   const light = l / 100;
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = light - c / 2;
-  const [r, g, b] =
-    h < 60 ? [c, x, 0] :
-    h < 120 ? [x, c, 0] :
-    h < 180 ? [0, c, x] :
-    h < 240 ? [0, x, c] :
-    h < 300 ? [x, 0, c] : [c, 0, x];
+  const sector = Math.min(5, Math.max(0, Math.floor(h / 60)));
+  const [r, g, b] = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][sector];
   return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
 }
 
-function contrastWithWhite(h, s, l) {
+function contrastWithWhite(h: number, s: number, l: number) {
   const [r, g, b] = hslToRgb(h, s, l);
   return 1.05 / (luminance(r, g, b) + 0.05);
 }
@@ -42,7 +36,7 @@ function contrastWithWhite(h, s, l) {
  * Every colour an avatar can be, through the real function. Reimplementing the
  * clamp passed with the clamp deleted from the module.
  */
-function contrastOf({ hue, sat, light }) {
+function contrastOf({ hue, sat, light }: { hue: number; sat: number; light: number }) {
   return contrastWithWhite(hue, sat, light);
 }
 
