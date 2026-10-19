@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Delete on an unverified report (a reporter's own encrypted-DM copy) only
 // closes the report — the server never had the message (server#250, GRYT-1569).
 

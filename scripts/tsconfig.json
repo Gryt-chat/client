@@ -1,0 +1,12 @@
+{
+  // The app's settings, so the src modules these scripts import check the way the app checks them.
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "target": "ES2022",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": [".", "../src/**/*.d.ts"]
+}

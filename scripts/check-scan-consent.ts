@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The process list is read only after somebody allows it, and the gate is in
 // the main process so a mistake in the panel cannot get past it. GRYT-1063.
 

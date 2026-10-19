@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /** GRYT-1674. Two members called Gold are #1 and #2 by join order; a name nobody shares gets none. */
 
 import assert from "node:assert/strict";

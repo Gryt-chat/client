@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The two things standing between a click in the members list and a ban: rank
  * decides who, permissions decide what. And the ban dialog's typing gate.

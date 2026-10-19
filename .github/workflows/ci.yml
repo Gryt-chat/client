@@ -258,6 +258,8 @@ jobs:
       # tsc -b and eslint with --max-warnings 0. client#115 merged with three
       # TS6133 errors and main did not compile until the next PR.
       - run: yarn lint
+      # The TypeScript scripts, which tsc -b doesn't reach. Every script moves here (GRYT-1800).
+      - run: npx tsc -p scripts
 
       # Code here is TypeScript so its types get checked (GRYT-1800). A file that has to stay
       # JavaScript goes in .js-allowlist, one path a line, with a # comment saying why.

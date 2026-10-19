@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Changing the identity invalidates every session and derived key, so both
 // paths that do it have to offer the restart rather than mention it. GRYT-1068.
 

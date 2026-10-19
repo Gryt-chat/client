@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // A conversation that can be sealed is never sent in the clear. GRYT-729 said
 // so and the code did the opposite; Carlo's DMs arrived readable. GRYT-1066.
 

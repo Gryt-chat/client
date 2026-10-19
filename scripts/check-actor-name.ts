@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Who a ban or an audit row says did it. The server writes `plugin:<id>` when a
  * plugin acted; left unsaid, the "by …" clause goes missing (GRYT-938).

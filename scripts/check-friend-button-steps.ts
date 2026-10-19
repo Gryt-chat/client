@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What FriendButton offers for each friend state (GRYT-1573). A step carrying
  * `confirm` is what keeps FriendButton from firing the action on the first click.
@@ -13,7 +11,7 @@ const NAME = "Alex";
 
 /* ── every state shows a label, and the icon a caller can look up ────────── */
 
-for (const state of ["none", "outgoing", "incoming", "unconfirmed", "friend"]) {
+for (const state of ["none", "outgoing", "incoming", "unconfirmed", "friend"] as const) {
   const steps = friendButtonSteps(state, NAME);
   assert.ok(Array.isArray(steps), `${state} did not return an array`);
   for (const step of steps) {
