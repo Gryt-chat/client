@@ -102,7 +102,7 @@ export function DmSpaceSidebar({
   const { pinned, unpinned } = useMemo(() => {
     const order = new Map(pins.map((p, i) => [JSON.stringify([p.host, p.serverUserId, p.conversationId]), i]));
     const at = (e: DirectoryEntry) => order.get(JSON.stringify(Object.values(pinFor(e))));
-    const pinned = matching.shown.filter((e) => at(e) !== undefined).sort((a, b) => at(a)! - at(b)!);
+    const pinned = matching.shown.filter((e) => at(e) !== undefined).sort((a, b) => (at(a) ?? 0) - (at(b) ?? 0));
     return { pinned, unpinned: matching.shown.filter((e) => at(e) === undefined) };
   }, [matching.shown, pins]);
 

@@ -120,6 +120,10 @@ function sidePanelOf(s: { searchOpen: boolean; dmSpace: boolean | undefined; dmS
   return "members";
 }
 
+function callerTitle(conversation: Parameters<typeof conversationTitle>[0] | undefined, fallback: string): string {
+  return conversation ? conversationTitle(conversation) : fallback;
+}
+
 /**
  * `dmSpace` swaps the channel sidebar for every server's conversations and drops
  * the member panel. The rest is the same view, keys and all (GRYT-1134).
@@ -1640,11 +1644,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           title={
             // The conversation's name when known, which for a group is not the one
             // person ringing. A call can arrive before `dm:list` catches up.
-            directConversations.find((c) => c.conversation_id === incomingCall.conversation_id)
-              ? conversationTitle(
-                  directConversations.find((c) => c.conversation_id === incomingCall.conversation_id)!,
-                )
-              : incomingCall.from.nickname
+            callerTitle(directConversations.find((c) => c.conversation_id === incomingCall.conversation_id), incomingCall.from.nickname)
           }
           avatarUrl={callerAvatarUrl}
           avatarWorn={callerAvatarWorn}

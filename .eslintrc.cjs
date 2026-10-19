@@ -46,30 +46,6 @@ module.exports = {
       files: ["**/*.spec.ts"],
       rules: { "@typescript-eslint/no-non-null-assertion": "off" },
     },
-    // Non-null assertions from before the rule.
-    {
-      files: [
-        "src/packages/socket/src/components/ChannelList.tsx",
-        "src/packages/socket/src/components/ChatView.tsx",
-        "src/packages/socket/src/components/DmSpaceSidebar.tsx",
-        "src/packages/socket/src/components/LinkPreviewCard.tsx",
-        "src/packages/socket/src/components/MediaContextMenu.tsx",
-        "src/packages/socket/src/components/MemberSidebar.tsx",
-        "src/packages/socket/src/components/MessageRow.tsx",
-        "src/packages/socket/src/components/ThreadPanel.tsx",
-        "src/packages/socket/src/components/VoiceParticipantCard.tsx",
-        "src/packages/socket/src/components/VoiceView.tsx",
-        "src/packages/socket/src/components/serverView.tsx",
-      ],
-      rules: { "@typescript-eslint/no-non-null-assertion": "off" },
-    },
-    // Nested ternaries from before the rule.
-    {
-      files: [
-        "src/packages/common/src/auth/keycloak.ts",
-      ],
-      rules: { "no-nested-ternary": "off" },
-    },
     // Files that still use unknown, by why. The goal is to empty these lists (GRYT-1792).
     // unknown: socket payloads arrive unchecked and are validated there.
     {

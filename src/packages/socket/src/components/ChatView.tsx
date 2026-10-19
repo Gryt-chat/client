@@ -407,7 +407,7 @@ export const ChatView = memo(({
   const syncCustomEmojiList = useCallback(() => {
     const emojis = getCustomEmojis();
     setCustomEmojiList(
-      emojis.filter((e) => e.url).map((e) => ({ name: e.name, url: e.url! })),
+      emojis.flatMap((e) => (e.url ? [{ name: e.name, url: e.url }] : [])),
     );
   }, []);
 

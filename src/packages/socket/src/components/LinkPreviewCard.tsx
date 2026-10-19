@@ -233,9 +233,9 @@ export const LinkPreviewCard = memo(({
 
   const showImage = Boolean(data.image) && remoteImagesOk && !imageFailed && layout !== "text" && layout !== "bare";
 
-  const image = showImage ? (
+  const image = showImage && data.image ? (
     <img
-      src={data.image!}
+      src={data.image}
       alt={data.imageAlt || data.title || ""}
       className="link-embed-card-image"
       width={data.imageWidth ?? undefined}

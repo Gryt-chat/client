@@ -384,31 +384,31 @@ export const ChannelList = ({
           >
             <EmojiText text={channel?.name || "(missing channel)"} />
           </span>
-          {hasIndicators && (
+          {hasIndicators && channel && (
             <div className="flex gap-1 items-center" style={{ marginLeft: "auto", flexShrink: 0 }}>
-              {channel!.eSportsMode && (
+              {channel.eSportsMode && (
                 <Tooltip title="eSports mode">
                   <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiGameControllerFill size={14} />
                   </div>
                 </Tooltip>
               )}
-              {channel!.requirePushToTalk && (
+              {channel.requirePushToTalk && (
                 <Tooltip title="Push to Talk required">
                   <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiKeyboardFill size={14} />
                   </div>
                 </Tooltip>
               )}
-              {channel!.disableRnnoise && (
+              {channel.disableRnnoise && (
                 <Tooltip title="Noise suppression disabled">
                   <span className="text-xs font-bold" style={{ color: "var(--gryt-neutral-9)", fontSize: 9, lineHeight: 1, padding: "1px 3px", border: "1px solid var(--gryt-neutral-7)", borderRadius: "var(--gryt-radius-sm)" }}>
                     RAW
                   </span>
                 </Tooltip>
               )}
-              {channel!.maxBitrate && (
-                <Tooltip title={`Max bitrate: ${Math.round(channel!.maxBitrate! / 1000)} kbps`}>
+              {channel.maxBitrate && (
+                <Tooltip title={`Max bitrate: ${Math.round(channel.maxBitrate / 1000)} kbps`}>
                   <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
                     <PiGaugeFill size={14} />
                   </div>
@@ -493,16 +493,16 @@ export const ChannelList = ({
                           screenShareEnabled={clients[id].screenShareEnabled}
                           cameraEnabled={clients[id].cameraEnabled}
                           canDisconnect={!!onDisconnectUser}
-                          onDisconnectFromVoice={onDisconnectUser && clients[id].serverUserId ? () => onDisconnectUser(clients[id].serverUserId!) : undefined}
+                          onDisconnectFromVoice={onDisconnectUser && clients[id].serverUserId ? () => onDisconnectUser(clients[id].serverUserId ?? "") : undefined}
                           role={currentUserRole}
-                          targetRole={clients[id].serverUserId ? memberByServerUserId.get(clients[id].serverUserId!)?.role : undefined}
-                          isServerMuted={clients[id].serverUserId ? memberByServerUserId.get(clients[id].serverUserId!)?.isServerMuted : undefined}
-                          isServerDeafened={clients[id].serverUserId ? memberByServerUserId.get(clients[id].serverUserId!)?.isServerDeafened : undefined}
-                          onKick={adminActions?.onKickUser && clients[id].serverUserId ? () => adminActions.onKickUser!(clients[id].serverUserId!) : undefined}
-                          onBan={adminActions?.onBanUser && clients[id].serverUserId ? () => adminActions.onBanUser!(clients[id].serverUserId!) : undefined}
-                          onServerMute={adminActions?.onServerMuteUser && clients[id].serverUserId ? (muted: boolean) => adminActions.onServerMuteUser!(clients[id].serverUserId!, muted) : undefined}
-                          onServerDeafen={adminActions?.onServerDeafenUser && clients[id].serverUserId ? (deafened: boolean) => adminActions.onServerDeafenUser!(clients[id].serverUserId!, deafened) : undefined}
-                          onToggleRole={adminActions?.onToggleRole && clients[id].serverUserId ? (role: Role, hold: boolean) => adminActions.onToggleRole!(clients[id].serverUserId!, role, hold) : undefined}
+                          targetRole={clients[id].serverUserId ? memberByServerUserId.get(clients[id].serverUserId ?? "")?.role : undefined}
+                          isServerMuted={clients[id].serverUserId ? memberByServerUserId.get(clients[id].serverUserId ?? "")?.isServerMuted : undefined}
+                          isServerDeafened={clients[id].serverUserId ? memberByServerUserId.get(clients[id].serverUserId ?? "")?.isServerDeafened : undefined}
+                          onKick={adminActions?.onKickUser && clients[id].serverUserId ? () => adminActions.onKickUser?.(clients[id].serverUserId ?? "") : undefined}
+                          onBan={adminActions?.onBanUser && clients[id].serverUserId ? () => adminActions.onBanUser?.(clients[id].serverUserId ?? "") : undefined}
+                          onServerMute={adminActions?.onServerMuteUser && clients[id].serverUserId ? (muted: boolean) => adminActions.onServerMuteUser?.(clients[id].serverUserId ?? "", muted) : undefined}
+                          onServerDeafen={adminActions?.onServerDeafenUser && clients[id].serverUserId ? (deafened: boolean) => adminActions.onServerDeafenUser?.(clients[id].serverUserId ?? "", deafened) : undefined}
+                          onToggleRole={adminActions?.onToggleRole && clients[id].serverUserId ? (role: Role, hold: boolean) => adminActions.onToggleRole?.(clients[id].serverUserId ?? "", role, hold) : undefined}
                           key={id}
                         />
                       )

@@ -103,11 +103,12 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
   useLayoutEffect(() => {
     const el = scrollRef.current;
     const firstId = messages[0]?.message_id ?? null;
-    const grew = anchorRef.current !== null && firstId !== firstIdRef.current;
+    const anchor = anchorRef.current;
+    const grew = anchor !== null && firstId !== firstIdRef.current;
     firstIdRef.current = firstId;
     if (!el) return;
     if (grew) {
-      el.scrollTop = el.scrollHeight - anchorRef.current!;
+      el.scrollTop = el.scrollHeight - anchor;
       anchorRef.current = null;
       return;
     }

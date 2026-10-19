@@ -432,28 +432,28 @@ export function VoiceParticipantCard({
         isServerDeafened={memberInfo?.isServerDeafened}
         onKick={
           adminActions?.onKickUser && serverUserId
-            ? () => adminActions.onKickUser!(serverUserId)
+            ? () => adminActions.onKickUser?.(serverUserId)
             : undefined
         }
         onBan={
           adminActions?.onBanUser && serverUserId
-            ? () => adminActions.onBanUser!(serverUserId)
+            ? () => adminActions.onBanUser?.(serverUserId)
             : undefined
         }
         onServerMute={
           adminActions?.onServerMuteUser && serverUserId
-            ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted)
+            ? (muted) => adminActions.onServerMuteUser?.(serverUserId, muted)
             : undefined
         }
         onServerDeafen={
           adminActions?.onServerDeafenUser && serverUserId
             ? (deafened) =>
-                adminActions.onServerDeafenUser!(serverUserId, deafened)
+                adminActions.onServerDeafenUser?.(serverUserId, deafened)
             : undefined
         }
         onToggleRole={
           adminActions?.onToggleRole && serverUserId
-            ? (role, hold) => adminActions.onToggleRole!(serverUserId, role, hold)
+            ? (role, hold) => adminActions.onToggleRole?.(serverUserId, role, hold)
             : undefined
         }
         onPopoutVideo={
@@ -818,28 +818,28 @@ export function VoiceParticipantCard({
       isServerDeafened={memberInfo?.isServerDeafened}
       onKick={
         adminActions?.onKickUser && serverUserId
-          ? () => adminActions.onKickUser!(serverUserId)
+          ? () => adminActions.onKickUser?.(serverUserId)
           : undefined
       }
       onBan={
         adminActions?.onBanUser && serverUserId
-          ? () => adminActions.onBanUser!(serverUserId)
+          ? () => adminActions.onBanUser?.(serverUserId)
           : undefined
       }
       onServerMute={
         adminActions?.onServerMuteUser && serverUserId
-          ? (muted) => adminActions.onServerMuteUser!(serverUserId, muted)
+          ? (muted) => adminActions.onServerMuteUser?.(serverUserId, muted)
           : undefined
       }
       onServerDeafen={
         adminActions?.onServerDeafenUser && serverUserId
           ? (deafened) =>
-              adminActions.onServerDeafenUser!(serverUserId, deafened)
+              adminActions.onServerDeafenUser?.(serverUserId, deafened)
           : undefined
       }
       onToggleRole={
         adminActions?.onToggleRole && serverUserId
-          ? (role, hold) => adminActions.onToggleRole!(serverUserId, role, hold)
+          ? (role, hold) => adminActions.onToggleRole?.(serverUserId, role, hold)
           : undefined
       }
       onPopoutVideo={
