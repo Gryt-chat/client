@@ -8,9 +8,6 @@ examples/presence/source.mjs
 # eslint 8 reads its config only from JavaScript.
 .eslintrc.cjs
 
-# Release Client names this file, so it moves in step with that workflow (GRYT-1806).
-electron-builder.config.cjs
-
 # The Windows signing hook, what it imports, and the check that loads it. Only a Windows build runs them (GRYT-1800).
 scripts/check-windows-signature.mjs
 scripts/sign-windows.cjs

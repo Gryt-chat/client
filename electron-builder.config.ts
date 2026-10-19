@@ -1,11 +1,12 @@
-// Note: CommonJS because electron-builder loads a JS config through require(). GRYT-1806 moves it.
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
 
-const fs = require("node:fs");
-const path = require("node:path");
+import { Arch } from "builder-util";
+import type { AfterPackContext, Configuration, MacConfiguration } from "electron-builder";
 
-const yaml = require("js-yaml");
-
-const { prunePrebuilds } = require("./scripts/prune-prebuilds.ts");
+import { prunePrebuilds } from "./scripts/prune-prebuilds.ts";
+import { EMBEDDED_RESOURCE_PREFIX, HELPER_RESOURCE_PREFIX, isMasBuild, isSlimBuild, MAS_RUNTIME_SOURCE } from "./scripts/variant.ts";
 
 /**
  * electron-builder.yml, plus the handful of things a slim build changes.
@@ -22,19 +23,22 @@ const { prunePrebuilds } = require("./scripts/prune-prebuilds.ts");
  *
  * `GRYT_VARIANT=slim` rather than a CLI flag, because the same value has to
  * reach the beforeBuild hook and the resource check, and neither of those is
- * passed electron-builder's arguments. See scripts/variant.ts — this repeats
- * its one-line check because that file is ESM.
+ * passed electron-builder's arguments. scripts/variant.ts reads it for all three.
  */
-const SLIM = process.env.GRYT_VARIANT === "slim";
+const SLIM = isSlimBuild();
 
-/** Kept in step with HELPER_RESOURCE_PREFIX in scripts/variant.ts. */
-const HELPER_RESOURCE_PREFIX = "build/helper/";
+// js-yaml ships no types; the YAML is our own.
+const yaml = createRequire(import.meta.url)("js-yaml") as { load: (text: string) => Built };
 
-/** Kept in step with EMBEDDED_RESOURCE_PREFIX in scripts/variant.ts. */
-const EMBEDDED_RESOURCE_PREFIX = "build/embedded-";
+/** The YAML as this file edits it: writable, with the fields it reaches into spelled out. */
+type Built = { -readonly [K in keyof Omit<Configuration, "extraResources" | "mac" | "publish">]: Configuration[K] } & {
+  extraResources: { from?: string }[];
+  mac: MacConfiguration;
+  publish: Extract<NonNullable<Configuration["publish"]>, { provider: "github" }>;
+};
 
 const config = yaml.load(
-  fs.readFileSync(path.join(__dirname, "electron-builder.yml"), "utf8"),
+  fs.readFileSync(path.join(import.meta.dirname, "electron-builder.yml"), "utf8"),
 );
 
 if (SLIM) {
@@ -59,14 +63,13 @@ if (SLIM) {
  * `GRYT_MAS=1` is the Mac App Store build (GRYT-1273). The DMG never sets it.
  * Files a sandboxed app writes can't be run, so the runtime ships unpacked in the bundle.
  */
-const MAS = process.env.GRYT_MAS === "1";
+const MAS = isMasBuild();
 
 /** Gryt's Apple team. The app group and application identifier are prefixed with it. */
 const MAS_TEAM_ID = "8883W2XTQ8";
 
-/** Kept in step with MAS_RUNTIME_SOURCE in scripts/variant.ts. */
 const MAS_RUNTIME = {
-  from: "build/embedded-server/",
+  from: `${MAS_RUNTIME_SOURCE}/`,
   to: "embedded-server/",
   // What the archive holds, with the SFU for the arch being packed.
   filter: ["versions.json", "server/**/*", "worker/**/*", "sfu/mac-${arch}/**/*"],
@@ -103,8 +106,7 @@ if (MAS) {
 // Native prebuilds for platforms this package cannot run on. A hook rather than
 // a `files` exclude because app-builder-lib takes only `!` patterns for
 // node_modules -- see scripts/prune-prebuilds.ts.
-config.afterPack = async (context) => {
-  const { Arch } = require("builder-util");
+config.afterPack = async (context: AfterPackContext) => {
   const { kept, removed } = prunePrebuilds(
     context.appOutDir,
     context.electronPlatformName,
@@ -115,4 +117,4 @@ config.afterPack = async (context) => {
   }
 };
 
-module.exports = config;
+export default config;

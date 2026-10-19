@@ -17,12 +17,11 @@ export function isMasBuild(): boolean {
  */
 export const EMBEDDED_RESOURCE_PREFIX = "build/embedded-";
 
-/** Kept in step with HELPER_RESOURCE_PREFIX in electron-builder.config.cjs. */
+/** Where the beforeBuild hook puts the helper, per arch. */
 export const HELPER_RESOURCE_PREFIX = "build/helper/";
 
 /**
  * What the store build ships in place of the archive, and the files it can't start without.
- * Kept in step with MAS_RUNTIME in electron-builder.config.cjs.
  */
 export const MAS_RUNTIME_SOURCE = "build/embedded-server";
 export const MAS_RUNTIME_PARTS = [

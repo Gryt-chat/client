@@ -27,7 +27,7 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const yml = load(read("electron-builder.yml"));
 
 function configFor(env: Record<string, string>) {
-  const out = execFileSync(process.execPath, ["-e", "console.log(JSON.stringify(require('./electron-builder.config.cjs')))"], {
+  const out = execFileSync(process.execPath, ["-e", "console.log(JSON.stringify(require('./electron-builder.config.ts').default))"], {
     cwd: new URL("..", import.meta.url),
     env: { ...process.env, GRYT_MAS: "", GRYT_VARIANT: "", ...env },
   });
