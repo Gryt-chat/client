@@ -6,18 +6,18 @@
 
 import assert from "node:assert/strict";
 
-import { createPendingUpdate } from "../electron/pendingUpdate.ts";
+import { createPendingUpdate, type DownloadOptions, type PendingUpdate, type UpdateCheck, type UpdateRelease } from "../electron/pendingUpdate.ts";
 import { nextShown } from "../src/components/updateToastState.ts";
-import { CHECKS, PRESSES } from "./lib/updateEntryPoints.mjs";
+import { CHECKS, PRESSES } from "./lib/updateEntryPoints.ts";
 
 let failures = 0;
-async function check(name, run) {
+async function check(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -25,28 +25,50 @@ const flush = async () => {
   for (let i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve));
 };
 
-const release = (version) => ({ tag: `v${version}`, version });
+const release = (version: string): UpdateRelease => ({ tag: `v${version}`, version });
+
+/** One startDownload call, and the electron-updater events a test plays for it once begun. */
+type Job = {
+  release: UpdateRelease;
+  options: DownloadOptions;
+  cancelled: boolean;
+  check: Promise<UpdateCheck>;
+  resolveCheck: (check: UpdateCheck) => void;
+  rejectCheck: (error: Error) => void;
+  announced?: ReturnType<PendingUpdate["available"]>;
+  cancellationToken?: { cancel(): void };
+  settleCancelled: () => void;
+  land: () => ReturnType<PendingUpdate["downloaded"]>;
+  failDownload: () => ReturnType<PendingUpdate["failed"]>;
+};
+const notBegun = () => assert.fail("the download was never begun");
+
+type Harness = {
+  waitForStaging?: boolean;
+  findNewer?: (floor: string) => Promise<UpdateRelease | null>;
+  automatic?: boolean;
+};
 
 /*
  * Stands in for electron-updater the way main.ts drives it, with one download slot like the real
  * one. `setting.automatic` is the Automatic updates switch, which a test can flip between offers.
  */
-function harness({ waitForStaging = false, findNewer = async () => null, automatic = true } = {}) {
-  const jobs = [];
-  const lookups = [];
-  const timers = [];
-  const reports = [];
+function harness({ waitForStaging = false, findNewer = async () => null, automatic = true }: Harness = {}) {
+  const jobs: Job[] = [];
+  const lookups: string[] = [];
+  const timers: { run: () => void; ms: number }[] = [];
+  const reports: UpdateRelease[] = [];
   const setting = { automatic };
   const state = { installs: 0, overlaps: 0, busy: false };
 
   const updates = createPendingUpdate({
     startDownload(rel, options) {
       if (state.busy) state.overlaps += 1;
-      const job = { release: rel, options, cancelled: false };
-      job.check = new Promise((resolve, reject) => {
-        job.resolveCheck = resolve;
-        job.rejectCheck = reject;
-      });
+      const { promise: check, resolve: resolveCheck, reject: rejectCheck } = Promise.withResolvers<UpdateCheck>();
+      const job: Job = {
+        release: rel, options, cancelled: false, check, resolveCheck, rejectCheck,
+        settleCancelled: notBegun, land: notBegun, failDownload: notBegun,
+      };
       jobs.push(job);
       return job.check;
     },
@@ -72,12 +94,10 @@ function harness({ waitForStaging = false, findNewer = async () => null, automat
   });
 
   /* update-available, then the check resolves with the download it started. */
-  function begin(job, version = job.release.version) {
+  function begin(job: Job, version = job.release.version) {
     const announced = updates.available(version);
-    let settle;
-    const download = new Promise((resolve, reject) => {
-      settle = { resolve, reject };
-    });
+    const settle = Promise.withResolvers<string[]>();
+    const download = settle.promise;
     state.busy = true;
     const free = () => {
       state.busy = false;
@@ -112,23 +132,24 @@ function harness({ waitForStaging = false, findNewer = async () => null, automat
   }
 
   /* The check itself failed, before any download began: an error event, then the rejection. */
-  function failCheck(job) {
+  function failCheck(job: Job) {
     const outcome = updates.failed();
     job.rejectCheck(new Error("HttpError: 404"));
     return outcome;
   }
 
   /* Held back by the rollout slice: update-not-available, then a result with no download. */
-  function holdBack(job) {
+  function holdBack(job: Job) {
     const outcome = updates.notAvailable();
     job.resolveCheck({ downloadPromise: null });
     return outcome;
   }
 
-  async function downloadAndLand(version, options = { announce: true }) {
+  async function downloadAndLand(version: string, options: DownloadOptions = { announce: true }) {
     assert.equal(updates.offer(release(version), options), "downloading", `offer ${version}`);
     await flush();
     const job = jobs.at(-1);
+    assert.ok(job, `offering ${version} started no download`);
     assert.equal(job.release.version, version);
     begin(job);
     await flush();
@@ -164,7 +185,7 @@ await check("a stale download is replaced at the press, and the newer one instal
   const announced = h.begin(h.jobs[1]);
   assert.deepEqual(announced, { announce: true, installWhenReady: true });
   assert.equal(h.updates.ready(), null, "1.11.21 is gone once 1.11.22 starts");
-  assert.equal(h.updates.held().version, "1.11.22");
+  assert.equal(h.updates.held()?.version, "1.11.22");
 
   await flush();
   assert.equal(h.jobs[1].land(), "installing");
@@ -205,8 +226,8 @@ await check("a lookup that never answers installs what is downloaded once the ti
 });
 
 await check("a lookup that answers after the timeout changes nothing", async () => {
-  let answer;
-  const h = harness({ findNewer: () => new Promise((resolve) => (answer = resolve)) });
+  const { promise: lookup, resolve: answer } = Promise.withResolvers<UpdateRelease | null>();
+  const h = harness({ findNewer: () => lookup });
   await h.downloadAndLand("1.11.21");
 
   h.updates.requestInstall();
@@ -298,7 +319,7 @@ await check("a press during a download installs it once it lands", async () => {
   h.begin(h.jobs[0]);
 
   assert.equal(h.updates.requestInstall(), "downloading");
-  assert.equal(h.updates.held().installWhenReady, true);
+  assert.equal(h.updates.held()?.installWhenReady, true);
   assert.equal(h.state.installs, 0);
 
   assert.equal(h.jobs[0].land(), "installing");
@@ -319,7 +340,7 @@ await check("a newer release during a download cancels it, and starts only once 
 
   assert.equal(h.jobs[0].cancelled, true, "the stale download is cancelled");
   assert.equal(h.jobs.length, 1, "electron-updater would hand the old download back");
-  assert.equal(h.updates.held().version, "1.11.22");
+  assert.equal(h.updates.held()?.version, "1.11.22");
 
   h.jobs[0].settleCancelled();
   await flush();
@@ -566,14 +587,21 @@ await check("macOS gives up an install when Squirrel cannot stage the download",
 
 /* ── The toast ──────────────────────────────────────────────────────── */
 
-const play = (statuses, start = null) =>
-  statuses.reduce(
+type Status = Parameters<typeof nextShown>[1];
+type Shown = NonNullable<ReturnType<typeof nextShown>>;
+
+/** The toast after `statuses`, and each one it drew. Every case here ends with one up. */
+const play = (statuses: Status[], start: Shown | null = null) => {
+  const { current, renders } = statuses.reduce<{ current: Shown | null; renders: Shown[] }>(
     (shown, status) => {
       const next = nextShown(shown.current, status);
       return next ? { current: next, renders: [...shown.renders, next] } : shown;
     },
     { current: start, renders: [] },
   );
+  assert.ok(current, "no toast is up");
+  return { current, renders };
+};
 
 await check("the toast follows a newer release in place, from the press to the install", () => {
   const { current, renders } = play([
@@ -615,7 +643,7 @@ await check("a press during a download installs that same release, and the toast
     { version: "1.11.22", phase: "downloading", newerAfterPress: true },
     { status: "announced", version: "1.11.22", autoDownload: true, reannounce: true, installWhenReady: true },
   );
-  assert.equal(replayed.newerAfterPress, true, "a replay of the same release keeps saying so");
+  assert.equal(replayed?.newerAfterPress, true, "a replay of the same release keeps saying so");
 });
 
 await check("a dismissed toast stays down for its own release and comes back for a newer one", () => {
@@ -626,8 +654,8 @@ await check("a dismissed toast stays down for its own release and comes back for
   assert.equal(nextShown(up, { status: "announced", version: "1.11.21", autoDownload: true }), null);
 
   const newer = nextShown(up, { status: "announced", version: "1.11.22", autoDownload: true });
-  assert.equal(newer.version, "1.11.22");
-  assert.equal(newer.dismissed, undefined);
+  assert.equal(newer?.version, "1.11.22");
+  assert.equal(newer?.dismissed, undefined);
 });
 
 await check("progress for a replacement renames the toast rather than keep the old version", () => {
@@ -655,11 +683,11 @@ await check("asking again redraws a dismissed report with its button, not a bar"
   up.dismissed = true;
 
   const again = nextShown(up, { status: "announced", version: "1.11.25", autoDownload: false, reannounce: true });
-  assert.equal(again.phase, "waiting");
+  assert.equal(again?.phase, "waiting");
 });
 
 await check("statuses with no toast up raise nothing", () => {
-  for (const status of ["downloading", "downloaded", "installing", "error", "checking"]) {
+  for (const status of ["downloading", "downloaded", "installing", "error", "checking"] as const) {
     assert.equal(nextShown(null, { status, version: "1.11.22" }), null, status);
   }
 });
