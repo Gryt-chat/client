@@ -16,6 +16,42 @@ export function beepScript(config: BeepConfig): void {
     if (typeof sink === "function") sink({ at: Date.now(), type, ...data }).catch(() => undefined);
   };
 
+  /** Calls `onOnset` with Date.now() each time `track` goes loud after 300 ms of quiet. */
+  const onsets = (track: MediaStreamTrack, onOnset: (at: number, peak: number) => void) => {
+    // Chromium only feeds a remote track into Web Audio while a media element holds it too.
+    const holder = new Audio();
+    holder.muted = true;
+    holder.srcObject = new MediaStream([track]);
+    holder.play().catch(() => undefined);
+
+    const ctx = new AudioContext();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    ctx.createMediaStreamSource(new MediaStream([track])).connect(analyser);
+    const buf = new Float32Array(analyser.fftSize);
+    let armed = true;
+    let quietSince = 0;
+
+    const timer = setInterval(() => {
+      if (track.readyState === "ended") return clearInterval(timer);
+      if (ctx.state !== "running") {
+        ctx.resume().catch(() => undefined);
+        return;
+      }
+      analyser.getFloatTimeDomainData(buf);
+      let peak = 0;
+      for (const v of buf) peak = Math.max(peak, Math.abs(v));
+      const now = Date.now();
+      if (peak > 0.2) {
+        quietSince = 0;
+        if (!armed) return;
+        armed = false;
+        onOnset(now, Math.round(peak * 1000) / 1000);
+      } else if (!quietSince) quietSince = now;
+      else if (now - quietSince > 300) armed = true;
+    }, 2);
+  };
+
   if (config.send) {
     const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     let beeper: MediaStreamAudioDestinationNode | null = null;
@@ -49,13 +85,36 @@ export function beepScript(config: BeepConfig): void {
     navigator.mediaDevices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
       const stream = await original(constraints);
       if (!constraints?.audio) return stream;
-      beeper ??= start();
+      if (!beeper) {
+        beeper = start();
+        // Before the app's processing, so tapped minus raw is the app's send pipeline alone.
+        const raw = beeper.stream.getAudioTracks()[0];
+        onsets(raw, (at, peak) => emit("beep.raw", { rawAt: at, peak }));
+      }
       for (const track of stream.getAudioTracks()) {
         stream.removeTrack(track);
         track.stop();
       }
       stream.addTrack(beeper.stream.getAudioTracks()[0].clone());
       return stream;
+    };
+
+    // The track the app hands to WebRTC, after its own Web Audio processing: where the send pipeline ends.
+    const tapped = new WeakSet<MediaStreamTrack>();
+    const tap = (track: MediaStreamTrack | null) => {
+      if (!track || track.kind !== "audio" || tapped.has(track)) return;
+      tapped.add(track);
+      onsets(track, (at, peak) => emit("beep.tapped", { tappedAt: at, track: track.id, peak }));
+    };
+    const addTrack = RTCPeerConnection.prototype.addTrack;
+    RTCPeerConnection.prototype.addTrack = function (track, ...streams) {
+      tap(track);
+      return addTrack.call(this, track, ...streams);
+    };
+    const replaceTrack = RTCRtpSender.prototype.replaceTrack;
+    RTCRtpSender.prototype.replaceTrack = function (track) {
+      tap(track);
+      return replaceTrack.call(this, track);
     };
     return;
   }
@@ -66,51 +125,21 @@ export function beepScript(config: BeepConfig): void {
     "removedSamplesForAcceleration", "totalSamplesReceived",
   ];
 
-  const listen = (track: MediaStreamTrack, pc: RTCPeerConnection) => {
-    // Chromium only feeds a remote track into Web Audio while a media element holds it too.
-    const holder = new Audio();
-    holder.muted = true;
-    holder.srcObject = new MediaStream([track]);
-    holder.play().catch(() => undefined);
-
-    const ctx = new AudioContext();
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    ctx.createMediaStreamSource(new MediaStream([track])).connect(analyser);
-    const buf = new Float32Array(analyser.fftSize);
-    let armed = true;
-    let quietSince = 0;
-
-    const timer = setInterval(() => {
-      if (track.readyState === "ended") return clearInterval(timer);
-      if (ctx.state !== "running") {
-        ctx.resume().catch(() => undefined);
-        return;
-      }
-      analyser.getFloatTimeDomainData(buf);
-      let peak = 0;
-      for (const v of buf) peak = Math.max(peak, Math.abs(v));
-      const now = Date.now();
-      if (peak > 0.2) {
-        quietSince = 0;
-        if (!armed) return;
-        armed = false;
-        pc.getStats(track).then(
-          (report) => {
-            let stats: Loose | null = null;
-            report.forEach((s: Loose) => {
-              if (s.type !== "inbound-rtp" || s.kind !== "audio") return;
-              stats = {};
-              for (const key of AUDIO_IN) if (s[key] !== undefined) stats[key] = s[key];
-            });
-            emit("beep.heard", { heardAt: now, track: track.id, peak: Math.round(peak * 1000) / 1000, stats });
-          },
-          () => emit("beep.heard", { heardAt: now, track: track.id, peak, stats: null }),
-        );
-      } else if (!quietSince) quietSince = now;
-      else if (now - quietSince > 300) armed = true;
-    }, 2);
-  };
+  const listen = (track: MediaStreamTrack, pc: RTCPeerConnection) =>
+    onsets(track, (heardAt, peak) => {
+      pc.getStats(track).then(
+        (report) => {
+          let stats: Loose | null = null;
+          report.forEach((entry: Loose) => {
+            if (entry.type !== "inbound-rtp" || entry.kind !== "audio") return;
+            stats = {};
+            for (const key of AUDIO_IN) if (entry[key] !== undefined) stats[key] = entry[key];
+          });
+          emit("beep.heard", { heardAt, track: track.id, peak, stats });
+        },
+        () => emit("beep.heard", { heardAt, track: track.id, peak, stats: null }),
+      );
+    });
 
   const Peer = w.RTCPeerConnection as typeof RTCPeerConnection;
   class BeepPeer extends Peer {
