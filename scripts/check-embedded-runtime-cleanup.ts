@@ -31,23 +31,23 @@ const DAY = 24 * HOUR;
 const CURRENT = "1.11.22";
 
 let failures = 0;
-async function check(name, run) {
+async function check(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
-function age(path, ms) {
+function age(path: string, ms: number) {
   const when = new Date(Date.now() - ms);
   utimesSync(path, when, when);
 }
 
 /* Aged last, because writing into a folder moves its mtime. */
-function runtime(parent, name, old, { ready = true } = {}) {
+function runtime(parent: string, name: string, old: number, { ready = true } = {}) {
   const dir = join(parent, name);
   mkdirSync(join(dir, "server"), { recursive: true });
   writeFileSync(join(dir, "server", "bundle.js"), `// ${name}\n`.repeat(40));
@@ -56,18 +56,18 @@ function runtime(parent, name, old, { ready = true } = {}) {
   return dir;
 }
 
-function link(target, path) {
+function link(target: string, path: string) {
   symlinkSync(target, path, process.platform === "win32" ? "junction" : "dir");
 }
 
 /* Blocks where there are any, which is what du reports and what the log claims. */
-function sizeOf(path) {
+function sizeOf(path: string): number {
   const stats = lstatSync(path);
   if (!stats.isDirectory()) return stats.blocks > 0 ? stats.blocks * 512 : stats.size;
   return readdirSync(path).reduce((sum, name) => sum + sizeOf(join(path, name)), 0);
 }
 
-function isAlive(pid) {
+function isAlive(pid: number) {
   try {
     process.kill(pid, 0);
     return true;
@@ -85,7 +85,7 @@ function deadPid() {
   throw new Error("could not find a pid that is not running");
 }
 
-const listing = (dir) => readdirSync(dir).sort();
+const listing = (dir: string) => readdirSync(dir).sort();
 const scratch = mkdtempSync(join(tmpdir(), "gryt-runtime-cleanup-"));
 const DEAD = deadPid();
 const LIVE = process.pid;
@@ -143,7 +143,7 @@ try {
     ];
     const before = listing(parent);
     const bytes = removed.reduce((sum, name) => sum + sizeOf(join(parent, name)), 0);
-    const logged = [];
+    const logged: string[] = [];
 
     const result = await pruneEmbeddedRuntimes(parent, CURRENT, (msg) => logged.push(msg));
 
@@ -169,7 +169,7 @@ try {
     const parent = join(scratch, "recent", "embedded-runtime");
     mkdirSync(parent, { recursive: true });
     runtime(parent, CURRENT, 10 * DAY);
-    for (const [name, old] of [["2.0.0", HOUR], ["2.0.1", 2 * HOUR], ["2.0.2", 3 * HOUR], ["1.0.1", 23 * HOUR]]) {
+    for (const [name, old] of [["2.0.0", HOUR], ["2.0.1", 2 * HOUR], ["2.0.2", 3 * HOUR], ["1.0.1", 23 * HOUR]] as const) {
       runtime(parent, name, old);
     }
     runtime(parent, "1.0.0", 25 * HOUR);
@@ -187,7 +187,7 @@ try {
     mkdirSync(join(parent, CURRENT), { recursive: true });
     runtime(parent, "1.0.0", 30 * DAY);
     runtime(parent, `1.0.0.tmp-${DEAD}`, 30 * DAY, { ready: false });
-    const logged = [];
+    const logged: string[] = [];
 
     const unready = await pruneEmbeddedRuntimes(parent, CURRENT, (msg) => logged.push(msg));
     const missing = await pruneEmbeddedRuntimes(parent, "9.9.9");
@@ -206,8 +206,8 @@ try {
 
   /* Read-only directories stand in for files that will not go. Root and Windows ignore that. */
   const canLock = process.platform !== "win32" && process.getuid?.() !== 0;
-  const locked = [];
-  const lock = (dir) => {
+  const locked: string[] = [];
+  const lock = (dir: string) => {
     chmodSync(dir, 0o555);
     locked.push(dir);
   };
@@ -226,7 +226,7 @@ try {
       runtime(parent, "1.0.2", 32 * DAY);
       lock(join(parent, "1.0.0", "server"));
       age(join(parent, "1.0.0"), 30 * DAY);
-      const logged = [];
+      const logged: string[] = [];
 
       const result = await pruneEmbeddedRuntimes(parent, CURRENT, (msg) => logged.push(msg));
 
@@ -259,12 +259,12 @@ try {
 
   /* ── Where the manager calls it ─────────────────────────────────────── */
 
-  const stripped = (path) =>
+  const stripped = (path: string) =>
     readFileSync(join(ROOT, path), "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/\/\/[^\n]*/g, "");
   const manager = stripped("electron/embeddedServerManager.ts");
-  const bodyOf = (source, signature) => {
+  const bodyOf = (source: string, signature: string) => {
     const start = source.indexOf(signature);
     assert.notEqual(start, -1, `${signature} is gone. Move this check with it.`);
     return source.slice(start, source.indexOf("\n}\n", start));
