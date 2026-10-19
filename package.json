@@ -156,6 +156,7 @@
     "test:report-user": "node scripts/check-report-user.ts",
     "test:unverified-report-copy": "node scripts/check-unverified-report-copy.ts",
     "test:comment-length": "node scripts/check-comment-length.ts",
+    "test:script-paths": "node scripts/check-script-paths.ts",
     "test:window-buttons": "node scripts/check-window-buttons.ts",
     "test:scan-consent": "node scripts/check-scan-consent.ts",
     "test:card-byline": "node scripts/check-card-byline.ts",
