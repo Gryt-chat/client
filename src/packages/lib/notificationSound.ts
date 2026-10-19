@@ -4,12 +4,10 @@
  */
 
 import { sliderToGain } from "./audioVolume";
-
-interface AudioContextWithSink extends AudioContext {
-  setSinkId?(sinkId: string): Promise<void>;
-}
+import { type AudioOutput, routeOutputDevice } from "./outputDevice";
 
 let ctx: AudioContext | null = null;
+let outputDeviceID = "";
 const bufferCache = new Map<string, AudioBuffer>();
 const rawCache = new Map<string, ArrayBuffer>();
 
@@ -53,7 +51,8 @@ export function playNotificationSound(url: string, sliderValue: number): void {
   const actx = getContext();
 
   fetchBuffer(url)
-    .then((buf) => {
+    .then(async (buf) => {
+      await routeOutputDevice(actx as AudioOutput, outputDeviceID);
       const source = actx.createBufferSource();
       source.buffer = buf;
 
@@ -69,7 +68,7 @@ export function playNotificationSound(url: string, sliderValue: number): void {
       try {
         const audio = new Audio(url);
         audio.volume = sliderToGain(sliderValue);
-        audio.play().catch(() => {});
+        routeOutputDevice(audio, outputDeviceID).then(() => audio.play()).catch(() => {});
       } catch { /* give up silently */ }
     });
 }
@@ -91,13 +90,6 @@ export function warmNotificationContext(): void {
   if (ctx.state === "suspended") {
     ctx.resume().catch(() => {});
   }
-  const saved = localStorage.getItem("outputDeviceID");
-  if (saved) {
-    const c = ctx as AudioContextWithSink;
-    if (typeof c.setSinkId === "function") {
-      c.setSinkId(saved).catch(() => {});
-    }
-  }
 }
 
 /**
@@ -105,8 +97,6 @@ export function warmNotificationContext(): void {
  * Uses AudioContext.setSinkId() when available (Chrome 110+, Electron).
  */
 export function setNotificationOutputDevice(deviceId: string): void {
-  const actx = getContext() as AudioContextWithSink;
-  if (typeof actx.setSinkId === "function") {
-    actx.setSinkId(deviceId).catch(() => {});
-  }
+  outputDeviceID = deviceId;
+  if (ctx) void routeOutputDevice(ctx as AudioOutput, deviceId);
 }
