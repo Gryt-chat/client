@@ -23,16 +23,16 @@ import { serverToManage } from "../hostedServers";
 import { EmbeddedServerLogs } from "./embeddedServerLogs";
 import { HIGHLIGHT_MS, SettingsContainer } from "./settingsComponents";
 
-/**
- * The servers you run, as opposed to the ones you have joined. They share one
- * SFU, so a second one costs a server process and an image worker.
- */
 const RUN_STATE = {
   running: { color: "green", label: "Running" },
   starting: { color: "amber", label: "Starting…" },
   stopped: { color: "gray", label: "Stopped" },
 } as const;
 
+/**
+ * The servers you run, as opposed to the ones you have joined. They share one
+ * SFU, so a second one costs a server process and an image worker.
+ */
 export function MyServersSettings() {
   const embedded = useEmbeddedServer();
   const { isAvailable, servers } = embedded;

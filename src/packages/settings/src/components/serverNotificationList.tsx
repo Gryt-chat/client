@@ -24,15 +24,15 @@ const CHOICES: { label: string; value: string }[] = [
   { label: "Nothing", value: "none" },
 ];
 
-/**
- * Every server in the rail, and how loud each one is. The levels were only ever
- * reachable by right-clicking one icon at a time, with no way to see the set.
- */
 const OVERRULED_BY = {
   none: "Muted by your global level",
   mentions: "Limited to mentions by your global level",
 };
 
+/**
+ * Every server in the rail, and how loud each one is. The levels were only ever
+ * reachable by right-clicking one icon at a time, with no way to see the set.
+ */
 export function ServerNotificationList() {
   useSyncExternalStore(subscribeToPrefs, getStoredSnapshot, getStoredSnapshot);
 
