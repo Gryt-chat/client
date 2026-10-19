@@ -6,13 +6,13 @@ import assert from "node:assert/strict";
 import { parseMac, parseMprisNames, parseMprisPlayer, parseWindows, playerKey } from "../electron/nowPlaying.ts";
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.stack ?? err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
   }
 }
 

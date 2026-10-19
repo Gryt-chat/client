@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The dev toolkit hands anybody who can run JS in the page the ability to become
 // a different identity, so a release build must not carry it (GRYT-1115).
 
@@ -9,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 const MAIN = "src/main.tsx";
 const TOOLKIT = "src/devtools/aiToolkit.ts";
@@ -60,7 +58,7 @@ assert.doesNotMatch(
   `${TOOLKIT} sends something somewhere, which a dev handle has no reason to do`,
 );
 
-function walk(dir) {
+function walk(dir: string): string[] {
   const out = [];
   for (const name of readdirSync(dir)) {
     if (name === "node_modules") continue;

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The attribution line under a link card. The part worth a test is what happens
  * when the fields are missing or nonsense (GRYT-913).
@@ -13,13 +11,13 @@ import { cardByline } from "../src/packages/socket/src/components/embedUtils.ts"
    fail on another. */
 const NOW = new Date("2026-09-04T12:00:00Z");
 
-const on = (author, published) => cardByline(author, published, NOW);
+const on = (author: Parameters<typeof cardByline>[0], published: Parameters<typeof cardByline>[1]) => cardByline(author, published, NOW);
 
 /* ── both halves ─────────────────────────────────────────────────────────── */
 
 const both = on("Mr. Anderson", "2025-07-26T19:24:08Z");
 assert.ok(both?.startsWith("Mr. Anderson · "), `unexpected byline: ${both}`);
-assert.ok(both.includes("2025"), `the year should be in it: ${both}`);
+assert.ok(both?.includes("2025"), `the year should be in it: ${both}`);
 
 /* ── one half ────────────────────────────────────────────────────────────── */
 

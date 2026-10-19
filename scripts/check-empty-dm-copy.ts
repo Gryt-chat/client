@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The empty direct conversation and the banner above it, run as themselves. They
 // said opposite things about who can read it for two months (GRYT-1116).
 
@@ -15,7 +13,7 @@ const empty = readFileSync(join(root, EMPTY), "utf8");
 const banner = readFileSync(join(root, BANNER), "utf8");
 
 /** The `{...}` children of the paragraph, past the attributes, as an expression. */
-function expression(source, after, what) {
+function expression(source: string, after: string, what: string) {
   const at = source.indexOf(after);
   assert.ok(at >= 0, `${EMPTY} no longer has ${what}`);
 

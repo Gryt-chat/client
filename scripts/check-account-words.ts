@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * "Show my 24 words" for a signed-in account: asked first, read only after yes, and only
  * where this device holds the message key. The words are that key (GRYT-1498).
@@ -8,12 +6,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { HIDDEN, nextWordsView } from "../src/packages/settings/src/components/recoveryWordsStep.ts";
+import { HIDDEN, nextWordsView, type WordsView } from "../src/packages/settings/src/components/recoveryWordsStep.ts";
 
 const WORDS = "abandon amount liar amount expire adjust cage candy arch gather drum bullet";
-const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-function context(keyIsHere) {
+function context(keyIsHere: boolean) {
   const ctx = { reads: 0, keyIsHere, readWords: async () => { ctx.reads++; return WORDS; } };
   return ctx;
 }
@@ -44,8 +42,9 @@ function context(keyIsHere) {
 // ── a device without the key never reads them ───────────────────────────────
 {
   const ctx = context(false);
-  for (const view of [HIDDEN, { step: "confirming" }, { step: "shown", words: WORDS }]) {
-    for (const action of ["show", "confirm", "hide"]) {
+  const views: WordsView[] = [HIDDEN, { step: "confirming" }, { step: "shown", words: WORDS }];
+  for (const view of views) {
+    for (const action of ["show", "confirm", "hide"] as const) {
       assert.deepEqual(await nextWordsView(view, action, ctx), HIDDEN, `${view.step} + ${action}`);
     }
   }

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The embedded server can be built from a worktree. Sibling resolution is false in
  * `.claude/worktrees/<name>`, and failed as `spawnSync /bin/sh ENOENT` (GRYT-650).
@@ -28,7 +26,7 @@ assert.match(source, /resolve\(CLIENT_DIR, named\[1\]\)/);
 // A cwd that does not exist must name itself rather than the shell.
 assert.match(source, /does not exist\./);
 
-function superprojectRoot(dir) {
+function superprojectRoot(dir: string) {
   try {
     const pointer = readFileSync(join(dir, ".git"), "utf8").trim();
     const named = /^gitdir:\s*(.+)$/.exec(pointer);
@@ -42,7 +40,7 @@ function superprojectRoot(dir) {
   }
 }
 
-function packageDir(dir, name) {
+function packageDir(dir: string, name: string) {
   const sibling = join(dir, "..", name);
   if (existsSync(sibling)) return sibling;
   const root = superprojectRoot(dir);

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What a yes to "Were you here as a guest before?" shows, and how held messages
  * follow a guest the server merged into an account.
@@ -48,7 +46,7 @@ const guest = "user_guest";
 const account = "user_account";
 const other = "user_other";
 
-const message = (id, sender, reactions = null) => ({
+const message = (id: string, sender: string, reactions: { src: string; amount: number; users: string[] }[] | null = null) => ({
   conversation_id: "general",
   message_id: id,
   sender_server_id: sender,

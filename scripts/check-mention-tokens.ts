@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * GRYT-1455. mentionTokens.ts is the same file in mobile, and mention-vectors.json
  * the same file in mobile and server, so the three agree on what a mention is.
@@ -22,12 +20,12 @@ for (const v of vectors.hits) {
   assert.equal(massMentionHits(v.text, v.viewer), v.hit, `${v.text} ${JSON.stringify(v.viewer)}`);
 }
 for (const v of vectors.plain) {
-  const name = (id, host) => v.channels[host ? `${host}/${id}` : id] ?? null;
+  const name = (id: string, host: string | null): string | null => v.channels[host ? `${host}/${id}` : id] ?? null;
   assert.equal(plainMentionTokens(v.text, name), v.plain, v.text);
 }
 
 const { toPlainNotificationText } = await import("../src/packages/lib/desktopNotification.ts");
-const names = (id) => (id === "chan_a" ? "general" : null);
+const names = (id: string) => (id === "chan_a" ? "general" : null);
 assert.equal(
   toPlainNotificationText("[@everyone](mention:everyone) see [#channel](channel:chan_a)", names),
   "@everyone see #general",

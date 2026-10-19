@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Where the sealed seed is stored on the account. The Keycloak Account API
  * *replaces* the representation, so a naive post unsets the email (GRYT-783).
@@ -7,12 +5,12 @@
 
 import assert from "node:assert/strict";
 
+import { openSeed, sealSeed } from "../src/packages/common/src/auth/identity-vault.ts";
 import {
   sealedVaultFrom,
   VAULT_ATTRIBUTE,
   withSealedVault,
 } from "../src/packages/common/src/auth/message-vault.ts";
-import { openSeed, sealSeed } from "../src/packages/common/src/auth/identity-vault.ts";
 
 const SEED = new Uint8Array(32);
 crypto.getRandomValues(SEED);
@@ -35,7 +33,7 @@ const account = () => ({
   assert.equal(after.email, "sivert@example.com", "email must survive the write");
   assert.equal(after.username, "sivert@example.com", "username must survive");
   assert.equal(after.emailVerified, true, "emailVerified must survive");
-  assert.deepEqual(after.attributes.locale, ["en"], "other attributes must survive");
+  assert.deepEqual(after.attributes?.locale, ["en"], "other attributes must survive");
   assert.equal(after.firstName, null, "a null field is still a field");
 }
 
@@ -45,7 +43,7 @@ const account = () => ({
   // second attempt would carry the first attempt's changes.
   const before = account();
   withSealedVault(before, vault);
-  assert.equal(before.attributes[VAULT_ATTRIBUTE], undefined, "must not write through");
+  assert.equal((before.attributes as Record<string, string[] | undefined>)[VAULT_ATTRIBUTE], undefined, "must not write through");
 }
 
 // ── the blob round-trips ────────────────────────────────────────────────────
@@ -81,7 +79,7 @@ const account = () => ({
 {
   const written = withSealedVault(account(), vault);
   const cleared = withSealedVault(written, null);
-  assert.deepEqual(cleared.attributes[VAULT_ATTRIBUTE], [], "clearing must send an empty value");
+  assert.deepEqual(cleared.attributes?.[VAULT_ATTRIBUTE], [], "clearing must send an empty value");
   assert.equal(sealedVaultFrom(cleared), null);
   assert.equal(cleared.email, "sivert@example.com", "clearing must not lose the email either");
 }

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Gryt does not put itself on top of what somebody is doing. Raising the window
 // above every other window is the part a fullscreen game cannot beat. GRYT-1105.
 
@@ -13,7 +11,7 @@ const MAIN = "electron/main.ts";
 const main = readFileSync(join(root, MAIN), "utf8");
 
 /** Everything from `opener` to the brace that closes the block it opens. */
-function block(text, opener, what) {
+function block(text: string, opener: string, what: string) {
   const at = text.indexOf(opener);
   assert.ok(at >= 0, `${MAIN} no longer has ${what}`);
   const start = at + opener.length - 1;
