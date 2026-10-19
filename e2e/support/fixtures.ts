@@ -85,6 +85,10 @@ export async function prepare(
         }
         if (!welcome) localStorage.setItem("gryt.hasSeenWelcome", "true");
         if (agreement && !localStorage.getItem(agreement.key)) localStorage.setItem(agreement.key, agreement.value);
+        // Members here are strangers who DM each other, which the Friends default (GRYT-1814) refuses.
+        if (!localStorage.getItem("gryt_contact_prefs")) {
+          localStorage.setItem("gryt_contact_prefs", JSON.stringify({ global: { messages: "everyone", calls: "friends" }, servers: {} }));
+        }
       } catch {
         // An opaque origin, such as a fixture's iframe.
       }
