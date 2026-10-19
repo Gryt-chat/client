@@ -238,7 +238,7 @@
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "@tailwindcss/vite": "^4.3.3",
     "@types/mdast": "^4.0.4",
-    "@types/node": "^20.19.33",
+    "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/semver": "^7.8.0",
