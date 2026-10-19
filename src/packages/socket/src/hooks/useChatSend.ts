@@ -332,9 +332,10 @@ export function useChatSend({
 
       if (files.length > 0) {
         const dims = await Promise.all(files.map((f) => getMediaDimensions(f)));
-        localAttachmentIds = files.map(() => `local-${uuidv4()}`);
+        const ids = files.map(() => `local-${uuidv4()}`);
+        localAttachmentIds = ids;
         localEnriched = files.map((f, i) => ({
-          file_id: localAttachmentIds![i],
+          file_id: ids[i],
           mime: f.type || null,
           size: f.size,
           original_name: f.name,
@@ -365,13 +366,13 @@ export function useChatSend({
         [cacheKeyFor(activeConversationId)]: [...(prev[cacheKeyFor(activeConversationId)] || []), optimistic],
       }));
 
-      if (shouldRefreshToken(accessToken!)) {
+      if (accessToken && shouldRefreshToken(accessToken)) {
         const host = currentlyViewingServer?.host || "";
         const refreshToken = getServerRefreshToken(host);
         if (refreshToken) {
-          currentConnection!.emit("token:refresh", { refreshToken });
+          currentConnection?.emit("token:refresh", { refreshToken });
         } else {
-          currentConnection!.emit("token:refresh", { accessToken });
+          currentConnection?.emit("token:refresh", { accessToken });
         }
         for (let i = 0; i < 10; i++) {
           await new Promise((r) => setTimeout(r, 100));
@@ -401,10 +402,8 @@ export function useChatSend({
 
           // Keyed by the id the server assigned, known only now. The bytes were
           // bound to a value the package chose — see `sealAttachment`.
-          const keyed = uploaded.filter((u) => u.meta);
-          attachmentKeys = keyed.length
-            ? Object.fromEntries(keyed.map((u) => [u.fileId, u.meta!]))
-            : null;
+          const keyed = uploaded.flatMap((u) => (u.meta ? [[u.fileId, u.meta] as const] : []));
+          attachmentKeys = keyed.length ? Object.fromEntries(keyed) : null;
         } catch (err) {
           const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
           toast.error(msg, { duration: 8000 });

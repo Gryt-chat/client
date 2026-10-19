@@ -125,9 +125,7 @@ async function image(use: MediaUse, bytes: Uint8Array): Promise<MediaResult> {
 async function animation(use: MediaUse, decoder: ImageDecoder, count: number): Promise<MediaResult> {
   const profile = IMAGE_PROFILES[use];
   const box = imageBox(use, true);
-  let canvas: OffscreenCanvas | null = null;
-  let ctx: OffscreenCanvasRenderingContext2D | null = null;
-  let size: { width: number; height: number } | null = null;
+  let out: { canvas: OffscreenCanvas; ctx: OffscreenCanvasRenderingContext2D; width: number; height: number } | null = null;
   const frames: { webp: Uint8Array; durationMs: number }[] = [];
   let first: OffscreenCanvas | null = null;
 
@@ -138,16 +136,16 @@ async function animation(use: MediaUse, decoder: ImageDecoder, count: number): P
       const h = frame.displayHeight;
       if (w * h > MAX_INPUT_PIXELS) return { ok: false, reason: "Picture is too large" };
       // The output size is set by the first frame; a later frame that claims another size is drawn into it.
-      if (!size) {
+      if (!out) {
         const p = place(w, h, profile.fit, box.width, box.height);
-        size = { width: p.width, height: p.height };
-        [canvas, ctx] = canvasFor(size.width, size.height);
+        const [canvas, ctx] = canvasFor(p.width, p.height);
+        out = { canvas, ctx, width: p.width, height: p.height };
       }
-      drawInto(ctx!, frame, w, h, profile.fit, size.width, size.height);
-      frames.push({ webp: await blobBytes(canvas!, "image/webp", 0.75), durationMs: (frame.duration ?? 100_000) / 1000 });
+      drawInto(out.ctx, frame, w, h, profile.fit, out.width, out.height);
+      frames.push({ webp: await blobBytes(out.canvas, "image/webp", 0.75), durationMs: (frame.duration ?? 100_000) / 1000 });
       if (!first) {
-        const [copy, copyCtx] = canvasFor(size.width, size.height);
-        copyCtx.drawImage(canvas!, 0, 0);
+        const [copy, copyCtx] = canvasFor(out.width, out.height);
+        copyCtx.drawImage(out.canvas, 0, 0);
         first = copy;
       }
     } finally {
@@ -155,17 +153,18 @@ async function animation(use: MediaUse, decoder: ImageDecoder, count: number): P
     }
   }
 
+  if (!out || !first) return { ok: false, reason: "Picture has no frames" };
   return {
     ok: true,
     kind: "image",
-    body: buildAnimatedWebp(frames, size!.width, size!.height),
+    body: buildAnimatedWebp(frames, out.width, out.height),
     mime: "image/webp",
-    width: size!.width,
-    height: size!.height,
+    width: out.width,
+    height: out.height,
     animated: true,
-    thumb: await thumbFrom(first!, use),
+    thumb: await thumbFrom(first, use),
     thumbPx: profile.thumb?.width ?? null,
-    colour: colourOf(first!),
+    colour: colourOf(first),
   };
 }
 
