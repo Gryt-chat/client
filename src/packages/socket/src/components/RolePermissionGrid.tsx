@@ -210,13 +210,14 @@ export function RolePermissionGrid({
         </span>
       </div>
 
-      {shown === 0 ? (
+      {shown === 0 && (
         <span className="text-sm text-gryt-muted py-6 text-center">
           {compare
             ? "Those two roles have exactly the same permissions."
             : "No permission matches that."}
         </span>
-      ) : asMatrix ? (
+      )}
+      {shown !== 0 && asMatrix && (
         <PermissionMatrix
           groups={visibleGroups}
           roles={roles}
@@ -225,7 +226,8 @@ export function RolePermissionGrid({
           readOnlyRoleIds={readOnlyRoleIds}
           highlight={compare ? [left, right] : []}
         />
-      ) : (
+      )}
+      {shown !== 0 && !asMatrix && (
         <PermissionLadder
           groups={visibleGroups}
           roles={roles}

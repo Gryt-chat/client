@@ -49,7 +49,7 @@ const CardSite = memo(({
 
   return (
     <div className="link-embed-card-site">
-      {logo ? (
+      {logo && (
         <svg
           className="link-embed-card-brand"
           viewBox={LOGO_VIEW_BOX}
@@ -58,7 +58,8 @@ const CardSite = memo(({
         >
           <path d={logo} />
         </svg>
-      ) : favicon && !faviconFailed ? (
+      )}
+      {!logo && favicon && !faviconFailed && (
         <img
           src={favicon}
           alt=""
@@ -67,7 +68,8 @@ const CardSite = memo(({
           decoding="async"
           onError={() => setFaviconFailed(true)}
         />
-      ) : (
+      )}
+      {!logo && (!favicon || faviconFailed) && (
         <PiLinkSimpleBold className="link-embed-card-brand" aria-hidden />
       )}
       <span className="link-embed-card-hostname">

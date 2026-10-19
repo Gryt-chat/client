@@ -37,6 +37,12 @@ type Waiting =
   | { kind: "dm"; host: string; serverUserId: string }
   | { kind: "group"; host: string; picked: string[]; before: ReadonlySet<string> };
 
+function noOneText(s: { canMessageSomewhere: boolean; groupBlocked: boolean; nobody: boolean; query: string }): string {
+  if (!s.canMessageSomewhere) return "None of your servers let you start a conversation.";
+  if (s.groupBlocked) return "None of your servers let you start a group.";
+  return s.nobody ? "There\u2019s nobody else on your servers yet." : `Nobody matches \u201c${s.query}\u201d.`;
+}
+
 export function NewMessageDialog() {
   const open = useNewMessageOpen();
   const { sockets, memberLists, serverDetailsList, serverConnectionStatus } = useSockets();
@@ -296,13 +302,7 @@ export function NewMessageDialog() {
     ? picked.map((id) => everyone.find((c) => c.host === groupHost && c.serverUserId === id)).filter((c): c is Candidate => !!c)
     : [];
 
-  const emptyText = !canMessageSomewhere
-    ? "None of your servers let you start a conversation."
-    : mode === "group" && !canGroupSomewhere
-      ? "None of your servers let you start a group."
-      : everyone.length === 0
-        ? "There\u2019s nobody else on your servers yet."
-        : `Nobody matches \u201c${query}\u201d.`;
+  const emptyText = noOneText({ canMessageSomewhere, groupBlocked: mode === "group" && !canGroupSomewhere, nobody: everyone.length === 0, query });
 
   const switchTo = (next: NewMessageMode) => {
     setMode(next);

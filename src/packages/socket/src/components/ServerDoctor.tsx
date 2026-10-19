@@ -66,11 +66,8 @@ function CheckRow({ check }: { check: CheckResult }) {
                 </span>{" "}
                 <span className="text-gryt-muted">
                   {address.address}
-                  {address.ok
-                    ? ` — ${address.latencyMs} ms`
-                    : address.error
-                      ? ` — ${address.error}`
-                      : ""}
+                  {address.ok && ` — ${address.latencyMs} ms`}
+                  {!address.ok && address.error && ` — ${address.error}`}
                 </span>
               </span>
             ))}
