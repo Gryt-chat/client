@@ -2,6 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 const CI = !!process.env.CI;
 
+// Each worker starts its own server, so a shared one gets one worker.
+const WORKERS = CI ? 4 : 3;
+
 export default defineConfig({
   testDir: "./tests",
   outputDir: "./test-results",
@@ -9,7 +12,7 @@ export default defineConfig({
   forbidOnly: CI,
   retries: CI ? 1 : 0,
   // Each worker starts its own server. CI runners on this public repo have four cores, so four workers.
-  workers: process.env.GRYT_E2E_SERVER ? 1 : CI ? 4 : 3,
+  workers: process.env.GRYT_E2E_SERVER ? 1 : WORKERS,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   // CI shards the suite across several runners (see ci.yml); each writes its own blob file,

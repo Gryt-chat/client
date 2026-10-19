@@ -92,16 +92,7 @@ module.exports = {
     // Nested ternaries from before the rule.
     {
       files: [
-        "e2e/playwright.config.ts",
-        "e2e/soak/support/probes.ts",
-        "e2e/soak/support/tracker.ts",
-        "e2e/tests/send-across-restart.spec.ts",
-        "src/lib/reports/callTimeline.ts",
-        "src/packages/addons/src/pluginPanels.ts",
         "src/packages/common/src/auth/keycloak.ts",
-        "src/packages/common/src/components/NotificationLevelMenu.tsx",
-        "src/packages/common/src/hooks/useCustomThemes.ts",
-        "src/packages/common/src/hooks/useTheme.ts",
         "src/packages/socket/src/components/ChannelList.tsx",
         "src/packages/socket/src/components/ChatEditor.tsx",
         "src/packages/socket/src/components/ChatMessage.tsx",
@@ -146,9 +137,6 @@ module.exports = {
         "src/packages/socket/src/components/memberInvite.ts",
         "src/packages/socket/src/components/serverView.tsx",
         "src/packages/socket/src/components/tileColor.ts",
-        "src/packages/socket/src/hooks/contactFilterStore.ts",
-        "src/packages/socket/src/hooks/dmDirectory.ts",
-        "src/packages/socket/src/hooks/mergeMessages.ts",
         "src/packages/socket/src/hooks/useEmoteImport.ts",
         "src/packages/socket/src/hooks/useHistoryWindow.ts",
         "src/packages/socket/src/hooks/useOpenDmSpace.ts",

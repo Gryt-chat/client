@@ -182,9 +182,10 @@ async function rowStates(rows: Locator, nonces: Set<string>): Promise<string[]> 
   const seen = await rows.evaluateAll((els) =>
     els.map((el) => ({ id: el.getAttribute("data-message-id") ?? "", failed: !!el.textContent?.includes("Failed to send") })),
   );
-  return seen.map(({ id, failed }) =>
-    failed ? "failed" : id.startsWith("pending-") || nonces.has(id) ? "pending" : "sent",
-  );
+  return seen.map(({ id, failed }) => {
+    if (failed) return "failed";
+    return id.startsWith("pending-") || nonces.has(id) ? "pending" : "sent";
+  });
 }
 
 for (const kind of ["channel", "dm", "thread"] as const) {
@@ -207,8 +208,8 @@ for (const kind of ["channel", "dm", "thread"] as const) {
       await joinServer(bob.page, server.host);
     }
 
-    const conversation =
-      kind === "channel" ? channel(alice.page) : kind === "dm" ? await dm(alice, bob!) : await thread(alice.page);
+    const opener = { channel: () => channel(alice.page), dm: () => dm(alice, bob!), thread: () => thread(alice.page) };
+    const conversation = await opener[kind]();
 
     // Here before the restart, so a first page rebuilt after it has to carry it.
     const before = unique("said before the restart");

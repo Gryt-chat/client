@@ -119,8 +119,9 @@ function useThemeHook(): ThemeSettings {
     return () => systemPrefersDark.removeEventListener("change", handleChange);
   }, [systemPrefersDark]);
 
+  const systemAppearance = systemIsDark ? "dark" : "light";
   const resolvedAppearance: AppearanceResolved =
-    appearancePreference === "system" ? (systemIsDark ? "dark" : "light") : appearancePreference;
+    appearancePreference === "system" ? systemAppearance : appearancePreference;
 
   function setAccentColor(value: AccentColor) {
     setAccentColorState(value);

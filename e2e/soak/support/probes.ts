@@ -151,7 +151,8 @@ export function networkWatch(log: EventWriter, everyMs = 5000): Stoppable {
     for (const [name, list] of Object.entries(networkInterfaces())) {
       for (const a of list ?? []) {
         if (a.internal) continue;
-        const scope = a.family === "IPv6" ? (a.address.startsWith("fe80") ? "link" : "global") : "v4";
+        const v6scope = a.address.startsWith("fe80") ? "link" : "global";
+        const scope = a.family === "IPv6" ? v6scope : "v4";
         const id = createHash("sha256").update(a.address).digest("hex").slice(0, 8);
         seen.set(`${name}/${scope}/${id}`, a.family);
       }

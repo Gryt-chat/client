@@ -156,13 +156,9 @@ function useCustomThemesImpl(): CustomThemesState {
    * A preset the library ships, or one somebody saved. Presets are stored as
    * "preset:<id>", so a newer @gryt/ui brings its corrections with it.
    */
-  const activeTheme =
-    activeId === null
-      ? null
-      : activeId.startsWith(PRESET_PREFIX)
-        ? (grytPresetsById.get(activeId.slice(PRESET_PREFIX.length))?.theme ??
-          null)
-        : (themes.find((entry) => entry.id === activeId)?.theme ?? null);
+  const preset = activeId?.startsWith(PRESET_PREFIX) ? grytPresetsById.get(activeId.slice(PRESET_PREFIX.length)) : null;
+  const saved = activeId === null || preset !== null ? null : themes.find((entry) => entry.id === activeId);
+  const activeTheme = (preset ?? saved)?.theme ?? null;
 
   return {
     themes,

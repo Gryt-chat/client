@@ -78,10 +78,12 @@ export class Tracker {
 
   status(): string {
     const servers = [...this.serverUp.values()];
-    const sio = servers.length === 0 ? "sio -" : servers.every(Boolean) ? "sio up" : "sio DOWN";
+    const allUp = servers.every(Boolean) ? "sio up" : "sio DOWN";
+    const sio = servers.length === 0 ? "sio -" : allUp;
     const ice = [...this.ice.values()].filter((s) => s !== "closed");
     const media = ice.length === 0 ? "" : ` ice ${ice.join("/")} rtt ${this.last.rtt ?? "?"}ms aob ${this.last.aob ? Math.round(this.last.aob / 1000) + "k" : "?"} audio ${this.last.audioFlowing ?? 0}/${this.last.audioIn ?? 0}`;
-    const voice = this.inVoice === null ? "" : this.inVoice ? " voice in" : " voice OUT";
+    const inOut = this.inVoice ? " voice in" : " voice OUT";
+    const voice = this.inVoice === null ? "" : inOut;
     const { serverDrops, sfuDrops, iceDrops } = this.counts;
     return `${this.who.padEnd(14)} ${sio} sfu-ws ${this.sfuOpen}${voice}${media}  drops sio ${serverDrops} sfu ${sfuDrops} ice ${iceDrops}`;
   }

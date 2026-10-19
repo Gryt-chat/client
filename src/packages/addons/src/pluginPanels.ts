@@ -27,7 +27,7 @@ function republish(): void {
    * By addon id, compared with `<` rather than `localeCompare`: under `nb` Chrome
    * answers -1 for `"zzz".localeCompare("aaa")`, so the order was not sorted.
    */
-  snapshot = [...panels.values()].sort((a, b) => (a.addonId < b.addonId ? -1 : a.addonId > b.addonId ? 1 : 0));
+  snapshot = [...panels.values()].sort((a, b) => (a.addonId < b.addonId ? -1 : Number(a.addonId > b.addonId)));
   for (const listener of listeners) listener();
 }
 
