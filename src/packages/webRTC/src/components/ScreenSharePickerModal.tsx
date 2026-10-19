@@ -228,6 +228,9 @@ export function ScreenSharePickerModal({
 
   if (!inElectron) return null;
 
+  // Only drawn when one of the two is known, so the 0 never shows.
+  const shownBitrate = maxBitrate > 0 ? maxBitrate : estimatedBps ?? 0;
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -478,11 +481,11 @@ export function ScreenSharePickerModal({
                 {maxBitrate > 0 ? "Bitrate:" : "Estimated bitrate:"}
               </span>
               <Chip tone="neutral"
-                color={bitrateColor(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
+                color={bitrateColor(shownBitrate)}
               >
-                {formatBitrate(maxBitrate > 0 ? maxBitrate : estimatedBps!)}
+                {formatBitrate(shownBitrate)}
               </Chip>
-              {(maxBitrate > 0 ? maxBitrate : estimatedBps!) / 1_000_000 > 30 && (
+              {(shownBitrate) / 1_000_000 > 30 && (
                 <span className="text-xs text-gryt-danger">
                   Very high &mdash; ensure your connection can handle this
                 </span>

@@ -44,8 +44,8 @@ export function useLanDiscovery() {
     const unsubUp = api.onLanServerDiscovered((server) => {
       setServers((prev) => {
         const key = serverKey(server.host, server.port);
-        if (prev.has(key)) {
-          const existing = prev.get(key)!;
+        const existing = prev.get(key);
+        if (existing) {
           if (existing.name === server.name && existing.version === server.version) return prev;
         }
         const next = new Map(prev);

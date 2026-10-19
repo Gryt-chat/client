@@ -105,7 +105,8 @@ export function forgetServerFriendList(host: string): void {
 /** True the first time this device hears about a request from them. */
 export function firstNoticeOf(host: string, serverUserId: string): boolean {
   friendBookFor(host);
-  const seen = notified.get(host)!;
+  const seen = notified.get(host) ?? new Set<string>();
+  notified.set(host, seen);
   if (seen.has(serverUserId)) return false;
   seen.add(serverUserId);
   persistFriendBook(host);

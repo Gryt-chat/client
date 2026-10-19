@@ -162,7 +162,8 @@ function fakeScreenStream(): MediaStream {
   canvas.width = 1280;
   canvas.height = 720;
 
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2D canvas context");
   let frame = 0;
 
   const draw = () => {

@@ -514,14 +514,14 @@ function askRelay(req: Omit<RelayRequest, "id">): Promise<RelayReply> {
     const timer = setTimeout(() => done(new Error("The tab sending encrypted messages didn't answer.")), wait);
     const onReply = (event: MessageEvent<RelayReply>) => {
       if (event.data?.id !== id) return;
-      if (!event.data.error) return done(null, event.data);
+      if (!event.data.error) return done(event.data);
       done(Object.assign(new Error(event.data.error.message), { code: event.data.error.code }));
     };
-    const done = (error: Error | null, reply?: RelayReply) => {
+    const done = (result: Error | RelayReply) => {
       clearTimeout(timer);
       relayChannel.removeEventListener("message", onReply);
-      if (error) reject(error);
-      else resolve(reply!);
+      if (result instanceof Error) reject(result);
+      else resolve(result);
     };
     relayChannel.addEventListener("message", onReply);
     relayChannel.postMessage({ id, ...req });
@@ -537,7 +537,8 @@ function relaySource(host: string): MlsSource {
     async modeFor(conversationId, peer) {
       const reply = await ask({ op: "mode", conversationId, peer });
       problems.set(conversationId, reply.problems ?? NO_PROBLEMS);
-      return reply.mode!;
+      if (!reply.mode) throw new Error("The tab sending encrypted messages answered without a mode.");
+      return reply.mode;
     },
     send: async (conversationId, peer, content) => void (await ask({ op: "send", conversationId, peer, content })),
     problems: (conversationId) => problems.get(conversationId) ?? NO_PROBLEMS,

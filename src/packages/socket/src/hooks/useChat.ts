@@ -286,7 +286,8 @@ export function useChat({
     // Not yet: a message opened without our member id would be marked locked for good.
     if (!sealing.canOpen) return;
     const pending = chatMessages.filter(
-      (m) => m.sealed && !m.sealedState && !openingRef.current.has(m.message_id),
+      (m): m is ChatMessage & { sealed: NonNullable<ChatMessage["sealed"]> } =>
+        !!m.sealed && !m.sealedState && !openingRef.current.has(m.message_id),
     );
     if (pending.length === 0) return;
 
@@ -299,7 +300,7 @@ export function useChat({
     void Promise.all(
       pending.map(async (message) => {
         try {
-          const opened = await sealing.open(message.sealed!);
+          const opened = await sealing.open(message.sealed);
           // Null is no wrapped key for us: a message from before we joined the
           // conversation. Permanent, ordinary, and not an error.
           if (!opened) {

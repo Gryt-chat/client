@@ -7,7 +7,9 @@ function convertToPng(blob: Blob): Promise<Blob> {
       const canvas = document.createElement("canvas");
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
-      canvas.getContext("2d")!.drawImage(img, 0, 0);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("No 2D canvas context"));
+      ctx.drawImage(img, 0, 0);
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
       URL.revokeObjectURL(img.src);
     };

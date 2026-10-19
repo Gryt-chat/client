@@ -249,7 +249,7 @@ function buildReplacements(value: string): PhrasingContent[] {
 
   for (const match of value.matchAll(/:([a-zA-Z0-9_+-]+):/g)) {
     const code = match[1];
-    const start = match.index!;
+    const start = match.index;
 
     if (start > lastIndex) {
       parts.push({ type: "text", value: value.slice(lastIndex, start) } as Text);

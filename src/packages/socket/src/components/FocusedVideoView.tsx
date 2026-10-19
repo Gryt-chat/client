@@ -119,7 +119,8 @@ export function FocusedVideoView({
     if (!hasAudio) return;
     const next = volume > 0 ? 0 : 100;
     setVolume(next);
-    streamSources![audioStreamId!].gain.gain.setValueAtTime(
+    const source = audioStreamId ? streamSources?.[audioStreamId] : undefined;
+    source?.gain.gain.setValueAtTime(
       sliderToGain(next, 200),
       0,
     );

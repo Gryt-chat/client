@@ -66,8 +66,8 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
   };
 
   const local = (e: { clientX: number; clientY: number }) => {
-    const r = frameEl!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const r = frameEl?.getBoundingClientRect();
+    return r ? { x: e.clientX - r.left, y: e.clientY - r.top } : { x: 0, y: 0 };
   };
 
   // React's wheel listener is passive, so preventDefault needs a native one.
