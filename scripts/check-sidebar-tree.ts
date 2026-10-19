@@ -7,6 +7,8 @@
 
 import assert from "node:assert/strict";
 
+import type { SidebarItem, SidebarReorderEntry } from "../src/packages/settings/src/types/server.ts";
+
 const {
   NEST_THRESHOLD_PX,
   buildReorderPayload,
@@ -20,8 +22,8 @@ const {
   settingsTitle,
 } = await import("../src/packages/socket/src/components/sidebarTree.ts");
 
-const folder = (id, position) => ({ id, kind: "folder", label: id, position });
-const channel = (id, position, parentItemId = null) => ({
+const folder = (id: string, position: number): SidebarItem => ({ id, kind: "folder", label: id, position });
+const channel = (id: string, position: number, parentItemId: string | null = null): SidebarItem => ({
   id,
   kind: "channel",
   channelId: `chan-${id}`,
@@ -29,8 +31,9 @@ const channel = (id, position, parentItemId = null) => ({
   parentItemId,
 });
 
-const ids = (rows) => rows.map((r) => r.item.id);
-const depths = (rows) => rows.map((r) => r.depth);
+type Row = ReturnType<typeof flattenSidebar>[number];
+const ids = (rows: Row[]) => rows.map((r) => r.item.id);
+const depths = (rows: Row[]) => rows.map((r) => r.depth);
 
 // ── Flattening ──────────────────────────────────────────────────────────────
 
@@ -79,7 +82,7 @@ const depths = (rows) => rows.map((r) => r.depth);
   // Shut is not empty. The children exist, they are just not drawn.
   assert.deepEqual(ids(flattenSidebar(items, new Set(["f"]), hidden)), ["f", "y"]);
   // A folder holding only a separator is empty too; that is not a channel to see into.
-  const rules = [folder("f", 10), { id: "s", kind: "separator", position: 20, parentItemId: "f" }];
+  const rules: SidebarItem[] = [folder("f", 10), { id: "s", kind: "separator", position: 20, parentItemId: "f" }];
   assert.deepEqual(ids(flattenSidebar(rules, new Set(), hidden)), ["s"]);
 }
 
@@ -165,15 +168,25 @@ const order = [nestable[0], nestable[1]];
 // ── Where a new channel goes ────────────────────────────────────────────────
 
 /** The row the create dialog sends, added to the list the way the server stores it. */
-const withNew = (items, spot) => [
+const withNew = (items: SidebarItem[], spot: { position: number; parentItemId: string | null }): SidebarItem[] => [
   ...items,
   { id: "new", kind: "channel", channelId: "chan-new", position: spot.position, parentItemId: spot.parentItemId },
 ];
 
 /** What `server:sidebar:reorder` does with a payload: 10, 20, 30, in the order sent. */
-const reorderOnServer = (items, entries) => {
+const reorderOnServer = (items: SidebarItem[], entries: { itemId: string; parentItemId: string | null }[]) => {
   const byId = new Map(items.map((i) => [i.id, i]));
-  return entries.map((entry, n) => ({ ...byId.get(entry.itemId), position: (n + 1) * 10, parentItemId: entry.parentItemId }));
+  return entries.map((entry, n) => {
+    const item = byId.get(entry.itemId);
+    assert.ok(item, `the reorder names ${entry.itemId}, which isn't in the list`);
+    return { ...item, position: (n + 1) * 10, parentItemId: entry.parentItemId };
+  });
+};
+
+/** A reorder row in its object form, which is the one that states a folder. */
+const stated = (entry: SidebarReorderEntry) => {
+  assert.ok(typeof entry === "object", `${entry} went to the server without its folder`);
+  return entry;
 };
 
 {
@@ -234,7 +247,7 @@ const reorderOnServer = (items, entries) => {
   assert.deepEqual(ids(flattenSidebar(withNew(items, spot))), ["a", "new", "f", "x"]);
 }
 
-for (const [label, gap] of [["one apart", 1], ["on the same position", 0]]) {
+for (const [label, gap] of [["one apart", 1], ["on the same position", 0]] as const) {
   // No whole number fits, so it goes in beside the row and a reorder moves it under.
   const items = [folder("f", 10), channel("x", 20, "f"), channel("y", 20 + gap, "f"), channel("b", 30)];
   const spot = placeNewChannel(items, { folderId: "f", afterItemId: "x" });
@@ -246,7 +259,9 @@ for (const [label, gap] of [["one apart", 1], ["on the same position", 0]]) {
   assert.deepEqual(before.filter((id) => id !== "new"), ["f", "x", "y", "b"], label);
   assert.equal(Math.abs(before.indexOf("new") - before.indexOf("x")), 1, label);
 
-  const entries = orderBelow(landed, "new", "x");
+  const ordered = orderBelow(landed, "new", "x");
+  assert.ok(ordered, `${label}: no reorder for the new channel`);
+  const entries = ordered.map(stated);
   assert.deepEqual(entries.find((e) => e.itemId === "new"), { itemId: "new", parentItemId: "f" }, label);
   assert.equal(entries.length, landed.length, `${label}: every row is in the reorder, once`);
   const rows = flattenSidebar(reorderOnServer(landed, entries));
@@ -260,7 +275,9 @@ for (const [label, gap] of [["one apart", 1], ["on the same position", 0]]) {
   const spot = placeNewChannel(items, { afterItemId: "a" });
   assert.equal(spot.reorderBelow, "a");
   const landed = withNew(items, spot);
-  const rows = flattenSidebar(reorderOnServer(landed, orderBelow(landed, "new", "a")));
+  const ordered = orderBelow(landed, "new", "a");
+  assert.ok(ordered, "no reorder for the new channel");
+  const rows = flattenSidebar(reorderOnServer(landed, ordered.map(stated)));
   assert.deepEqual(ids(rows), ["a", "new", "b", "f", "x"]);
   assert.deepEqual(depths(rows), [0, 0, 0, 0, 1]);
 }
@@ -296,7 +313,11 @@ for (const [label, gap] of [["one apart", 1], ["on the same position", 0]]) {
   assert.equal(settingsTitle("spacer"), "Spacer settings");
   // Nothing selected, which is the dialog closing, and a kind from a newer server.
   assert.equal(settingsTitle(undefined), "Settings");
-  assert.equal(settingsTitle("category"), "Settings");
+  assert.equal(
+    // @ts-expect-error -- a kind only a newer server has
+    settingsTitle("category"),
+    "Settings",
+  );
 }
 
 // ── Dragging a folder ───────────────────────────────────────────────────────
