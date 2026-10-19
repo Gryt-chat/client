@@ -82,13 +82,11 @@ export function useVoiceLifecycle() {
      * Which words. Gryt has no relay, so a network that will not carry a direct
      * path cannot carry a call — a guess that is only fair after every attempt.
      */
-    const message =
-      connectionError === "reconnect-failed"
-        ? everConnected.current
-          ? "The call dropped and could not be picked back up. Try joining again."
-          : "Could not reach the voice server after several attempts. This network " +
-            "may not allow voice traffic through, which is common on mobile data."
-        : connectionError;
+    const gaveUp = everConnected.current
+      ? "The call dropped and could not be picked back up. Try joining again."
+      : "Could not reach the voice server after several attempts. This network " +
+        "may not allow voice traffic through, which is common on mobile data.";
+    const message = connectionError === "reconnect-failed" ? gaveUp : connectionError;
 
     if (!host) {
       toast.error(message, { id: "voice-connection", duration: 8000 });

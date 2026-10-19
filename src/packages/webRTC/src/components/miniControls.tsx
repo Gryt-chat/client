@@ -15,6 +15,7 @@ import { useVoicePresence } from "../adapters/useVoicePresence";
 import { CallCapsuleFace } from "./CallCapsuleFace";
 import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
+import { controlState } from "./controlState";
 import { ScreenShareControl } from "./ScreenShareControl";
 
 const buttonAnimations: Variants = {
@@ -96,7 +97,7 @@ export function MiniControls({
             )}
             <motion.div variants={buttonAnimations}>
               <CallControlButton
-                state={isServerMuted ? "blocked" : isMuted ? "off" : "idle"}
+                state={controlState(isServerMuted, isMuted)}
                 aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
                 onClick={() => {
                   if (isServerMuted) {
@@ -112,7 +113,7 @@ export function MiniControls({
 
             <motion.div variants={buttonAnimations}>
               <CallControlButton
-                state={isServerDeafened ? "blocked" : isDeafened ? "off" : "idle"}
+                state={controlState(isServerDeafened, isDeafened)}
                 aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
                 onClick={() => {
                   if (isServerDeafened) {

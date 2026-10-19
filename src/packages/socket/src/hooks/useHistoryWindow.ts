@@ -88,7 +88,10 @@ export function useHistoryWindow({ connection, conversationId, cacheKeyFor, setM
     if (!connection) return;
     const noCache: Dispatch<SetStateAction<MessageCache>> = () => {};
     const setWindow: Dispatch<SetStateAction<ChatMessage[]>> = (u) =>
-      setMessages((prev) => (prev ? (typeof u === "function" ? u(prev) : u) : prev));
+      setMessages((prev) => {
+        if (!prev) return prev;
+        return typeof u === "function" ? u(prev) : u;
+      });
     const key = () => cacheKeyFor(conversationId);
 
     const onHistory = (payload: WindowedHistoryPayload) => {

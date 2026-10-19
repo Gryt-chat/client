@@ -48,17 +48,19 @@ export function CallCapsuleFace({ host, channelId, live }: { host: string; chann
   };
 
   // A DM's person, a group's faces, or the server's icon filling the circle.
-  const face = entry?.conversation.kind === "group" ? (
-    <span style={{ display: "block", width: FACE, height: FACE, borderRadius: "50%", overflow: "hidden" }}>
-      <GroupFace host={host} conversation={entry.conversation} size={FACE} />
-    </span>
-  ) : entry ? (
-    <Avatar style={{ width: FACE, height: FACE }} fallback={entry.conversation.other.nickname[0]} src={faceOf(entry.conversation.other.server_user_id, entry.conversation.other.nickname)} />
-  ) : (
+  const serverFace = (
     <span style={{ display: "block", width: FACE, height: FACE, borderRadius: "50%", overflow: "hidden" }}>
       <ServerMark src={serverIconSrc(host, servers[host]?.name || "", serverDetailsList)} seed={serverName} />
     </span>
   );
+  const personFace = entry && entry.conversation.kind !== "group" ? (
+    <Avatar style={{ width: FACE, height: FACE }} fallback={entry.conversation.other.nickname[0]} src={faceOf(entry.conversation.other.server_user_id, entry.conversation.other.nickname)} />
+  ) : serverFace;
+  const face = entry?.conversation.kind === "group" ? (
+    <span style={{ display: "block", width: FACE, height: FACE, borderRadius: "50%", overflow: "hidden" }}>
+      <GroupFace host={host} conversation={entry.conversation} size={FACE} />
+    </span>
+  ) : personFace;
 
   return (
     <PreviewCard.Root>

@@ -27,7 +27,8 @@ export function presetKey(quality: string, fps: number): string {
 }
 
 export function presetLabel(quality: string, fps: number): string {
-  return `${quality === "native" ? "Native" : quality === "4k" ? "4K" : quality} · ${fps} fps`;
+  const name = ({ native: "Native", "4k": "4K" } as Record<string, string>)[quality] ?? quality;
+  return `${name} · ${fps} fps`;
 }
 
 /** The size box a quality caps at, or null for native, which has none. */

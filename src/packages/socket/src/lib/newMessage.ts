@@ -63,7 +63,7 @@ export function candidatesFor(servers: ServerPeople[], mode: NewMessageMode): Ca
 }
 
 function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+  return a < b ? -1 : Number(a > b);
 }
 
 /** Matched on the name and on the server, which is what tells two Bobs apart. */

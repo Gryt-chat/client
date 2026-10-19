@@ -57,8 +57,8 @@ export function stageEmojiViaXhr({
         }
       }
 
-      const error = typeof firstObj?.error === "string" ? firstObj.error : (typeof root.error === "string" ? root.error : "http_error");
-      const message = typeof firstObj?.message === "string" ? firstObj.message : (typeof root.message === "string" ? root.message : `HTTP ${status}`);
+      const error = [firstObj?.error, root.error].find((v): v is string => typeof v === "string") ?? "http_error";
+      const message = [firstObj?.message, root.message].find((v): v is string => typeof v === "string") ?? `HTTP ${status}`;
 
       /* The server says how long to wait when it refuses, and passing that up is
          what lets an import ride out its own rate limit. Seconds on the wire. */

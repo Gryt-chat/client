@@ -127,7 +127,8 @@ export function dmComposer({
   if (!dmPeer) return { path: "server", held: false, archiveProblem: false };
   const disputed = peerKeyChanged && mode?.kind === "mls";
   const held = waiting || mode?.kind === "refused" || disputed;
-  const path = mode?.kind === "sealed-v1" ? "server" : mode?.kind === "mls" && !disputed ? "mls" : "none";
+  const mlsPath = mode?.kind === "mls" && !disputed ? "mls" : "none";
+  const path = mode?.kind === "sealed-v1" ? "server" : mlsPath;
   return { path, held, archiveProblem: archiveFailed && held };
 }
 

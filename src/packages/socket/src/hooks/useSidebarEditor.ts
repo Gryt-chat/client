@@ -174,11 +174,8 @@ export function useSidebarEditor({
 
   useEffect(() => {
     if (!editDialogOpen) return;
-    const target = editingChannelId
-      ? { kind: "channel" as const, id: editingChannelId }
-      : editingFolderId
-        ? { kind: "folder" as const, id: editingFolderId }
-        : null;
+    const folder = editingFolderId ? { kind: "folder" as const, id: editingFolderId } : null;
+    const target = editingChannelId ? { kind: "channel" as const, id: editingChannelId } : folder;
     if (!target) return;
     if (!currentlyViewingServer || !currentConnection?.connected) return;
 
@@ -636,11 +633,8 @@ export function useSidebarEditor({
        the empty case: a nameless separator is a rule, a nameless folder is not. */
     if (selectedSidebarItem.kind === "separator" || selectedSidebarItem.kind === "folder") {
       const typed = sheetSeparatorLabel.trim();
-      const label = typed.length
-        ? typed
-        : selectedSidebarItem.kind === "folder"
-          ? selectedSidebarItem.label ?? "New folder"
-          : null;
+      const untitled = selectedSidebarItem.kind === "folder" ? selectedSidebarItem.label ?? "New folder" : null;
+      const label = typed.length ? typed : untitled;
       currentConnection.emit("server:sidebar:item:upsert", {
         accessToken,
         itemId: selectedSidebarItem.id,
