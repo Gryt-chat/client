@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 /* The store, imported as TypeScript and run. It is the whole of the "is this empty
    conversation worth listing" rule, so it is worth running rather than reading. */
@@ -50,10 +50,11 @@ const space = await import("../src/packages/socket/src/hooks/dmSpace.ts");
   assert.equal(space.conversationFor("a.example"), null, "moving the visit asked the view to open something");
 
   const { listedConversations } = await import("../src/packages/socket/src/hooks/dmDirectory.ts");
+  // Only the fields listedConversations reads.
   const entries = [
     { host: "a.example", conversation: { conversation_id: "dm-empty", last_message_at: null } },
     { host: "a.example", conversation: { conversation_id: "dm-2", last_message_at: "2026-09-10T12:00:00Z" } },
-  ];
+  ] as Parameters<typeof listedConversations>[0];
   assert.deepEqual(
     listedConversations(entries, space.visitingConversation()).map((e) => e.conversation.conversation_id),
     ["dm-2"],
@@ -289,7 +290,9 @@ assert.ok(
    is one import and plain TypeScript, so Node's stripper makes it runnable. */
 const { stripTypeScriptTypes } = await import("node:module");
 const lastViewSource = read("src/packages/settings/src/hooks/lastView.ts");
-function loadLastView(store) {
+type Stored = string | number | object | null;
+
+function loadLastView(store: Record<string, Stored>) {
   const body = stripTypeScriptTypes(
     lastViewSource.replace(/^import .*userStorage";\n/m, ""),
   ).replace(/^export /gm, "");
@@ -298,8 +301,8 @@ function loadLastView(store) {
     "setUserValue",
     `${body}\nreturn { readLastView, writeLastView, lastViewHost };`,
   )(
-    (key, fallback) => (key in store ? store[key] : fallback),
-    (key, value) => { store[key] = value; },
+    (key: string, fallback: Stored) => (key in store ? store[key] : fallback),
+    (key: string, value: Stored) => { store[key] = value; },
   );
 }
 
@@ -311,7 +314,7 @@ function loadLastView(store) {
     { kind: "dm", host: "a.example", conversationId: null },
     { kind: "discovery" },
   ]) {
-    const store = {};
+    const store: Record<string, Stored> = {};
     const lv = loadLastView(store);
     lv.writeLastView(view);
     assert.deepEqual(loadLastView(store).readLastView(), view, `${JSON.stringify(view)} did not survive a restart`);

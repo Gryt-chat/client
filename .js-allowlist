@@ -17,11 +17,9 @@ scripts/check-clear-local-history.mjs
 scripts/check-contact-filter.mjs
 scripts/check-dialog-primitives.mjs
 scripts/check-discord-ipc.mjs
-scripts/check-dm-destination.mjs
 scripts/check-dm-directory.mjs
 scripts/check-drawn-video-size.mjs
 scripts/check-embedded-runtime-cleanup.mjs
-scripts/check-embedded-sfu-ports.mjs
 scripts/check-embedded-starting.mjs
 scripts/check-embedded-version.mjs
 scripts/check-extra-resources.mjs
@@ -52,7 +50,6 @@ scripts/check-server-release-notes.mjs
 scripts/check-service-status.mjs
 scripts/check-settings-index.mjs
 scripts/check-sidebar-tree.mjs
-scripts/check-stable-attachment-urls.mjs
 scripts/check-terms-agreement.mjs
 scripts/check-unknown-apps.mjs
 scripts/check-unread-tracker.mjs

@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (path) => readFileSync(join(root, path), "utf8");
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const HOOK = "src/packages/socket/src/hooks/useStableFileUrl.ts";
 const ROW = "src/packages/socket/src/components/MessageRow.tsx";
@@ -25,7 +25,7 @@ const SEALED_HOOK = "src/packages/socket/src/hooks/useSealedVideo.ts";
 const hookSource = stripTypeScriptTypes(read(HOOK))
   .replace(/^import .*$/gm, "")
   .replace(/^export /gm, "");
-const useStableFileUrl = new Function(
+const stableFileUrlHook = new Function(
   "useState",
   "useCallback",
   "useEffect",
@@ -35,32 +35,37 @@ const useStableFileUrl = new Function(
 );
 
 /** Stands in for fileUrlAuth's listeners: the socket handing over a key calls each one. */
-const accessListeners = new Set();
-function subscribeServerFileAccess(listener) {
+const accessListeners = new Set<(host: string) => void>();
+function subscribeServerFileAccess(listener: (host: string) => void) {
   accessListeners.add(listener);
   return () => accessListeners.delete(listener);
 }
 
 let token = "A";
-const requested = [];
-function getUploadsFileUrl(host, fileId, opts) {
+type FileUrlOptions = { thumb?: boolean };
+const requested: { host: string; fileId: string; opts?: FileUrlOptions }[] = [];
+function getUploadsFileUrl(host: string, fileId: string, opts?: FileUrlOptions) {
   requested.push({ host, fileId, opts });
   const q = [opts?.thumb ? "thumb=1" : "", token ? `t=${token}` : ""].filter(Boolean).join("&");
   return `http://${host}/api/uploads/files/${fileId}${q ? `?${q}` : ""}`;
 }
 
 /** One mounted component: state survives renders, and a set during render renders again. */
-function mount(initialProps) {
-  const slots = [];
+/** Whatever a hook slot holds: state, or a callback or effect with its deps. */
+type Held = string | number | boolean | null | undefined | object;
+type Props = { host: string; fileId: string; thumb?: boolean };
+
+function mount(initialProps: Props) {
+  const slots: Held[] = [];
   let props = initialProps;
-  let result;
+  let result: [string, () => void] = ["", () => {}];
   let dirty = false;
   let slot = 0;
 
-  const useState = (init) => {
+  const useState = (init: Held) => {
     const i = slot++;
     if (!(i in slots)) slots[i] = typeof init === "function" ? init() : init;
-    const set = (next) => {
+    const set = (next: Held) => {
       const value = typeof next === "function" ? next(slots[i]) : next;
       if (!Object.is(value, slots[i])) {
         slots[i] = value;
@@ -69,19 +74,19 @@ function mount(initialProps) {
     };
     return [slots[i], set];
   };
-  const callbacks = [];
-  const useCallback = (fn) => {
+  const callbacks: Held[] = [];
+  const useCallback = (fn: Held) => {
     const i = slot++;
     if (!(i in callbacks)) callbacks[i] = fn;
     return callbacks[i];
   };
   // Runs once, at mount, which is all the hook's one effect needs.
-  const effects = [];
-  const useEffect = (fn) => {
+  const effects: Held[] = [];
+  const useEffect = (fn: () => Held) => {
     const i = slot++;
     if (!(i in effects)) effects[i] = fn();
   };
-  const hook = useStableFileUrl(useState, useCallback, useEffect, getUploadsFileUrl, subscribeServerFileAccess);
+  const hook = stableFileUrlHook(useState, useCallback, useEffect, getUploadsFileUrl, subscribeServerFileAccess);
 
   const render = () => {
     let passes = 0;
@@ -97,7 +102,7 @@ function mount(initialProps) {
   return {
     get url() { return result[0]; },
     refresh() { dirty = false; result[1](); return dirty; },
-    render(next) { if (next) props = { ...props, ...next }; return render(); },
+    render(next?: Partial<Props>) { if (next) props = { ...props, ...next }; return render(); },
   };
 }
 
@@ -242,34 +247,39 @@ const sealedHookSource = stripTypeScriptTypes(read(SEALED_HOOK)).replace(/^impor
 const useSealedVideo = new Function("useState", "useRef", "useEffect", "useCallback", `${sealedHookSource}\nreturn useSealedVideo;`);
 
 /** Enough of React to run one hook: state, refs, callbacks, effects with cleanups, and unmounting. */
-function mountHook(makeHook, args) {
-  const slots = [];
+type Slot = { value?: Held; current?: Held; fn?: Held; deps?: readonly Held[]; cleanup?: (() => void) | void };
+type Effect = () => (() => void) | void;
+/** What useSealedVideo hands its player. */
+type SealedVideo = { src: string | null; phase: string; start: () => void };
+
+function mountHook(makeHook: typeof useSealedVideo, args: Held[]) {
+  const slots: Slot[] = [];
   let slot = 0;
   let dirty = false;
-  let result;
-  let pending = [];
-  const same = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+  let result: SealedVideo | undefined;
+  let pending: { i: number; fn: Effect; deps?: readonly Held[] }[] = [];
+  const same = (a?: readonly Held[], b?: readonly Held[]) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
   const hook = makeHook(
-    (init) => {
+    (init: Held) => {
       const i = slot++;
       if (!(i in slots)) slots[i] = { value: typeof init === "function" ? init() : init };
       const cell = slots[i];
-      return [cell.value, (next) => {
+      return [cell.value, (next: Held) => {
         const value = typeof next === "function" ? next(cell.value) : next;
         if (!Object.is(value, cell.value)) { cell.value = value; dirty = true; }
       }];
     },
-    (init) => {
+    (init: Held) => {
       const i = slot++;
       if (!(i in slots)) slots[i] = { current: init };
       return slots[i];
     },
-    (fn, deps) => {
+    (fn: Effect, deps?: readonly Held[]) => {
       const i = slot++;
       if (slots[i] && same(slots[i].deps, deps)) return;
       pending.push({ i, fn, deps });
     },
-    (fn, deps) => {
+    (fn: Held, deps?: readonly Held[]) => {
       const i = slot++;
       if (!slots[i] || !same(slots[i].deps, deps)) slots[i] = { fn, deps };
       return slots[i].fn;
@@ -290,16 +300,19 @@ function mountHook(makeHook, args) {
   };
   render();
   return {
-    get now() { return result; },
+    get now() {
+      assert.ok(result, "the hook never rendered");
+      return result;
+    },
     render,
     unmount() { for (const cell of slots) cell?.cleanup?.(); },
   };
 }
 
-const revoked = [];
+const revoked: string[] = [];
 const realRevoke = URL.revokeObjectURL;
 URL.revokeObjectURL = (url) => { revoked.push(url); realRevoke(url); };
-const later = () => { let settle; const promise = new Promise((resolve, reject) => { settle = { resolve, reject }; }); return { promise, ...settle }; };
+const later = () => Promise.withResolvers<Blob>();
 const clip = new Blob(["frames"], { type: "video/webm" });
 
 {
@@ -327,8 +340,8 @@ const clip = new Blob(["frames"], { type: "video/webm" });
   wait.resolve(clip);
   await wait.promise;
   video.render();
-  assert.match(video.now.src ?? "", /^blob:/, "the decrypted video never reached the player");
-  const src = video.now.src;
+  const src = video.now.src ?? "";
+  assert.match(src, /^blob:/, "the decrypted video never reached the player");
   video.now.start();
   assert.equal(calls, 2, "a press after it opened fetched it again");
   video.unmount();
