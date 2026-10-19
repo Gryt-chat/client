@@ -174,16 +174,18 @@ export function ForumView({ socketConnection, conversationId, serverHost, curren
 
       {/* Topic list */}
       <div style={{ flex: 1, overflowY: "auto" }}>
-        {loading ? (
+        {loading && (
           <div style={{ padding: 24, color: "var(--gryt-neutral-10)", fontSize: 13 }}>Loading topics…</div>
-        ) : shown.length === 0 ? (
+        )}
+        {!loading && shown.length === 0 && (
           <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--gryt-neutral-10)" }}>
             <PiChatsTeardropFill size={28} style={{ opacity: 0.5 }} />
             <p style={{ marginTop: 8, fontSize: 14 }}>
               {topics.length === 0 ? "No topics yet. Start the first one." : "Nothing matches this filter."}
             </p>
           </div>
-        ) : (
+        )}
+        {!loading && shown.length > 0 && (
           shown.map((t) => (
             <button
               key={t.thread_id}

@@ -59,18 +59,20 @@ export function DirectMessagePrivacyNotice({
         className="m-0 text-xs"
         style={{ color: "var(--gryt-neutral-11)", lineHeight: 1.5 }}
       >
-        {oneWay ? (
+        {oneWay && (
           <>
             You are encrypting, {peerInClear} isn&rsquo;t. Whoever runs this
             server can&rsquo;t read what you send, and can read what they
             send.{" "}
           </>
-        ) : sealed ? (
+        )}
+        {!oneWay && sealed && (
           <>
             This conversation is encrypted. Whoever runs this server can&rsquo;t
             read it.{" "}
           </>
-        ) : (
+        )}
+        {!oneWay && !sealed && (
           <>
             This conversation isn&rsquo;t encrypted. Whoever runs this server can
             read it.{reason ? ` ${reason}` : ""}{" "}

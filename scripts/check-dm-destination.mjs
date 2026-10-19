@@ -163,7 +163,7 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
     "answering a call inside the space opens it without moving the visit",
   );
   assert.ok(
-    /listed\.length === 0/.test(sidebar),
+    /sidebarPanel\([^)]*listed\.length/.test(sidebar),
     "the empty state judges on the raw directory, so an unlisted conversation reads as a failed search",
   );
 }

@@ -4,6 +4,9 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 type ConversationParticipant = DirectConversation["other"];
 
+// Three faces: two on top and one across the bottom, so no cell sits empty.
+const AREAS: Record<number, string> = { 1: '"a"', 2: '"a b"', 3: '"a b" "c c"' };
+
 /**
  * A group's picture, or up to four of its faces when nobody has uploaded one.
  * Rounded rather than round, scaled off --gryt-radius-md, so a group never reads as a person.
@@ -39,8 +42,7 @@ export function GroupFace({
       p.nickname,
       p.avatar_worn,
     );
-  // Three faces: two on top and one across the bottom, so no cell sits empty.
-  const areas = people.length === 3 ? '"a b" "c c"' : people.length === 2 ? '"a b"' : people.length === 1 ? '"a"' : '"a b" "c d"';
+  const areas = AREAS[people.length] ?? '"a b" "c d"';
 
   return (
     <span

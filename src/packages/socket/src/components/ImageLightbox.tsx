@@ -182,7 +182,7 @@ export const ImageLightbox = ({
         </div>
       )}
       <div className="lightbox-hint">
-        {item.kind === "video" ? "Space plays and pauses · Esc closes" : zoom > 1 ? "Drag to look around · 0 fits it back" : many ? "← → next and previous · + − zoom · Esc closes" : "+ − zoom · Esc closes"}
+        {lightboxHint(item.kind === "video", zoom > 1, many)}
       </div>
     </div>
   );
@@ -219,14 +219,19 @@ function ShownMedia({ item, src, poster, onError, zoom, pan, onResolved, onToggl
   );
 }
 
+function lightboxHint(video: boolean, zoomed: boolean, many: boolean): string {
+  if (video) return "Space plays and pauses · Esc closes";
+  if (zoomed) return "Drag to look around · 0 fits it back";
+  return many ? "← → next and previous · + − zoom · Esc closes" : "+ − zoom · Esc closes";
+}
+
 function LightboxThumb({ item, active, onClick, label }: { item: LightboxItem; active: boolean; onClick: () => void; label: string }) {
+  const hasPicture = item.kind === "image" || item.hasThumbnail;
+  const stored = item.fileId && item.serverHost && !item.local ? { host: item.serverHost, fileId: item.fileId } : null;
   return (
     <button type="button" role="tab" aria-selected={active} aria-label={label} className="lightbox-thumb" data-active={active || undefined} onClick={onClick}>
-      {item.kind === "image" || item.hasThumbnail
-        ? (item.fileId && item.serverHost && !item.local
-          ? <ServerThumb serverHost={item.serverHost} fileId={item.fileId} poster={item.kind === "video"} />
-          : <img src={item.local || item.src} alt="" draggable={false} />)
-        : null}
+      {hasPicture && stored && <ServerThumb serverHost={stored.host} fileId={stored.fileId} poster={item.kind === "video"} />}
+      {hasPicture && !stored && <img src={item.local || item.src} alt="" draggable={false} />}
       {item.kind === "video" && <span className="lightbox-thumb-play"><PiPlayFill size={16} /></span>}
     </button>
   );

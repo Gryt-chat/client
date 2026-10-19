@@ -30,6 +30,12 @@ const PICKER_MAX_HEIGHT = 520;
 const VIEWPORT_PAD = 8;
 const GAP = 6;
 
+/** What a pick sends: `:name:` for this server's own, the raw value for another's, else the character. */
+function pickedText(item: EmojiPickerItem): string {
+  if (item.id.startsWith("server:")) return `:${item.id.slice(7)}:`;
+  return item.id.startsWith("other:") ? item.id.slice(6) : item.emoji ?? "";
+}
+
 function pickerItem(entry: EmojiEntry): EmojiPickerItem {
   const name = /^[+-]\d+$/.test(entry.name) ? entry.aliases[0] ?? entry.name : entry.name;
   return { id: entry.isCustom ? `server:${entry.name}` : `unicode:${entry.emoji}`, name,
@@ -87,9 +93,7 @@ export function EmojiPickerContent({ onSelect, serverHost, withOtherServers = fa
         autoFocus={autoFocusSearch}
         className="max-w-none"
         onKeyDown={(event) => { if (event.target instanceof HTMLInputElement) event.stopPropagation(); }}
-        onSelect={(item) => onSelect(
-          item.id.startsWith("server:") ? `:${item.id.slice(7)}:` : item.id.startsWith("other:") ? item.id.slice(6) : item.emoji ?? "",
-        )}
+        onSelect={(item) => onSelect(pickedText(item))}
       />
     </GrytProvider>
   );

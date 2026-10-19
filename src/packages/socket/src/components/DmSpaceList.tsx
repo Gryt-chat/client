@@ -60,7 +60,8 @@ function ConversationRow({
   const { host, conversation } = entry;
   const title = conversationTitle(conversation);
   const isGroup = conversation.kind === "group";
-  const muted = selected ? "color-mix(in oklch, var(--color-gryt-on-accent) 70%, transparent)" : unread > 0 ? "var(--gryt-neutral-11)" : "var(--gryt-neutral-10)";
+  const unselectedMuted = unread > 0 ? "var(--gryt-neutral-11)" : "var(--gryt-neutral-10)";
+  const muted = selected ? "color-mix(in oklch, var(--color-gryt-on-accent) 70%, transparent)" : unselectedMuted;
   const rowBg = selected ? "var(--gryt-accent)" : "var(--gryt-neutral-2)";
 
   return (
@@ -137,7 +138,8 @@ function ConversationRow({
             </span>
             <span className="flex items-center" style={{ gap: 8 }}>
               <span className="truncate" style={{ flex: 1, fontSize: 13, color: muted }}>
-                {preview ? <EmojiText text={preview.text} /> : isGroup ? `${conversation.members.length + 1} people` : " "}
+                {preview && <EmojiText text={preview.text} />}
+                {!preview && (isGroup ? `${conversation.members.length + 1} people` : " ")}
               </span>
               <UnreadIndicator unread={unread} />
             </span>

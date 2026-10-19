@@ -24,6 +24,20 @@ const BAR_BUTTON: CSSProperties = {
 const hoverOn = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "var(--gryt-neutral-5)"; };
 const hoverOff = (e: MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "none"; };
 
+function emptyLine(kind: "channel" | "dm" | undefined, sealed: boolean, automated: boolean | undefined): string {
+  if (kind === "dm" && sealed) {
+    return "Nothing here yet. What you send is encrypted on this device, so the server stores something it can\u2019t open.";
+  }
+  if (kind === "dm") return "Nothing here yet. This one isn\u2019t encrypted, so whoever runs the server can read it.";
+  if (automated) return "Nothing here yet. This one fills up when a bot or the system posts.";
+  return "There\u2019s nothing to catch up on. Start wherever you like.";
+}
+
+function historyLine(kind: "channel" | "dm" | undefined, serverName: string | undefined, automated: boolean | undefined): string {
+  if (kind === "dm") return `This conversation is on ${serverName || "this server"}. Messaging them on another server starts a separate one.`;
+  return automated ? "Only bots and the system write here." : "The first message begins the history.";
+}
+
 export const MessageHoverToolbar = ({
   onReply,
   onMore,
@@ -205,13 +219,7 @@ export const WelcomeMessage = ({
           )}
         </h2>
         <p className="mt-2 text-lg text-gryt-muted" style={{ maxWidth: "45ch", lineHeight: 1.5 }}>
-          {conversationKind === "dm"
-            ? sealing?.kind === "seal"
-              ? "Nothing here yet. What you send is encrypted on this device, so the server stores something it can\u2019t open."
-              : "Nothing here yet. This one isn\u2019t encrypted, so whoever runs the server can read it."
-            : automated
-              ? "Nothing here yet. This one fills up when a bot or the system posts."
-              : "There\u2019s nothing to catch up on. Start wherever you like."}
+          {emptyLine(conversationKind, sealing?.kind === "seal", automated)}
         </p>
       </div>
     </div>
@@ -221,11 +229,7 @@ export const WelcomeMessage = ({
       className="mt-4 text-xs text-gryt-muted sm:ml-16"
       style={{ maxWidth: "45ch", fontFamily: "var(--code-font-family)" }}
     >
-      {conversationKind === "dm"
-        ? `This conversation is on ${serverName || "this server"}. Messaging them on another server starts a separate one.`
-        : automated
-          ? "Only bots and the system write here."
-          : "The first message begins the history."}
+      {historyLine(conversationKind, serverName, automated)}
     </p>
   </div>
 );
