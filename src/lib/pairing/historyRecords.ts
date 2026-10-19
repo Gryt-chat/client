@@ -33,8 +33,8 @@ function reactionsOf(v: unknown): ArchivedMessage["reactions"] {
 function attachmentsOf(v: Record<string, unknown>): ArchivedMessage["attachments"] {
   const out: ArchivedMessage["attachments"] = {};
   for (const [fileId, key] of Object.entries(v)) {
-    if (isObject(key) && typeof key.id === "string" && typeof key.key === "string" && typeof key.iv === "string") {
-      out[fileId] = { ...key, id: key.id, key: key.key, iv: key.iv } as ArchivedMessage["attachments"][string];
+    if (isObject(key) && typeof key.id === "string" && typeof key.key === "string") {
+      out[fileId] = { ...key, id: key.id, key: key.key } as ArchivedMessage["attachments"][string];
     }
   }
   return out;
