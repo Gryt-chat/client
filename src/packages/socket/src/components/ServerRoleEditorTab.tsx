@@ -80,6 +80,7 @@ function SortableRole({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id, disabled });
 
+  const dragCursor = isDragging ? "grabbing" : "grab";
   return (
     <div
       ref={setNodeRef}
@@ -88,7 +89,7 @@ function SortableRole({
         transition,
         opacity: isDragging ? 0.85 : 1,
         zIndex: isDragging ? 10 : undefined,
-        cursor: disabled ? "default" : isDragging ? "grabbing" : "grab",
+        cursor: disabled ? "default" : dragCursor,
       }}
       {...attributes}
       {...listeners}
@@ -183,6 +184,11 @@ function RoleColorField({
       )}
     </div>
   );
+}
+
+function withPermission(current: string[], permission: string, on: boolean): string[] {
+  if (!on) return current.filter((p) => p !== permission);
+  return current.includes(permission) ? current : [...current, permission];
 }
 
 /** The permission catalogue comes from the server, so a client older than it
@@ -446,11 +452,7 @@ export function ServerRoleEditorTab({
   const togglePermission = (roleId: string, permission: string, on: boolean) => {
     const role = state?.roles.find((r) => r.id === roleId);
     const current = permDrafts[roleId] ?? role?.permissions ?? [];
-    const next = on
-      ? current.includes(permission)
-        ? current
-        : [...current, permission]
-      : current.filter((p) => p !== permission);
+    const next = withPermission(current, permission, on);
 
     if (role) saveRole(role, roleId, next);
 
@@ -458,11 +460,7 @@ export function ServerRoleEditorTab({
       const current = drafts[roleId] ?? [];
       return {
         ...drafts,
-        [roleId]: on
-          ? current.includes(permission)
-            ? current
-            : [...current, permission]
-          : current.filter((p) => p !== permission),
+        [roleId]: withPermission(current, permission, on),
       };
     });
   };
@@ -544,9 +542,10 @@ export function ServerRoleEditorTab({
         </div>
 
         <Surface style={{ flex: "1 1 380px", minWidth: "min(320px, 100%)" }}>
-          {!draft ? (
+          {!draft && (
             <span className="text-sm text-gryt-muted">Pick a role to edit.</span>
-          ) : draft.id === OWNER_ROLE ? (
+          )}
+          {draft?.id === OWNER_ROLE && (
             /* The server takes a colour-only save for this role and refuses the
                rest, so this panel offers that and says why. */
             <div className="flex flex-col gap-4">
@@ -569,7 +568,8 @@ export function ServerRoleEditorTab({
                 </span>
               </div>
             </div>
-          ) : (
+          )}
+          {draft && draft.id !== OWNER_ROLE && (
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex flex-col gap-1">

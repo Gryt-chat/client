@@ -153,11 +153,8 @@ export function ConnectedUser({
               </div>
             </Tooltip>
           )}
-          {isDeafened ? (
-            <PiSpeakerSlashFill size={14} color="var(--gryt-danger-8)" />
-          ) : isMuted ? (
-            <PiMicrophoneSlashFill size={14} color="var(--gryt-danger-8)" />
-          ) : null}
+          {isDeafened && <PiSpeakerSlashFill size={14} color="var(--gryt-danger-8)" />}
+          {!isDeafened && isMuted && <PiMicrophoneSlashFill size={14} color="var(--gryt-danger-8)" />}
           {isAFK && (
             <span className="text-xs font-bold text-gryt-warning">
               AFK

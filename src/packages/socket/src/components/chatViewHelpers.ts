@@ -7,6 +7,11 @@ import { toDate } from "./chatUtils";
 import type { MemberInfo } from "./MemberSidebar";
 import type { MessageMeta } from "./MessageRow";
 
+function systemEventOf(text: string): "joined" | "left" | "added" {
+  if (/\bleft the server\b/.test(text)) return "left";
+  return ADDED_LINE.test(text) ? "added" : "joined";
+}
+
 /** A group's "Al added Sivert" line from the server (GRYT-1753): two mentions either side of "added". */
 export const ADDED_LINE = /^\[@(.+?)\]\(mention:([^)]+)\) added \[@(.+?)\]\(mention:([^)]+)\)$/;
 
@@ -74,11 +79,7 @@ export function buildMessageMetadata(
 
     /* Which arrow the event row draws, read off the text rather than a field:
        the server sends these as ordinary message rows. */
-    const systemEvent: "joined" | "left" | "added" | undefined = isSystem
-      ? /\bleft the server\b/.test(m.text ?? "")
-        ? "left"
-        : ADDED_LINE.test(m.text ?? "") ? "added" : "joined"
-      : undefined;
+    const systemEvent = isSystem ? systemEventOf(m.text ?? "") : undefined;
 
     const senderName = isSystem ? "System" : getSenderName(m);
     const avatarUrl = isSystem ? undefined : getSenderAvatarUrl(m);

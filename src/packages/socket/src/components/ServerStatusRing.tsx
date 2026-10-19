@@ -22,6 +22,11 @@ const PATH_LENGTH = 100;
  *  enough that it is obviously not a full ring being drawn. */
 const SWEEP_DASH = 22;
 
+const RING_STROKE: Partial<Record<ServerRingState, string>> = {
+  starting: "var(--gryt-accent-9)",
+  reconnecting: "var(--gryt-warning-9)",
+};
+
 export function ServerStatusRing({
   state,
   settleMs,
@@ -34,14 +39,9 @@ export function ServerStatusRing({
 
   const depleting = state === "settling";
 
-  const stroke =
-    state === "starting"
-      ? "var(--gryt-accent-9)"
-      : state === "reconnecting"
-        ? "var(--gryt-warning-9)"
-        // neutral-10, not neutral-8: that measured 1.95:1 against the rail,
-        // under the 3:1 a non-text indicator needs. This clears it at 3.63:1.
-        : "var(--gryt-neutral-10)";
+  // neutral-10, not neutral-8: that measured 1.95:1 against the rail,
+  // under the 3:1 a non-text indicator needs. This clears it at 3.63:1.
+  const stroke = RING_STROKE[state] ?? "var(--gryt-neutral-10)";
 
   return (
     <svg

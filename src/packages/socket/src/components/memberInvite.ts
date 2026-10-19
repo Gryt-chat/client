@@ -34,13 +34,14 @@ export interface InviteState {
  */
 export function inviteState(invite: MemberInvite): InviteState {
   const dead = invite.revoked !== false;
+  const deadReason = invite.revoked === null ? "deleted" : "revoked";
 
   return {
     // The note is what an operator recognises. The code stays in `hint` because
     // that is what the Invites tab lists it under.
     label: invite.note || invite.code,
     dead,
-    reason: dead ? (invite.revoked === null ? "deleted" : "revoked") : null,
+    reason: dead ? deadReason : null,
     hint: [
       invite.code,
       // Only where the invite still exists. "0 of 0 used" under a deleted one
