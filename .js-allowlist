@@ -15,8 +15,6 @@ scripts/build-helper.mjs
 scripts/check-builder-config.mjs
 scripts/check-embedded-version.mjs
 scripts/check-extra-resources.mjs
-scripts/check-pairing-approver.mjs
-scripts/check-pairing-new-device.mjs
 scripts/check-prebuild-pruning.mjs
 scripts/check-update-feed-pin.mjs
 scripts/check-update-supersede.mjs
@@ -27,7 +25,6 @@ scripts/lib/describeVersion.mjs
 scripts/lib/updateEntryPoints.mjs
 scripts/notarize.cjs
 scripts/package-embedded-server.mjs
-scripts/pairing-fakes.mjs
 scripts/prepare-electron-build.mjs
 scripts/prune-prebuilds.cjs
 scripts/sign-windows.cjs

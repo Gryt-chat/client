@@ -6,24 +6,39 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 
-import { PairingRelayError } from "@gryt/core";
+import { type PairingRelay, PairingRelayError } from "@gryt/core";
 import { base64Url, encodePairingSessionId, generatePairingCode } from "@gryt/crypto";
 
 // ── a relay with auth#45's shapes, in memory ────────────────────────
 
-export function memoryRelay() {
-  const sessions = new Map();
-  const byCode = new Map();
-  const wake = (s) => { for (const w of s.waiters.splice(0)) w(); };
-  const find = (id, token) => {
+type RelayMessage = Awaited<ReturnType<PairingRelay["poll"]>>[number];
+type Side = "n" | "a";
+type Session = {
+  id: string;
+  commit: string;
+  tokens: { n: string; a: string | null };
+  sent: Record<Side, RelayMessage[]>;
+  seq: Record<Side, number>;
+  waiters: (() => void)[];
+  closed: boolean;
+  chunks?: Map<number, Uint8Array>;
+};
+
+export function memoryRelay(): PairingRelay {
+  const sessions = new Map<string, Session>();
+  const byCode = new Map<string, Session>();
+  const wake = (s: Session) => { for (const w of s.waiters.splice(0)) w(); };
+  const find = (id: string, token: string) => {
     const s = sessions.get(id);
     if (!s) throw new PairingRelayError(404, "unknown_session");
     if (s.closed) throw new PairingRelayError(410, "closed");
-    const side = token === s.tokens.n ? "n" : token === s.tokens.a ? "a" : null;
+    let side: Side | null = null;
+    if (token === s.tokens.n) side = "n";
+    else if (token === s.tokens.a) side = "a";
     if (!side) throw new PairingRelayError(401, "bad_token");
     return { s, side };
   };
-  const push = (s, from, message) => {
+  const push = (s: Session, from: Side, message: Omit<RelayMessage, "seq">) => {
     s.sent[from].push({ seq: ++s.seq[from], ...message });
     wake(s);
   };
@@ -31,7 +46,7 @@ export function memoryRelay() {
     async create(commit) {
       const id = encodePairingSessionId(randomBytes(16));
       const code = generatePairingCode();
-      const s = { id, commit, tokens: { n: base64Url(randomBytes(16)), a: null }, sent: { n: [], a: [] }, seq: { n: 0, a: 0 }, waiters: [], closed: false };
+      const s: Session = { id, commit, tokens: { n: base64Url(randomBytes(16)), a: null }, sent: { n: [], a: [] }, seq: { n: 0, a: 0 }, waiters: [], closed: false };
       sessions.set(id, s);
       byCode.set(code, s);
       return { id, code, token: s.tokens.n, expiresAt: new Date(Date.now() + 300_000).toISOString() };
@@ -55,7 +70,7 @@ export function memoryRelay() {
       const other = side === "n" ? "a" : "n";
       const ready = () => s.sent[other].filter((m) => m.seq > after);
       if (!ready().length && !s.closed) {
-        await new Promise((resolve) => {
+        await new Promise<void>((resolve) => {
           const timer = setTimeout(resolve, Math.min(waitSeconds, 1) * 1000);
           s.waiters.push(() => (clearTimeout(timer), resolve()));
           signal?.addEventListener("abort", () => (clearTimeout(timer), resolve()), { once: true });
@@ -89,20 +104,32 @@ export function memoryRelay() {
 
 // ── Keycloak's device grant and the approve extension, in memory ────
 
+/** The fields Keycloak's device grant, token and approve calls answer with here. */
+export type KeycloakReply = {
+  device_code?: string;
+  user_code?: string;
+  expires_in?: number;
+  interval?: number;
+  id_token?: string;
+  access_token?: string;
+  refresh_token?: string;
+  error?: string;
+};
+
 export const ISSUER = "https://auth.example/realms/gryt";
-const b64json = (v) => Buffer.from(JSON.stringify(v)).toString("base64url");
+const b64json = (v: object) => Buffer.from(JSON.stringify(v)).toString("base64url");
 
 export function memoryKeycloak({ sub = "user-1", extension = true } = {}) {
-  const codes = new Map();
-  const reply = (status, body) => ({ status, json: async () => body });
-  const calls = [];
-  const fetch = async (url, init) => {
+  const codes = new Map<string, { deviceCode: string; nonce: string | null; approved: boolean }>();
+  const reply = (status: number, body: KeycloakReply | null) => ({ status, json: async () => body });
+  const calls: string[] = [];
+  const fetch = async (url: string, init: { body?: string; headers?: Record<string, string> }) => {
     calls.push(url);
     const form = new URLSearchParams(init.body ?? "");
     if (url === `${ISSUER}/protocol/openid-connect/auth/device`) {
       assert.equal(form.get("client_id"), "gryt-web");
       assert.equal(form.get("code_challenge_method"), "S256");
-      assert.match(form.get("scope"), /offline_access/);
+      assert.match(form.get("scope") ?? "", /offline_access/);
       const userCode = `UC${codes.size}`;
       codes.set(userCode, { deviceCode: `dc-${userCode}`, nonce: form.get("nonce"), approved: false });
       return reply(200, { device_code: `dc-${userCode}`, user_code: userCode, expires_in: 300, interval: 0.01 });
@@ -116,16 +143,40 @@ export function memoryKeycloak({ sub = "user-1", extension = true } = {}) {
     }
     if (url === `${ISSUER}/gryt-pairing/approve`) {
       if (!extension) return reply(404, null);
-      const body = JSON.parse(init.body);
+      const body = JSON.parse(init.body ?? "null");
       const code = codes.get(body.user_code);
       if (!code || code.nonce !== body.binding) return reply(403, { error: "binding_mismatch" });
-      assert.equal(init.headers.authorization, "Bearer fresh-token");
+      assert.equal(init.headers?.authorization, "Bearer fresh-token");
       code.approved = true;
       return reply(204, null);
     }
     throw new Error(`Unexpected fetch ${url}`);
   };
   /** What Keycloak's own device page does when somebody chooses Yes there. */
-  const approveInBrowser = (userCode) => void (codes.get(userCode).approved = true);
+  const approveInBrowser = (userCode: string) => {
+    const code = codes.get(userCode);
+    assert.ok(code, `no device code ${userCode} to approve`);
+    code.approved = true;
+  };
   return { fetch, calls, approveInBrowser };
 }
+
+// ── waiting on either machine ───────────────────────────────────────
+
+/** A pairing machine as waitFor sees it: a state with a phase, and a way to hear it change. */
+type Machine<S extends { phase: string }> = { state: S; subscribe(listener: (state: S) => void): () => void };
+
+export const waitFor = <S extends { phase: string }, P extends S["phase"]>(machine: Machine<S>, phases: P[], ms = 10_000) =>
+  new Promise<Extract<S, { phase: P }>>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Stuck in ${machine.state.phase}, wanted ${phases}`)), ms);
+    const check = (s: S) => {
+      if (!phases.includes(s.phase as P)) return false;
+      clearTimeout(timer);
+      unsubscribe();
+      // The phase was just checked, which TypeScript can't carry through includes().
+      resolve(s as Extract<S, { phase: P }>);
+      return true;
+    };
+    const unsubscribe = machine.subscribe(check);
+    check(machine.state);
+  });
