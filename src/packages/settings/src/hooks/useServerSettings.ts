@@ -4,7 +4,7 @@ import { singletonHook } from "@/common";
 import { useUserId } from "@/common";
 
 import { orderServerHosts } from "../serverOrder";
-import { Server, Servers } from "../types/server";
+import type { Server, Servers } from "../types/server";
 import {
   dismissedLanServers as readDismissed,
   forgetLanServerDismissed as forgetDismissed,

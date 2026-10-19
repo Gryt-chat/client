@@ -31,7 +31,7 @@ import {
   statSync,
   writeFileSync,
 } from "fs";
-import { createServer, Server } from "http";
+import { createServer, type Server } from "http";
 import { dirname, extname, join, resolve } from "path";
 import semver from "semver";
 import { fileURLToPath } from "url";

@@ -3,8 +3,8 @@
  * process per capture, summed here; choosing applications is Windows only.
  */
 
-import { ChildProcess, execFileSync, spawn } from "child_process";
-import { app, BrowserWindow } from "electron";
+import { type ChildProcess, execFileSync, spawn } from "child_process";
+import { app, type BrowserWindow } from "electron";
 import { existsSync } from "fs";
 import { join } from "path";
 

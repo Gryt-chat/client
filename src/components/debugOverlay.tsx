@@ -1,5 +1,5 @@
 import { motion, useDragControls } from "motion/react";
-import { ReactNode,useRef } from "react";
+import { type ReactNode,useRef } from "react";
 
 import { PiCircleFill, PiDotsSixVerticalFill } from "../lib/icons";
 

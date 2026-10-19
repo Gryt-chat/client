@@ -23,7 +23,7 @@ import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
-import {
+import type {
   Server,
   serverDetailsList as ServerDetailsListType,
   Servers,

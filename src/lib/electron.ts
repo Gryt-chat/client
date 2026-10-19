@@ -1,4 +1,4 @@
-import { AddonManifest, AddonUpdate } from "@/addons";
+import type { AddonManifest, AddonUpdate } from "@/addons";
 
 import type { HotkeyAction, HotkeyBindings } from "./hotkeys";
 import type { RichActivity } from "./richActivity";

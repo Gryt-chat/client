@@ -202,16 +202,6 @@ module.exports = {
     // Type-only imports not marked yet; a mechanical PR of its own fixes them.
     {
       files: [
-        "electron/audioCaptureManager.ts",
-        "electron/embeddedServerManager.ts",
-        "electron/main.ts",
-        "electron/screenCaptureManager.ts",
-        "src/components/debugOverlay.tsx",
-        "src/components/sidebar.tsx",
-        "src/lib/electron.ts",
-        "src/packages/common/src/api/auth.ts",
-        "src/packages/settings/src/components/aboutSettings.tsx",
-        "src/packages/settings/src/hooks/useServerSettings.ts",
         "src/packages/socket/src/components/ChannelList.tsx",
         "src/packages/socket/src/components/ChatView.tsx",
         "src/packages/socket/src/components/MemberSidebar.tsx",
