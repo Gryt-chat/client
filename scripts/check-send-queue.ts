@@ -9,21 +9,23 @@ const { ACK_TIMEOUT_MS, GIVE_UP_AFTER_MS, RESTORE_GRACE_MS, SendQueue } = await 
 
 /** A socket.io client as far as the queue can tell, with a clock the test turns. */
 function harness({ connected = true } = {}) {
-  const listeners = new Map();
+  // QueueSocket types each listener for its own event's payload, which fire() hands over as it comes.
+  type Listener = (payload?: object) => void;
+  const listeners = new Map<string, Listener[]>();
   const socket = {
     connected,
-    on: (event, cb) => listeners.set(event, [...(listeners.get(event) ?? []), cb]),
-    off: (event, cb) => listeners.set(event, (listeners.get(event) ?? []).filter((f) => f !== cb)),
+    on: (event: string, cb: (payload: never) => void) => listeners.set(event, [...(listeners.get(event) ?? []), cb as Listener]),
+    off: (event: string, cb: (payload: never) => void) => listeners.set(event, (listeners.get(event) ?? []).filter((f) => f !== cb)),
   };
-  const fire = (event, payload) => {
+  const fire = (event: string, payload?: object) => {
     for (const cb of listeners.get(event) ?? []) cb(payload);
   };
 
   let now = 0;
-  let timers = [];
+  let timers: { id: number; at: number; fn: () => void }[] = [];
   let nextId = 0;
-  const clock = {
-    setTimeout: (fn, ms) => {
+  const clock: NonNullable<ConstructorParameters<typeof SendQueue>[1]["timers"]> = {
+    setTimeout: (fn: () => void, ms: number) => {
       const id = ++nextId;
       timers.push({ id, at: now + ms, fn });
       return id;
@@ -33,7 +35,7 @@ function harness({ connected = true } = {}) {
     },
   };
   const settle = () => new Promise((resolve) => setImmediate(resolve));
-  const advance = async (ms) => {
+  const advance = async (ms: number) => {
     const end = now + ms;
     for (;;) {
       await settle();
@@ -47,8 +49,8 @@ function harness({ connected = true } = {}) {
     await settle();
   };
 
-  const sent = [];
-  const gaveUp = [];
+  const sent: string[] = [];
+  const gaveUp: string[] = [];
   const waiting = new Map();
   const queue = new SendQueue(socket, {
     emit: async (nonce) => {
@@ -70,7 +72,7 @@ function harness({ connected = true } = {}) {
     fire("connect");
   };
   const restored = () => fire("server:details", { channels: [] });
-  const echo = (nonce) => fire("chat:new", { message_id: `id-${nonce}`, nonce });
+  const echo = (nonce: string) => fire("chat:new", { message_id: `id-${nonce}`, nonce });
   return { queue, socket, fire, advance, settle, sent, gaveUp, waiting, drop, back, restored, echo };
 }
 
