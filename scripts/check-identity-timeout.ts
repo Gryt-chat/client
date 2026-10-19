@@ -16,11 +16,11 @@ const IDENTITY_TIMEOUT_MS = Number(source.match(/const IDENTITY_TIMEOUT_MS = (\d
 assert.ok(IDENTITY_TIMEOUT_MS > 0, "serverAuth.ts no longer declares IDENTITY_TIMEOUT_MS as a number");
 
 // serverAuth.ts's own relative imports, resolved from where it sits rather than from here.
-const resolveFromGuard = (spec) =>
+const resolveFromGuard = (spec: string) =>
   spec.startsWith("./") ? new URL(`../src/packages/socket/src/utils/${spec.slice(2)}.ts`, import.meta.url).href : import.meta.resolve(spec);
 
 // Only what the guard asks of @/common. A missing proof is a refusal, as it is for a pinned server.
-const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const moduleUrl = (text: string) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
 const COMMON = moduleUrl(`
   let n = 0;
   export const createClientNonce = () => "nonce-" + ++n;
@@ -37,23 +37,25 @@ const COMMON = moduleUrl(`
 `);
 const compiled = ts
   .transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } })
-  .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) =>
+  .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_: string, head: string, spec: string) =>
     `${head}"${spec === "@/common" ? COMMON : resolveFromGuard(spec)}"`);
 
 // A clock the check turns, so five seconds of silence take no time at all.
 let now = 0;
-let timers = [];
+let timers: { id: number; at: number; fn: () => void }[] = [];
 let nextId = 0;
-globalThis.setTimeout = (fn, ms) => {
-  const id = ++nextId;
-  timers.push({ id, at: now + ms, fn });
-  return id;
-};
-globalThis.clearTimeout = (id) => {
-  timers = timers.filter((t) => t.id !== id);
-};
+Object.assign(globalThis, {
+  setTimeout: (fn: () => void, ms: number) => {
+    const id = ++nextId;
+    timers.push({ id, at: now + ms, fn });
+    return id;
+  },
+  clearTimeout: (id: number) => {
+    timers = timers.filter((t) => t.id !== id);
+  },
+});
 const settle = () => new Promise((resolve) => setImmediate(resolve));
-async function advance(ms) {
+async function advance(ms: number) {
   const until = now + ms;
   for (;;) {
     const due = timers.filter((t) => t.at <= until).sort((a, b) => a.at - b.at)[0];
@@ -67,18 +69,22 @@ async function advance(ms) {
   await settle();
 }
 
-globalThis.__decisions = [];
+/** What the stubbed @/common records, read back through globalThis. */
+type Decision = { action: string; failure?: { reason: string } };
+const shared = globalThis as typeof globalThis & { __decisions: Decision[] };
+shared.__decisions = [];
 const { guardSocket } = await import(moduleUrl(compiled));
 
 /** A socket.io client as far as the guard can tell. `answer` plays the server. */
 function fakeSocket() {
-  const listeners = new Map();
-  const sent = [];
+  type Payload = string | { clientNonce?: string; proof?: string };
+  const listeners = new Map<string, ((payload?: Payload) => void)[]>();
+  const sent: [string, ...Payload[]][] = [];
   const socket = {
     io: { opts: { reconnection: true } },
     disconnected: false,
-    on: (event, cb) => listeners.set(event, [...(listeners.get(event) ?? []), cb]),
-    emit: (event, ...args) => {
+    on: (event: string, cb: (payload?: Payload) => void) => listeners.set(event, [...(listeners.get(event) ?? []), cb]),
+    emit: (event: string, ...args: Payload[]) => {
       sent.push([event, ...args]);
       return socket;
     },
@@ -86,10 +92,13 @@ function fakeSocket() {
       socket.disconnected = true;
     },
   };
-  const fire = (event, payload) => {
+  const fire = (event: string, payload?: Payload) => {
     for (const cb of listeners.get(event) ?? []) cb(payload);
   };
-  const lastNonce = () => sent.filter(([e]) => e === "server:identify").at(-1)?.[1]?.clientNonce;
+  const lastNonce = () => {
+    const identify = sent.filter(([e]) => e === "server:identify").at(-1)?.[1];
+    return typeof identify === "object" ? identify.clientNonce : undefined;
+  };
   const answer = () => fire("server:identity", { proof: lastNonce() });
   return { socket, sent, fire, answer };
 }
@@ -100,10 +109,10 @@ console.log = silent;
 
 // A reconnect soon after the first connect is not refused by the first connection's wait.
 {
-  globalThis.__decisions = [];
+  shared.__decisions = [];
   const { socket, fire, answer } = fakeSocket();
-  let refused = null;
-  guardSocket(socket, "h", (d) => (refused = d));
+  let refused = null as Decision | null;
+  guardSocket(socket, "h", (d: Decision) => (refused = d));
   fire("connect");
   answer();
   await advance(1_000);
@@ -116,32 +125,32 @@ console.log = silent;
   await advance(IDENTITY_TIMEOUT_MS * 2);
   assert.equal(refused, null, "a server that answered on its reconnect was refused");
   assert.equal(socket.disconnected, false);
-  assert.ok(__decisions.every((d) => d.action === "trusted"), `decisions: ${JSON.stringify(__decisions)}`);
+  assert.ok(shared.__decisions.every((d) => d.action === "trusted"), `decisions: ${JSON.stringify(shared.__decisions)}`);
 }
 
 // A connection that drops before the answer, with nothing back yet, refuses nobody.
 {
-  globalThis.__decisions = [];
+  shared.__decisions = [];
   const { socket, fire } = fakeSocket();
-  let refused = null;
-  guardSocket(socket, "h", (d) => (refused = d));
+  let refused = null as Decision | null;
+  guardSocket(socket, "h", (d: Decision) => (refused = d));
   fire("connect");
   await advance(1_000);
   fire("disconnect", "transport close");
   await advance(IDENTITY_TIMEOUT_MS * 3);
   assert.equal(refused, null, "a wait outlived the connection it was for and refused the server");
-  assert.equal(__decisions.length, 0);
+  assert.equal(shared.__decisions.length, 0);
 }
 
 // A server that connects and stays silent is still refused: that is what the wait is for.
 {
-  globalThis.__decisions = [];
+  shared.__decisions = [];
   const { socket, fire } = fakeSocket();
-  let refused = null;
-  guardSocket(socket, "h", (d) => (refused = d));
+  let refused = null as Decision | null;
+  guardSocket(socket, "h", (d: Decision) => (refused = d));
   fire("connect");
   await advance(IDENTITY_TIMEOUT_MS - 1);
-  assert.equal(refused, null, "refused before the wait was over");
+  assert.equal(refused?.action, undefined, "refused before the wait was over");
   await advance(1);
   assert.equal(refused?.failure?.reason, "proof_withdrawn", "a pinned server that never answered was let through");
   assert.equal(socket.io.opts.reconnection, false);
@@ -149,10 +158,10 @@ console.log = silent;
 
 // The same, on a reconnect: its own silence is still caught.
 {
-  globalThis.__decisions = [];
+  shared.__decisions = [];
   const { socket, fire, answer } = fakeSocket();
-  let refused = null;
-  guardSocket(socket, "h", (d) => (refused = d));
+  let refused = null as Decision | null;
+  guardSocket(socket, "h", (d: Decision) => (refused = d));
   fire("connect");
   answer();
   await advance(500);

@@ -14,8 +14,12 @@ import {
   recordByServerUser,
   resolveSelfClientId,
 } from "../src/packages/socket/src/lib/heldVoicePresence.ts";
+import type { Client, Clients } from "../src/packages/socket/src/types/clients.ts";
 
-const inVoice = (serverUserId, extra = {}) => ({
+/** A roster entry with only the fields presence reads; mute, colour and AFK never matter here. */
+const client = (fields: Partial<Client>) => fields as Client;
+
+const inVoice = (serverUserId: string, extra: Partial<Client> = {}) => client({
   serverUserId,
   nickname: serverUserId,
   hasJoinedChannel: true,
@@ -26,7 +30,7 @@ const inVoice = (serverUserId, extra = {}) => ({
   ...extra,
 });
 /** What a restarted server sends before the re-announce lands. */
-const forgotten = (serverUserId) => ({
+const forgotten = (serverUserId: string) => client({
   serverUserId,
   nickname: serverUserId,
   hasJoinedChannel: false,
@@ -36,9 +40,9 @@ const forgotten = (serverUserId) => ({
 const live = () => true;
 const dead = () => false;
 
-function settle(rosters, mediaLive = live) {
-  let held = {};
-  let clients;
+function settle(rosters: Clients[], mediaLive: (client: Client) => boolean = live) {
+  let held: Parameters<typeof holdVoicePresence>[1] = {};
+  let clients: Clients = {};
   for (const roster of rosters) ({ clients, held } = holdVoicePresence(roster, held, mediaLive));
   return { clients, held };
 }
@@ -91,7 +95,7 @@ function settle(rosters, mediaLive = live) {
 {
   const { clients, held } = settle(
     [{ s1: inVoice("alice"), s2: inVoice("bob") }, { n1: forgotten("alice") }],
-    (client) => client.serverUserId !== "bob",
+    (who: Client) => who.serverUserId !== "bob",
   );
   assert.equal(clients.s2, undefined);
   assert.equal(held.bob, undefined);
@@ -148,7 +152,7 @@ function settle(rosters, mediaLive = live) {
   ]).clients;
   assert.deepEqual(byRosterClientId(speaking, reannounced), { n2: true });
   // Nobody without a serverUserId is merged with anybody else.
-  const anon = { a1: { nickname: "x", hasJoinedChannel: true } };
+  const anon = { a1: client({ nickname: "x", hasJoinedChannel: true }) };
   assert.deepEqual(byRosterClientId({ a1: true }, anon), { a1: true });
 }
 
