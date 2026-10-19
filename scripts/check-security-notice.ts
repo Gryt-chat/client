@@ -9,8 +9,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const fileUrl = (path) => pathToFileURL(join(root, path)).href;
-const read = (path) => readFileSync(join(root, path), "utf8");
+const fileUrl = (path: string) => pathToFileURL(join(root, path)).href;
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const FEED = "src/lib/changelogFeed.ts";
 const NOTICES = "src/lib/securityNotices.ts";
@@ -19,11 +19,13 @@ const VIEW = "src/packages/socket/src/components/serverView.tsx";
 
 /* Node has no localStorage. A Map behind the same three calls, installed before anything reads it. */
 const storage = new Map();
-globalThis.localStorage = {
-  getItem: (key) => (storage.has(key) ? storage.get(key) : null),
-  setItem: (key, value) => void storage.set(key, String(value)),
-  removeItem: (key) => void storage.delete(key),
-};
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (key: string) => (storage.has(key) ? storage.get(key) : null),
+    setItem: (key: string, value: string) => void storage.set(key, String(value)),
+    removeItem: (key: string) => void storage.delete(key),
+  },
+});
 
 const feed = await import(fileUrl(FEED));
 const notices = await import(fileUrl(NOTICES));
@@ -38,7 +40,7 @@ const {
   subscribeDismissals,
 } = notices;
 
-const notice = (id, fixedIn, extra = {}) => ({
+const notice = (id: string, fixedIn: string, extra: object = {}) => ({
   id,
   surface: "server",
   fixedIn,
@@ -48,8 +50,8 @@ const notice = (id, fixedIn, extra = {}) => ({
   ...extra,
 });
 
-const NONE = new Set();
-const shown = (list, version, dismissed = NONE) => noticeForServer(list, version, dismissed);
+const NONE = new Set<string>();
+const shown = (list: object[], version: string | number | null | undefined, dismissed = NONE) => noticeForServer(list, version, dismissed);
 
 /* ── versions ────────────────────────────────────────────────────────────── */
 
@@ -193,9 +195,9 @@ for (const info of [{ role: "member" }, { role: "mod" }, { role: "guest" }, { ro
 const { getChangelog, loadChangelog, resetChangelogFeed, subscribeChangelog, RETRY_DELAYS_MS } = feed;
 
 /** A site that answers with `body`, counting how often it is asked. */
-function site(body) {
-  const calls = [];
-  const fetch = (url, init) => {
+function site(body: object | string | number[] | null) {
+  const calls: { url: string; cache?: RequestCache }[] = [];
+  const fetch = (url: string, init?: RequestInit) => {
     calls.push({ url, cache: init?.cache });
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
   };
@@ -225,12 +227,12 @@ const noWait = () => Promise.resolve();
   assert.equal(calls.length, 2, "a reader asking for a fresh copy was given the old one");
 
   // A copy that doesn't have what a reader waits for is asked for again, on the delays.
-  const slept = [];
+  const slept: number[] = [];
   const waited = await loadChangelog(signal, {
     fetch,
     maxAgeMs: Infinity,
-    accept: (data) => data.app.length > 0,
-    sleep: (ms) => (slept.push(ms), Promise.resolve()),
+    accept: (data: { app: object[] }) => data.app.length > 0,
+    sleep: (ms: number) => (slept.push(ms), Promise.resolve()),
   });
   assert.equal(waited, null);
   assert.deepEqual(slept, RETRY_DELAYS_MS, "it did not retry on the delays written down");
@@ -258,9 +260,9 @@ const noWait = () => Promise.resolve();
 
 // Compiled with the client's TypeScript. @gryt/ui and the icons are stubbed; the two lib modules are the real ones.
 const ts = (await import("typescript")).default;
-const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const moduleUrl = (text: string) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
 const react = import.meta.resolve("react");
-const STUBS = {
+const STUBS: Record<string, string> = {
   "@gryt/ui": moduleUrl(`
     import { createElement as h } from ${JSON.stringify(react)};
     export const IconButton = ({ children, onClick, ...rest }) =>
@@ -274,7 +276,7 @@ const compiled = ts
   .transpileModule(read(BANNER), {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   })
-  .outputText.replace(/from "([^"]+)"/g, (_, spec) => `from "${STUBS[spec] ?? import.meta.resolve(spec)}"`);
+  .outputText.replace(/from "([^"]+)"/g, (_: string, spec: string) => `from "${STUBS[spec] ?? import.meta.resolve(spec)}"`);
 const { SecurityNoticeBanner } = await import(moduleUrl(compiled));
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
@@ -287,12 +289,12 @@ assert.equal(
 assert.match(securityNoticeText("2.3.5", true), /^This server has a known security issue\. Update Gryt\b.*2\.3\.5 or later\.$/);
 
 /** Loads a changelog into the shared feed the way the site would serve it. */
-async function serve(body) {
+async function serve(body: object) {
   resetChangelogFeed();
   await loadChangelog(new AbortController().signal, { fetch: site(body).fetch });
 }
 
-const draw = (props) =>
+const draw = (props: object) =>
   renderToStaticMarkup(
     createElement(SecurityNoticeBanner, { host: "chat.example.com", hostedHere: false, ...props }),
   );
