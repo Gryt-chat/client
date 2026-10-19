@@ -302,7 +302,8 @@ export async function initKeycloak(): Promise<KeycloakInitResult> {
     return initPromise;
   }
 
-  const env = isElectron() ? 'electron' : keepsOwnTokens() ? 'browser, linked' : 'browser';
+  const browserEnv = keepsOwnTokens() ? 'browser, linked' : 'browser';
+  const env = isElectron() ? 'electron' : browserEnv;
   console.log("[Auth:KC] initKeycloak: first call, env:", env);
   initPromise = keepsOwnTokens() ? initKeycloakForElectron() : initKeycloakForBrowser();
 
