@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
-
 /* The conversation the chat pane is drawing right now. Kept apart from React state so a socket
    handler can ask it, to catch a message marked unread that should have been drawn (GRYT-1671). */
 

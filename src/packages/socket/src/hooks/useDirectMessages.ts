@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /* The title and its two types moved to `@gryt/core`. This file's version missed
    the empty-group case, so an unnamed group drew a blank row (GRYT-898). */
 import { type DirectConversation } from "@gryt/core";

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 import { Button, CardIcon, Checkbox, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
 import { UserCircle } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";

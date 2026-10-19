@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 import { Tooltip } from "@gryt/ui";
 import { cloneElement, isValidElement, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";

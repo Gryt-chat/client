@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 import { Avatar, Popover } from "@gryt/ui";
 import { useCallback, useMemo, useState } from "react";
 

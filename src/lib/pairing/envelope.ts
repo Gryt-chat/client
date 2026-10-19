@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
-
 import type { IdentityBackupEntry, IdentityScope, PairingAccount, PairingEnvelope, PairingPin, PairingServer, PeerPin } from "@gryt/crypto";
 
 /* What the approving device seals to the new one (GRYT-1484). Built from this device's own

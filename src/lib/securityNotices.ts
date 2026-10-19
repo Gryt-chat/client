@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * Security fixes the site publishes in changelog.json, and which servers they
  * apply to. The banner that shows them is SecurityNoticeBanner.

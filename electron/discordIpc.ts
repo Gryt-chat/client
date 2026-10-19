@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /**
  * The Discord Rich Presence socket. Holds `discord-ipc-0` when it is free and
  * answers games itself, so while Gryt has it, games report to Gryt instead of Discord.

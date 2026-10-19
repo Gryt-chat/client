@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * What a plugin and the app say to each other. A plugin runs in a worker, so this
  * is its whole reach. Free of every other module: both sides import it (GRYT-930).

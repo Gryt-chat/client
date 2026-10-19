@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /**
  * Which of the programs you asked about are running. Reads the process list and
  * never passes it on — a plugin gets "yes to one you listed", not the list.

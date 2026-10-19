@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 import type { WebhookCardData } from "@gryt/ui";
 
 import { massMentionHits, type MentionViewer } from "../../../lib/mentionTokens.ts";

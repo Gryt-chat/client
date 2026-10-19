@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * Servers this device has been signed out of. A note to ourselves, not a security
  * boundary — it keeps a laptop signed out across a restart (GRYT-987).

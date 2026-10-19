@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /**
  * The app's end of gryt-helper's private channel (GRYT-1605): where it is, and what it says.
  * The same file ships in the opt-in PR, so the two merge cleanly in either order.

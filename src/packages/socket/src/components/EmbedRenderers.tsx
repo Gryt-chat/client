@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: responses from other services arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 import { Skeleton, VideoPlayer } from "@gryt/ui";
 import { useEffect, useState } from "react";
 

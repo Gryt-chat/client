@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /* Getting a send to the server through drops and restarts. Pure, so
    scripts/check-send-queue.mjs can drive it with a fake socket and clock. */
 

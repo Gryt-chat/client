@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
-
 /**
  * Every Phosphor icon, each in its own chunk. This module is itself loaded on demand,
  * so the card and the main bundle only ever carry the icons somebody picked.

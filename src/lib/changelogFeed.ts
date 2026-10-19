@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: responses from other services arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /**
  * The site's changelog.json, fetched once for everything in the app that reads it.
  * What's new wants the release lines, the security notice wants `securityNotices`.

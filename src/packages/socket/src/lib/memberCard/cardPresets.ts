@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * Cards you saved, kept on this device with their banners. Nothing here goes to a server:
  * picking one puts the style and the banner back in the editor, and Save sends them as usual.

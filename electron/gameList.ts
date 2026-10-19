@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /**
  * The games Gryt knows by name, shipped in `games.json`. Rich Presence looks a
  * game up by its Discord application id, and automatic mode by its executable.

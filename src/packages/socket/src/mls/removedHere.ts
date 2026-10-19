@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /*
  * Servers that removed this device from MLS (GRYT-1555). Until the person signs in again, or
  * restores their identity, no new device is made there: that's what stops a stolen one coming back.

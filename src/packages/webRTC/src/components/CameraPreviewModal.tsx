@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 import { Button, Checkbox, Chip, Dialog, IconButton, Select } from "@gryt/ui";
 import { CAMERA_FPS_OPTIONS, type CameraQuality, QUALITY_CONSTRAINTS } from "@gryt/voice";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /**
  * The update this run holds, downloading or downloaded, and which one an install lands on.
  * A newer release replaces it, in the background or at the press (GRYT-1213).

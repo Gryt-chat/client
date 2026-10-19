@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: responses from other services arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 import type { DeviceTokenPoll, PairingFetch, PairingOidc } from "@gryt/core";
 
 /* The two RFC 8628 calls against Keycloak, for the account half of linking (GRYT-1484).

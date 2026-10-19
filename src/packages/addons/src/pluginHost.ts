@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * The app's side of a plugin: one worker each, and the only way in. The addon id
  * comes from which worker a message arrived on, never from the message (GRYT-930).

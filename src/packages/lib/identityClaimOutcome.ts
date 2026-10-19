@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
-
 export interface ClaimOutcomeToast {
   tone: "success" | "info" | "error";
   message: string;

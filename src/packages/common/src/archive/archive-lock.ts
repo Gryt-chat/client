@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: caught errors are unknown until checked. Remove as each is typed (GRYT-1792). */
-
 /**
  * Exactly one tab does MLS work, because two tabs processing the same group at once
  * corrupt its state. The rest wait in the lock queue and read the archive.

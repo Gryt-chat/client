@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: responses from other services arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 import axios, { AxiosInstance, AxiosResponse } from "axios";
 
 import { LoginData, RegisterData } from "@/common";

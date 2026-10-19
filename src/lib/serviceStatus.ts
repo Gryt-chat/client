@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * Whether to tell a signed-in person that Gryt is having a problem, and what to
  * say. A probe says whether; the status page's own API says what.

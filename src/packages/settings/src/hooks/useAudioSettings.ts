@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
-
 import { useState } from "react";
 
 import { requestNotificationPermission } from "@/lib/desktopNotification";

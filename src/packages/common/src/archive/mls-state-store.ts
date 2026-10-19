@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
-
 import type { MlsDeviceRecord, MlsGroupRecord, MlsKeyPackageRecord, MlsStateStore } from "@gryt/core";
 import { base64Url, base64UrlDecode } from "@gryt/crypto";
 

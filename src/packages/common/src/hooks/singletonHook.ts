@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
-
 import type { ReactElement } from "react";
 import { createElement, useLayoutEffect, useSyncExternalStore } from "react";
 

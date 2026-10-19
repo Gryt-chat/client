@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /**
  * Which release a pressed Check for Updates should point the updater at, and
  * what to say when there is none (GRYT-1050) or GitHub can't be asked (GRYT-1170).

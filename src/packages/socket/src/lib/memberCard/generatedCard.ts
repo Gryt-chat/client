@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
-
 /**
  * The card somebody has before they make one: a style worked out from their name, the
  * way their owl is. Everybody's app draws the same one, and nothing is stored for it.

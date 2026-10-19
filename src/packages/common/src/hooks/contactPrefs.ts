@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * Who may message or ring you (GRYT-1470): one answer for every server, and an
  * override per server. Kept on this device, and written to each server on connect.

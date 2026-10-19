@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /** How one failed `/api/link-preview` request came back. */
 export type PreviewFailure =
   | { kind: "status"; status: number; retryAfter?: string | null; retryAfterMs?: unknown }

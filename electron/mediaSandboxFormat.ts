@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 /* What the desktop media sandbox makes, shared by the main process, the sandboxed page and the
    checks. Mirrors the image worker's profiles, so a desktop server stores what a Docker one does. */
 

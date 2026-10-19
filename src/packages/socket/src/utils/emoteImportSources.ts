@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /**
  * Where imported emotes can come from. Adding a third source means an entry here;
  * nothing else in the import path knows which site an emote came from.

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
-
 import { existsSync, readFileSync, renameSync, writeFileSync } from "fs";
 import { join } from "path";
 

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
-
 import { useSyncExternalStore } from "react";
 
 import { FAKE_CONFIRMED, fakeFriendList, isFakeHost, onFakeHostClaimed } from "../dev/fakeDms.ts";

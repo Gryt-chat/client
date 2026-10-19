@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 import { jwtDecode } from "jwt-decode";
 
 import { forgetAllServerFileAccess, forgetServerFileAccess, hasServerFileAccess, holdServerFileAccess } from "./fileUrlAuth";

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
-
 /* Which servers on this network this machine has looked at, and which it was
    told to hide. Both belong to the device, not to an account. GRYT-1142. */
 

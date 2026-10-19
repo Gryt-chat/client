@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
-
 /**
  * The tail of the renderer's own log, so a bug report can carry it. **Nothing is
  * redacted, and this is off unless the reporter ticks the box.**
