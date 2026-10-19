@@ -233,7 +233,7 @@ export function MemberIdentityCard({
   const moreItems: CardMenuItem[] = [
     { key: "id", label: "Copy ID", onSelect: () => copy(member.serverUserId, "Copied user ID") },
     ...(!isSelf && actions.onToggleBlock
-      ? [{ key: "block", label: blocked ? "Unblock" : "Block", danger: !blocked, onSelect: () => actions.onToggleBlock!(member.serverUserId) }]
+      ? [{ key: "block", label: blocked ? "Unblock" : "Block", danger: !blocked, onSelect: () => actions.onToggleBlock?.(member.serverUserId) }]
       : []),
     {
       key: "style",
@@ -293,7 +293,7 @@ export function MemberIdentityCard({
         {!isSelf && actions.onOpenDm && can("send_direct_messages") && (
           <Close
             render={<button type="button" className="gmc-ib" aria-label="Message" data-tip="Message" />}
-            onClick={() => actions.onOpenDm!(member.serverUserId)}
+            onClick={() => actions.onOpenDm?.(member.serverUserId)}
           >
             <CardIcon.chat />
           </Close>
@@ -347,7 +347,7 @@ export function MemberIdentityCard({
             className="gmc-ib danger"
             aria-label="Report"
             data-tip="Report"
-            onClick={() => actions.onReport!({ serverUserId: member.serverUserId, nickname: member.nickname })}
+            onClick={() => actions.onReport?.({ serverUserId: member.serverUserId, nickname: member.nickname })}
           >
             <CardIcon.flag />
           </button>
@@ -372,7 +372,7 @@ export function MemberIdentityCard({
                 onOpenChange={setMenuOpen}
                 items={assignableRoles.map((r) => {
                   const holds = heldRoles.includes(r.id);
-                  return { key: r.id, label: r.name, checked: holds, onSelect: () => admin.onToggleRole!(member.serverUserId, r.id, !holds) };
+                  return { key: r.id, label: r.name, checked: holds, onSelect: () => admin.onToggleRole?.(member.serverUserId, r.id, !holds) };
                 })}
               />
             )}
@@ -383,7 +383,7 @@ export function MemberIdentityCard({
                 aria-label={member.isServerMuted ? "Remove server mute" : "Server mute"}
                 aria-pressed={!!member.isServerMuted}
                 data-tip={member.isServerMuted ? "Remove server mute" : "Server mute"}
-                onClick={() => admin.onServerMuteUser!(member.serverUserId, !member.isServerMuted)}
+                onClick={() => admin.onServerMuteUser?.(member.serverUserId, !member.isServerMuted)}
               >
                 <CardIcon.mic />
               </button>
@@ -395,24 +395,24 @@ export function MemberIdentityCard({
                 aria-label={member.isServerDeafened ? "Remove server deafen" : "Server deafen"}
                 aria-pressed={!!member.isServerDeafened}
                 data-tip={member.isServerDeafened ? "Remove server deafen" : "Server deafen"}
-                onClick={() => admin.onServerDeafenUser!(member.serverUserId, !member.isServerDeafened)}
+                onClick={() => admin.onServerDeafenUser?.(member.serverUserId, !member.isServerDeafened)}
               >
                 <CardIcon.deaf />
               </button>
             )}
             {canDisconnect && (
-              <button type="button" className="gmc-ib" aria-label="Disconnect from voice" data-tip="Disconnect from voice" onClick={() => admin.onDisconnectUser!(member.serverUserId)}>
+              <button type="button" className="gmc-ib" aria-label="Disconnect from voice" data-tip="Disconnect from voice" onClick={() => admin.onDisconnectUser?.(member.serverUserId)}>
                 <CardIcon.disc />
               </button>
             )}
             <span className="sp" />
             {canKick && (
-              <button type="button" className="gmc-ib danger" aria-label="Kick from server" data-tip="Kick from server" onClick={() => admin.onKickUser!(member.serverUserId)}>
+              <button type="button" className="gmc-ib danger" aria-label="Kick from server" data-tip="Kick from server" onClick={() => admin.onKickUser?.(member.serverUserId)}>
                 <CardIcon.kick />
               </button>
             )}
             {canBan && (
-              <button type="button" className="gmc-ib danger" aria-label="Ban from server" data-tip="Ban from server" onClick={() => admin.onBanUser!(member.serverUserId)}>
+              <button type="button" className="gmc-ib danger" aria-label="Ban from server" data-tip="Ban from server" onClick={() => admin.onBanUser?.(member.serverUserId)}>
                 <CardIcon.ban />
               </button>
             )}

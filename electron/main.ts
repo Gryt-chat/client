@@ -7,6 +7,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  type MessageBoxOptions,
   nativeImage,
   Notification,
   powerMonitor,
@@ -637,9 +638,10 @@ async function warnIfAppImageMoved(): Promise<boolean> {
   if (state.kind === "not-applicable" || state.kind === "present") return true;
 
   const parent = mainWindow ?? undefined;
+  const showBox = (options: MessageBoxOptions) => (parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options));
 
   if (state.kind === "trashed") {
-    const { response } = await dialog.showMessageBox(parent!, {
+    const { response } = await showBox({
       type: "warning",
       title: "Gryt is in the Trash",
       message: "Gryt is running from the Trash.",
@@ -664,7 +666,7 @@ async function warnIfAppImageMoved(): Promise<boolean> {
       ensureLinuxAppImageProtocolHandler(restored);
       startupLog(`Recovered AppImage from Trash to ${restored}`);
 
-      await dialog.showMessageBox(parent!, {
+      await showBox({
         type: "info",
         title: "Gryt moved",
         message: `Gryt now lives in ${APPS_DIR}.`,
@@ -678,7 +680,7 @@ async function warnIfAppImageMoved(): Promise<boolean> {
       return true;
     } catch (error) {
       startupLog(`Could not recover AppImage: ${error}`);
-      await dialog.showMessageBox(parent!, {
+      await showBox({
         type: "error",
         title: "Could not move Gryt",
         message: "Gryt could not move itself out of the Trash.",
@@ -694,7 +696,7 @@ async function warnIfAppImageMoved(): Promise<boolean> {
 
   /* Gone, and not in the Trash. There is nothing to put back — say what is
      wrong and what fixes it, rather than offering a button that cannot work. */
-  const { response } = await dialog.showMessageBox(parent!, {
+  const { response } = await showBox({
     type: "warning",
     title: "Gryt has moved",
     message: "Gryt is not where it was when it started.",

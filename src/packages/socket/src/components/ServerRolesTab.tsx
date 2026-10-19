@@ -285,28 +285,28 @@ export function ServerRolesTab({
                         the server and an open join needs no code, so an absent
                         entry is ordinary and a label saying so would be noise
                         on most rows. */}
-                    {maySeeInvites && invitesAnswered && invite && (
+                    {maySeeInvites && invitesAnswered && invite && state && (
                       <span className="flex items-center gap-1.5 text-xs">
                         <span className="text-gryt-muted">Joined with</span>
                         {/* The note where there is one, because "Kari's
                             friends" is what an operator recognises and the code
                             is a random string. The code stays reachable on
                             hover, since it is what the Invites tab lists. */}
-                        <Tooltip title={state!.hint}>
+                        <Tooltip title={state.hint}>
                           <span
                             style={{
                               fontFamily: "var(--code-font-family)",
-                              color: state!.dead ? "var(--gryt-neutral-10)" : "var(--gryt-text)",
-                              textDecoration: state!.dead ? "line-through" : undefined,
+                              color: state.dead ? "var(--gryt-neutral-10)" : "var(--gryt-text)",
+                              textDecoration: state.dead ? "line-through" : undefined,
                             }}
                           >
-                            {state!.label}
+                            {state.label}
                           </span>
                         </Tooltip>
-                        {state!.reason && (
-                          <span className="text-gryt-muted">· {state!.reason}</span>
+                        {state.reason && (
+                          <span className="text-gryt-muted">· {state.reason}</span>
                         )}
-                        {!state!.dead && (
+                        {!state.dead && (
                           <Button
                             tone="ghost"
                             size="xsmall"

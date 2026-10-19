@@ -506,15 +506,16 @@ export function ProfileSettings() {
 
         anySuccess = true;
         if (r.value.processing) anyProcessing = true;
-        if (r.value.avatarFileId) {
-          localStorage.setItem(`avatarFileId:${host}`, r.value.avatarFileId);
+        const { avatarFileId } = r.value;
+        if (avatarFileId) {
+          localStorage.setItem(`avatarFileId:${host}`, avatarFileId);
           if (uploadHash) localStorage.setItem(`avatarHash:${host}`, uploadHash);
           setServerProfiles(prev => ({
             ...prev,
             [host]: {
               ...prev[host],
-              avatarFileId: r.value.avatarFileId!,
-              avatarUrl: getUploadsFileUrl(host, r.value.avatarFileId!, isVideo ? { thumb: true } : undefined),
+              avatarFileId,
+              avatarUrl: getUploadsFileUrl(host, avatarFileId, isVideo ? { thumb: true } : undefined),
               avatarWorn: worn,
               avatarVideo: isVideo,
             },
@@ -743,9 +744,10 @@ export function ProfileSettings() {
         const p = serverProfiles[h];
         return p?.avatarVideo && p.avatarFileId && p.avatarFileId === localStorage.getItem(`avatarFileId:${h}`);
       });
+      const videoFileId = videoSource ? serverProfiles[videoSource]?.avatarFileId : undefined;
       const stored = userId ? await getStoredAvatar(userId).catch(() => null) : null;
-      if (videoSource) {
-        await copyVideoAvatar(videoSource, serverProfiles[videoSource]!.avatarFileId!, hosts);
+      if (videoSource && videoFileId) {
+        await copyVideoAvatar(videoSource, videoFileId, hosts);
       } else if (stored?.blob) {
         const minMax = getAvatarMaxBytes(hosts);
         let uploadFile: Blob = stored.blob;
@@ -769,15 +771,16 @@ export function ProfileSettings() {
             avatarFailed++;
             return;
           }
-          if (r.value.avatarFileId) {
-            localStorage.setItem(`avatarFileId:${host}`, r.value.avatarFileId);
+          const { avatarFileId } = r.value;
+          if (avatarFileId) {
+            localStorage.setItem(`avatarFileId:${host}`, avatarFileId);
             if (uploadHash) localStorage.setItem(`avatarHash:${host}`, uploadHash);
             setServerProfiles(prev => ({
               ...prev,
               [host]: {
                 ...prev[host],
-                avatarFileId: r.value.avatarFileId!,
-                avatarUrl: getUploadsFileUrl(host, r.value.avatarFileId!),
+                avatarFileId,
+                avatarUrl: getUploadsFileUrl(host, avatarFileId),
               },
             }));
           }
