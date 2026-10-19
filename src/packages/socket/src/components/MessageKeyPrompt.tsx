@@ -133,7 +133,7 @@ export function MessageKeyPrompt() {
         </p>
       </div>
 
-      {!open ? (
+      {!open && (
         <div className="flex gap-2">
           <Button size="xsmall" onClick={() => setOpen(true)}>
             {offer === "adopt" ? "Enter it" : "Set a password"}
@@ -145,14 +145,16 @@ export function MessageKeyPrompt() {
             Not now
           </Button>
         </div>
-      ) : offer === "protect" ? (
+      )}
+      {open && offer === "protect" && (
         <MessagePasswordSetup
           submitLabel="Save"
           busy={busy}
           onSubmit={(choice) => void unlock(choice)}
           onCancel={() => setOpen(false)}
         />
-      ) : (
+      )}
+      {open && offer !== "protect" && (
         <div className="flex items-end gap-2 flex-wrap">
           <TextField
             type="password"

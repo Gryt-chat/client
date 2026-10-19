@@ -6,6 +6,15 @@ import type { SealDecision } from "@/common";
 import { PiShieldSlashFill } from "../../../../lib/icons";
 import { setMarksHidden, useMarksHidden } from "../lib/unencryptedMarks";
 
+function whyNotEncrypted(s: { changedWho: string | null; unusable: boolean; who: string | null; serverName: string }): string {
+  if (s.changedWho) {
+    return `${s.changedWho}’s app is using a different key than last time. That’s normal after a reinstall or a new phone. It’s also what somebody pretending to be them would look like, so nothing is encrypted to it until you say so.`;
+  }
+  const readable = `Whoever runs ${s.serverName} can read what you send here.`;
+  if (s.unusable) return `${readable} ${s.who}’s key didn’t check out, which usually means their app is too old for this.`;
+  return s.who ? `${readable} ${s.who}’s app hasn’t set up a key for this server yet.` : readable;
+}
+
 /**
  * "Not encrypted" in a DM's header, and what clicking it says (boards 5b, 5c): why, what
  * can be done about it, and turning off the dots on each message here.
@@ -38,13 +47,7 @@ export function NotEncryptedPopover({
   const changed = blocked.find((b) => b.reason === "changed");
   const changedWho = changed ? memberNames[changed.memberId] ?? "Somebody here" : null;
 
-  const why = changedWho
-    ? `${changedWho}’s app is using a different key than last time. That’s normal after a reinstall or a new phone. It’s also what somebody pretending to be them would look like, so nothing is encrypted to it until you say so.`
-    : first?.reason === "unusable"
-      ? `Whoever runs ${serverName} can read what you send here. ${who}’s key didn’t check out, which usually means their app is too old for this.`
-      : who
-        ? `Whoever runs ${serverName} can read what you send here. ${who}’s app hasn’t set up a key for this server yet.`
-        : `Whoever runs ${serverName} can read what you send here.`;
+  const why = whyNotEncrypted({ changedWho, unusable: first?.reason === "unusable", who, serverName });
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>

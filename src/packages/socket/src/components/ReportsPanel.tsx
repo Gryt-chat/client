@@ -15,6 +15,20 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { FileCard } from "./FileCard";
 import { ImageLightbox } from "./ImageLightbox";
 
+const CONFIRM = {
+  ban: { title: "Delete all messages & ban user?", label: "Delete All & Ban", description: "" },
+  close: {
+    title: "Close this report?",
+    label: "Close Report",
+    description: "This closes the report. The message itself stays untouched. It's end-to-end encrypted, so only the people in that conversation have a copy.",
+  },
+  delete: {
+    title: "Delete this message?",
+    label: "Delete Message",
+    description: "This will permanently delete this reported message. This cannot be undone.",
+  },
+};
+
 /**
  * A person somebody reported, with every open report about them folded in. One
  * card per person, so six reports about one person is one row.
@@ -266,6 +280,9 @@ export function ReportsPanel({
     return member?.nickname || serverUserId.slice(0, 8) + "...";
   };
 
+  const closeOrDelete = confirmAction?.report.unverified ? "close" : "delete";
+  const confirmKind = confirmAction?.action === "delete_all_and_ban" ? "ban" : closeOrDelete;
+
   return (
     <>
       <div className="flex flex-col gap-3">
@@ -281,11 +298,12 @@ export function ReportsPanel({
           Reported messages, and people reported for something with no single
           message behind it.
         </span>
-          {isLoading ? (
+          {isLoading && (
             <div className="flex items-center justify-center py-12">
               <Spinner size={24} />
             </div>
-          ) : loadError ? (
+          )}
+          {!isLoading && loadError && (
             /* Not the empty state. An empty queue is good news; this is the
                panel admitting it does not know. */
             <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -295,14 +313,16 @@ export function ReportsPanel({
                 Try again
               </Button>
             </div>
-          ) : reports.length === 0 && userReports.length === 0 ? (
+          )}
+          {!isLoading && !loadError && reports.length === 0 && userReports.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
               <PiCheck size={32} style={{ color: "var(--gryt-success-9)" }} />
               <span className="text-base text-gryt-muted">
                 No pending reports
               </span>
             </div>
-          ) : (
+          )}
+          {!isLoading && !loadError && (reports.length > 0 || userReports.length > 0) && (
               <div className="flex flex-col gap-3" style={{ minWidth: 0 }}>
                 {/* People first. A report about a person is the one with a
                     reader waiting on it — there is no message sitting in a
@@ -356,33 +376,17 @@ export function ReportsPanel({
       <ConfirmDialog
         open={!!confirmAction}
         onOpenChange={(open) => !open && setConfirmAction(null)}
-        title={
-          confirmAction?.action === "delete_all_and_ban"
-            ? "Delete all messages & ban user?"
-            : confirmAction?.report.unverified
-              ? "Close this report?"
-              : "Delete this message?"
-        }
+        title={CONFIRM[confirmKind].title}
         description={
-          confirmAction?.action === "delete_all_and_ban" ? (
+          confirmKind === "ban" ? (
             <>
               This will permanently delete <strong>all messages</strong> from{" "}
-              <strong>{confirmAction.report.senderNickname || "this user"}</strong> across
+              <strong>{confirmAction?.report.senderNickname || "this user"}</strong> across
               every channel and ban them from the server. This cannot be undone.
             </>
-          ) : confirmAction?.report.unverified ? (
-            "This closes the report. The message itself stays untouched. It's end-to-end encrypted, so only the people in that conversation have a copy."
-          ) : (
-            "This will permanently delete this reported message. This cannot be undone."
-          )
+          ) : CONFIRM[confirmKind].description
         }
-        confirmLabel={
-          confirmAction?.action === "delete_all_and_ban"
-            ? "Delete All & Ban"
-            : confirmAction?.report.unverified
-              ? "Close Report"
-              : "Delete Message"
-        }
+        confirmLabel={CONFIRM[confirmKind].label}
         onConfirm={() => {
           if (!confirmAction) return;
           if (confirmAction.action === "delete_all_and_ban") {

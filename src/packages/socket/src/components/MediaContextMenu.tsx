@@ -8,6 +8,11 @@ import { getFrequentReactions } from "../utils/recentReactions";
 import { EmojiPickerContent } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
 
+function threadCount(unread: number | undefined, replies: number | undefined): string {
+  if (unread) return ` (${unread} new)`;
+  return replies ? ` (${replies})` : "";
+}
+
 export interface MessageActions {
   messageText?: string | null;
   onReply?: () => void;
@@ -205,26 +210,25 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
           </div>
         </ContextMenu.Item>
       )}
-      {actions.onOpenThread ? (
+      {actions.onOpenThread && (
         <ContextMenu.Item onClick={actions.onOpenThread}>
           <div className="flex items-center gap-1">
             <PiChatsTeardropFill size={14} />
             {/* What is waiting beats how big it is. The reply count says the
                 thread is nine long, which is the same the tenth time you look
                 at it; the unread count is the reason to open it (GRYT-1026). */}
-            Open thread{actions.unreadCount
-              ? ` (${actions.unreadCount} new)`
-              : actions.replyCount ? ` (${actions.replyCount})` : ""}
+            Open thread{threadCount(actions.unreadCount, actions.replyCount)}
           </div>
         </ContextMenu.Item>
-      ) : actions.onStartThread ? (
+      )}
+      {!actions.onOpenThread && actions.onStartThread && (
         <ContextMenu.Item onClick={actions.onStartThread}>
           <div className="flex items-center gap-1">
             <PiChatsTeardropFill size={14} />
             Start thread
           </div>
         </ContextMenu.Item>
-      ) : null}
+      )}
       {actions.onTogglePin && (
         <ContextMenu.Item onClick={actions.onTogglePin}>
           <div className="flex items-center gap-1">

@@ -346,7 +346,10 @@ export const MemberSidebar = ({
 
   const setCardOpen = useCallback(
     (serverUserId: string, open: boolean) =>
-      setOpenCardFor((current) => (open ? serverUserId : current === serverUserId ? null : current)),
+      setOpenCardFor((current) => {
+        if (open) return serverUserId;
+        return current === serverUserId ? null : current;
+      }),
     [],
   );
 

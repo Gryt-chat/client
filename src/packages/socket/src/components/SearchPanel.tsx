@@ -43,6 +43,15 @@ function dayLabel(d: Date): string {
 
 type Option = { filter: SearchFilter; detail?: string };
 
+function noHitsLine(error: string | null | undefined, local: boolean, tab: SearchKind): string {
+  if (error === "unsupported") {
+    return local ? "This device has no message history to search." : "This server doesn't support search yet. It needs an update.";
+  }
+  if (error === "rate_limited") return "Searching too fast. Give it a few seconds.";
+  if (error) return "Search didn't work this time. Try again.";
+  return tab === "files" ? "No files match." : "No messages match.";
+}
+
 /** The search side panel (GRYT-1738): messages and file names on this server, with
     filters as chips. It stays open while you open results, so the chat beside it moves. */
 export function SearchPanel({
@@ -202,6 +211,7 @@ export function SearchPanel({
     return resolveAvatarSrc(uploaded, nameOf(hit), member?.avatarWorn);
   };
   const count = (n: number) => (n >= 1000 ? "1000+" : String(n));
+  const searchPrompt = local ? "Search messages" : `Search ${serverName}`;
   const muted = { color: "var(--gryt-neutral-11)" };
   let index = -1;
 
@@ -246,7 +256,7 @@ export function SearchPanel({
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={filters.length ? "" : local ? "Search messages" : `Search ${serverName}`}
+              placeholder={filters.length ? "" : searchPrompt}
               aria-label={local ? "Search direct messages" : `Search ${serverName}`}
               data-gryt="search-input"
               className="min-w-[80px] grow border-0 bg-transparent py-0.5 text-sm outline-none"
@@ -292,7 +302,7 @@ export function SearchPanel({
         )}
       </div>
 
-      {token ? (
+      {token && (
         <div className="flex flex-col py-1" role="listbox" aria-label={`Pick ${token.key}`} data-gryt="search-options">
           {options.length === 0 ? (
             <div className="px-3 py-2 text-sm" style={muted}>
@@ -317,7 +327,8 @@ export function SearchPanel({
             ))
           )}
         </div>
-      ) : !searching ? (
+      )}
+      {!token && !searching && (
         <div className="flex flex-col gap-2 p-3">
           <div className="text-xs font-semibold uppercase" style={muted}>Narrow it down</div>
           <div className="flex flex-wrap gap-1.5">
@@ -343,7 +354,8 @@ export function SearchPanel({
               : "Searches the channels you can read here. Direct messages aren\u2019t included."}
           </div>
         </div>
-      ) : (
+      )}
+      {!token && searching && (
         <div ref={listRef} className="flex min-h-0 grow flex-col gap-1.5 overflow-y-auto px-2.5 pb-3" data-gryt="search-results">
           {groupByDay(hits).map((group) => (
             <div key={group.day} className="flex flex-col gap-1.5">
@@ -354,17 +366,17 @@ export function SearchPanel({
                 const id = hit.message_id + (hit.file?.file_id ?? "");
                 const selected = i === active;
                 const opened = id === openedId;
+                const pickedState = selected ? "selected" : undefined;
                 return (
                   <button
                     key={id}
                     type="button"
                     data-index={i}
                     data-gryt="search-hit"
-                    className="flex w-full cursor-pointer gap-2.5 p-2.5 text-left"
+                    data-state={opened ? "opened" : pickedState}
+                    className="flex w-full cursor-pointer gap-2.5 border border-(--gryt-neutral-6) bg-(--gryt-neutral-2) p-2.5 text-left data-[state=opened]:border-(--gryt-accent-8) data-[state=opened]:bg-(--gryt-accent-4) data-[state=selected]:border-(--gryt-accent-8) data-[state=selected]:bg-(--gryt-neutral-4)"
                     style={{
                       borderRadius: "var(--gryt-radius-md)",
-                      border: `1px solid ${opened || selected ? "var(--gryt-accent-8)" : "var(--gryt-neutral-6)"}`,
-                      background: opened ? "var(--gryt-accent-4)" : selected ? "var(--gryt-neutral-4)" : "var(--gryt-neutral-2)",
                       color: "var(--gryt-neutral-12)",
                     }}
                     onMouseMove={() => setActive(i)}
@@ -408,15 +420,7 @@ export function SearchPanel({
           ))}
           {hits.length === 0 && !shown.loading && (
             <div className="px-1 py-6 text-center text-sm" style={muted}>
-              {shown.error === "unsupported"
-                ? local ? "This device has no message history to search." : "This server doesn't support search yet. It needs an update."
-                : shown.error === "rate_limited"
-                ? "Searching too fast. Give it a few seconds."
-                : shown.error
-                  ? "Search didn't work this time. Try again."
-                  : tab === "files"
-                    ? "No files match."
-                    : "No messages match."}
+              {noHitsLine(shown.error, Boolean(local), tab)}
             </div>
           )}
           {shown.loading && <div className="px-1 py-3 text-center text-xs" style={muted}>Searching…</div>}

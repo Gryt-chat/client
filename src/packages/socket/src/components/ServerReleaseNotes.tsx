@@ -99,12 +99,8 @@ export function ServerReleaseNotes({
     [lines, running, latest, beta],
   );
 
-  const empty =
-    lines && (feed !== opened || gaveUp)
-      ? "There aren't any notes for these releases yet."
-      : gaveUp
-        ? "The release notes didn't load."
-        : "Loading the release notes…";
+  const stillLoading = gaveUp ? "The release notes didn't load." : "Loading the release notes…";
+  const empty = lines && (feed !== opened || gaveUp) ? "There aren't any notes for these releases yet." : stillLoading;
 
   return (
     <WhatsNewDialog

@@ -42,11 +42,12 @@ export function MarkAsReadItem({ host, scope }: { host: string; scope: MarkReadS
     conversationMentionCount(host, id) +
     conversationThreadUnreadCount(host, id);
 
-  const waiting = scope.kind === "server"
-    ? serverUnreadCount(host) + serverMentionCount(host) + serverThreadUnreadCount(host)
-    : scope.kind === "folder"
-      ? scope.channelIds.reduce((n, id) => n + conversationCount(id), 0)
-      : conversationCount(scope.id);
+  const waitingIn = (s: MarkReadScope): number => {
+    if (s.kind === "server") return serverUnreadCount(host) + serverMentionCount(host) + serverThreadUnreadCount(host);
+    if (s.kind === "folder") return s.channelIds.reduce((n, id) => n + conversationCount(id), 0);
+    return conversationCount(s.id);
+  };
+  const waiting = waitingIn(scope);
 
   const readConversation = (id: string) => {
     markChannelRead(host, id);

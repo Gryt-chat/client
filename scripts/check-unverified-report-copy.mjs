@@ -23,18 +23,16 @@ assert.match(
    "permanently deletes" wording survives on a card where nothing is deleted. */
 assert.match(
   panel,
-  /confirmAction\?\.report\.unverified\s*\n\s*\? "Close this report\?"/,
-  `${PANEL}: the confirm dialog title must branch on confirmAction.report.unverified`,
+  /const closeOrDelete = confirmAction\?\.report\.unverified \? "close" : "delete";/,
+  `${PANEL}: the confirm dialog must pick its copy on confirmAction.report.unverified`,
 );
+for (const part of ["title", "label", "description"]) {
+  assert.match(panel, new RegExp(`CONFIRM\\[confirmKind\\]\\.${part}`), `${PANEL}: the confirm dialog's ${part} doesn't come from the chosen copy`);
+}
 assert.match(
   panel,
-  /confirmAction\?\.report\.unverified \? \(\s*\n\s*"This closes the report\./,
-  `${PANEL}: the confirm dialog description must branch on confirmAction.report.unverified`,
-);
-assert.match(
-  panel,
-  /confirmAction\?\.report\.unverified\s*\n\s*\? "Close Report"/,
-  `${PANEL}: the confirm dialog's confirm label must branch on confirmAction.report.unverified`,
+  /close: \{\s*title: "Close this report\?",\s*label: "Close Report",\s*description: "This closes the report\./,
+  `${PANEL}: closing an unverified report lost its own title, label or description`,
 );
 
 /* A normal (verified) report keeps saying the delete is permanent. */
