@@ -1,11 +1,11 @@
-// Note: CommonJS because electron-builder loads a JS config through require().
+// Note: CommonJS because electron-builder loads a JS config through require(). GRYT-1806 moves it.
 
 const fs = require("node:fs");
 const path = require("node:path");
 
 const yaml = require("js-yaml");
 
-const { prunePrebuilds } = require("./scripts/prune-prebuilds.cjs");
+const { prunePrebuilds } = require("./scripts/prune-prebuilds.ts");
 
 /**
  * electron-builder.yml, plus the handful of things a slim build changes.
@@ -22,15 +22,15 @@ const { prunePrebuilds } = require("./scripts/prune-prebuilds.cjs");
  *
  * `GRYT_VARIANT=slim` rather than a CLI flag, because the same value has to
  * reach the beforeBuild hook and the resource check, and neither of those is
- * passed electron-builder's arguments. See scripts/variant.mjs — this repeats
+ * passed electron-builder's arguments. See scripts/variant.ts — this repeats
  * its one-line check because that file is ESM.
  */
 const SLIM = process.env.GRYT_VARIANT === "slim";
 
-/** Kept in step with HELPER_RESOURCE_PREFIX in scripts/variant.mjs. */
+/** Kept in step with HELPER_RESOURCE_PREFIX in scripts/variant.ts. */
 const HELPER_RESOURCE_PREFIX = "build/helper/";
 
-/** Kept in step with EMBEDDED_RESOURCE_PREFIX in scripts/variant.mjs. */
+/** Kept in step with EMBEDDED_RESOURCE_PREFIX in scripts/variant.ts. */
 const EMBEDDED_RESOURCE_PREFIX = "build/embedded-";
 
 const config = yaml.load(
@@ -64,7 +64,7 @@ const MAS = process.env.GRYT_MAS === "1";
 /** Gryt's Apple team. The app group and application identifier are prefixed with it. */
 const MAS_TEAM_ID = "8883W2XTQ8";
 
-/** Kept in step with MAS_RUNTIME_SOURCE in scripts/variant.mjs. */
+/** Kept in step with MAS_RUNTIME_SOURCE in scripts/variant.ts. */
 const MAS_RUNTIME = {
   from: "build/embedded-server/",
   to: "embedded-server/",
@@ -102,7 +102,7 @@ if (MAS) {
 
 // Native prebuilds for platforms this package cannot run on. A hook rather than
 // a `files` exclude because app-builder-lib takes only `!` patterns for
-// node_modules -- see scripts/prune-prebuilds.cjs.
+// node_modules -- see scripts/prune-prebuilds.ts.
 config.afterPack = async (context) => {
   const { Arch } = require("builder-util");
   const { kept, removed } = prunePrebuilds(

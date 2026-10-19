@@ -5,12 +5,10 @@
 
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync,rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const require = createRequire(import.meta.url);
-const { prunePrebuilds, foreignPrebuilds, wantedDir } = require("./prune-prebuilds.cjs");
+import { foreignPrebuilds, prunePrebuilds, wantedDir } from "./prune-prebuilds.ts";
 
 const ALL = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-x64"];
 

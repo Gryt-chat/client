@@ -44,8 +44,8 @@ check("every desktop build carries the helper for its own arch", () => {
 });
 
 check("the beforeBuild hook builds it for the arch it's called with, and fails loudly", () => {
-  const hook = read("scripts/prepare-electron-build.mjs");
-  assert.match(hook, /export default async function beforeBuild\(context\)/);
+  const hook = read("scripts/prepare-electron-build.ts");
+  assert.match(hook, /export default async function beforeBuild\(context\?: BeforeBuildContext\)/);
   assert.match(hook, /buildHelper\(\{ platform, arch, out:/);
   assert.match(hook, /const arch = context\?\.arch/);
   assert.doesNotMatch(hook, /buildHelper[\s\S]{0,200}catch/, "a failed Go build must stop the release");
@@ -65,7 +65,7 @@ check("the Mac App Store build leaves both out", () => {
   const mas = configFor({ GRYT_MAS: "1" });
   assert.equal(mas.extraResources.some((e: { from: string }) => String(e.from).startsWith("build/helper/")), false);
   assert.deepEqual(mas.mac.extraFiles, []);
-  assert.match(read("scripts/prepare-electron-build.mjs"), /if \(!isMasBuild\(\)\) \{\s*const platform/);
+  assert.match(read("scripts/prepare-electron-build.ts"), /if \(!isMasBuild\(\)\) \{\s*const platform/);
 });
 
 check("Windows signs it with the rest: .exe is in signExts, through sign-windows.cjs", () => {

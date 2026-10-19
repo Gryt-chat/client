@@ -1002,7 +1002,7 @@ function isOnBetaChannel(): boolean {
 }
 
 /** Read off disk, because the missing `embedded-server.tar.gz` is what differs.
-    check-extra-resources.mjs catches a full build that lost it. */
+    check-extra-resources.ts catches a full build that lost it. */
 function isSlimInstall(): boolean {
   if (!app.isPackaged) return false;
   // The Mac App Store build ships the runtime unpacked instead of the archive.

@@ -2,8 +2,8 @@
  * Fails the build when something listed in extraResources is not on disk.
  * electron-builder skips a missing one silently and reports success.
  */
-import { readFileSync, existsSync, statSync } from "fs";
-import { join, dirname } from "path";
+import { existsSync, readFileSync, statSync } from "fs";
+import { dirname,join } from "path";
 import { fileURLToPath } from "url";
 
 import {
@@ -12,7 +12,7 @@ import {
   isSlimBuild,
   MAS_RUNTIME_PARTS,
   MAS_RUNTIME_SOURCE,
-} from "./variant.mjs";
+} from "./variant.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -21,12 +21,12 @@ const root = join(__dirname, "..");
  * The `from:` values out of electron-builder.yml's extraResources. Parsed by hand:
  * this runs inside electron-builder's own hook, to read six lines.
  */
-function extraResourceSources(yml) {
+function extraResourceSources(yml: string): string[] {
   const lines = yml.split("\n");
   const start = lines.findIndex((l) => l.trim() === "extraResources:");
   if (start === -1) return [];
 
-  const out = [];
+  const out: string[] = [];
   for (const line of lines.slice(start + 1)) {
     // Any non-indented, non-empty line ends the block.
     if (line.trim() && !/^\s/.test(line)) break;
@@ -36,7 +36,7 @@ function extraResourceSources(yml) {
   return out;
 }
 
-export default async function beforeBuild() {
+export default async function beforeBuild(): Promise<boolean> {
   const yml = readFileSync(join(root, "electron-builder.yml"), "utf8");
   const slim = isSlimBuild();
   const mas = isMasBuild();
@@ -52,8 +52,8 @@ export default async function beforeBuild() {
     sources.push(MAS_RUNTIME_SOURCE, ...MAS_RUNTIME_PARTS.map((part) => `${MAS_RUNTIME_SOURCE}/${part}`));
   }
 
-  const missing = [];
-  const empty = [];
+  const missing: string[] = [];
+  const empty: string[] = [];
   for (const src of sources) {
     // ${os}/${arch} placeholders are resolved per target by electron-builder,
     // so this cannot check them without duplicating that logic.
