@@ -9,38 +9,44 @@ import assert from "node:assert/strict";
 
 import { formatRecoveryKey, generateRecoveryKey } from "@gryt/crypto/recovery-key";
 
-import { openSeed, sealSeed } from "../src/packages/common/src/auth/identity-vault.ts";
-import { sealedVaultFrom, VAULT_ATTRIBUTE, withSealedVault } from "../src/packages/common/src/auth/message-vault.ts";
+import { openSeed, type SealedVault, sealSeed } from "../src/packages/common/src/auth/identity-vault.ts";
+import {
+  type AccountRepresentation,
+  sealedVaultFrom,
+  VAULT_ATTRIBUTE,
+  withSealedVault,
+} from "../src/packages/common/src/auth/message-vault.ts";
 import { resealFromThisDevice } from "../src/packages/common/src/auth/message-vault-upgrade.ts";
 
 const WORDS =
   "abandon amount liar amount expire adjust cage candy arch gather drum bullet " +
   "absurd math era live bid rhythm alien crouch range attend journey unaware";
 const SEED = new TextEncoder().encode(WORDS);
-const text = (bytes) => new TextDecoder().decode(bytes);
+const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 
 const FORGOTTEN = "the password nobody remembers";
 const NEW = "a brand new message password";
 
 /** A Keycloak account, through the same JSON round trip the Account API does. */
-function account(initial, { corruptWrites = false, failReads = 0 } = {}) {
-  let rep = withSealedVault({ email: "x@example.com", attributes: { locale: ["en"] } }, initial);
+function account(initial: SealedVault | null, { corruptWrites = false, failReads = 0 } = {}) {
+  let rep: AccountRepresentation = withSealedVault({ email: "x@example.com", attributes: { locale: ["en"] } }, initial);
   rep = JSON.parse(JSON.stringify(rep));
-  const writes = [];
+  const writes: SealedVault[] = [];
   let reads = 0;
+  let failuresLeft = failReads;
   return {
     writes,
     get current() { return sealedVaultFrom(rep); },
     get rep() { return rep; },
     async read() {
       reads++;
-      if (failReads && reads > 1 && failReads-- > 0) throw new Error("network");
+      if (failuresLeft && reads > 1 && failuresLeft-- > 0) throw new Error("network");
       return sealedVaultFrom(JSON.parse(JSON.stringify(rep)));
     },
-    async write(vault) {
+    async write(vault: SealedVault) {
       writes.push(vault);
-      const stored = JSON.parse(JSON.stringify(withSealedVault(rep, vault)));
-      if (corruptWrites && vault !== initial) stored.attributes[VAULT_ATTRIBUTE] = ["{\"half\":"];
+      const stored: AccountRepresentation = JSON.parse(JSON.stringify(withSealedVault(rep, vault)));
+      if (corruptWrites && vault !== initial) (stored.attributes ??= {})[VAULT_ATTRIBUTE] = ["{\"half\":"];
       rep = stored;
     },
   };
@@ -60,7 +66,7 @@ assert.equal(text(await openSeed(OLD, formatRecoveryKey(oldRecovery))), WORDS, "
   assert.equal(store.writes.length, 1);
 
   const now = store.current;
-  assert.equal(now.version, 2);
+  assert.ok(now?.version === 2, "the reseal didn't write version 2");
   assert.equal(text(await openSeed(now, NEW)), WORDS, "the new password opens it");
   await assert.rejects(() => openSeed(now, FORGOTTEN), /Wrong password/, "the old password stops working");
   await assert.rejects(
@@ -70,16 +76,18 @@ assert.equal(text(await openSeed(OLD, formatRecoveryKey(oldRecovery))), WORDS, "
   );
   assert.equal(text(await openSeed(now, formatRecoveryKey(newRecovery))), WORDS, "one made now works");
   assert.equal(store.rep.email, "x@example.com", "nothing else on the account moved");
-  assert.deepEqual(store.rep.attributes.locale, ["en"]);
+  assert.deepEqual(store.rep.attributes?.locale, ["en"]);
 }
 
 // ── skipping the recovery key leaves no recovery slot at all ────────────────
 {
   const store = account(OLD);
   assert.equal(await resealFromThisDevice(OLD, SEED, { password: NEW }, store), "resealed");
-  assert.equal(store.current.slots.length, 1);
-  assert.equal(store.current.slots[0].kind, "password");
-  await assert.rejects(() => openSeed(store.current, formatRecoveryKey(oldRecovery)));
+  const current = store.current;
+  assert.ok(current?.version === 2, "the reseal didn't write version 2");
+  assert.equal(current.slots.length, 1);
+  assert.equal(current.slots[0].kind, "password");
+  await assert.rejects(() => openSeed(current, formatRecoveryKey(oldRecovery)));
 }
 
 // ── the new one does not read back: the old one goes back ───────────────────
