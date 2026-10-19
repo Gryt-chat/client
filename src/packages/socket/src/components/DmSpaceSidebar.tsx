@@ -28,6 +28,12 @@ import { FilteredContacts } from "./FilteredContacts";
 import { FriendsPanel } from "./FriendsPanel";
 import { hideConversationWithUndo, useConfirmHide } from "./hideConversation";
 
+function sidebarPanel(friends: boolean, listed: number, matched: number) {
+  if (friends) return "friends";
+  if (listed === 0) return "empty";
+  return matched === 0 ? "no-match" : "list";
+}
+
 /**
  * The conversation list, in place of the channel sidebar. Every server's, not
  * this one's: it is the only column in Gryt that crosses servers (GRYT-1134).
@@ -181,6 +187,8 @@ export function DmSpaceSidebar({
 
   const selected = selectedConversationId ? { host, conversationId: selectedConversationId } : null;
 
+  const panel = sidebarPanel(tab === "friends", listed.length, matching.shown.length + matching.shownHidden.length);
+
   return (
     <aside
       data-gryt="dm-list"
@@ -245,17 +253,20 @@ export function DmSpaceSidebar({
         />
       </div>
 
-      {tab === "friends" ? (
+      {panel === "friends" && (
         <FriendsPanel query={query} />
-      ) : listed.length === 0 ? (
+      )}
+      {panel === "empty" && (
         <p className="px-4 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
           No conversations yet.
         </p>
-      ) : matching.shown.length === 0 && matching.shownHidden.length === 0 ? (
+      )}
+      {panel === "no-match" && (
         <p className="px-4 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
           Nothing matches &ldquo;{query}&rdquo;.
         </p>
-      ) : (
+      )}
+      {panel === "list" && (
         <div className="flex flex-1 flex-col overflow-y-auto px-2 pb-2">
           {pinned.length > 0 && (
             <>

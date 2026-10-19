@@ -146,15 +146,14 @@ export const EmojiAutocomplete = ({ query, visible, onSelect, onClose, serverHos
               fontSize: "20px",
             }}
           >
-            {entry.emoji ? (
-              entry.emoji
-            ) : entry.url ? (
+            {entry.emoji}
+            {!entry.emoji && entry.url && (
               <img
                 src={entry.url}
                 alt={entry.name}
                 style={{ width: "24px", height: "24px", objectFit: "contain" }}
               />
-            ) : null}
+            )}
           </span>
           <span style={{ color: "var(--gryt-neutral-12)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             :{entry.name}:

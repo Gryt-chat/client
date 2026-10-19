@@ -489,7 +489,8 @@ body {
   display: block;
 }
 
-.emoji-upload-preview-wrap[data-status="uploading"] .emoji-upload-preview-img {
+.emoji-upload-preview-wrap[data-status="uploading"] .emoji-upload-preview-img,
+.emoji-upload-preview-wrap[data-status="downloading"] .emoji-upload-preview-img {
   filter: grayscale(1);
   opacity: 0.45;
 }

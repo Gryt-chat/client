@@ -28,13 +28,7 @@ export function EmoteRow({
         disabled={importing}
       />
       <div className="emoji-upload-preview-wrap"
-        data-status={
-          e.status === "processing"
-            ? "processing"
-            : (e.status === "uploading" || e.status === "downloading")
-              ? "uploading"
-              : undefined
-        }
+        data-status={e.status}
       >
         <img
           className="emoji-upload-preview-img"
@@ -44,11 +38,9 @@ export function EmoteRow({
         {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (
           <div className="emoji-upload-preview-overlay">
             <div className="emoji-upload-preview-label">
-              {e.status === "downloading"
-                ? `DL ${e.progress}%`
-                : e.status === "processing"
-                  ? "PROC"
-                  : `${e.progress}%`}
+              {e.status === "downloading" && `DL ${e.progress}%`}
+              {e.status === "processing" && "PROC"}
+              {e.status === "uploading" && `${e.progress}%`}
             </div>
             {(e.status === "downloading" || e.status === "uploading" || e.status === "processing") && (
               <div className="emoji-upload-preview-bar">

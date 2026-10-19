@@ -37,6 +37,12 @@ const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
 const LONG_PASTE_NO_FILES =
   `That's too long to paste. Messages can be up to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters, and you can't attach files here.`;
 
+/** Where the drop line goes on a staged file: before it, or after the last one. */
+function dropMarker(dropAt: number | null, i: number, count: number): "before" | "after" | undefined {
+  if (dropAt === i) return "before";
+  return dropAt === i + 1 && i === count - 1 ? "after" : undefined;
+}
+
 export interface ChatEditorHandle {
   clear: () => void;
   focus: () => void;
@@ -705,7 +711,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                 className="chat-editor-file-preview"
                 draggable={pendingFiles.length > 1}
                 data-dragging={dragFrom === i || undefined}
-                data-drop={dropAt === i ? "before" : dropAt === i + 1 && i === pendingFiles.length - 1 ? "after" : undefined}
+                data-drop={dropMarker(dropAt, i, pendingFiles.length)}
                 onDragStart={(e) => {
                   setDragFrom(i);
                   e.dataTransfer.effectAllowed = "move";

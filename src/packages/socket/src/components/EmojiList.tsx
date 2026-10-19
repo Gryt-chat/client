@@ -179,15 +179,17 @@ export function EmojiList({
         )}
       </div>
 
-      {loading ? (
+      {loading && (
         <span className="text-sm">
           Loading...
         </span>
-      ) : emojis.length === 0 ? (
+      )}
+      {!loading && emojis.length === 0 && (
         <span className="text-sm">
           No custom emojis yet.
         </span>
-      ) : (
+      )}
+      {!loading && emojis.length > 0 && (
         <div className="flex flex-col gap-1">
           {emojis.map((e) => (
             <div className="flex items-center gap-3 py-1 px-2 emoji-row" key={e.name} style={{

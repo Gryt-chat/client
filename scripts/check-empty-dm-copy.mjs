@@ -44,7 +44,12 @@ const body = expression(
   "the paragraph under the heading",
 );
 
-const line = new Function("conversationKind", "sealing", "automated", `return (${body});`);
+/* The paragraph calls emptyLine(), so the function goes in with it, types stripped. */
+const ts = (await import("typescript")).default;
+const fnAt = empty.indexOf("function emptyLine(");
+assert.ok(fnAt >= 0, `${EMPTY} no longer has emptyLine()`);
+const fn = ts.transpile(empty.slice(fnAt, empty.indexOf("\n}\n", fnAt) + 2));
+const line = new Function("conversationKind", "sealing", "automated", `${fn}\nreturn (${body});`);
 
 /* A conversation the client is actually sealing. */
 const sealed = line("dm", { kind: "seal" }, false);
