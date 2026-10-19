@@ -33,7 +33,7 @@ test("soak", async () => {
   const harness = new Tracker(run.log("harness"), "harness");
   const summary = config.groups.map(({ invite, ...group }) => ({ ...group, invite: invite ? "set" : null }));
   writeFileSync(run.path("config.json"), `${JSON.stringify({ ...config, groups: summary, appUrl }, null, 2)}\n`);
-  harness.write("harness.config", { groups: summary, minutes: config.minutes, camera: config.camera, ping: config.ping });
+  harness.write("harness.config", { groups: summary, minutes: config.minutes, camera: config.camera, ping: config.ping, beepMs: config.beepMs });
   console.log(`Soak for ${config.minutes} minutes into ${run.dir}. Touch STOP there to end it early.`);
 
   const trackers: Tracker[] = [];
@@ -66,7 +66,8 @@ test("soak", async () => {
         trackers.push(track);
         for (let attempt = 1; attempt <= START_ATTEMPTS; attempt++) {
           try {
-            clients.push(await startCallClient(who, group, track, appUrl, config.camera));
+            const beep = config.beepMs ? { send: clients.length === 0, periodMs: config.beepMs } : null;
+            clients.push(await startCallClient(who, group, track, appUrl, config.camera, beep));
             break;
           } catch (err) {
             track.write("harness.start_failed", { attempt, error: (err as Error).message.slice(0, 2000) });

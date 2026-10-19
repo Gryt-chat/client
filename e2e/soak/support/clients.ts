@@ -6,6 +6,7 @@ import { leaveVoiceButton, VOICE_CHANNEL } from "../../nightly/support/call";
 import { connectedPeers, watchPeerConnections } from "../../nightly/support/webrtc";
 import { channelComposer, joinServer } from "../../support/app";
 import { prepare, uniqueName } from "../../support/fixtures";
+import { type BeepConfig, beepScript } from "./beepScript";
 import type { Group } from "./config";
 import type { Fields } from "./jsonl";
 import { type PageScriptConfig, soakPageScript } from "./pageScript";
@@ -21,6 +22,7 @@ export const BROWSER_ARGS = [
   "--disable-background-timer-throttling",
   "--disable-renderer-backgrounding",
   "--disable-backgrounding-occluded-windows",
+  "--autoplay-policy=no-user-gesture-required",
 ];
 
 /** Everything the page and Chromium's network stack say about the page, into its log. */
@@ -87,12 +89,19 @@ export interface CallClient {
 }
 
 /** One Chromium of its own, joined to the group's server and its voice channel, camera on if asked. */
-export async function startCallClient(who: string, group: Group, track: Tracker, appUrl: string, camera: boolean): Promise<CallClient> {
+export async function startCallClient(
+  who: string,
+  group: Group,
+  track: Tracker,
+  appUrl: string,
+  camera: boolean,
+  beep: BeepConfig | null = null,
+): Promise<CallClient> {
   const name = uniqueName(`Soak${group.name[0].toUpperCase()}`);
   const browser: Browser = await chromium.launch({ args: BROWSER_ARGS });
   browser.on("disconnected", () => track.write("browser.disconnected"));
   try {
-    return await joinCall(who, group, track, appUrl, camera, browser, name);
+    return await joinCall(who, group, track, appUrl, camera, browser, name, beep);
   } catch (err) {
     await browser.close().catch(() => undefined);
     throw err;
@@ -107,6 +116,7 @@ async function joinCall(
   camera: boolean,
   browser: Browser,
   name: string,
+  beep: BeepConfig | null,
 ): Promise<CallClient> {
   const context = await browser.newContext({
     baseURL: appUrl,
@@ -114,7 +124,15 @@ async function joinCall(
     permissions: ["microphone", "camera"],
   });
   await instrument(context, track, { rewrite: group.rewrite, statsIntervalMs: STATS_INTERVAL_MS });
+  if (beep) await context.addInitScript(beepScript, beep);
   await prepare(context, (problem) => track.write("harness.problem", { problem }), { nickname: name, allowHosts: [group.host] });
+  // A pure tone is what RNNoise removes, and auto gain would move the onset; voice#53's report had RNNoise off too.
+  if (beep) {
+    await context.addInitScript(() => {
+      const device = localStorage.getItem("gryt.deviceId");
+      for (const key of ["rnnoiseEnabled", "autoGainEnabled", "compressorEnabled"]) localStorage.setItem(`user:${device}:${key}`, "false");
+    });
+  }
   // Wraps the soak script's RTCPeerConnection, so both see every connection whichever runs first.
   await watchPeerConnections(context, group.hideLocal);
 

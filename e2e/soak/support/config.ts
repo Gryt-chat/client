@@ -26,6 +26,8 @@ export interface SoakConfig {
   camera: boolean;
   ping: string[];
   browserProbe: boolean;
+  /** Beep the first call client's microphone this often, and time it at the others (voice#53). */
+  beepMs: number | null;
 }
 
 const env = process.env;
@@ -70,5 +72,6 @@ export function readConfig(): SoakConfig {
     camera: env.GRYT_SOAK_CAMERA !== "0",
     ping: (env.GRYT_SOAK_PING ?? "").split(",").map((h) => h.trim()).filter(Boolean),
     browserProbe: env.GRYT_SOAK_BROWSER_PROBE !== "0",
+    beepMs: env.GRYT_SOAK_BEEP_MS ? Number(env.GRYT_SOAK_BEEP_MS) : null,
   };
 }
