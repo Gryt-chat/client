@@ -46,7 +46,6 @@ module.exports = {
       files: ["**/*.spec.ts"],
       rules: { "@typescript-eslint/no-non-null-assertion": "off" },
     },
-    },
     // Files that still use unknown, by why. The goal is to empty these lists (GRYT-1792).
     // unknown: socket payloads arrive unchecked and are validated there.
     {
