@@ -379,7 +379,8 @@ module.exports = {
       ],
       rules: { "@typescript-eslint/ban-types": "off" },
     },
-    // unknown: not typed yet.
+    // unknown: guards and parsers for outside values, values passed through as they are, browser stats,
+    // and Accordion values that @gryt/ui hands back untyped.
     {
       files: [
         "src/components/videoDebugStats.ts",
