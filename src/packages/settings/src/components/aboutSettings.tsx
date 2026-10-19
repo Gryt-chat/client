@@ -5,7 +5,7 @@ import { Wordmark } from "@/common";
 import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
-import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, MS_STORE_PAGE, UpdateStatus } from "../../../../lib/electron";
+import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, MS_STORE_PAGE, type UpdateStatus } from "../../../../lib/electron";
 import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatTeardropDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiSignpost, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";

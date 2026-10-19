@@ -1,6 +1,6 @@
-import axios, { AxiosInstance, AxiosResponse } from "axios";
+import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 
-import { LoginData, RegisterData } from "@/common";
+import type { LoginData, RegisterData } from "@/common";
 
 import { getGrytConfig } from "../../../../config";
 

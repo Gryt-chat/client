@@ -1,5 +1,5 @@
-import { ChildProcess, fork, spawn } from "child_process";
-import { app, BrowserWindow } from "electron";
+import { type ChildProcess, fork, spawn } from "child_process";
+import { app, type BrowserWindow } from "electron";
 import { existsSync, readFileSync } from "fs";
 import { chmod, cp, mkdir, rename, rm, writeFile } from "fs/promises";
 import { createServer } from "net";

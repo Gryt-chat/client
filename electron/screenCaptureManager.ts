@@ -3,8 +3,8 @@
  * WebSocket mode is preferred; stdout mode is the fallback for an old binary.
  */
 
-import { ChildProcess, spawn } from "child_process";
-import { app, BrowserWindow } from "electron";
+import { type ChildProcess, spawn } from "child_process";
+import { app, type BrowserWindow } from "electron";
 import { existsSync } from "fs";
 import { join } from "path";
 
