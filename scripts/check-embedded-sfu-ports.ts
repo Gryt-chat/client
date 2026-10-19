@@ -11,7 +11,7 @@ import { createSocket } from "node:dgram";
 import { EventEmitter } from "node:events";
 import * as fs from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
-import { createServer } from "node:net";
+import { createServer, type Server } from "node:net";
 import { networkInterfaces, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,35 +19,38 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG = "electron/embeddedServerConfig.ts";
 const MANAGER = "electron/embeddedServerManager.ts";
-const read = (path) => fs.readFileSync(join(root, path), "utf8");
-const moduleBody = (path, names) =>
+const read = (path: string) => fs.readFileSync(join(root, path), "utf8");
+const moduleBody = (path: string, names: string[]) =>
   `${stripTypeScriptTypes(read(path))
     .replace(/^import[\s\S]*?from "[^"]+";$/gm, "")
     .replace(/^export /gm, "")}\nreturn { ${names.join(", ")} };`;
 
 const scratch = fs.mkdtempSync(join(tmpdir(), "gryt-sfu-ports-"));
-const logged = [];
-const quiet = { ...console, log: (...args) => logged.push(args.join(" ")) };
+/** Anything the manager logs or stores. */
+type Value = string | number | boolean | object | null | undefined;
+
+const logged: string[] = [];
+const quiet = { ...console, log: (...args: Value[]) => logged.push(args.join(" ")) };
 process.on("exit", (code) => {
   fs.rmSync(scratch, { recursive: true, force: true });
   if (code !== 0) console.error(`\nWhat the manager logged:\n${logged.join("\n")}`);
 });
-const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const settle = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /* ── ports ─────────────────────────────────────────────────────────────── */
 
-function listen(port, host = "0.0.0.0") {
-  return new Promise((resolve) => {
+function listen(port: number, host = "0.0.0.0") {
+  return new Promise<Server | null>((resolve) => {
     const srv = createServer();
     srv.once("error", () => resolve(null));
     srv.listen(port, host, () => resolve(srv));
   });
 }
-const close = (srv) => new Promise((resolve) => (srv ? srv.close(() => resolve()) : resolve()));
+const close = (srv: Server | null) => new Promise<void>((resolve) => (srv ? srv.close(() => resolve()) : resolve()));
 
-async function canListen(port, host = "0.0.0.0") {
+async function canListen(port: number, host = "0.0.0.0") {
   const srv = createServer();
-  const ok = await new Promise((resolve) => {
+  const ok = await new Promise<boolean>((resolve) => {
     srv.once("error", () => resolve(false));
     srv.listen(port, host, () => resolve(true));
   });
@@ -56,15 +59,19 @@ async function canListen(port, host = "0.0.0.0") {
 }
 
 /* Holds a port the way another app's SFU does. Something on this machine already holding it counts too. */
-async function hold(port, host = "0.0.0.0") {
+async function hold(port: number, host = "0.0.0.0") {
   const srv = await listen(port, host);
   assert.equal(await canListen(port, host), false, `could not make ${host}:${port} unavailable for this check`);
   return () => close(srv);
 }
 
-async function freePorts(count) {
+async function freePorts(count: number) {
   const servers = await Promise.all(Array.from({ length: count }, () => listen(0)));
-  const ports = servers.map((srv) => srv.address().port);
+  const ports = servers.map((srv) => {
+    const address = srv?.address();
+    assert.ok(address && typeof address === "object", "could not bind a free port");
+    return address.port;
+  });
   await Promise.all(servers.map(close));
   return ports;
 }
@@ -75,7 +82,9 @@ async function freePorts(count) {
 let apps = 0;
 function newApp() {
   const dir = join(scratch, `app-${++apps}`);
-  const os = process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : "linux";
+  let os = "linux";
+  if (process.platform === "win32") os = "win";
+  else if (process.platform === "darwin") os = "mac";
   const sfu = join(dir, "build", "embedded-server", "sfu", `${os}-${process.arch === "arm64" ? "arm64" : "x64"}`);
   const server = join(dir, "build", "embedded-server", "server");
   const worker = join(dir, "build", "embedded-server", "worker", "dist");
@@ -95,7 +104,9 @@ const CONFIG_EXPORTS = [
   "updateCustomAdvertisedAddresses", "updateServerPorts",
 ];
 
-function loadConfigModule(app) {
+type App = ReturnType<typeof newApp>;
+
+function loadConfigModule(app: App) {
   return new Function(
     "randomBytes", "createSocket", "app", "existsSync", "mkdirSync", "readdirSync",
     "readFileSync", "rmSync", "writeFileSync", "createServer", "networkInterfaces", "join", "console",
@@ -107,8 +118,19 @@ function loadConfigModule(app) {
 }
 
 /* The SFU binds what it was told, like the real one, so a port it is running on reads as taken. */
-function fakeSfu(env) {
-  const proc = Object.assign(new EventEmitter(), { pid: 40001, killed: false, env, sockets: [] });
+type FakeProcess = EventEmitter & {
+  pid: number;
+  killed: boolean;
+  env: NodeJS.ProcessEnv;
+  stdout: EventEmitter;
+  stderr: EventEmitter;
+  kill: () => boolean;
+};
+type FakeSfu = FakeProcess & { sockets: Server[]; ready: Promise<void[]>; released?: Promise<void[]> };
+
+function fakeSfu(env: NodeJS.ProcessEnv) {
+  // The streams, ready and kill are filled in below.
+  const proc = Object.assign(new EventEmitter(), { pid: 40001, killed: false, env, sockets: [] as Server[] }) as FakeSfu;
   proc.stdout = new EventEmitter();
   proc.stderr = new EventEmitter();
   proc.ready = Promise.all(
@@ -129,18 +151,19 @@ function fakeSfu(env) {
 }
 
 /* The manager as written, with only process creation faked. */
-function loadManager(app, { onSpawn = () => {} } = {}) {
+function loadManager(app: App, { onSpawn = () => {} }: { onSpawn?: (proc: FakeSfu) => void } = {}) {
   const config = loadConfigModule(app);
-  const spawned = { sfu: [], server: [], worker: [] };
+  const spawned = { sfu: [] as FakeSfu[], server: [] as FakeProcess[], worker: [] as FakeProcess[] };
 
-  const spawn = (binary, args, opts) => {
+  const spawn = (_binary: string, _args: string[], opts: { env: NodeJS.ProcessEnv }) => {
     const proc = fakeSfu(opts.env);
     spawned.sfu.push(proc);
     onSpawn(proc);
     return proc;
   };
-  const fork = (entry, args, opts) => {
-    const proc = Object.assign(new EventEmitter(), { pid: 40100, killed: false, env: opts.env });
+  const fork = (entry: string, _args: string[], opts: { env: NodeJS.ProcessEnv }) => {
+    // The streams and kill are filled in below.
+    const proc = Object.assign(new EventEmitter(), { pid: 40100, killed: false, env: opts.env }) as FakeProcess;
     proc.stdout = new EventEmitter();
     proc.stderr = new EventEmitter();
     proc.kill = () => { proc.killed = true; return true; };
@@ -149,12 +172,12 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
     return proc;
   };
   // The kill fallback waits three seconds and the start watchdog ten. Neither should hold the check open.
-  const timer = (fn, ms) => {
+  const timer = (fn: () => void, ms: number) => {
     const handle = setTimeout(fn, ms);
     if (ms >= 1000) handle.unref();
     return handle;
   };
-  const store = {};
+  const store: Record<string, Value> = {};
 
   const manager = new Function(
     "fork", "spawn", "app", "existsSync", "readFileSync", "chmod", "cp", "mkdir", "rename",
@@ -163,7 +186,7 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
     moduleBody(MANAGER, ["createAndStartServer", "startExistingServer", "stopAllServers", "getEmbeddedServerState"]),
   )(
     fork, spawn, app, fs.existsSync, fs.readFileSync, null, null, null, null,
-    null, null, createServer, join, null, () => store, (key, value) => { store[key] = value; },
+    null, null, createServer, join, null, () => store, (key: string, value: Value) => { store[key] = value; },
     timer, clearTimeout,
     // The Electron process can carry the SFU's and the server's own variables, and the manager's values have to win.
     {
@@ -183,29 +206,31 @@ function loadManager(app, { onSpawn = () => {} } = {}) {
 }
 
 const window = { isDestroyed: () => false, webContents: { send: () => {} } };
-const started = (sfu) => ({ control: Number(sfu.env.SFU_CONTROL_PORT), metrics: Number(sfu.env.SFU_METRICS_PORT) });
+const started = (sfu: FakeSfu) => ({ control: Number(sfu.env.SFU_CONTROL_PORT), metrics: Number(sfu.env.SFU_METRICS_PORT) });
 /* The server keeps SFU_WS_HOST's host when the SFU sends it to the control port, so that is where it registers. */
-const registersOn = (server) => new URL(server.env.SFU_WS_HOST).hostname;
-const recorded = (path) => {
+const registersOn = (server: FakeProcess) => new URL(server.env.SFU_WS_HOST ?? "").hostname;
+const recorded = (path: string) => {
   const text = fs.readFileSync(path, "utf8");
-  const line = (key) => Number(text.match(new RegExp(`^${key}=(.*)$`, "m"))?.[1]);
+  const line = (key: string) => Number(text.match(new RegExp(`^${key}=(.*)$`, "m"))?.[1]);
   return { control: line("SFU_CONTROL_PORT"), metrics: line("SFU_METRICS_PORT") };
 };
 
-async function serverStarted(spawned, count) {
+type Spawned = ReturnType<typeof loadManager>["spawned"];
+
+async function serverStarted(spawned: Spawned, count: number) {
   for (let i = 0; i < 40 && spawned.server.length < count; i++) await settle(50);
   assert.equal(spawned.server.length, count, "the embedded server was never started");
   return spawned.server[count - 1];
 }
 
-async function workerStarted(spawned, count) {
+async function workerStarted(spawned: Spawned, count: number) {
   for (let i = 0; i < 40 && spawned.worker.length < count; i++) await settle(50);
   assert.equal(spawned.worker.length, count, "the image worker was never started");
   return spawned.worker[count - 1];
 }
 
 /* The worker's health endpoint carries its version and its counters, and only the server beside it reads them. */
-async function healthStaysLocal(spawned, count, server) {
+async function healthStaysLocal(spawned: Spawned, count: number, server: FakeProcess) {
   const worker = await workerStarted(spawned, count);
   assert.equal(worker.env.HEALTH_HOST, "127.0.0.1", "the image worker answers other machines, or kept the Electron process's own value");
   const port = Number(worker.env.HEALTH_PORT);
