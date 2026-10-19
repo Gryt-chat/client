@@ -6,12 +6,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createServer, type Server as HttpServer } from "node:http";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { io } from "socket.io-client";
 import ts from "typescript";
+
+import { type FakeWs, type FakeWss, WebSocketServer } from "./lib/fakeWs.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = readFileSync(join(root, "src/packages/socket/src/utils/serverAuth.ts"), "utf8");
@@ -47,13 +48,6 @@ const { guardSocket } = await import(moduleUrl(compiled));
 console.error = () => {};
 
 // What engine.io-client itself opens sockets with in Node, so it is here whenever the client is.
-const require = createRequire(import.meta.url);
-type FakeWs = { send(data: string): void; on(event: "close" | "message", listener: (data: Buffer) => void): void; terminate(): void };
-type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; close(done: () => void): void };
-// ws ships no types of its own, so only what this file uses.
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
-  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
-};
 
 const TOKEN = "access-token-that-must-not-leak";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

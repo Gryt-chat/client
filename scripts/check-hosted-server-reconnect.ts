@@ -6,11 +6,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createServer, type Server as HttpServer } from "node:http";
-import { createRequire, stripTypeScriptTypes } from "node:module";
+import { stripTypeScriptTypes } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { io, type ManagerOptions, type Socket, type SocketOptions } from "socket.io-client";
+
+import { type FakeWss, WebSocketServer } from "./lib/fakeWs.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -22,13 +24,6 @@ const { railEntriesJustStarted } = await import("../src/packages/settings/src/ho
 const { replayReconnect, retryNow } = await import("../src/packages/socket/src/utils/retryNow.ts");
 
 // What engine.io-client itself opens sockets with in Node, so it is here whenever the client is.
-const require = createRequire(import.meta.url);
-type FakeWs = { send(data: string): void; on(event: "message", listener: (data: Buffer) => void): void; terminate(): void };
-type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; clients: Set<FakeWs>; close(done: () => void): void };
-// ws ships no types of its own, so only what this file uses.
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
-  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
-};
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const settle = () => new Promise((resolve) => setImmediate(resolve));
