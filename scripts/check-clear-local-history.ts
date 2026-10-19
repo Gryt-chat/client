@@ -15,10 +15,10 @@ const { IndexedDbMlsStateStore } = await import("../src/packages/common/src/arch
 const { loadArchiveKey } = await import("../src/packages/common/src/auth/archive-key.ts");
 
 /** Seals with a tag and only opens its own, like a keychain whose item was reset. */
-const keychainTagged = (tag) => ({
+const keychainTagged = (tag: string) => ({
   canSeal: true,
-  seal: async (plain) => `${tag}.${Buffer.from(plain).toString("base64")}`,
-  unseal: async (sealed) => {
+  seal: async (plain: string) => `${tag}.${Buffer.from(plain).toString("base64")}`,
+  unseal: async (sealed: string) => {
     if (!sealed.startsWith(`${tag}.`)) throw new Error("keychain said no");
     return Buffer.from(sealed.slice(tag.length + 1), "base64").toString();
   },
@@ -27,15 +27,18 @@ const allowing = keychainTagged("kc1");
 // Clicking Deny: sealing something new still works, opening the old key doesn't.
 const denying = keychainTagged("kc2");
 
-const bytes = (...b) => new Uint8Array(b);
+const bytes = (...b: number[]) => new Uint8Array(b);
 const oldDevice = { deviceId: "old-device", signKey: bytes(1, 2), publicKey: bytes(3), certificate: bytes(4) };
 const group = { conversationId: "c1", groupId: "g-c1", state: bytes(9), cursor: 3, joinedEpoch: 1 };
-const msg = (over) => ({ scope: "srv:a", conversationId: "c1", senderId: "u1", text: "old secret", attachments: {}, ...over });
+const msg = (over: { messageId: string; sentAt: number; scope?: string; text?: string }) => ({ scope: "srv:a", conversationId: "c1", senderId: "u1", text: "old secret", attachments: {}, ...over });
 
 let dbCount = 0;
 const freshName = () => `clear-test-${++dbCount}`;
 
-function openerFor(name, keychain, extra = {}) {
+type Keychain = ReturnType<typeof keychainTagged>;
+type OpenerOptions = Parameters<typeof createArchiveOpener>[0];
+
+function openerFor(name: string, keychain: Keychain | null, extra: Partial<Pick<OpenerOptions, "home" | "channel">> = {}) {
   const current = { keychain };
   const opener = createArchiveOpener({
     openDb: () => openArchiveDb(indexedDB, name),
@@ -43,10 +46,10 @@ function openerFor(name, keychain, extra = {}) {
     home: extra.home ?? "app",
     channel: extra.channel ?? null,
   });
-  return { opener, use: (next) => (current.keychain = next) };
+  return { opener, use: (next: Keychain | null) => (current.keychain = next) };
 }
 
-async function rows(name, storeName) {
+async function rows(name: string, storeName: string) {
   const db = await openArchiveDb(indexedDB, name);
   try {
     const tx = db.transaction(storeName, "readonly");
@@ -59,7 +62,7 @@ async function rows(name, storeName) {
   }
 }
 
-async function slot(name) {
+async function slot(name: string) {
   const db = await openArchiveDb(indexedDB, name);
   try {
     return await archiveKeySlot(db).read();
@@ -81,10 +84,10 @@ async function archiveWithHistory(keychain = allowing) {
   return name;
 }
 
-const code = (expected) => (e) => e.name === "ArchiveKeyError" && e.code === expected;
+const code = (expected: string) => (e: Error & { code?: string }) => e.name === "ArchiveKeyError" && e.code === expected;
 
-const tests = [];
-const test = (name, fn) => tests.push({ name, fn });
+const tests: { name: string; fn: () => Promise<void> }[] = [];
+const test = (name: string, fn: () => Promise<void>) => tests.push({ name, fn });
 
 test("Try again after a Deny deletes nothing, and opens once the keychain allows it", async () => {
   const name = await archiveWithHistory();
@@ -92,8 +95,9 @@ test("Try again after a Deny deletes nothing, and opens once the keychain allows
   const { opener, use } = openerFor(name, denying);
 
   await assert.rejects(opener.open(), code("unseal-failed"));
-  assert.deepEqual(opener.snapshot().status.kind, "failed");
-  assert.equal(opener.snapshot().status.code, "unseal-failed");
+  const status = opener.snapshot().status;
+  assert.ok(status.kind === "failed", `the archive is ${status.kind}, not failed`);
+  assert.equal(status.code, "unseal-failed");
 
   // Try again, still denied.
   await assert.rejects(opener.open(), code("unseal-failed"));
@@ -103,7 +107,7 @@ test("Try again after a Deny deletes nothing, and opens once the keychain allows
 
   use(allowing);
   const archive = await opener.open();
-  assert.equal((await archive.messages.get("srv:a", "c1", "m1")).text, "old secret");
+  assert.equal((await archive.messages.get("srv:a", "c1", "m1"))?.text, "old secret");
   assert.deepEqual(await archive.mlsState("srv:a").loadDevice(), oldDevice);
   assert.deepEqual(opener.snapshot(), { status: { kind: "open", home: "app", sealed: true }, epoch: 0 });
   assert.deepEqual(await archive.retiredMlsDevices("srv:a"), [], "a retry retires nothing");
@@ -123,7 +127,9 @@ test("clearing opens a fresh archive and nothing old is left to read", async () 
 
   const now = await slot(name);
   assert.notDeepEqual(now.key, oldKey, "a new key");
-  assert.ok(now.key.sealed.startsWith("kc2."), "sealed by the keychain that's there now");
+  const key = now.key;
+  assert.ok(key && typeof key === "object" && "sealed" in key && typeof key.sealed === "string", "the new key is not sealed");
+  assert.ok(key.sealed.startsWith("kc2."), "sealed by the keychain that's there now");
   assert.deepEqual(await rows(name, MESSAGE_STORE), [], "no old messages, sealed or not");
   assert.deepEqual(await rows(name, MLS_STORE), [], "no old MLS state");
   assert.equal(await fresh.messages.get("srv:a", "c1", "m1"), null);
@@ -138,7 +144,7 @@ test("clearing opens a fresh archive and nothing old is left to read", async () 
   // The fresh archive works, and reopening it in a new window gets the same key.
   await fresh.messages.put([msg({ messageId: "m2", sentAt: 2, text: "new" })]);
   const again = await openerFor(name, denying).opener.open();
-  assert.equal((await again.messages.get("srv:a", "c1", "m2")).text, "new");
+  assert.equal((await again.messages.get("srv:a", "c1", "m2"))?.text, "new");
   fresh.messages.close();
   again.messages.close();
 });
@@ -211,7 +217,7 @@ test("a clear in one tab makes the other tab open the fresh archive", async () =
   const b = openerFor(name, denying, { channel: bChannel });
   await assert.rejects(b.opener.open(), code("unseal-failed"));
 
-  const reopened = new Promise((resolve) => {
+  const reopened = new Promise<void>((resolve) => {
     const off = b.opener.subscribe(() => {
       if (b.opener.snapshot().status.kind === "open") (off(), resolve());
     });
@@ -221,7 +227,7 @@ test("a clear in one tab makes the other tab open the fresh archive", async () =
   assert.equal(b.opener.snapshot().epoch, 1);
   const other = await b.opener.open();
   await fresh.messages.put([msg({ messageId: "m3", sentAt: 3, text: "after" })]);
-  assert.equal((await other.messages.get("srv:a", "c1", "m3")).text, "after", "both tabs use the one new key");
+  assert.equal((await other.messages.get("srv:a", "c1", "m3"))?.text, "after", "both tabs use the one new key");
   fresh.messages.close();
   other.messages.close();
   bChannel.close();
@@ -232,7 +238,7 @@ test("a server that removed this device loses only its own history and MLS state
   const archive = await openerFor(name, allowing).opener.open();
   await archive.messages.put([msg({ scope: "srv:b", messageId: "b1", sentAt: 1, text: "other server" })]);
   await archive.mlsState("srv:b").saveDevice({ ...oldDevice, deviceId: "b-device" });
-  const changes = [];
+  const changes: { scope: string; conversationId: string | null }[] = [];
   archive.messages.onChange((c) => changes.push(c));
 
   await archive.wipeServer("srv:a");
@@ -242,8 +248,8 @@ test("a server that removed this device loses only its own history and MLS state
   assert.deepEqual(await archive.retiredMlsDevices("srv:a"), [], "the server already removed it, so nothing to retire");
   assert.deepEqual(changes, [{ scope: "srv:a", conversationId: null }]);
 
-  assert.equal((await archive.messages.get("srv:b", "c1", "b1")).text, "other server");
-  assert.equal((await archive.mlsState("srv:b").loadDevice()).deviceId, "b-device");
+  assert.equal((await archive.messages.get("srv:b", "c1", "b1"))?.text, "other server");
+  assert.equal((await archive.mlsState("srv:b").loadDevice())?.deviceId, "b-device");
   archive.messages.close();
 });
 

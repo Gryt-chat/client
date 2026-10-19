@@ -5,15 +5,15 @@
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server as HttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { io } from "socket.io-client";
+import { io, type Socket } from "socket.io-client";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 const HOOK = "src/packages/socket/src/hooks/useSockets.ts";
 const hook = read(HOOK);
 
@@ -22,18 +22,31 @@ const { retryNow } = await import("../src/packages/socket/src/utils/retryNow.ts"
 
 // What engine.io-client itself opens sockets with in Node, so it is here whenever the client is.
 const require = createRequire(import.meta.url);
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws");
+type FakeWs = { send(data: string): void; on(event: "close" | "message", listener: (data: Buffer) => void): void; terminate(): void };
+type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; close(done: () => void): void };
+// ws ships no types of its own, so only what this file uses.
+const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
+  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
+};
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** What socket.io hands a listener here: a reason, an attempt count, an error or a description. */
+type Arg = string | number | object | undefined;
+/** A socket or its manager, which each type their own events. */
+type Emitter<E extends string> = {
+  on(event: E, listener: (...args: Arg[]) => void): void;
+  off(event: E, listener: (...args: Arg[]) => void): void;
+};
 
 /** Resolves on the next `event`, and fails the check if it has not come within `ms`. */
-function next(emitter, event, ms, what) {
-  return new Promise((resolve, reject) => {
+function next<E extends string>(emitter: Emitter<NoInfer<E>>, event: E, ms: number, what: string) {
+  return new Promise<Arg[]>((resolve, reject) => {
     const timer = setTimeout(() => {
       emitter.off(event, on);
       reject(new Error(`${what}: no ${event} within ${ms}ms`));
     }, ms);
-    const on = (...args) => {
+    const on = (...args: Arg[]) => {
       clearTimeout(timer);
       emitter.off(event, on);
       resolve(args);
@@ -52,17 +65,18 @@ assert.ok(RECONNECT_GRACE_MS <= 5_000, `${RECONNECT_GRACE_MS}ms of nothing is to
 
 /** Enough engine.io and socket.io for a client to connect, on one port that can drop, close and reopen. */
 function fakeServer() {
-  let http = null;
-  let wss = null;
+  let http: HttpServer | null = null;
+  let wss: FakeWss | null = null;
   let port = 0;
-  const live = new Set();
+  const live = new Set<FakeWs>();
   const server = {
     get url() {
       return `http://127.0.0.1:${port}`;
     },
     async up() {
-      http = createServer();
-      wss = new WebSocketServer({ server: http });
+      const listening = createServer();
+      http = listening;
+      wss = new WebSocketServer({ server: listening });
       wss.on("connection", (ws) => {
         live.add(ws);
         ws.on("close", () => live.delete(ws));
@@ -72,8 +86,10 @@ function fakeServer() {
           if (String(data).startsWith("40")) ws.send(`40${JSON.stringify({ sid: `socket${live.size}` })}`);
         });
       });
-      await new Promise((resolve) => http.listen(port, "127.0.0.1", resolve));
-      port = http.address().port;
+      await new Promise<void>((resolve) => listening.listen(port, "127.0.0.1", resolve));
+      const address = listening.address();
+      assert.ok(address && typeof address === "object", "the fake server is not on a port");
+      port = address.port;
     },
     /** The server stays up and the socket goes, as a tunnel blip looks from the server. */
     drop() {
@@ -85,17 +101,19 @@ function fakeServer() {
     },
     async down() {
       server.drop();
-      await new Promise((resolve) => wss.close(resolve));
-      http.closeAllConnections();
-      await new Promise((resolve) => http.close(resolve));
+      const [listening, sockets] = [http, wss];
+      assert.ok(listening && sockets, "the fake server went down before it came up");
+      await new Promise<void>((resolve) => sockets.close(resolve));
+      listening.closeAllConnections();
+      await new Promise((resolve) => listening.close(resolve));
     },
   };
   return server;
 }
 
 const GRACE = 300;
-const clients = [];
-const servers = [];
+const clients: Socket[] = [];
+const servers: ReturnType<typeof fakeServer>[] = [];
 
 /** A connected socket with the watch on it, and delays short enough for a check. */
 async function watched() {
@@ -110,13 +128,13 @@ async function watched() {
     randomizationFactor: 0,
   });
   clients.push(socket);
-  const seen = { reconnecting: 0, reconnected: [], closed: 0, at: {} };
+  const seen = { reconnecting: 0, reconnected: [] as boolean[], closed: 0, at: { reconnecting: 0 } };
   watchReconnects(socket, GRACE, {
     onReconnecting: () => {
       seen.reconnecting++;
       seen.at.reconnecting = Date.now();
     },
-    onReconnected: (wasShown) => seen.reconnected.push(wasShown),
+    onReconnected: (wasShown: boolean) => seen.reconnected.push(wasShown),
     onClosed: () => seen.closed++,
   });
   await next(socket, "connect", 3_000, "the first connection");
