@@ -58,7 +58,7 @@
     "test:pairing-new-device": "node --disable-warning=ExperimentalWarning scripts/check-pairing-new-device.mjs",
     "test:linked-devices": "node --disable-warning=ExperimentalWarning scripts/check-linked-devices.ts",
     "test:pairing-approver": "node --disable-warning=ExperimentalWarning scripts/check-pairing-approver.mjs",
-    "test:whats-new": "node --disable-warning=ExperimentalWarning scripts/check-whats-new.mjs",
+    "test:whats-new": "node --disable-warning=ExperimentalWarning scripts/check-whats-new.ts",
     "test:whats-new-since": "node scripts/check-whats-new-since.ts",
     "test:whats-new-reachable": "node scripts/check-whats-new-reachable.mjs",
     "test:server-release-notes": "node --disable-warning=ExperimentalWarning scripts/check-server-release-notes.mjs",

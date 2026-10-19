@@ -58,7 +58,6 @@ scripts/check-update-supersede.mjs
 scripts/check-updater-bridge.mjs
 scripts/check-vault-upgrade-prompt.mjs
 scripts/check-whats-new-reachable.mjs
-scripts/check-whats-new.mjs
 scripts/check-window-buttons.mjs
 scripts/check-windows-signature.mjs
 scripts/generate-icons.mjs
