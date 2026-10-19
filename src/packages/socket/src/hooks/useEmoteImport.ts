@@ -199,10 +199,7 @@ export function useEmoteImport({
         )));
 
         try {
-          const fallbackMime =
-            emote.imageType === "gif" ? "image/gif"
-              : emote.imageType === "webp" ? "image/webp"
-              : "image/png";
+          const fallbackMime = emote.imageType === "gif" || emote.imageType === "webp" ? `image/${emote.imageType}` : "image/png";
           const file = await downloadAsFileWithProgress({
             url: emote.fileUrl,
             name: emote.name,

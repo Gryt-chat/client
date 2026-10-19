@@ -22,6 +22,7 @@ import { senderStreamId } from "../utils/senderStreamIds";
 import { liftScreenCapture, qualityBox } from "../utils/streamQuality";
 import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
+import { controlState } from "./controlState";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
 import { ScreenShareControl } from "./ScreenShareControl";
 
@@ -444,7 +445,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
           */}
           <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
             <CallControlButton
-              state={isServerMuted ? "blocked" : isMuted ? "off" : "idle"}
+              state={controlState(isServerMuted, isMuted)}
               aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
               onClick={handleMute}
             >
@@ -454,7 +455,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
           <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
             <CallControlButton
-              state={isServerDeafened ? "blocked" : isDeafened ? "off" : "idle"}
+              state={controlState(isServerDeafened, isDeafened)}
               aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
               onClick={handleDeafen}
             >

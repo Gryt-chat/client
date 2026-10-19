@@ -44,6 +44,38 @@ export interface InviteDialogView {
   action: InviteDialogAction;
 }
 
+function dialogMessage(s: {
+  alreadyMember: InviteDialogInput["alreadyMember"];
+  invited: boolean;
+  showCodeField: boolean;
+  policy: string | undefined;
+  lookup: InviteDialogInput["lookup"];
+}): InviteDialogMessage {
+  if (s.alreadyMember) return "member";
+  if (s.invited) return "invited";
+  if (s.showCodeField && s.policy !== "open") return "needs-code";
+  if (s.policy === "request") return "request";
+  if (s.policy === "open") return "open";
+  return s.lookup === "private" ? "private" : "none";
+}
+
+function dialogAction(s: {
+  alreadyMember: InviteDialogInput["alreadyMember"];
+  awaitingApproval: InviteDialogInput["awaitingApproval"];
+  needsAccount: boolean;
+  label: Extract<InviteDialogAction, { kind: "join" }>["label"];
+  disabled: boolean;
+}): InviteDialogAction {
+  if (s.alreadyMember) return { kind: "go-to-server" };
+  if (s.awaitingApproval) return { kind: "none" };
+  if (s.needsAccount) return { kind: "sign-in" };
+  return { kind: "join", label: s.label, disabled: s.disabled };
+}
+
+function joinLabel(policy: string | undefined): "Ask to join" | "Join" {
+  return policy === "request" ? "Ask to join" : "Join";
+}
+
 export function inviteDialogView(input: InviteDialogInput): InviteDialogView {
   const { info, linkCode, typedCode } = input;
   const policy = info?.joinPolicy;
@@ -61,31 +93,15 @@ export function inviteDialogView(input: InviteDialogInput): InviteDialogView {
     showCodeField && policy !== "open" && !(policy === "invite" && info?.lanOpen && !input.inviteRequired);
 
   const invited = !!linkCode && !linkCodeRefused;
-  const message: InviteDialogMessage = input.alreadyMember
-    ? "member"
-    : invited
-      ? "invited"
-      : showCodeField && policy !== "open"
-        ? "needs-code"
-        : policy === "request"
-          ? "request"
-          : policy === "open"
-            ? "open"
-            : input.lookup === "private"
-              ? "private"
-              : "none";
+  const message = dialogMessage({ alreadyMember: input.alreadyMember, invited, showCodeField, policy, lookup: input.lookup });
 
-  const action: InviteDialogAction = input.alreadyMember
-    ? { kind: "go-to-server" }
-    : input.awaitingApproval
-      ? { kind: "none" }
-      : needsAccount
-        ? { kind: "sign-in" }
-        : {
-            kind: "join",
-            label: invited ? "Accept Invite" : policy === "request" ? "Ask to join" : "Join",
-            disabled: input.lookup === "loading" || (codeRequired && code.length === 0),
-          };
+  const action: InviteDialogAction = dialogAction({
+    alreadyMember: input.alreadyMember,
+    awaitingApproval: input.awaitingApproval,
+    needsAccount,
+    label: invited ? "Accept Invite" : joinLabel(policy),
+    disabled: input.lookup === "loading" || (codeRequired && code.length === 0),
+  });
 
   return {
     message,

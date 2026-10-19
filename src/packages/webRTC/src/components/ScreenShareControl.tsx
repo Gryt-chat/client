@@ -70,7 +70,7 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
 
   return (
     <>
-      {screenShareActive ? (
+      {screenShareActive && (
         <Menu.Root>
           <Menu.Trigger
             render={
@@ -114,13 +114,15 @@ export function ScreenShareControl({ iconSize = 16, allowed = true, side = "top"
             </Menu.Positioner>
           </Menu.Portal>
         </Menu.Root>
-      ) : isStarting ? (
+      )}
+      {!screenShareActive && isStarting && (
         <Tooltip title="Starting screen share…">
           <CallControlButton state="idle" aria-label="Starting screen share" disabled>
             <PiMonitorArrowUpFill size={iconSize} />
           </CallControlButton>
         </Tooltip>
-      ) : (
+      )}
+      {!screenShareActive && !isStarting && (
         <CallControlButton state="idle" aria-label="Share your screen" onClick={() => openPicker("start")}>
           <PiMonitorArrowUpFill size={iconSize} />
         </CallControlButton>

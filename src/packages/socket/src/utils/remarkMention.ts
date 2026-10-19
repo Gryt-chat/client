@@ -77,6 +77,14 @@ function buildReplacements(
   return changed ? parts : null;
 }
 
+function mentionProperties(target: NonNullable<ReturnType<typeof mentionTarget>>) {
+  if (target.kind === "channel") {
+    return { "data-channel-id": target.id, "data-channel-host": target.host ?? "", className: "chat-channel" };
+  }
+  if (target.kind === "role") return { "data-role-id": target.id, "data-mention-id": "", className: "chat-mention" };
+  return { "data-mention-id": target.kind === "user" ? target.id : target.kind, className: "chat-mention" };
+}
+
 export function createRemarkMention(members: MentionableMember[]): Plugin<[], Root> {
   const sorted = [...members].sort((a, b) => b.nickname.length - a.nickname.length);
   const nicknameToId = new Map<string, string>();
@@ -93,12 +101,7 @@ export function createRemarkMention(members: MentionableMember[]): Plugin<[], Ro
       const textChild = node.children[0];
       const label = textChild && "value" in textChild ? (textChild as Text).value : "";
       const at = label.startsWith("@") ? label : `@${label}`;
-      const hProperties =
-        target.kind === "channel"
-          ? { "data-channel-id": target.id, "data-channel-host": target.host ?? "", className: "chat-channel" }
-          : target.kind === "role"
-            ? { "data-role-id": target.id, "data-mention-id": "", className: "chat-mention" }
-            : { "data-mention-id": target.kind === "user" ? target.id : target.kind, className: "chat-mention" };
+      const hProperties = mentionProperties(target);
       const mentionNode = {
         type: "mention",
         data: { hName: "span", hProperties },

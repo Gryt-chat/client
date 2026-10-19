@@ -13,9 +13,8 @@ export function useOpenDmSpace(): () => void {
   return useCallback(() => {
     /* Taken before anything moves: restoring a conversation below changes the server
        underneath, and this is what the button goes back to. GRYT-1148. */
-    const from: DmSpaceOrigin | null = showDiscovery
-      ? { kind: "discovery" }
-      : host ? { kind: "server", host } : null;
+    const fromServer: DmSpaceOrigin | null = host ? { kind: "server", host } : null;
+    const from: DmSpaceOrigin | null = showDiscovery ? { kind: "discovery" } : fromServer;
 
     const was = lastConversation();
     /* Only one somebody has written in. An empty one drops out of the list when

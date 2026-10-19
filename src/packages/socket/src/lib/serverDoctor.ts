@@ -109,6 +109,13 @@ async function probe(
   }
 }
 
+function signallingDetail(reached: number, total: number): string {
+  if (reached !== total) {
+    return `${reached} of ${total} answered, which is normal if the others are for people on a different network.`;
+  }
+  return total === 1 ? "The address advertised for voice answered." : `All ${total} advertised addresses answered.`;
+}
+
 export function initialChecks(): CheckResult[] {
   return [
     { id: "server-http", label: "Server reachable", status: "pending" },
@@ -202,12 +209,7 @@ async function checkSfuHttp(sfuHosts: string[]): Promise<CheckResult> {
     id: "sfu-http",
     label: "Voice signalling reachable",
     status: reachable.length === addresses.length ? "pass" : "warn",
-    detail:
-      reachable.length !== addresses.length
-        ? `${reachable.length} of ${addresses.length} answered, which is normal if the others are for people on a different network.`
-        : addresses.length === 1
-          ? "The address advertised for voice answered."
-          : `All ${addresses.length} advertised addresses answered.`,
+    detail: signallingDetail(reachable.length, addresses.length),
     addresses,
   };
 }
