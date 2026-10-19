@@ -347,7 +347,7 @@ jobs:
               "") continue ;;
               src/*|public/*|e2e/*|package.json|yarn.lock|vite.config.ts|index.html|.github/workflows/ci.yml) hit=web ;;
               electron/*) hit=$electron ;;
-              docs/*|*.md|build/*|appimagehub/*|electron-builder.yml|electron-builder.config.cjs|scripts/check-*.mjs) hit=skip ;;
+              docs/*|*.md|build/*|appimagehub/*|electron-builder.yml|electron-builder.config.ts|scripts/check-*.mjs) hit=skip ;;
               *) hit=web ;;
             esac
             echo "$hit  $file"

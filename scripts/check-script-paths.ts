@@ -35,7 +35,7 @@ function files(dir: string): string[] {
 
 const missing: string[] = [];
 const self = fileURLToPath(import.meta.url);
-for (const file of [...files(join(root, "scripts")), join(root, "electron-builder.config.cjs")]) {
+for (const file of [...files(join(root, "scripts")), join(root, "electron-builder.config.ts")]) {
   if (file === self) continue; // its own fixtures above
   for (const spec of relativeSpecifiers(readFileSync(file, "utf8"))) {
     // Root too: check-helper-packaging requires the builder config inside a `node -e` run from the root.

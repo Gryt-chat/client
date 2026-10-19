@@ -53,9 +53,12 @@ check(config, "electron-builder.yml");
 
 // A release publishes two builds and only one is this file. The slim config is
 // this YAML with three edits, and an edit can leave the schema too.
-const configPath = join(here, "..", "electron-builder.config.cjs");
+const configUrl = new URL("../electron-builder.config.ts", import.meta.url);
 
-function loadVariant(variant: string | undefined, { mas = false } = {}): Built {
+let loads = 0;
+
+/** A fresh import each time, by query string: the config reads the environment once, as it loads. */
+async function loadVariant(variant: string | undefined, { mas = false } = {}): Promise<Built> {
   const previous = process.env.GRYT_VARIANT;
   const previousMas = process.env.GRYT_MAS;
   if (variant === undefined) delete process.env.GRYT_VARIANT;
@@ -64,8 +67,7 @@ function loadVariant(variant: string | undefined, { mas = false } = {}): Built {
   else delete process.env.GRYT_MAS;
 
   try {
-    delete require.cache[require.resolve(configPath)];
-    return require(configPath);
+    return ((await import(`${configUrl.href}?${++loads}`)) as { default: Built }).default;
   } finally {
     if (previous === undefined) delete process.env.GRYT_VARIANT;
     else process.env.GRYT_VARIANT = previous;
@@ -74,8 +76,8 @@ function loadVariant(variant: string | undefined, { mas = false } = {}): Built {
   }
 }
 
-const slim = loadVariant("slim");
-check(slim, "electron-builder.config.cjs at GRYT_VARIANT=slim");
+const slim = await loadVariant("slim");
+check(slim, "electron-builder.config.ts at GRYT_VARIANT=slim");
 
 const embeddedIn = (candidate: Built) =>
   (candidate.extraResources ?? []).filter((entry) =>
@@ -110,7 +112,7 @@ if (!String(slim.artifactName).includes("slim")) {
 }
 
 // And the default is still the whole thing.
-if (embeddedIn(loadVariant(undefined)).length === 0) {
+if (embeddedIn(await loadVariant(undefined)).length === 0) {
   console.error("the default build has lost the embedded server.");
   process.exit(1);
 }
@@ -121,11 +123,11 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-const dmg = loadVariant(undefined);
-const masFull = loadVariant(undefined, { mas: true });
-const masSlim = loadVariant("slim", { mas: true });
-check(masFull, "electron-builder.config.cjs at GRYT_MAS=1");
-check(masSlim, "electron-builder.config.cjs at GRYT_MAS=1 GRYT_VARIANT=slim");
+const dmg = await loadVariant(undefined);
+const masFull = await loadVariant(undefined, { mas: true });
+const masSlim = await loadVariant("slim", { mas: true });
+check(masFull, "electron-builder.config.ts at GRYT_MAS=1");
+check(masSlim, "electron-builder.config.ts at GRYT_MAS=1 GRYT_VARIANT=slim");
 
 if (dmg.appId !== "com.gryt.chat" || masFull.mas?.appId !== "chat.gryt.app") {
   fail("The DMG has to stay com.gryt.chat and the store build has to be chat.gryt.app.");
@@ -177,7 +179,7 @@ for (const key of [
 
 // The Linux icon set. electron-builder ships exactly what `linux.icon` points at,
 // so a single PNG left the deb and the snap with a 1024x1024 (GRYT-1008).
-const linuxIcon = loadVariant(undefined).linux?.icon;
+const linuxIcon = (await loadVariant(undefined)).linux?.icon;
 
 if (linuxIcon !== "build/icons") {
   console.error(
@@ -212,7 +214,7 @@ for (const name of readdirSync(join(here, "..", "build", "icons"))) {
 
 // The desktop entries as electron-builder writes them. The repeated MimeType never
 // showed in the config, only in the built deb (GRYT-976).
-const linuxTargets = loadVariant(undefined).linux?.target ?? [];
+const linuxTargets = (await loadVariant(undefined)).linux?.target ?? [];
 const work = mkdtempSync(join(tmpdir(), "gryt-desktop-entries-"));
 const stubApp = join(work, "linux-unpacked");
 mkdirSync(join(stubApp, "resources"), { recursive: true });
@@ -230,7 +232,7 @@ try {
     // Nothing is packaged: the stub stands in for the app, and returning true
     // from the hook stops each target once its desktop entry is written.
     prepackaged: stubApp,
-    config: { extends: "electron-builder.config.cjs", directories: { output: join(work, "out") } },
+    config: { extends: "electron-builder.config.ts", directories: { output: join(work, "out") } },
     // fpm and snap hand over [args, desktop file]; AppImage hands over its options.
     effectiveOptionComputed: async (computed: [string[], string] | { desktopFile?: string; desktop?: string } | null) => {
       if (Array.isArray(computed)) {
