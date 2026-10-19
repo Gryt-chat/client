@@ -7,77 +7,89 @@ const CLIENT = import.meta.dirname;
  * The plugin schedules itself with setTimeout, so the timer is captured rather
  * than waited on and a "tick" here is calling what it queued.
  */
-function harness({ game = "Factorio", hosts = [] } = {}) {
+type Panel = { title: string; rows: { label: string; value: string }[] } | null;
+type Roster = (push: { host: string; data: object | string }) => void;
+
+function harness({ game = "Factorio" as string | undefined, hosts = [] as string[] } = {}) {
   const state = {
     game,
     hosts,
-    activity: [],
-    sent: [],
-    logs: [],
-    panels: [],
-    subs: new Map(),
-    cleanup: null,
-    pending: null,
+    activity: [] as string[],
+    sent: [] as { topic: string; data: object; host: string }[],
+    logs: [] as [string, string][],
+    panels: [] as Panel[],
+    subs: new Map<string, Roster>(),
+    cleanup: null as (() => void) | null,
+    pending: null as (() => Promise<void> | void) | null,
     fetches: 0,
   };
 
-  globalThis.fetch = async () => {
-    state.fetches += 1;
-    if (state.game === undefined) throw new Error("connection refused");
-    return { ok: true, json: async () => ({ game: state.game }) };
-  };
-
   const realTimeout = globalThis.setTimeout;
-  globalThis.setTimeout = (fn, ms) => {
-    // Leave node:test's own waits alone; only the plugin's poll is captured.
-    if (ms === 15_000) {
-      state.pending = fn;
-      return 1;
-    }
-    return realTimeout(fn, ms);
-  };
-  globalThis.clearTimeout = () => {
-    state.pending = null;
-  };
+  Object.assign(globalThis, {
+    fetch: async () => {
+      state.fetches += 1;
+      if (state.game === undefined) throw new Error("connection refused");
+      return { ok: true, json: async () => ({ game: state.game }) };
+    },
+    setTimeout: (fn: () => void, ms: number) => {
+      // Leave node:test's own waits alone; only the plugin's poll is captured.
+      if (ms === 15_000) {
+        state.pending = fn;
+        return 1;
+      }
+      return realTimeout(fn, ms);
+    },
+    clearTimeout: () => {
+      state.pending = null;
+    },
+  });
 
-  globalThis.gryt = {
+  Object.assign(globalThis, { gryt: {
     version: "1.0.0",
     theme: { appearance: "dark", accentColor: "violet" },
-    on: (event, handler) => {
+    on: (event: string, handler: () => void) => {
       if (event === "cleanup") state.cleanup = handler;
       return () => {};
     },
-    setActivity: async (activity) => void state.activity.push(activity),
+    setActivity: async (activity: string) => void state.activity.push(activity),
     messaging: {
-      send: async (topic, data, host) => void state.sent.push({ topic, data, host }),
-      on: (topic, handler) => {
+      send: async (topic: string, data: object, host: string) => void state.sent.push({ topic, data, host }),
+      on: (topic: string, handler: Roster) => {
         state.subs.set(topic, handler);
         return () => {};
       },
       servers: async () => [...state.hosts],
     },
     ui: {
-      panel: async (spec) => void state.panels.push(spec),
+      panel: async (spec: Panel) => void state.panels.push(spec),
       clear: async () => void state.panels.push(null),
     },
     log: {
-      info: (m) => state.logs.push(["info", m]),
-      warn: (m) => state.logs.push(["warn", m]),
-      error: (m) => state.logs.push(["error", m]),
+      info: (m: string) => state.logs.push(["info", m]),
+      warn: (m: string) => state.logs.push(["warn", m]),
+      error: (m: string) => state.logs.push(["error", m]),
     },
-  };
+  } });
 
-  state.tick = async () => {
+  const tick = async () => {
     const fn = state.pending;
     state.pending = null;
+    assert.ok(fn, "the plugin queued no poll");
     await fn();
     await new Promise((r) => realTimeout(r, 0));
   };
 
-  return state;
+  return Object.assign(state, { tick });
 }
 
-async function start(state) {
+/** The plugin's roster handler, which it subscribes to at activate. */
+function rosterOf(state: ReturnType<typeof harness>) {
+  const roster = state.subs.get("roster");
+  assert.ok(roster, "subscribed at activate, not on first send");
+  return roster;
+}
+
+async function start(state: ReturnType<typeof harness>) {
   const { activate } = await import(`${CLIENT}/presence/index.js?${Math.random()}`);
   activate();
   // activate() kicks off the first tick without awaiting it.
@@ -166,8 +178,7 @@ test("presence: a reconnect introduces itself again", async () => {
 
 test("presence: the roster is checked before it is drawn", async () => {
   const s = await start(harness({ game: "Factorio", hosts: ["gryt.example"] }));
-  const roster = s.subs.get("roster");
-  assert.ok(roster, "subscribed at activate, not on first send");
+  const roster = rosterOf(s);
 
   roster({ host: "gryt.example", data: "not an array" });
   assert.equal(s.panels.length, 0, "junk is not a roster");
@@ -184,14 +195,14 @@ test("presence: the roster is checked before it is drawn", async () => {
 
 test("presence: two servers are one panel, and say which is which", async () => {
   const s = await start(harness({ game: "Factorio", hosts: ["one.example", "two.example"] }));
-  const roster = s.subs.get("roster");
+  const roster = rosterOf(s);
 
   roster({ host: "one.example", data: [{ who: "sam", game: "Tetris" }] });
-  assert.deepEqual(s.panels.at(-1).rows, [{ label: "sam", value: "Tetris" }],
+  assert.deepEqual(s.panels.at(-1)?.rows, [{ label: "sam", value: "Tetris" }],
     "one server, so naming it says nothing");
 
   roster({ host: "two.example", data: [{ who: "kari", game: "Factorio" }] });
-  assert.deepEqual(s.panels.at(-1).rows, [
+  assert.deepEqual(s.panels.at(-1)?.rows, [
     { label: "sam", value: "Tetris · one.example" },
     { label: "kari", value: "Factorio · two.example" },
   ]);
@@ -199,8 +210,8 @@ test("presence: two servers are one panel, and say which is which", async () => 
 
 test("presence: leaving a server takes its people out of the panel", async () => {
   const s = await start(harness({ game: "Factorio", hosts: ["gryt.example"] }));
-  s.subs.get("roster")({ host: "gryt.example", data: [{ who: "sam", game: "Tetris" }] });
-  assert.equal(s.panels.at(-1).rows.length, 1);
+  rosterOf(s)({ host: "gryt.example", data: [{ who: "sam", game: "Tetris" }] });
+  assert.equal(s.panels.at(-1)?.rows.length, 1);
 
   s.hosts = [];
   await s.tick();
@@ -211,6 +222,7 @@ test("presence: turning it off clears the status line and stops the poll", async
   const s = await start(harness({ game: "Factorio", hosts: ["gryt.example"] }));
   const fetches = s.fetches;
 
+  assert.ok(s.cleanup, "the plugin left no cleanup");
   s.cleanup();
   await new Promise((r) => setTimeout(r, 5));
 

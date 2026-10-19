@@ -1,12 +1,12 @@
 // Reads a soak run and lists every drop, grouped into incidents across clients and probes.
-// Usage: node e2e/soak/report.mjs e2e/soak/runs/<run> [--json]
+// Usage: node e2e/soak/report.ts e2e/soak/runs/<run> [--json]
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const dir = process.argv[2];
 if (!dir) {
-  console.error("Usage: node e2e/soak/report.mjs <run directory> [--json]");
+  console.error("Usage: node e2e/soak/report.ts <run directory> [--json]");
   process.exit(1);
 }
 const asJson = process.argv.includes("--json");
@@ -18,7 +18,7 @@ const STALL_MIN_MS = 1_000;
 const GLITCH_RATIO = 0.05;
 
 /** Which group a URL belongs to, from the run's config. */
-function groupOf(url, who) {
+function groupOf(url: string, who: string) {
   for (const g of config.groups) {
     const hosts = [g.httpBase, g.sfu].filter(Boolean).map((u) => new URL(u).host);
     if (hosts.some((h) => url.includes(h))) return g.name;
@@ -27,7 +27,7 @@ function groupOf(url, who) {
   return who.split("-")[0];
 }
 
-function hostOf(url) {
+function hostOf(url: string) {
   try {
     return new URL(url).host;
   } catch {
@@ -36,11 +36,11 @@ function hostOf(url) {
 }
 
 /** The page opens two kinds of WebSocket: socket.io to the server, and the SFU's signalling. */
-function kindOf(url) {
+function kindOf(url: string) {
   return url.includes("/socket.io/") ? "server" : "sfu";
 }
 
-function read(file) {
+function read(file: string) {
   const events = [];
   for (const line of readFileSync(join(dir, file), "utf8").split("\n")) {
     if (!line) continue;
@@ -57,12 +57,48 @@ function read(file) {
 
 const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
 const byWho = new Map(files.map((f) => [f.replace(/\.jsonl$/, ""), read(f)]));
-const drops = [];
-const quality = [];
-const network = [];
+type Drop = {
+  at: number;
+  who: string;
+  role: string;
+  group: string;
+  what: string;
+  reason: string;
+  downMs: number | null;
+  // What a socket close says about itself, when the drop was one.
+  code?: number;
+  wasClean?: boolean;
+  lastRecvAgoMs?: number | null;
+  lastPingAgoMs?: number;
+  upMs?: number;
+  socketId?: string;
+};
+type NetworkLine = { at: number; who: string; what: string; host?: string; lostTo?: number; count?: number };
+type Quality = {
+  who: string;
+  rtt: number[];
+  jitter: number[];
+  jb: number[];
+  aob: number[];
+  lost: number;
+  received: number;
+  concealed: number;
+  samples: number;
+  framesDropped: number;
+  pli: number;
+  nack: number;
+  freezes: number;
+};
+
+const drops: Drop[] = [];
+const quality: Quality[] = [];
+const network: NetworkLine[] = [];
 
 for (const [who, events] of byWho) {
-  const role = who.startsWith("node-") ? "node" : who === "browser-probe" ? "browser" : who === "net" || who === "harness" ? who : "call";
+  let role = "call";
+  if (who.startsWith("node-")) role = "node";
+  else if (who === "browser-probe") role = "browser";
+  else if (who === "net" || who === "harness") role = who;
 
   // Server sockets: a socket.io disconnect nobody asked for, until that socket is back.
   for (let i = 0; i < events.length; i++) {
@@ -137,7 +173,7 @@ for (const [who, events] of byWho) {
   const stats = events.filter((e) => e.type === "stats" && e.state === "connected");
   const last = new Map();
   const stalls = new Map();
-  const q = { rtt: [], jitter: [], jb: [], aob: [], lost: 0, received: 0, concealed: 0, samples: 0, framesDropped: 0, pli: 0, nack: 0, freezes: 0 };
+  const q: Omit<Quality, "who"> = { rtt: [], jitter: [], jb: [], aob: [], lost: 0, received: 0, concealed: 0, samples: 0, framesDropped: 0, pli: 0, nack: 0, freezes: 0 };
   for (const s of stats) {
     if (s.pair?.currentRoundTripTime != null) q.rtt.push(s.pair.currentRoundTripTime * 1000);
     if (s.pair?.availableOutgoingBitrate != null) q.aob.push(s.pair.availableOutgoingBitrate);
@@ -183,7 +219,7 @@ for (const [who, events] of byWho) {
       q.freezes += Math.max(0, (v.freezeCount ?? 0) - (prev.freezeCount ?? 0));
     }
   }
-  if (stats.length) quality.push({ who, samples: stats.length, ...q });
+  if (stats.length) quality.push({ who, ...q });
 
   // What the machine and the paths looked like meanwhile.
   for (const e of events) {
@@ -191,9 +227,9 @@ for (const [who, events] of byWho) {
     if (e.type === "ping.lost") {
       // One line per run of lost pings, or a long outage prints a line every two seconds.
       const last = network.findLast((n) => n.who === who && n.host === e.host && n.lostTo !== undefined);
-      if (last && e.ts - last.lostTo <= 5_000) {
+      if (last?.lostTo !== undefined && e.ts - last.lostTo <= 5_000) {
         last.lostTo = e.ts;
-        last.count++;
+        last.count = (last.count ?? 0) + 1;
         last.what = `ping ${e.host} lost ${last.count} in a row, until ${new Date(e.ts).toISOString().slice(11, 19)}`;
       } else {
         network.push({ at: e.ts, who, host: e.host, lostTo: e.ts, count: 1, what: `ping ${e.host} lost` });
@@ -211,7 +247,7 @@ for (const [who, events] of byWho) {
 drops.sort((a, b) => a.at - b.at);
 network.sort((a, b) => a.at - b.at);
 
-const incidents = [];
+const incidents: { start: number; end: number; drops: Drop[]; network?: NetworkLine[] }[] = [];
 for (const drop of drops) {
   const current = incidents.at(-1);
   if (current && drop.at - current.end <= INCIDENT_GAP_MS) {
@@ -225,7 +261,7 @@ for (const incident of incidents) {
   incident.network = network.filter((n) => n.at >= incident.start - 60_000 && n.at <= incident.end + 60_000);
 }
 
-const pct = (values, p) => {
+const pct = (values: number[], p: number) => {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
   return Math.round(sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))] * 10) / 10;
@@ -236,8 +272,8 @@ if (asJson) {
   process.exit(0);
 }
 
-const iso = (ms) => new Date(ms).toISOString().replace(".000Z", "Z");
-const secs = (ms) => (ms == null ? "not back" : `${(ms / 1000).toFixed(1)} s`);
+const iso = (ms: number) => new Date(ms).toISOString().replace(".000Z", "Z");
+const secs = (ms: number | null) => (ms == null ? "not back" : `${(ms / 1000).toFixed(1)} s`);
 const harness = byWho.get("harness") ?? [];
 const first = harness[0]?.ts;
 const lastEvent = harness.at(-1)?.ts;
@@ -260,7 +296,7 @@ for (const [i, incident] of incidents.entries()) {
   for (const d of incident.drops) {
     const extra = [
       d.code != null ? `code ${d.code}` : null,
-      d.wasClean != null ? (d.wasClean ? "clean" : "not clean") : null,
+      d.wasClean == null ? null : `${d.wasClean ? "" : "not "}clean`,
       d.lastRecvAgoMs != null ? `last frame ${d.lastRecvAgoMs} ms before` : null,
       d.lastPingAgoMs != null ? `last ping at ${iso(d.at - d.lastPingAgoMs).slice(11)}` : null,
       d.socketId ? `id ${d.socketId}` : null,
@@ -269,9 +305,9 @@ for (const [i, incident] of incidents.entries()) {
     const who = d.role === "node" || d.role === "browser" ? `${d.role}/${d.group}` : d.who;
     console.log(`  ${iso(d.at).slice(11)} ${who.padEnd(16)} ${d.what.padEnd(13)} ${d.reason}; back in ${secs(d.downMs)}${extra.length ? ` (${extra.join(", ")})` : ""}`);
   }
-  for (const n of incident.network) console.log(`  ${iso(n.at).slice(11)} ${n.who.padEnd(14)} ${n.what}`);
+  for (const n of incident.network ?? []) console.log(`  ${iso(n.at).slice(11)} ${n.who.padEnd(14)} ${n.what}`);
   // systemd 252 on dev.lan won't take an ISO time ending in Z, so it gets a plain one with UTC after it.
-  const plain = (ms) => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+  const plain = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
   const span = `--since "${plain(incident.start - 60_000)} UTC" --until "${plain(incident.end + 120_000)} UTC"`;
   console.log(`  logs: journalctl --utc -o short-iso-precise ${span} CONTAINER_NAME=gryt-test-server (and gryt-test-sfu, -u cloudflared)`);
 }
