@@ -74,6 +74,15 @@ export async function shareScreen(guest: Guest): Promise<void> {
   await expect(callButton(guest.page, "Sharing your screen")).toBeVisible();
 }
 
+/** Somebody else's share waits for a click before it plays (GRYT-1681), so the viewer presses Watch stream. */
+export async function watchShare(page: Page, sharer: string): Promise<void> {
+  await page
+    .locator('[data-gryt="share-unwatched"]')
+    .filter({ hasText: `${sharer} is sharing their screen` })
+    .getByRole("button", { name: "Watch stream" })
+    .click();
+}
+
 export async function stopSharing(guest: Guest): Promise<void> {
   await callButton(guest.page, "Sharing your screen").click();
   await guest.page.getByRole("menuitem", { name: "Stop sharing", exact: true }).click();
