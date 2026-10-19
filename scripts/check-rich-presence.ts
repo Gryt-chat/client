@@ -5,20 +5,19 @@
  */
 
 import assert from "node:assert/strict";
-
 import { readFileSync } from "node:fs";
 
+import { cardFromActivity, createPresenceBoard, UNKNOWN_GAME } from "../electron/richPresence.ts";
 import { heldNotice, socketLine } from "../src/packages/settings/src/components/richPresenceCopy.ts";
-import { cardFromActivity, createPresenceBoard, MIN_INTERVAL_MS, UNKNOWN_GAME } from "../electron/richPresence.ts";
 
 let failures = 0;
-async function check(name, run) {
+async function check(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.stack ?? err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
   }
 }
 
@@ -70,9 +69,12 @@ await check("the application id rides along for an icon, when it looks like one"
 
 /* ── The board ───────────────────────────────────────────────────────── */
 
-function harness(names = { "100": "Factorio" }) {
+type ActivityEvent = Parameters<ReturnType<typeof createPresenceBoard>["update"]>[0];
+type Card = Parameters<Parameters<typeof createPresenceBoard>[0]["onChange"]>[0];
+
+function harness(names: Record<string, string> = { "100": "Factorio" }) {
   const clock = 1_000_000;
-  const sent = [];
+  const sent: Card[] = [];
   const board = createPresenceBoard({
     onChange: (card) => sent.push(card),
     nameForApp: (id) => names[id] ?? null,
@@ -84,26 +86,26 @@ function harness(names = { "100": "Factorio" }) {
   };
 }
 
-const ev = (connection, clientId, activity) => ({ connection, clientId, activity });
+const ev = (connection: number, clientId: string, activity: ActivityEvent["activity"]): ActivityEvent => ({ connection, clientId, activity });
 
 await check("the name comes from the list, then from the game, then a placeholder", () => {
   const { board, sent } = harness();
   board.update(ev(1, "100", { state: "a" }));
-  assert.equal(sent.at(-1).name, "Factorio");
+  assert.equal(sent.at(-1)?.name, "Factorio");
   board.update(ev(2, "200", { name: "Own Name", state: "b" }));
   assert.equal(sent.length, 1, "a second game inside the interval went out at once");
   board.stop();
 
   const other = harness({});
   other.board.update(ev(1, "300", { state: "c" }));
-  assert.equal(other.sent.at(-1).name, UNKNOWN_GAME);
+  assert.equal(other.sent.at(-1)?.name, UNKNOWN_GAME);
   other.board.stop();
 });
 
 await check("the board's card carries the sender's own client id as the appId", () => {
   const { board, sent } = harness();
   board.update(ev(1, "100", { state: "a" }));
-  assert.equal(sent.at(-1).appId, "100");
+  assert.equal(sent.at(-1)?.appId, "100");
   board.stop();
 });
 
@@ -115,7 +117,7 @@ await check("a game resending the same card sends nothing", () => {
 });
 
 await check("changes inside the interval are held, and the latest goes out at the end", async () => {
-  const sent = [];
+  const sent: Card[] = [];
   const board = createPresenceBoard({ onChange: (c) => sent.push(c), nameForApp: () => "G", minIntervalMs: 30 });
   board.update(ev(1, "1", { state: "wave 1" }));
   board.update(ev(1, "1", { state: "wave 2" }));
@@ -123,7 +125,7 @@ await check("changes inside the interval are held, and the latest goes out at th
   assert.equal(sent.length, 1);
   await new Promise((r) => setTimeout(r, 60));
   assert.equal(sent.length, 2);
-  assert.equal(sent[1].state, "wave 3");
+  assert.equal(sent[1]?.state, "wave 3");
   board.stop();
 });
 
@@ -141,21 +143,21 @@ await check("a hidden app is never shown, and hiding the shown one clears it", (
   board.update(ev(1, "100", { state: "secret" }));
   assert.equal(sent.length, 0);
   board.setHidden([]);
-  assert.equal(sent.at(-1).name, "Factorio");
+  assert.equal(sent.at(-1)?.name, "Factorio");
   board.setHidden(["100"]);
   assert.equal(sent.at(-1), null);
   board.stop();
 });
 
 await check("with two games open, closing one shows the other", async () => {
-  const quickSent = [];
-  const board = createPresenceBoard({ onChange: (c) => quickSent.push(c), nameForApp: (id) => ({ a: "A", b: "B" })[id], minIntervalMs: 0 });
+  const quickSent: Card[] = [];
+  const board = createPresenceBoard({ onChange: (c) => quickSent.push(c), nameForApp: (id) => ({ a: "A", b: "B" } as Record<string, string>)[id] ?? null, minIntervalMs: 0 });
   board.update(ev(1, "a", { state: "1" }));
   await new Promise((r) => setTimeout(r, 2));
   board.update(ev(2, "b", { state: "2" }));
-  assert.equal(quickSent.at(-1).name, "B");
+  assert.equal(quickSent.at(-1)?.name, "B");
   board.update(ev(2, "b", null));
-  assert.equal(quickSent.at(-1).name, "A");
+  assert.equal(quickSent.at(-1)?.name, "A");
   board.stop();
 });
 
@@ -184,7 +186,7 @@ await check("when Discord has the connection, settings says it's Discord and how
   const line = socketLine({ state: "yielded", holder: { name: "Discord", isDiscord: true } });
   assert.equal(line.warn, true);
   assert.match(line.text, /^Discord is holding the game connection, so games report to Discord instead of Gryt\.$/);
-  assert.match(line.fix, /Quit Discord/);
+  assert.match(line.fix ?? "", /Quit Discord/);
   assert.match(heldNotice("Discord Canary"), /^Discord Canary got to the game connection first/);
 });
 

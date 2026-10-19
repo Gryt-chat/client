@@ -11,13 +11,13 @@ import { readGamesFile } from "../electron/gameListCache.ts";
 import { createPresenceBoard } from "../electron/richPresence.ts";
 
 let failures = 0;
-async function check(name, run) {
+async function check(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.stack ?? err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
   }
 }
 
@@ -57,8 +57,8 @@ await check("stored answers drop anything that isn't an id and show or hide", ()
 const index = buildProgramIndex(list, "win32").byProgram;
 
 await check("an unanswered game is asked about and not shown", async () => {
-  const asked = [];
-  const shown = [];
+  const asked: string[] = [];
+  const shown: object[][] = [];
   const d = createGameDetector({
     list: async () => ["cs2.exe"],
     index: () => index,
@@ -102,7 +102,7 @@ await check("a no never shows and never asks again", async () => {
 });
 
 await check("the board shows a detected game only when no game reports for itself", () => {
-  const cards = [];
+  const cards: ({ name?: string; appId?: string; type?: string } | null)[] = [];
   const board = createPresenceBoard({ nameForApp: (id) => (id === CS2 ? "Counter-Strike 2" : "Osu"), onChange: (c) => cards.push(c), minIntervalMs: 0 });
   board.setDetected([{ appId: CS2, since: 1_700_000_000_000 }]);
   assert.equal(cards.at(-1)?.name, "Counter-Strike 2");
@@ -115,7 +115,7 @@ await check("the board shows a detected game only when no game reports for itsel
 });
 
 await check("hiding a detected game in Rich Presence hides it here too", () => {
-  const cards = [];
+  const cards: ({ name?: string; appId?: string; type?: string } | null)[] = [];
   const board = createPresenceBoard({ nameForApp: () => "Counter-Strike 2", onChange: (c) => cards.push(c), minIntervalMs: 0 });
   board.setHidden([CS2]);
   board.setDetected([{ appId: CS2, since: 1 }]);
@@ -124,7 +124,7 @@ await check("hiding a detected game in Rich Presence hides it here too", () => {
 });
 
 const FIGMA = appKey("Figma");
-const curated = [
+const curated: Parameters<typeof buildProgramIndex>[2] = [
   { name: "Figma", kind: "app", ids: [], exe: { win32: ["figma.exe"], darwin: ["figma.app"] } },
   { name: "VS Code", kind: "app", ids: ["383226320970055681"], exe: { win32: ["code.exe"] } },
 ];
@@ -167,7 +167,7 @@ await check("an app whose plugin is reporting isn't asked about or shown", async
 });
 
 await check("a detected app reads using, with our name", () => {
-  const cards = [];
+  const cards: ({ name?: string; appId?: string; type?: string } | null)[] = [];
   const board = createPresenceBoard({ nameForApp: () => null, onChange: (c) => cards.push(c), minIntervalMs: 0 });
   board.setDetected([{ appId: FIGMA, since: 1_700_000_000_000, name: "Figma", type: "using" }]);
   assert.equal(cards.at(-1)?.name, "Figma");

@@ -24,19 +24,28 @@ import {
 import { helperStateLine } from "../src/packages/settings/src/components/presenceHelperCopy.ts";
 
 let failures = 0;
-async function check(name, run) {
+async function check(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.stack ?? err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
   }
 }
 
-const roots = [];
+const roots: string[] = [];
 /** A machine: a home folder, the app's resources with a helper in them, and a fake OS. */
-function machine(platform, { env = {}, withHelper = true, withPlist = true, mas = false, windowsStore = false } = {}) {
+function machine(
+  platform: NodeJS.Platform,
+  {
+    env = {},
+    withHelper = true,
+    withPlist = true,
+    mas = false,
+    windowsStore = false,
+  }: { env?: Record<string, string>; withHelper?: boolean; withPlist?: boolean; mas?: boolean; windowsStore?: boolean } = {},
+) {
   const root = mkdtempSync(join(tmpdir(), "ghs-"));
   roots.push(root);
   const home = join(root, "home");
@@ -53,10 +62,10 @@ function machine(platform, { env = {}, withHelper = true, withPlist = true, mas 
     writeFileSync(join(resources, "..", "Library", "LaunchAgents", AGENT_PLIST), "<plist/>");
   }
 
-  const runKey = new Map();
-  const calls = [];
+  const runKey = new Map<string, string>();
+  const calls: [string, ...(string | { openAtLogin: boolean })[]][] = [];
   let loginItem = "not-registered";
-  const spawned = [];
+  const spawned: string[] = [];
   const deps = {
     platform,
     env: { ...env },
@@ -66,7 +75,7 @@ function machine(platform, { env = {}, withHelper = true, withPlist = true, mas 
     devRoot: root,
     mas,
     windowsStore,
-    run: async (command, args) => {
+    run: async (command: string, args: string[]) => {
       calls.push([command, ...args]);
       assert.equal(command, "reg.exe");
       const [verb, key, , value] = args;
@@ -76,12 +85,13 @@ function machine(platform, { env = {}, withHelper = true, withPlist = true, mas 
       if (verb === "delete") return runKey.delete(value) ? 0 : 1;
       return 1;
     },
-    setLoginItem: (options) => {
+    setLoginItem: (options: { openAtLogin: boolean }) => {
       calls.push(["setLoginItem", options]);
-      loginItem = options.openAtLogin ? (env.NEEDS_APPROVAL ? "requires-approval" : "enabled") : "not-registered";
+      if (!options.openAtLogin) loginItem = "not-registered";
+      else loginItem = env.NEEDS_APPROVAL ? "requires-approval" : "enabled";
     },
     getLoginItem: () => ({ status: loginItem }),
-    spawnDetached: (file) => spawned.push(file),
+    spawnDetached: (file: string) => spawned.push(file),
   };
   const entries = () => {
     if (platform === "win32") return [...runKey.keys()];
@@ -91,7 +101,7 @@ function machine(platform, { env = {}, withHelper = true, withPlist = true, mas 
   return { deps, binary, calls, runKey, entries, spawned, home };
 }
 
-const PLATFORMS = ["win32", "darwin", "linux"];
+const PLATFORMS = ["win32", "darwin", "linux"] as const;
 const notRunning = async () => false;
 
 /* ── Install, first launch and update ────────────────────────────────── */
@@ -102,7 +112,7 @@ await check("a fresh install's first launch leaves no startup entry", async () =
     await syncAtLaunch(m.deps, false, notRunning);
     assert.deepEqual(m.entries(), [], platform);
     assert.deepEqual(m.spawned, [], `${platform}: the helper was started without being turned on`);
-    assert.equal(m.calls.some((c) => c[1] === "add" || (c[0] === "setLoginItem" && c[1].openAtLogin)), false, platform);
+    assert.equal(m.calls.some((c) => c[1] === "add" || (c[0] === "setLoginItem" && typeof c[1] === "object" && c[1].openAtLogin)), false, platform);
   }
 });
 
@@ -117,7 +127,7 @@ await check("an update that launches with it off removes a stray entry and adds 
 });
 
 await check("an update with it on keeps the entry and starts the helper, without re-adding one the OS removed", async () => {
-  for (const platform of ["win32", "linux"]) {
+  for (const platform of ["win32", "linux"] as const) {
     const m = machine(platform);
     await syncAtLaunch(m.deps, true, notRunning);
     assert.deepEqual(m.entries(), [], `${platform}: re-added an entry nobody asked for`);
@@ -206,9 +216,9 @@ await check("not offered where it can't work", () => {
 
 await check("settings says when it's on, when macOS wants it allowed, and when it failed", () => {
   assert.equal(helperStateLine({ enabledAt: null, needsApproval: false, error: null }), null);
-  assert.match(helperStateLine({ enabledAt: "x", needsApproval: false, error: null }).text, /starts when you log in/);
-  assert.match(helperStateLine({ enabledAt: "x", needsApproval: true, error: null }).text, /Login Items/);
-  assert.equal(helperStateLine({ enabledAt: null, needsApproval: false, error: "reg.exe add exited 1" }).warn, true);
+  assert.match(helperStateLine({ enabledAt: "x", needsApproval: false, error: null })?.text ?? "", /starts when you log in/);
+  assert.match(helperStateLine({ enabledAt: "x", needsApproval: true, error: null })?.text ?? "", /Login Items/);
+  assert.equal(helperStateLine({ enabledAt: null, needsApproval: false, error: "reg.exe add exited 1" })?.warn, true);
 });
 
 for (const root of roots) rmSync(root, { recursive: true, force: true });
