@@ -1,5 +1,6 @@
 import { Avatar } from "@gryt/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Socket } from "socket.io-client";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import type { Channel } from "@/settings/src/types/server";
@@ -56,7 +57,7 @@ export function SearchPanel({
   local,
   startIn,
 }: {
-  socketConnection: unknown;
+  socketConnection: Socket | null;
   serverHost: string;
   serverName: string;
   channels: Channel[];

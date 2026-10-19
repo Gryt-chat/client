@@ -54,8 +54,8 @@ function payloadOf(query: string, filters: SearchFilter[]) {
 
 /** Both tabs of the search panel over `chat:search` (GRYT-1738). Replies to anything but
     the latest request are dropped, so a slow one can't overwrite what the box now says. */
-export function useMessageSearch(socketConnection: unknown, query: string, filters: SearchFilter[]) {
-  const socket = (socketConnection as Socket | undefined) ?? null;
+export function useMessageSearch(socketConnection: Socket | null, query: string, filters: SearchFilter[]) {
+  const socket = socketConnection;
   const [tabs, setTabs] = useState<Record<SearchKind, SearchTab>>({ messages: EMPTY, files: EMPTY });
   const latest = useRef<Record<SearchKind, string>>({ messages: "", files: "" });
   const appending = useRef<Record<SearchKind, boolean>>({ messages: false, files: false });

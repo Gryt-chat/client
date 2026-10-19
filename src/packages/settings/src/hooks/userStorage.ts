@@ -1,4 +1,3 @@
-
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
 import { getDeviceId, isDeviceId } from "./deviceId";
 

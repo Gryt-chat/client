@@ -1,6 +1,7 @@
 import { Badge, Button, IconButton } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useCallback, useEffect, useState } from "react";
+import type { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
@@ -98,7 +99,7 @@ interface MobileServerViewProps {
   headerAction?: React.ReactNode;
   headerDetail?: React.ReactNode;
   currentUserNickname?: string;
-  socketConnection?: unknown;
+  socketConnection?: Socket | null;
   memberList: Record<string, MemberInfo>;
   isRateLimited?: boolean;
   rateLimitCountdown?: number;

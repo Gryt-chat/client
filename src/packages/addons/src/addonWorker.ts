@@ -183,7 +183,7 @@ const gryt = {
   },
 };
 
-(globalThis as unknown as { gryt: typeof gryt }).gryt = gryt;
+Object.assign(globalThis, { gryt });
 
 self.addEventListener("message", (event: MessageEvent<HostMessage>) => {
   const message = event.data;

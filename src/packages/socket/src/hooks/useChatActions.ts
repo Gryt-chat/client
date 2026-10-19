@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
+import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken } from "@/common";
 
@@ -12,7 +13,7 @@ import { useServerPermissions } from "./usePermissions";
 
 interface UseChatActionsParams {
   chatMessages: ChatMessage[];
-  socketConnection?: unknown;
+  socketConnection?: Socket | null;
   currentUserId?: string;
   serverHost?: string;
   canDeleteAny?: boolean;
@@ -81,7 +82,7 @@ export function useChatActions({
       reactMls?.(message.message_id, reactionSrc);
       return;
     }
-    (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:react", {
+    socketConnection?.emit("chat:react", {
       conversationId: message.conversation_id,
       messageId: message.message_id,
       reactionSrc,
@@ -98,7 +99,7 @@ export function useChatActions({
     if (!socketConnection || !currentUserId) return;
     const accessToken = getServerAccessToken(serverHost || "");
     if (!accessToken) return;
-    (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:report", {
+    socketConnection?.emit("chat:report", {
       conversationId: message.conversation_id,
       messageId: message.message_id,
       accessToken,
@@ -122,7 +123,7 @@ export function useChatActions({
     }
     const accessToken = getServerAccessToken(serverHost || "");
     if (!accessToken) return;
-    (socketConnection as { emit: (event: string, data: unknown) => void }).emit("chat:delete", {
+    socketConnection?.emit("chat:delete", {
       conversationId: pendingDeleteMessage.conversation_id,
       messageId: pendingDeleteMessage.message_id,
       accessToken,

@@ -303,6 +303,8 @@ async function refresh(host: string): Promise<void> {
         return;
       }
       state.session = createMlsSession({
+        // socket.io's generic on/off don't fit SessionSocket's plain signature.
+        // eslint-disable-next-line no-restricted-syntax
         socket: state.socket as unknown as SessionSocket,
         storeScope: scope,
         dmScope: scope,

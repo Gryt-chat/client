@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import type { Socket } from "socket.io-client";
 
 import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/common";
 
@@ -145,7 +146,7 @@ export interface UseThreadsResult {
 }
 
 export function useThreads(
-  socketConnection: unknown,
+  socketConnection: Socket | null,
   conversationId: string,
   serverHost: string | undefined,
   currentUserId: string | undefined,

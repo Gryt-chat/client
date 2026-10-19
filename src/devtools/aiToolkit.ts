@@ -127,6 +127,6 @@ export type AiToolkit = typeof toolkit;
 
 /** Called from main.tsx, already behind `import.meta.env.DEV`. */
 export function installAiToolkit(): void {
-  (window as unknown as { gryt: AiToolkit }).gryt = toolkit;
+  Object.assign(window, { gryt: toolkit });
   console.info("[dev] window.gryt is here. gryt.help() lists what it does.");
 }

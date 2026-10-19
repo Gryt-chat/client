@@ -214,6 +214,8 @@ export function useChatSend({
      the server changes, and what the old one still held fails with its text back. */
   useEffect(() => {
     if (!currentConnection) return;
+    // socket.io's generic on/off don't fit QueueSocket's plain signature.
+    // eslint-disable-next-line no-restricted-syntax
     const queue = new SendQueue(currentConnection as unknown as ConstructorParameters<typeof SendQueue>[0], {
       emit: (nonce) => emitSendRef.current(nonce),
       onGiveUp: (nonce) => {

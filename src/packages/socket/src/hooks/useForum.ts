@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken } from "@/common";
 
@@ -65,7 +66,7 @@ export interface UseForumResult {
 }
 
 export function useForum(
-  socketConnection: unknown,
+  socketConnection: Socket | null,
   conversationId: string,
   serverHost: string | undefined,
 ): UseForumResult {
