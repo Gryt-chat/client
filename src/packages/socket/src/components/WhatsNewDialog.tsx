@@ -17,6 +17,12 @@ import {
   PiShieldCheckFill,
 } from "../../../../lib/icons";
 
+function aheadLine(count: number, capped: boolean, latest: string): string {
+  if (count === 0) return `The newest is ${latest}`;
+  if (capped) return `The newest ${count} releases, up to ${latest}`;
+  return `${count} newer ${count === 1 ? "release" : "releases"}, up to ${latest}`;
+}
+
 export interface WhatsNewChange {
   kind: string;
   /** The part of Gryt it touches. Releases before 1.11.0, and older sites, have none. */
@@ -314,11 +320,7 @@ function AheadBody({
         <span>
           <Dialog.Title className="whats-new-greet">This server runs {ahead.running}</Dialog.Title>
           <p className="whats-new-meta">
-            {count === 0
-              ? `The newest is ${ahead.latest}`
-              : capped
-                ? `The newest ${count} releases, up to ${ahead.latest}`
-                : `${count} newer ${count === 1 ? "release" : "releases"}, up to ${ahead.latest}`}
+            {aheadLine(count, capped, ahead.latest)}
           </p>
         </span>
       </div>
@@ -430,11 +432,8 @@ export function WhatsNewDialog({
                       )}
                     </Dialog.Title>
                     <p className="whats-new-meta">
-                      {!several
-                        ? `${newest.version} · ${readableDate(newest.date)}`
-                        : capped
-                          ? `The ${releases.length} newest releases`
-                          : `${releases.length} releases`}
+                      {!several && `${newest.version} · ${readableDate(newest.date)}`}
+                      {several && (capped ? `The ${releases.length} newest releases` : `${releases.length} releases`)}
                     </p>
                   </span>
                 </div>

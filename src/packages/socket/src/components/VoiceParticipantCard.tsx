@@ -391,12 +391,8 @@ export function VoiceParticipantCard({
   const watchedShares = useWatchedShares();
 
   if (isScreenTile) {
-    const screenStream = isSelf
-      ? localScreenStream
-      : client.screenShareVideoStreamID &&
-          videoStreams?.[client.screenShareVideoStreamID]
-        ? videoStreams[client.screenShareVideoStreamID]
-        : null;
+    const remoteScreen = client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] ?? null : null;
+    const screenStream = isSelf ? localScreenStream : remoteScreen;
 
     if (!isSelf) {
       const vsKeys = videoStreams ? Object.keys(videoStreams) : [];
@@ -604,11 +600,8 @@ export function VoiceParticipantCard({
   });
   const hue = tint.hue;
 
-  const speakingAnalyser = isSelf
-    ? microphoneBuffer.finalAnalyser
-    : client.streamID
-      ? streamSources?.[client.streamID]?.analyser
-      : undefined;
+  const remoteAnalyser = client.streamID ? streamSources?.[client.streamID]?.analyser : undefined;
+  const speakingAnalyser = isSelf ? microphoneBuffer.finalAnalyser : remoteAnalyser;
 
   const showMutedBadge =
     !compact && (client.isMuted || client.isDeafened) && !isUserConnecting;
@@ -708,11 +701,8 @@ export function VoiceParticipantCard({
               borderRadius: "var(--gryt-radius-md)",
               padding: "2px 4px",
               border: "1px solid var(--gryt-neutral-6)" }}>
-            {compact && client.isDeafened ? (
-              <PiSpeakerSlashFill size={12} color="var(--gryt-danger-9)" />
-            ) : compact && client.isMuted ? (
-              <PiMicrophoneSlashFill size={12} color="var(--gryt-danger-9)" />
-            ) : null}
+            {compact && client.isDeafened && <PiSpeakerSlashFill size={12} color="var(--gryt-danger-9)" />}
+            {compact && !client.isDeafened && client.isMuted && <PiMicrophoneSlashFill size={12} color="var(--gryt-danger-9)" />}
 
             {client.isAFK && (
               <span className="text-xs font-bold text-gryt-warning">

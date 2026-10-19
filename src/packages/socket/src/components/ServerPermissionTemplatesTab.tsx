@@ -213,7 +213,8 @@ export function ServerPermissionTemplatesTab({
 
           <div className="flex gap-2">
             <Button size="small" disabled={saving} onClick={save}>
-              {saving ? "Saving…" : isNew ? "Create template" : "Save template"}
+              {saving && "Saving…"}
+              {!saving && (isNew ? "Create template" : "Save template")}
             </Button>
             <Button size="small" onClick={() => setSelectedId(null)}>
               Cancel

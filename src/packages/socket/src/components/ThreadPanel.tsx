@@ -262,18 +262,19 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
         {/* 14 inline, matching the header, the tag row and the composer. Without
             it an avatar sits against the panel edge while the channel's does not. */}
         <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, overflowY: "auto", paddingBottom: 8, paddingInline: 14 }}>
-        {root ? (
+        {root && (
           <div className="mb-1 border-b border-gryt-border pb-1.5">
             {renderMessage(root)}
           </div>
-        ) : !loading && !error ? (
+        )}
+        {!root && !loading && !error && (
           /* The root can be gone while the replies are not: deleting it takes
              the thread with it, but a blocked sender only hides it. */
           <div className="mb-1 border-b border-gryt-border pb-1.5" style={{ padding: "12px 2px", fontSize: 13, color: "var(--gryt-neutral-10)" }}>
             The message this thread started from is gone.
           </div>
-        ) : null}
-        {error ? (
+        )}
+        {error && (
           <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-11)", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
             <span>{error}</span>
             {onRetry && (
@@ -282,11 +283,14 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
               </Button>
             )}
           </div>
-        ) : loading ? (
+        )}
+        {!error && loading && (
           <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>Loading…</div>
-        ) : messages.length === 0 && root ? (
+        )}
+        {!error && !loading && messages.length === 0 && root && (
           <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>No replies yet. Start the conversation.</div>
-        ) : (
+        )}
+        {!error && !loading && (messages.length > 0 || !root) && (
           messages.map((m) => (
             <Fragment key={m.message_id}>{renderMessage(m)}</Fragment>
           ))

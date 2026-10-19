@@ -11,7 +11,7 @@ export function galleryOf(message: ChatMessage, serverHost: string | undefined):
     // A sealed file not decrypted yet would load as ciphertext from the server.
     if (!meta || meta.refused || meta.processing || (meta.open_sealed && !meta.local_url)) return;
     const mime = meta.mime || "";
-    const kind = mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : null;
+    const kind = (["image", "video"] as const).find((k) => mime.startsWith(`${k}/`)) ?? null;
     if (!kind) return;
     items.push({
       kind,

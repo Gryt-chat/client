@@ -24,6 +24,21 @@ import { type ForumTagDraft, ForumTagsField } from "./ForumTagsField";
 import { ScopePicker } from "./ScopePicker";
 import { settingsTitle } from "./sidebarTree";
 
+type Rules = Parameters<typeof describeRules>[0];
+type RoleNames = Parameters<typeof describeRules>[1];
+
+function channelScopeLine(choice: string, rules: Rules, roleNames: RoleNames): string {
+  if (choice === EVERYONE_VALUE) return "Everyone on the server can see and use this channel.";
+  if (choice === CUSTOM_VALUE) return describeRules(rules, roleNames);
+  return "Follows a template. Change it in server settings and every channel using it changes with it.";
+}
+
+function folderScopeLine(choice: string, rules: Parameters<typeof describeFolderRules>[0], roleNames: RoleNames): string {
+  if (choice === EVERYONE_VALUE) return "Everyone on the server can see and use the channels in this folder.";
+  if (choice === CUSTOM_VALUE) return describeFolderRules(rules, roleNames);
+  return "Uses a template. Edit it in server settings and everything using it changes too.";
+}
+
 export interface SidebarEditorFields {
   selectedSidebarItem: SidebarItem | null;
   sheetChannelName: string;
@@ -278,11 +293,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                             ? scopeChoiceOptions.find((o) => o.value === sheetScopeChoice)?.label ?? null
                             : null,
                         )
-                      : sheetScopeChoice === EVERYONE_VALUE
-                        ? "Everyone on the server can see and use this channel."
-                        : sheetScopeChoice === CUSTOM_VALUE
-                          ? describeRules(sheetScopeRules, roleNames)
-                          : "Follows a template. Change it in server settings and every channel using it changes with it."
+                      : channelScopeLine(sheetScopeChoice, sheetScopeRules, roleNames)
                   }
                   onChoice={pickChannelScope}
                   onRules={drawRules}
@@ -394,11 +405,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                 permissions={channelPermissions}
                 loading={scopeLoading}
                 description={
-                  sheetScopeChoice === EVERYONE_VALUE
-                    ? "Everyone on the server can see and use the channels in this folder."
-                    : sheetScopeChoice === CUSTOM_VALUE
-                      ? describeFolderRules(sheetScopeRules, roleNames)
-                      : "Uses a template. Edit it in server settings and everything using it changes too."
+                  folderScopeLine(sheetScopeChoice, sheetScopeRules, roleNames)
                 }
                 onChoice={pickScope}
                 onRules={drawRules}
