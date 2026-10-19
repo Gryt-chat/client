@@ -50,6 +50,33 @@ import { TypingIndicator } from "./TypingIndicator";
 /** Room for the 160ms fade in style.css to start late on a busy frame and still finish. */
 const MESSAGE_ENTER_MS = 600;
 
+function placeholderFor(s: {
+  offlineLine: string | undefined;
+  voiceTextHidden: boolean | undefined;
+  mayRead: boolean | undefined;
+  maySend: boolean | undefined;
+  waitSeconds: number | null | undefined;
+  channelName: string | undefined;
+  dm: boolean;
+  inClear: boolean | undefined;
+}): string {
+  if (s.offlineLine) return s.offlineLine;
+  if (s.voiceTextHidden) return "Text chat is not available in this voice channel";
+  if (!s.mayRead) return "This channel is not readable with your role.";
+  if (!s.maySend) return READ_ONLY_LINE;
+  if (s.waitSeconds) return `Please wait ${s.waitSeconds} seconds...`;
+  if (!s.channelName) return "Chat with your friends!";
+  if (!s.dm) return `Message #${s.channelName}`;
+  return `Message ${s.channelName}${s.inClear ? " (not encrypted)" : ""}`;
+}
+
+function HeaderGlyph({ forum, automated, voice }: { forum: boolean; automated: boolean | undefined; voice: boolean }) {
+  const style = { color: "var(--gryt-neutral-11)", flexShrink: 0 };
+  if (forum) return <PiChatsTeardropFill size={18} style={style} />;
+  if (automated) return <PiRobotFill size={18} style={style} />;
+  return voice ? <PiSpeakerHighFill size={18} style={style} /> : <PiChatTeardropTextFill size={18} style={style} />;
+}
+
 export type { AttachmentMeta, ChatMessage, Reaction } from "./chatUtils";
 
 /** What a DM on MLS adds: the line above the composer, and deleting over MLS. */
@@ -715,11 +742,7 @@ export const ChatView = memo(({
   /* A mute is the server's, not the channel's, so it covers the thread panel
      and every other conversation on the same host (GRYT-1400). */
   const textMute = useTextMute(serverHost);
-  const muteLine = textMute
-    ? textMute.until
-      ? `You’re muted on this server until ${muteLiftsAt(textMute.until)}.`
-      : "You’re muted on this server."
-    : null;
+  const muteLine = textMute && (textMute.until ? `You’re muted on this server until ${muteLiftsAt(textMute.until)}.` : "You’re muted on this server.");
 
   // The channel's answer alone, so an allow here works for a role that cannot
   // post elsewhere (GRYT-1418). A mute is on top, and server-wide.
@@ -785,21 +808,16 @@ export const ChatView = memo(({
   }, [sealing?.kind, conversationKind, serverHost, conversationKey]);
   const sealedFrom = conversationKind === "dm" && serverHost && conversationKey ? encryptedSince(serverHost, conversationKey) : null;
 
-  const editorPlaceholder = offlineLine
-    ? offlineLine
-    : !canViewVoiceChannelText && isVoiceChannelTextChat
-      ? "Text chat is not available in this voice channel"
-      : !mayRead
-        ? "This channel is not readable with your role."
-      : !maySend
-        ? READ_ONLY_LINE
-        : isRateLimited && rateLimitCountdown
-          ? `Please wait ${rateLimitCountdown} seconds...`
-          : channelName
-            ? conversationKind === "dm"
-              ? `Message ${channelName}${inClear ? " (not encrypted)" : ""}`
-              : `Message #${channelName}`
-            : "Chat with your friends!";
+  const editorPlaceholder = placeholderFor({
+    offlineLine,
+    voiceTextHidden: !canViewVoiceChannelText && isVoiceChannelTextChat,
+    mayRead,
+    maySend,
+    waitSeconds: isRateLimited ? rateLimitCountdown : 0,
+    channelName,
+    dm: conversationKind === "dm",
+    inClear,
+  });
 
   const editorDisabled = !!offlineLine || (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
 
@@ -835,7 +853,7 @@ export const ChatView = memo(({
           {channelName && (
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {headerLead}
-              {headerIcon ?? (isForum ? <PiChatsTeardropFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : automated ? <PiRobotFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : channelType === "voice" && conversationKind === "channel" ? <PiSpeakerHighFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} /> : <PiChatTeardropTextFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />)}
+              {headerIcon ?? <HeaderGlyph forum={isForum} automated={automated} voice={channelType === "voice" && conversationKind === "channel"} />}
               {/* One line that gives way, or a long name pushes the buttons out of a narrow window. */}
               {headerSubtitle ? (
                 <span className="flex min-w-0 flex-col gap-0.5">
@@ -913,21 +931,24 @@ export const ChatView = memo(({
             </div>
           )}
 
-          {showVoiceDisabled ? (
+          {showVoiceDisabled && (
             <div className="flex grow items-center justify-center">
               <span className="text-sm text-gryt-muted" style={{ textAlign: "center", padding: "16px" }}>
                 Text chat is disabled in this voice channel
               </span>
             </div>
-          ) : isLoadingMessages ? (
+          )}
+          {!showVoiceDisabled && isLoadingMessages && (
             <div className="flex grow flex-col justify-end" style={{ paddingBottom: "16px" }}>
               <MessageSkeleton />
             </div>
-          ) : chatMessages.length === 0 ? (
+          )}
+          {!showVoiceDisabled && !isLoadingMessages && chatMessages.length === 0 && (
             <div className="flex grow items-center justify-center" style={{ paddingBottom: "16px" }}>
               <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} sealing={sealing} />
             </div>
-          ) : showMessages ? (
+          )}
+          {!showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0 && showMessages && (
             <div
               ref={scrollRef}
               className="chat-scroll-container"
@@ -1020,7 +1041,7 @@ export const ChatView = memo(({
                 </div>
               )}
             </div>
-          ) : null}
+          )}
 
           {(historyWindow?.hasNewer || farFromBottom || newBelow > 0) && (
             // Zero-height anchor, so the pill floats over the last messages instead of pushing them up.

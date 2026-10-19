@@ -31,8 +31,8 @@ assert.match(
 // It has to sit in the tiny branch specifically. A button landing in the phone or
 // full layout would satisfy the check above and leave the tiny window broken.
 const tinyBranch = serverView.slice(
-  serverView.indexOf("{isTiny ? ("),
-  serverView.indexOf(") : isMobile ? ("),
+  serverView.indexOf("{layout === \"tiny\" && ("),
+  serverView.indexOf("{layout === \"mobile\" && ("),
 );
 assert.ok(
   tinyBranch.length > 0,
