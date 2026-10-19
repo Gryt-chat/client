@@ -21,9 +21,11 @@ assert.ok(from !== -1 && to > from, `${SOURCE} no longer has a chat:error sectio
 const section = plain.slice(from, to).replaceAll("export function", "function").replaceAll("export const", "const");
 
 /** The handler with its timers and its toast in hand, so a test can drive them. */
+type Timer = { fn: () => void; ms: number };
+
 function load() {
-  const timeouts = [];
-  const intervals = [];
+  const timeouts: Timer[] = [];
+  const intervals: Timer[] = [];
   const make = new Function(
     "handleRateLimitError",
     "setTimeout",
@@ -33,11 +35,11 @@ function load() {
   );
   const handle = make(
     () => {},
-    (fn, ms) => {
+    (fn: () => void, ms: number) => {
       timeouts.push({ fn, ms });
       return timeouts.length;
     },
-    (fn, ms) => {
+    (fn: () => void, ms: number) => {
       intervals.push({ fn, ms });
       return intervals.length;
     },
@@ -47,17 +49,17 @@ function load() {
 }
 
 /** One queued send and the two things a refusal can do with it. */
-function refuse(error, retryCount) {
+function refuse(error: string | object, retryCount: number | null) {
   const { handle, timeouts, intervals } = load();
   const entry = retryCount === null ? null : { retryCount };
   const queue = new Map(entry ? [["pending-1", entry]] : []);
-  const calls = { retried: 0, failed: 0, rateLimited: [], countdown: 0, muted: [] };
+  const calls = { retried: 0, failed: 0, rateLimited: [] as boolean[], countdown: 0, muted: [] as (string | null)[] };
   handle(error, "conversation-1", "key-1", {
-    onMuted: (expiresAt) => calls.muted.push(expiresAt),
-    setIsRateLimited: (v) => calls.rateLimited.push(v),
+    onMuted: (expiresAt: string | null) => calls.muted.push(expiresAt),
+    setIsRateLimited: (v: boolean) => calls.rateLimited.push(v),
     setMessageCacheMeta: () => {},
     rateLimitIntervalRef: { current: null },
-    setRateLimitCountdown: (v) => {
+    setRateLimitCountdown: (v: number | ((n: number) => number)) => {
       calls.countdown = typeof v === "function" ? v(calls.countdown) : v;
     },
     onRetry: () => calls.retried++,
@@ -134,19 +136,19 @@ assert.deepEqual(refusedByThem.rateLimited, [], "and it isn't a rate limit");
 
 /* Four sends refused at once. Without a name, every refusal landed on the last
    row queued, and the three before it stayed pending until a reload. */
-function burst(retryCount, refs) {
+function burst(retryCount: number, refs: ({ nonce: string } | undefined)[]) {
   const { handle, timeouts } = load();
   const queue = new Map(
     ["a", "b", "c", "d"].map((id) => [`pending-${id}`, { nonce: `nonce-${id}`, retryCount }]),
   );
-  const calls = { retried: [], failed: [] };
+  const calls = { retried: [] as string[], failed: [] as string[] };
   const deps = {
     setIsRateLimited: () => {},
     setMessageCacheMeta: () => {},
     rateLimitIntervalRef: { current: null },
     setRateLimitCountdown: () => {},
-    onRetry: (id) => calls.retried.push(id),
-    onFail: (id) => calls.failed.push(id),
+    onRetry: (id: string) => calls.retried.push(id),
+    onFail: (id: string) => calls.failed.push(id),
     retryQueueRef: { current: queue },
   };
   for (const ref of refs) handle(RATE_LIMITED, "conversation-1", "key-1", deps, ref);
@@ -189,14 +191,14 @@ const storeSlice = (storeSource.slice(storeFrom, storeTo) + storeSource.slice(ho
 
 /** The store with its timers in hand, so a lapsing mute can be driven. */
 function loadStore() {
-  const pending = [];
+  const pending: Timer[] = [];
   const make = new Function(
     "setTimeout",
     "clearTimeout",
     `${storeSlice}\nreturn { setTextMute, noteServerMute, textMuteFor, resetTextMutes, muteLiftsAt, parseMuteExpiry };`,
   );
   const api = make(
-    (fn, ms) => {
+    (fn: () => void, ms: number) => {
       pending.push({ fn, ms });
       return pending.length;
     },

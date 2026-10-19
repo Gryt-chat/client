@@ -16,9 +16,9 @@ const HANDLERS = `${HOOKS}/chatEventHandlers.ts`;
 const { mergeMessages } = await import(pathToFileURL(join(root, HOOKS, "mergeMessages.ts")).href);
 
 const T0 = Date.parse("2026-09-15T12:00:00.000Z");
-const at = (seconds) => new Date(T0 + seconds * 1000).toISOString();
+const at = (seconds: number) => new Date(T0 + seconds * 1000).toISOString();
 
-function message(id, seconds, extra = {}) {
+function message(id: string, seconds: number, extra: Record<string, string | boolean | Date | null> = {}) {
   return {
     conversation_id: "dm",
     message_id: id,
@@ -31,7 +31,9 @@ function message(id, seconds, extra = {}) {
   };
 }
 
-const ids = (list) => list.map((m) => m.message_id);
+type Message = ReturnType<typeof message>;
+
+const ids = (list: Message[]) => list.map((m) => m.message_id);
 
 // ── mergeMessages ───────────────────────────────────────────────────
 
@@ -139,7 +141,7 @@ const ids = (list) => list.map((m) => m.message_id);
    some other way fails here and not only in the list above. */
 const plain = stripTypeScriptTypes(readFileSync(join(root, HANDLERS), "utf8"));
 
-function declaration(name) {
+function declaration(name: string) {
   const signature = `export function ${name}(`;
   const found = plain.indexOf(signature);
   assert.notEqual(found, -1, `${HANDLERS} no longer has ${name}. Move this check with it.`);
@@ -157,34 +159,41 @@ const handlers = new Function("mergeMessages", `${NAMES.map(declaration).join("\
   mergeMessages,
 );
 
-const KEY = (conversationId) => `host::${conversationId}`;
+const KEY = (conversationId: string) => `host::${conversationId}`;
 
 /** React's state for one useChat, with updaters applied as they come. */
-function chat(activeConversationId) {
-  const state = { active: activeConversationId, cache: {}, list: [], deleted: new Set(), inFlight: { current: new Set() } };
-  const apply = (field) => (update) => {
+function chat(activeConversationId: string) {
+  const state = {
+    active: activeConversationId,
+    cache: {} as Record<string, Message[]>,
+    list: [] as Message[],
+    deleted: new Set<string>(),
+    inFlight: { current: new Set<string>() },
+  };
+  type State = typeof state;
+  const apply = <F extends "cache" | "list">(field: F) => (update: State[F] | ((previous: State[F]) => State[F])) => {
     state[field] = typeof update === "function" ? update(state[field]) : update;
   };
   const setCache = apply("cache");
   const setList = apply("list");
   return {
     state,
-    live: (msg) => handlers.handleNewMessage(msg, state.active, KEY, setCache, setList, state.deleted),
-    history: (conversationId, items, before) =>
+    live: (msg: Message) => handlers.handleNewMessage(msg, state.active, KEY, setCache, setList, state.deleted),
+    history: (conversationId: string, items: Message[], before?: string) =>
       handlers.handleHistoryPayload(
         { conversation_id: conversationId, items, hasMore: false, ...(before ? { before } : {}) },
         state.active, KEY, state.inFlight, setCache, setList, () => {}, () => {}, () => {}, state.deleted,
       ),
-    edited: (msg) => handlers.handleMessageEdited(msg, state.active, KEY, setCache, setList),
-    removed: (conversationId, messageId) =>
+    edited: (msg: Message) => handlers.handleMessageEdited(msg, state.active, KEY, setCache, setList),
+    removed: (conversationId: string, messageId: string) =>
       handlers.handleMessageDeleted({ conversation_id: conversationId, message_id: messageId }, state.active, KEY, setCache, setList, state.deleted),
     /** What useChat's conversation effect does: the list starts as the cache. */
-    open: (conversationId) => {
+    open: (conversationId: string) => {
       state.active = conversationId;
       state.list = state.cache[KEY(conversationId)] ?? [];
     },
     /** What useChatSend does with the optimistic copy: onto the end of both. */
-    sent: (msg) => {
+    sent: (msg: Message) => {
       state.list = [...state.list, msg];
       state.cache = { ...state.cache, [KEY(state.active)]: [...(state.cache[KEY(state.active)] ?? []), msg] };
     },
@@ -254,8 +263,8 @@ const olderHistory = () => [message("check-one", 10), message("check-two", 20)];
   member.edited(message("check-three", 30, { text: "fixed", edited_at: at(45) }));
   member.open("dm");
   member.history("dm", [...olderHistory(), message("check-three", 30)]);
-  assert.equal(member.state.list.at(-1).text, "fixed", "a stale page undid an edit");
-  assert.equal(member.state.cache[KEY("dm")].at(-1).text, "fixed");
+  assert.equal(member.state.list.at(-1)?.text, "fixed", "a stale page undid an edit");
+  assert.equal(member.state.cache[KEY("dm")].at(-1)?.text, "fixed");
 }
 
 // Deleted: a page the server read before a delete doesn't bring the message back.

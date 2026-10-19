@@ -13,7 +13,6 @@ electron-builder.config.cjs
 scripts/build-embedded-server.mjs
 scripts/build-helper.mjs
 scripts/check-builder-config.mjs
-scripts/check-chat-retry.mjs
 scripts/check-clear-local-history.mjs
 scripts/check-contact-filter.mjs
 scripts/check-dialog-primitives.mjs
@@ -29,13 +28,11 @@ scripts/check-extra-resources.mjs
 scripts/check-friend-list.mjs
 scripts/check-held-voice-presence.mjs
 scripts/check-hide-muted.mjs
-scripts/check-history-merge.mjs
 scripts/check-hold-until-proven.mjs
 scripts/check-hosted-server-reconnect.mjs
 scripts/check-http-proof-gate.mjs
 scripts/check-identity-timeout.mjs
 scripts/check-local-archive.mjs
-scripts/check-manage-server.mjs
 scripts/check-message-vault-reseal.mjs
 scripts/check-message-vault-upgrade.mjs
 scripts/check-mls-dm.mjs
@@ -49,7 +46,6 @@ scripts/check-reconnect-grace.mjs
 scripts/check-role-pills.mjs
 scripts/check-same-server.mjs
 scripts/check-sealed-attachments.mjs
-scripts/check-sealed-save.mjs
 scripts/check-security-notice.mjs
 scripts/check-send-queue.mjs
 scripts/check-server-release-notes.mjs

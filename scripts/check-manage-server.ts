@@ -16,7 +16,7 @@ import {
 } from "../src/packages/settings/src/hostedServers.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (path) => readFileSync(join(root, path), "utf8");
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const RAIL = "src/components/sidebar.tsx";
 const HEADER = "src/packages/socket/src/components/ServerHeader.tsx";
@@ -32,7 +32,7 @@ const MY_SERVERS = "src/packages/settings/src/components/myServersSettings.tsx";
 const MANAGER = "electron/embeddedServerManager.ts";
 
 const HOST = "127.0.0.1:5010";
-const hostedAs = (status) => ({
+const hostedAs = (status: string) => ({
   id: "cozy-den-1a2b3c",
   status,
   config: null,
@@ -69,7 +69,7 @@ for (const status of LIFECYCLE) {
 
 /* useEmbeddedServer as written, with just enough React to mount it: state, callbacks
    and effects that rerun when their deps change. */
-const useEmbeddedServerWith = new Function(
+const embeddedServerHookWith = new Function(
   "useState",
   "useEffect",
   "useCallback",
@@ -79,23 +79,28 @@ const useEmbeddedServerWith = new Function(
     .replace(/^export /gm, "")}\nreturn useEmbeddedServer;`,
 );
 
-function mount(api) {
-  const slots = [];
-  let slot = 0;
-  let effects = [];
-  const same = (a, b) => !!a && !!b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+/** Whatever a hook slot holds: state, or a callback or effect with its deps. */
+type Held = string | number | boolean | null | undefined | object;
+type Slot = { value?: Held; fn?: Held; deps?: readonly Held[]; cleanup?: (() => void) | void };
 
-  const useState = (init) => {
+function mount(api: object | null) {
+  const slots: Slot[] = [];
+  let slot = 0;
+  let effects: (() => void)[] = [];
+  const same = (a?: readonly Held[], b?: readonly Held[]) =>
+    !!a && !!b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+
+  const useState = (init: Held) => {
     const i = slot++;
-    if (!(i in slots)) slots[i] = typeof init === "function" ? init() : init;
-    return [slots[i], (next) => { slots[i] = typeof next === "function" ? next(slots[i]) : next; }];
+    if (!(i in slots)) slots[i] = { value: typeof init === "function" ? init() : init };
+    return [slots[i].value, (next: Held) => { slots[i].value = typeof next === "function" ? next(slots[i].value) : next; }];
   };
-  const useCallback = (fn, deps) => {
+  const useCallback = (fn: Held, deps?: readonly Held[]) => {
     const i = slot++;
     if (!(i in slots) || !same(slots[i].deps, deps)) slots[i] = { fn, deps };
     return slots[i].fn;
   };
-  const useEffect = (fn, deps) => {
+  const useEffect = (fn: () => (() => void) | void, deps?: readonly Held[]) => {
     const i = slot++;
     if (i in slots && same(slots[i].deps, deps)) return;
     const previous = slots[i];
@@ -103,7 +108,7 @@ function mount(api) {
     effects.push(() => { previous?.cleanup?.(); slots[i].cleanup = fn(); });
   };
 
-  const hook = useEmbeddedServerWith(useState, useEffect, useCallback, () => api);
+  const hook = embeddedServerHookWith(useState, useEffect, useCallback, () => api);
   const render = () => {
     slot = 0;
     effects = [];
@@ -136,11 +141,11 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
 }
 
 {
-  let pushStatus;
+  let pushStatus: ((servers: ReturnType<typeof hostedAs>[]) => void) | undefined;
   const desktop = mount({
     getEmbeddedServerInfo: async () => ({ available: true, hasExisting: true, lanIp: "192.168.1.20", servers: [hostedAs("running")] }),
     getEmbeddedServerAutoStart: async () => false,
-    onEmbeddedServerStatusChanged: (callback) => {
+    onEmbeddedServerStatusChanged: (callback: typeof pushStatus) => {
       pushStatus = callback;
       return () => {};
     },
@@ -149,6 +154,7 @@ const settle = () => new Promise((resolve) => setImmediate(resolve));
   await settle();
   assert.equal(hostedServerAt(HOST, desktop.render().servers)?.id, "cozy-den-1a2b3c", "the desktop app got no Manage server for its own server");
 
+  assert.ok(pushStatus, "useEmbeddedServer never listened for status changes");
   pushStatus([hostedAs("stopped")]);
   await settle();
   assert.equal(hostedServerAt(HOST, desktop.render().servers)?.status, "stopped", "Manage server went away when the server stopped");
@@ -201,12 +207,16 @@ for (const tab of ["my-servers", "profile", "sound-video/audio", "audio", ""]) {
 {
   const settings = read(SETTINGS);
   const list = settings.slice(settings.indexOf("const DESTINATIONS"), settings.indexOf("const MAIN_DESTINATIONS"));
-  const destinations = [];
+  const destinations: { value: string; pages?: { value: string }[] }[] = [];
   const declarations = [...list.matchAll(/value: "([a-z-]+)"/g)];
   for (const [i, match] of declarations.entries()) {
     const chunk = list.slice(match.index, declarations[i + 1]?.index ?? list.length);
     if (/\bicon:/.test(chunk)) destinations.push({ value: match[1] });
-    else (destinations.at(-1).pages ??= []).push({ value: match[1] });
+    else {
+      const parent = destinations.at(-1);
+      assert.ok(parent, `${SETTINGS} declares a page before any destination`);
+      (parent.pages ??= []).push({ value: match[1] });
+    }
   }
   const serversDestination = destinations.find((d) => d.value === "servers");
   assert.ok(serversDestination?.pages?.some((page) => page.value === "my-servers"), `${SETTINGS} has no My servers page under Servers`);
