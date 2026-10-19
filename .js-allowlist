@@ -27,7 +27,6 @@ scripts/check-friend-list.mjs
 scripts/check-held-voice-presence.mjs
 scripts/check-hide-muted.mjs
 scripts/check-hold-until-proven.mjs
-scripts/check-hosted-server-reconnect.mjs
 scripts/check-http-proof-gate.mjs
 scripts/check-identity-timeout.mjs
 scripts/check-local-archive.mjs

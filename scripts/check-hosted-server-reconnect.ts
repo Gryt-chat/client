@@ -5,15 +5,15 @@
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server as HttpServer } from "node:http";
 import { createRequire, stripTypeScriptTypes } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { io } from "socket.io-client";
+import { io, type ManagerOptions, type Socket, type SocketOptions } from "socket.io-client";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 const HOOK = "src/packages/socket/src/hooks/useSockets.ts";
 const MANAGER = "electron/embeddedServerManager.ts";
 const hook = read(HOOK);
@@ -23,19 +23,30 @@ const { replayReconnect, retryNow } = await import("../src/packages/socket/src/u
 
 // What engine.io-client itself opens sockets with in Node, so it is here whenever the client is.
 const require = createRequire(import.meta.url);
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws");
+type FakeWs = { send(data: string): void; on(event: "message", listener: (data: Buffer) => void): void; terminate(): void };
+type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; clients: Set<FakeWs>; close(done: () => void): void };
+// ws ships no types of its own, so only what this file uses.
+const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
+  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
+};
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
+/** A socket or its manager. Each types its own events, and the ones waited on here carry at most an error. */
+type Emitter<E extends string> = {
+  on(event: E, listener: (...args: Error[]) => void): void;
+  off(event: E, listener: (...args: Error[]) => void): void;
+};
+
 /** Resolves on the next `event`, and fails the check if it has not come within `ms`. */
-function next(emitter, event, ms, what) {
+function next<E extends string>(emitter: Emitter<NoInfer<E>>, event: E, ms: number, what: string) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       emitter.off(event, on);
       reject(new Error(`${what}: no ${event} within ${ms}ms`));
     }, ms);
-    const on = (...args) => {
+    const on = (...args: Error[]) => {
       clearTimeout(timer);
       emitter.off(event, on);
       resolve(args);
@@ -45,7 +56,7 @@ function next(emitter, event, ms, what) {
 }
 
 /** A declaration's body, from its first brace to the one that closes it. */
-function bodyOf(text, from, where) {
+function bodyOf(text: string, from: string, where: string) {
   const at = text.indexOf(from);
   assert.notEqual(at, -1, `${where} no longer has "${from}". Move this check with it.`);
   const start = text.indexOf("{", at + from.length);
@@ -61,8 +72,8 @@ function bodyOf(text, from, where) {
 
 /** Enough engine.io and socket.io for a client to connect, on one port that can close and reopen. */
 function fakeServer() {
-  let http = null;
-  let wss = null;
+  let http: HttpServer | null = null;
+  let wss: FakeWss | null = null;
   let port = 0;
   const server = {
     accepted: 0,
@@ -70,8 +81,9 @@ function fakeServer() {
       return `http://127.0.0.1:${port}`;
     },
     async up() {
-      http = createServer();
-      wss = new WebSocketServer({ server: http });
+      const listening = createServer();
+      http = listening;
+      wss = new WebSocketServer({ server: listening });
       wss.on("connection", (ws) => {
         const n = ++server.accepted;
         const open = { sid: `engine${n}`, upgrades: [], pingInterval: 60_000, pingTimeout: 60_000, maxPayload: 1_000_000 };
@@ -80,24 +92,28 @@ function fakeServer() {
           if (String(data).startsWith("40")) ws.send(`40${JSON.stringify({ sid: `socket${n}` })}`);
         });
       });
-      await new Promise((resolve) => http.listen(port, "127.0.0.1", resolve));
-      port = http.address().port;
+      await new Promise<void>((resolve) => listening.listen(port, "127.0.0.1", resolve));
+      const address = listening.address();
+      assert.ok(address && typeof address === "object", "the fake server is not on a port");
+      port = address.port;
     },
     async down() {
-      for (const ws of wss.clients) ws.terminate();
-      await new Promise((resolve) => wss.close(resolve));
-      http.closeAllConnections();
-      await new Promise((resolve) => http.close(resolve));
+      const [listening, sockets] = [http, wss];
+      assert.ok(listening && sockets, "the fake server went down before it came up");
+      for (const ws of sockets.clients) ws.terminate();
+      await new Promise<void>((resolve) => sockets.close(resolve));
+      listening.closeAllConnections();
+      await new Promise((resolve) => listening.close(resolve));
     },
   };
   return server;
 }
 
-const clients = [];
-const servers = [];
+const clients: Socket[] = [];
+const servers: ReturnType<typeof fakeServer>[] = [];
 
 /** The options useSockets opens with, and delays short enough for a check. */
-async function connected(options) {
+async function connected(options: Partial<ManagerOptions & SocketOptions>) {
   const server = fakeServer();
   servers.push(server);
   await server.up();
@@ -115,9 +131,9 @@ try {
     await next(socket.io, "reconnect_error", 5_000, "the first retry");
     await server.up();
 
-    const calls = [];
+    const calls: boolean[] = [];
     const started = Date.now();
-    retryNow(socket, (reconnectRan) => calls.push(reconnectRan));
+    retryNow(socket, (reconnectRan: boolean) => calls.push(reconnectRan));
     await next(socket, "connect", 1_500, "retryNow with socket.io's next retry four seconds away");
     assert.ok(Date.now() - started < 1_500, "retryNow waited for the queued retry");
     assert.deepEqual(calls, [false], "the follow-up did not run once, for a connection socket.io's reconnect did not handle");
@@ -132,8 +148,8 @@ try {
     await sleep(300);
     assert.equal(socket.connected, false, "a socket that gave up came back by itself, so this case proves nothing");
 
-    const calls = [];
-    retryNow(socket, (reconnectRan) => calls.push(reconnectRan));
+    const calls: boolean[] = [];
+    retryNow(socket, (reconnectRan: boolean) => calls.push(reconnectRan));
     await next(socket, "connect", 1_500, "retryNow on a socket that gave up");
     assert.deepEqual(calls, [false]);
   }
@@ -162,7 +178,7 @@ try {
     const before = { connect: socket.listeners("connect").length, reconnect: socket.io.listeners("reconnect").length };
     await server.down();
 
-    const calls = [];
+    const calls: number[] = [];
     for (const press of [1, 2, 3, 4, 5]) retryNow(socket, () => calls.push(press));
     assert.equal(socket.listeners("connect").length, before.connect + 1, "five retries left five connect listeners waiting");
     assert.equal(socket.io.listeners("reconnect").length, before.reconnect + 1, "five retries left five reconnect listeners waiting");
@@ -181,7 +197,7 @@ try {
     const { server, socket } = await connected({ reconnectionDelay: 400, reconnectionDelayMax: 400 });
     let reconnects = 0;
     socket.io.on("reconnect", () => reconnects++);
-    const caller = (seen) => (reconnectRan) => {
+    const caller = (seen: boolean[]) => (reconnectRan: boolean) => {
       seen.push(reconnectRan);
       if (!reconnectRan) replayReconnect(socket);
     };
@@ -189,7 +205,7 @@ try {
     await server.down();
     await next(socket.io, "reconnect_error", 2_000, "the first retry");
     await server.up();
-    const fresh = [];
+    const fresh: boolean[] = [];
     retryNow(socket, caller(fresh));
     await next(socket, "connect", 1_500, "retryNow with the server back");
     await settle();
@@ -199,7 +215,7 @@ try {
     // Tried a moment before the server listens, as when the manager says running early.
     await server.down();
     await next(socket.io, "reconnect_error", 2_000, "the first retry");
-    const early = [];
+    const early: boolean[] = [];
     retryNow(socket, caller(early));
     await next(socket, "connect_error", 1_000, "the try against a server not listening yet");
     await server.up();
@@ -222,14 +238,14 @@ const LIFECYCLE = (() => {
 })();
 assert.deepEqual([...LIFECYCLE].sort(), ["error", "running", "starting", "stopped"], `${MANAGER} has a status this check has not decided about`);
 
-function hosted(id, serverName, serverPort, status) {
+function hosted(id: string, serverName: string, serverPort: number, status: string) {
   const config = { id, serverName, serverPort, sfuPort: 5005, mediaPort: 3478, lanDiscoverable: true, externalHost: `http://127.0.0.1:${serverPort}`, advertisedAddresses: ["192.168.1.20"], customAdvertisedAddresses: [] };
   return { id, status, error: null, serverUrl: `http://127.0.0.1:${serverPort}`, config };
 }
 const DEN = "test-den-e1bf65";
 const LOFT = "test-loft-4d5e6f";
-const den = (status) => hosted(DEN, "Test Den", 5040, status);
-const loft = (status) => hosted(LOFT, "Test Loft", 5041, status);
+const den = (status: string) => hosted(DEN, "Test Den", 5040, status);
+const loft = (status: string) => hosted(LOFT, "Test Loft", 5041, status);
 
 const RAIL = {
   "127.0.0.1:5040": { host: "127.0.0.1:5040", name: "Test Den", serverId: `test_den_5040_${DEN}` },
@@ -255,23 +271,30 @@ const trigger = (() => {
   );
 })();
 
-function mount({ seed = [], rail = RAIL, api: override } = {}) {
-  let push = null;
-  const retried = [];
+type Hosted = ReturnType<typeof hosted>;
+type Mount = {
+  seed?: Hosted[] | (() => Promise<Hosted[]>);
+  rail?: Record<string, { host: string; name: string; serverId: string }>;
+  api?: null;
+};
+
+function mount({ seed = [], rail = RAIL, api: override }: Mount = {}) {
+  let push: ((states: Hosted[]) => void) | null = null;
+  const retried: string[] = [];
   const api = override === null ? null : {
     getEmbeddedServerStatus: typeof seed === "function" ? seed : async () => seed,
-    onEmbeddedServerStatusChanged: (callback) => {
+    onEmbeddedServerStatusChanged: (callback: (states: Hosted[]) => void) => {
       push = callback;
       return () => {
         push = null;
       };
     },
   };
-  const cleanup = trigger(() => api, railEntriesJustStarted, { current: rail }, (host) => retried.push(host));
+  const cleanup = trigger(() => api, railEntriesJustStarted, { current: rail }, (host: string) => retried.push(host));
   return {
     retried,
     cleanup,
-    push: (states) => {
+    push: (states: Hosted[]) => {
       assert.ok(push, "the effect did not subscribe, or unsubscribed");
       push(states);
     },
@@ -336,8 +359,8 @@ function mount({ seed = [], rail = RAIL, api: override } = {}) {
 
 // A seed that answers after the first status change does not replace what that change said.
 {
-  let answer;
-  const app = mount({ seed: () => new Promise((resolve) => { answer = resolve; }) });
+  const { promise, resolve: answer } = Promise.withResolvers<Hosted[]>();
+  const app = mount({ seed: () => promise });
   app.push([den("running")]);
   answer([den("stopped")]);
   await settle();
@@ -375,31 +398,39 @@ for (const before of LIFECYCLE) {
 /* ── what a retry does to one socket ──────────────────────────────────────── */
 
 function fakeSocket({ connected = false, refused = false } = {}) {
-  const emitted = [];
+  const emitted: string[] = [];
   return {
     connected,
     active: true,
     io: { opts: { reconnection: refused ? false : true } },
     emitted,
-    emit: (event) => emitted.push(event),
+    emit: (event: string) => emitted.push(event),
     connect: () => assert.fail("a retry called connect() alone, which waits out a queued retry"),
   };
 }
 
-function spies({ session }) {
-  const calls = { status: [], retry: [], replay: [], removedToken: 0 };
+type FakeSocket = ReturnType<typeof fakeSocket>;
+type Statuses = Record<string, string>;
+
+function spies({ session }: { session: boolean }) {
+  const calls = {
+    status: [] as Statuses[],
+    retry: [] as { socket: FakeSocket; onConnect: (reconnectRan: boolean) => void }[],
+    replay: [] as FakeSocket[],
+    removedToken: 0,
+  };
   return {
     calls,
-    setServerConnectionStatus: (update) => calls.status.push(update({})),
-    retryNow: (socket, onConnect) => calls.retry.push({ socket, onConnect }),
-    replayReconnect: (socket) => calls.replay.push(socket),
+    setServerConnectionStatus: (update: (previous: Statuses) => Statuses) => calls.status.push(update({})),
+    retryNow: (socket: FakeSocket, onConnect: (reconnectRan: boolean) => void) => calls.retry.push({ socket, onConnect }),
+    replayReconnect: (socket: FakeSocket) => calls.replay.push(socket),
     hasSession: () => session,
     getServerAccessToken: () => (session ? "token" : null),
     removeServerAccessToken: () => calls.removedToken++,
   };
 }
 
-function callbackOf(name) {
+function callbackOf(name: string) {
   const at = hook.indexOf(`const ${name} = useCallback(`);
   assert.notEqual(at, -1, `${HOOK} no longer declares ${name} with useCallback. Move this check with it.`);
   const arrow = hook.indexOf("=>", at);
@@ -411,7 +442,7 @@ function callbackOf(name) {
   const source = callbackOf("retryHostedServer");
   assert.ok(!/server:join|requestServerState|removeServerAccessToken/.test(source), "the hosted retry can join again, which drops the token of a socket that has not connected yet");
 
-  const run = (sockets, session) => {
+  const run = (sockets: Record<string, FakeSocket>, session: boolean) => {
     const s = spies({ session });
     new Function("socketsRef", "setServerConnectionStatus", "retryNow", "replayReconnect", "hasSession", "host", `${source}\nreturn f(host);`)(
       { current: sockets }, s.setServerConnectionStatus, s.retryNow, s.replayReconnect, s.hasSession, "127.0.0.1:5040",
@@ -441,7 +472,7 @@ function callbackOf(name) {
 // The Reconnect button: the same retry, and it still joins again when there is no session.
 {
   const source = callbackOf("reconnectServer");
-  const run = (socket, session) => {
+  const run = (socket: FakeSocket, session: boolean) => {
     const s = spies({ session });
     const nickname = "Sivert";
     new Function(
