@@ -14,27 +14,39 @@ assert.deepEqual(drawnBox({ width: 0, height: 300 }, { width: 1600, height: 900 
 assert.deepEqual(drawnBox({ width: 640, height: 360 }, { width: 0, height: 0 }, "contain"), { width: 640, height: 360 }, "no frame yet should count as the element's box");
 
 /** A window and a video element, just enough for the watcher, with the observers held for poking. */
+type Observed = (entries: { isIntersecting: boolean }[]) => void;
+type Observer = { f: Observed; gone: boolean };
+
 function fakeWindow() {
   const win = {
     devicePixelRatio: 2,
-    document: { visibilityState: "visible", listeners: new Set(), addEventListener: (_e, f) => win.document.listeners.add(f), removeEventListener: (_e, f) => win.document.listeners.delete(f) },
-    resizers: [],
-    intersectors: [],
-    ResizeObserver: class { constructor(f) { this.f = f; win.resizers.push(this); } observe() {} disconnect() { this.gone = true; } },
-    IntersectionObserver: class { constructor(f) { this.f = f; win.intersectors.push(this); } observe() {} disconnect() { this.gone = true; } },
+    document: {
+      visibilityState: "visible",
+      listeners: new Set<() => void>(),
+      addEventListener: (_e: string, f: () => void) => win.document.listeners.add(f),
+      removeEventListener: (_e: string, f: () => void) => win.document.listeners.delete(f),
+    },
+    resizers: [] as Observer[],
+    intersectors: [] as Observer[],
+    ResizeObserver: class { f: Observed; gone = false; constructor(f: Observed) { this.f = f; win.resizers.push(this); } observe() {} disconnect() { this.gone = true; } },
+    IntersectionObserver: class { f: Observed; gone = false; constructor(f: Observed) { this.f = f; win.intersectors.push(this); } observe() {} disconnect() { this.gone = true; } },
     matchMedia: () => ({ addEventListener() {}, removeEventListener() {} }),
-    frames: [],
-    requestAnimationFrame: (f) => win.frames.push(f),
+    frames: [] as ((time: number) => void)[],
+    requestAnimationFrame: (f: (time: number) => void) => win.frames.push(f),
   };
   return win;
 }
-function fakeVideo(win, width, height) {
-  return { ownerDocument: { defaultView: win }, isConnected: true, clientWidth: width, clientHeight: height, videoWidth: 1920, videoHeight: 1080, addEventListener() {}, removeEventListener() {} };
+/** The fakes have only what the watcher reads, which TypeScript can't relate to the real types. */
+const asReal = <T>(fake: object) => fake as T;
+
+function fakeVideo(win: ReturnType<typeof fakeWindow>, width: number, height: number) {
+  return asReal<HTMLVideoElement>({ ownerDocument: { defaultView: win }, isConnected: true, clientWidth: width, clientHeight: height, videoWidth: 1920, videoHeight: 1080, addEventListener() {}, removeEventListener() {} });
 }
 
-const reports = [];
-const last = (id) => reports.filter(([s]) => s === id).at(-1)?.[1];
-setDrawnVideoReporter((id, size) => reports.push([id, size && { width: size.width, height: size.height }]), ["theirs", "idle"]);
+type Size = { width: number; height: number } | null;
+const reports: [string, Size][] = [];
+const last = (id: string) => reports.filter(([s]) => s === id).at(-1)?.[1];
+setDrawnVideoReporter((id: string, size: Size) => reports.push([id, size && { width: size.width, height: size.height }]), ["theirs", "idle"]);
 
 // A remote stream drawn nowhere is hidden, so the sender can pause it.
 assert.deepEqual(last("idle"), { width: 0, height: 0 });
@@ -61,7 +73,7 @@ small();
   const w = fakeWindow();
   const stop = watchDrawnSize(fakeVideo(w, 800, 450), "theirs", "contain");
   stop();
-  for (let t = 0; w.frames.length; t += 16) w.frames.shift()(t);
+  for (let t = 0; w.frames.length; t += 16) w.frames.shift()?.(t);
   assert.deepEqual(last("theirs"), { width: 0, height: 0 }, "a watch that had ended came back when the refresh-rate probe finished");
 }
 
@@ -73,7 +85,7 @@ self();
 assert.ok(reports.length >= before);
 
 // A stream that leaves is forgotten rather than reported hidden.
-setDrawnVideoReporter((id, size) => reports.push([id, size]), ["idle"]);
+setDrawnVideoReporter((id: string, size: Size) => reports.push([id, size]), ["idle"]);
 assert.equal(last("theirs"), null, "a stream that left the call wasn't forgotten");
 
 console.log("drawn video size: ok");

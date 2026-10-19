@@ -9,9 +9,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { createUnknownAppQueue } = await import(pathToFileURL(join(root, "electron/unknownApps.ts")).href);
 
-const calls = [];
+const calls: { url: string; init: { body: string; headers: Record<string, string> } }[] = [];
 let fail = false;
-const fetchImpl = async (url, init) => {
+const fetchImpl = async (url: string, init: { body: string; headers: Record<string, string> }) => {
   calls.push({ url, init });
   return { ok: !fail };
 };

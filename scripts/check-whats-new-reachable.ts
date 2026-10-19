@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 const DIALOG = "src/packages/socket/src/components/WhatsNewDialog.tsx";
 const WHATS_NEW = "src/components/whatsNew.tsx";
@@ -33,7 +33,7 @@ const style = read(STYLE);
 }
 
 /** One CSS rule's declarations. */
-function rule(selector) {
+function rule(selector: string) {
   const at = style.indexOf(`${selector} {`);
   assert.notEqual(at, -1, `${STYLE} no longer has ${selector}. Move this check with it.`);
   return style.slice(at, style.indexOf("}", at));

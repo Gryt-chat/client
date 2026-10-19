@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 const MODULE = "src/packages/settings/src/serverId.ts";
 const JOIN = "src/packages/settings/src/hooks/useServerJoin.ts";
 const DIALOG = "src/packages/settings/src/components/addServer.tsx";
@@ -18,10 +18,10 @@ const RAIL = "src/packages/settings/src/hostedServerRail.ts";
 
 const { sameServer, socketServerId } = await import(`../${MODULE}`);
 
-const ref = (host, serverId) => ({ host, serverId });
+const ref = (host: string, serverId: string | null | undefined) => ({ host, serverId });
 
 /** Both orders, because callers pass the rail entry and the lookup either way round. */
-function same(a, b) {
+function same(a: ReturnType<typeof ref>, b: ReturnType<typeof ref>) {
   const forward = sameServer(a, b);
   assert.equal(sameServer(b, a), forward, `sameServer is not symmetric for ${a.host} ${a.serverId} and ${b.host} ${b.serverId}`);
   return forward;

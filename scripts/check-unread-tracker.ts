@@ -14,8 +14,8 @@ const {
   markServerRead,
 } = await import("../src/packages/common/src/hooks/useUnreadTracker.ts");
 
-const counts = (host) => getUnreadSnapshot().get(host) ?? new Map();
-const total = (host) => [...counts(host).values()].reduce((a, b) => a + b, 0);
+const counts = (host: string) => getUnreadSnapshot().get(host) ?? new Map();
+const total = (host: string) => [...counts(host).values()].reduce((a, b) => a + b, 0);
 
 const HOST = "community.gryt.chat";
 const OTHER = "gryt.test:5001";

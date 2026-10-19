@@ -14,7 +14,7 @@ const INDEX = "src/packages/settings/src/hooks/settingsSearch.ts";
 const SETTINGS = "src/packages/settings/src/components/settings.tsx";
 
 /** The same derivation SettingGroup uses, so the two cannot disagree. */
-function settingAnchorId(title) {
+function settingAnchorId(title: string) {
   return title
     .split(":")[0]
     .trim()
@@ -23,8 +23,8 @@ function settingAnchorId(title) {
     .replace(/^-|-$/g, "");
 }
 
-function sources(dir) {
-  const out = [];
+function sources(dir: string): string[] {
+  const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) out.push(...sources(path));
@@ -55,7 +55,7 @@ assert.ok(controls.length > 20, `only found ${controls.length} settings — the 
 const indexSource = readFileSync(INDEX, "utf8");
 const entries = [...indexSource.matchAll(/\{ id: "([a-z0-9-]+)"[^\n]*?\}/g)].map((m) => {
   const line = m[0];
-  const field = (name) => line.match(new RegExp(`${name}: "([^"]+)"`))?.[1];
+  const field = (name: string) => line.match(new RegExp(`${name}: "([^"]+)"`))?.[1];
   return {
     id: m[1],
     destination: field("destination"),
