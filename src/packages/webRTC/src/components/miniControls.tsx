@@ -1,6 +1,6 @@
 import { IconButton } from "@gryt/ui";
 import { useCamera, useScreenShare, useSFU } from "@gryt/voice";
-import { AnimatePresence, motion, Variants } from "motion/react";
+import { AnimatePresence, motion, type Variants } from "motion/react";
 import toast from "react-hot-toast";
 
 import { useTheme } from "@/common";

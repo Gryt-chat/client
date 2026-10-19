@@ -10,7 +10,7 @@ import { useIsCompact, useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
-import { SidebarItem } from "@/settings/src/types/server";
+import type { SidebarItem } from "@/settings/src/types/server";
 import { setInACall } from "@/webRTC";
 
 import { PiCameraFill,PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";

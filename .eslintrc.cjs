@@ -196,24 +196,6 @@ module.exports = {
       ],
       rules: { "no-nested-ternary": "off" },
     },
-    // Type-only imports not marked yet; a mechanical PR of its own fixes them.
-    {
-      files: [
-        "src/packages/socket/src/components/ChannelList.tsx",
-        "src/packages/socket/src/components/ChatView.tsx",
-        "src/packages/socket/src/components/MemberSidebar.tsx",
-        "src/packages/socket/src/components/MemberSidebarPanel.tsx",
-        "src/packages/socket/src/components/ServerSidebar.tsx",
-        "src/packages/socket/src/components/UserContextMenu.tsx",
-        "src/packages/socket/src/components/serverView.tsx",
-        "src/packages/socket/src/hooks/useSocketEvents.ts",
-        "src/packages/socket/src/hooks/useSockets.ts",
-        "src/packages/socket/src/hooks/useTypingIndicator.ts",
-        "src/packages/socket/src/utils/syncAvatarToHost.ts",
-        "src/packages/webRTC/src/components/miniControls.tsx",
-      ],
-      rules: { "@typescript-eslint/consistent-type-imports": "off" },
-    },
     // Reassigned parameters from before the rule.
     {
       files: [

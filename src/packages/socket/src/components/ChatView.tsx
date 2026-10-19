@@ -1,6 +1,6 @@
 import { Menu, Tooltip } from "@gryt/ui";
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 
 import type { SealDecision } from "@/common";
 import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAvatarSrc, subscribeToPrefs, useTheme, useThreadMentions, useThreadUnread } from "@/common";

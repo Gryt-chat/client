@@ -22,7 +22,7 @@ import {
   SuppressEveryoneItem,
 } from "@/common";
 import { channelHref } from "@/lib/mentionTokens";
-import { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
+import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiChatTeardropTextFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import type { Client } from "../types/clients";

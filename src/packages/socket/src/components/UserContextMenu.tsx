@@ -1,5 +1,5 @@
 import { ContextMenu, Slider } from "@gryt/ui";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";

@@ -1,6 +1,6 @@
 import type { StreamSources } from "@gryt/voice";
 import { motion } from "motion/react";
-import { RefObject } from "react";
+import type { RefObject } from "react";
 
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 

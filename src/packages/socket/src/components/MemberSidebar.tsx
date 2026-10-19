@@ -8,7 +8,7 @@ import { nameTags } from "../../../lib/nameTags";
 import { useDirectory } from "../hooks/dmDirectory";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerPermissions } from "../hooks/usePermissions";
-import { UserStatus } from "../types/clients";
+import type { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
 import { GameIcon } from "./GameIcon";
 import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";

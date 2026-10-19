@@ -1,6 +1,6 @@
-import { createElement, Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
+import { createElement, type Dispatch, type MutableRefObject, type SetStateAction, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 
 import type { MemberKeyState } from "@/common";
 import {
@@ -23,17 +23,17 @@ import {
 import { channelNamesFor } from "@/lib/channelDirectory";
 import { notificationBody, showDesktopNotification } from "@/lib/desktopNotification";
 import { playNotificationSound, preloadNotificationSound } from "@/lib/notificationSound";
-import {
+import type {
   Server,
   serverDetailsList,
   Servers,
 } from "@/settings/src/types/server";
 
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
-import { MemberInfo } from "../components/MemberSidebar";
+import type { MemberInfo } from "../components/MemberSidebar";
 import { heldRoleIds } from "../lib/permissions";
 import { onMlsDelivered } from "../mls/serverMls";
-import { Clients, ServerProfile } from "../types/clients";
+import type { Clients, ServerProfile } from "../types/clients";
 import { challengeHostMatches } from "../utils/challengeHost";
 import { isOnScreen, warnUnreadOnScreen } from "../utils/onScreenConversation";
 import { sealedNotificationBody } from "../utils/sealedNotification";
