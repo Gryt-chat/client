@@ -10,15 +10,9 @@ examples/examples.test.mjs
 .eslintrc.cjs
 e2e/soak/report.mjs
 electron-builder.config.cjs
-scripts/build-embedded-server.mjs
 scripts/build-helper.mjs
-scripts/check-builder-config.mjs
-scripts/check-embedded-version.mjs
 scripts/check-extra-resources.mjs
-scripts/check-prebuild-pruning.mjs
 scripts/check-windows-signature.mjs
-scripts/generate-icons.mjs
-scripts/lib/describeVersion.mjs
 scripts/notarize.cjs
 scripts/package-embedded-server.mjs
 scripts/prepare-electron-build.mjs

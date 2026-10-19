@@ -8,8 +8,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { dirname, extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -21,14 +21,25 @@ const schema = require("app-builder-lib/scheme.json");
 // passes here is one it accepts. Exported as the module itself, not by name.
 const validate = require("@develar/schema-utils");
 
-const config = load(readFileSync(join(here, "..", "electron-builder.yml"), "utf8"));
+/** The parts of a builder config this check reads. */
+type Built = {
+  extraResources?: { from: string }[];
+  publish?: { channel?: string };
+  artifactName?: string;
+  appId?: string;
+  mas?: { appId?: string };
+  mac?: { target?: { target: string }[]; extendInfo?: Record<string, string | boolean> };
+  linux?: { icon?: string; target?: string[] };
+};
 
-function check(candidate, label) {
+const config = load(readFileSync(join(here, "..", "electron-builder.yml"), "utf8")) as Built;
+
+function check(candidate: Built, label: string) {
   try {
     validate(schema, candidate, { name: "electron-builder" });
   } catch (err) {
     console.error(`${label} does not match electron-builder's schema:\n`);
-    console.error(err.message);
+    console.error(err instanceof Error ? err.message : String(err));
     console.error(
       "\nThis is the validation electron-builder runs at package time. It checks " +
         "the whole config before looking at what is being built, so a mistake " +
@@ -44,7 +55,7 @@ check(config, "electron-builder.yml");
 // this YAML with three edits, and an edit can leave the schema too.
 const configPath = join(here, "..", "electron-builder.config.cjs");
 
-function loadVariant(variant, { mas = false } = {}) {
+function loadVariant(variant: string | undefined, { mas = false } = {}): Built {
   const previous = process.env.GRYT_VARIANT;
   const previousMas = process.env.GRYT_MAS;
   if (variant === undefined) delete process.env.GRYT_VARIANT;
@@ -66,7 +77,7 @@ function loadVariant(variant, { mas = false } = {}) {
 const slim = loadVariant("slim");
 check(slim, "electron-builder.config.cjs at GRYT_VARIANT=slim");
 
-const embeddedIn = (candidate) =>
+const embeddedIn = (candidate: Built) =>
   (candidate.extraResources ?? []).filter((entry) =>
     String(entry.from).startsWith("build/embedded-"),
   );
@@ -105,7 +116,7 @@ if (embeddedIn(loadVariant(undefined)).length === 0) {
 }
 
 // The Mac App Store build (GRYT-1273). The DMG must not pick up any of it.
-function fail(message) {
+function fail(message: string): never {
   console.error(message);
   process.exit(1);
 }
@@ -125,7 +136,7 @@ if (dmgTargets !== "dmg,zip" || "ITSAppUsesNonExemptEncryption" in (dmg.mac?.ext
   fail(`The DMG config changed shape: targets ${dmgTargets}, or it picked up the store's Info.plist keys.`);
 }
 
-for (const [label, candidate] of [["GRYT_MAS=1", masFull], ["GRYT_MAS=1 slim", masSlim]]) {
+for (const [label, candidate] of [["GRYT_MAS=1", masFull], ["GRYT_MAS=1 slim", masSlim]] as const) {
   const targets = (candidate.mac?.target ?? []).map((t) => t.target);
   if (targets.join(",") !== "mas") fail(`${label} builds ${targets.join(", ")}, not only mas.`);
   if (candidate.mac?.extendInfo?.ITSAppUsesNonExemptEncryption !== false) {
@@ -143,7 +154,7 @@ if (masEmbedded.join(",") !== "build/embedded-server/") {
 }
 if (embeddedIn(masSlim).length > 0) fail("GRYT_MAS=1 slim still ships the embedded server.");
 
-function entitlementKeys(name) {
+function entitlementKeys(name: string) {
   const plist = readFileSync(join(here, "..", "build", name), "utf8");
   return [...plist.matchAll(/<key>([^<]+)<\/key>/g)].map((m) => m[1]).sort();
 }
@@ -207,7 +218,7 @@ const stubApp = join(work, "linux-unpacked");
 mkdirSync(join(stubApp, "resources"), { recursive: true });
 writeFileSync(join(stubApp, "gryt-chat"), "");
 
-const entries = [];
+const entries: { target: string; text: string }[] = [];
 
 try {
   const { build } = require("electron-builder");
@@ -220,7 +231,8 @@ try {
     // from the hook stops each target once its desktop entry is written.
     prepackaged: stubApp,
     config: { extends: "electron-builder.config.cjs", directories: { output: join(work, "out") } },
-    effectiveOptionComputed: async (computed) => {
+    // fpm and snap hand over [args, desktop file]; AppImage hands over its options.
+    effectiveOptionComputed: async (computed: [string[], string] | { desktopFile?: string; desktop?: string } | null) => {
       if (Array.isArray(computed)) {
         const [args, desktopFile] = computed;
         const target = extname(args[args.indexOf("--package") + 1]).slice(1);

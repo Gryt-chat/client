@@ -277,7 +277,7 @@ win:
   # On `win`, not on `win.signtoolOptions`. It was nested there when it landed,
   # which is not in the schema, and electron-builder validates its whole config
   # before it looks at a target — so a Windows-only mistake failed the macOS and
-  # Linux builds too. check-builder-config.mjs exists because of that.
+  # Linux builds too. check-builder-config.ts exists because of that.
   signExts:
     - .exe
     - .dll
