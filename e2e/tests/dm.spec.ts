@@ -379,7 +379,9 @@ test("an encrypted DM's video has its own shape before it is decrypted, and keep
   await player.locator(':scope > button[aria-label="Play video"]').click();
   await expect(player.locator("video")).toHaveJSProperty("videoWidth", 160);
   const after = (await frame.boundingBox())!;
-  expect({ width: after.width, height: after.height }).toEqual({ width: before.width, height: before.height });
+  // Layout lands on sub-pixel steps, so a fraction of a pixel isn't a change of shape.
+  expect(Math.abs(after.width - before.width)).toBeLessThan(1);
+  expect(Math.abs(after.height - before.height)).toBeLessThan(1);
 });
 
 /** A member whose app never publishes a message key or does MLS, so a DM with them can't be encrypted. */
