@@ -193,6 +193,7 @@ back. Drops less than 30 seconds apart count as one incident. For each incident 
 | `GRYT_SOAK_BROWSER_PROBE` | 1 | `0` leaves out the probe page |
 | `GRYT_SOAK_CHECK_SECONDS` | 10 | How often each window is checked for the call, the banner and drawing videos |
 | `GRYT_SOAK_OUT` | `e2e/soak/runs/<start time>` | Where the files go |
+| `GRYT_SOAK_BEEP_MS` | | Beep the first call client's microphone this often, and time it at the others. `node e2e/soak/beep-report.ts <run>` prints the delay over the call |
 
 Without `GRYT_TEST_INVITE_CODE`, the tunnel and direct groups only get probes. Port 3667 is on
 the test server's CORS list like 4173 is, and it leaves 4173 free for the nightly. To stop
