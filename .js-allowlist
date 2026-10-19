@@ -13,10 +13,8 @@ electron-builder.config.cjs
 scripts/build-embedded-server.mjs
 scripts/build-helper.mjs
 scripts/check-builder-config.mjs
-scripts/check-embedded-runtime-cleanup.mjs
 scripts/check-embedded-version.mjs
 scripts/check-extra-resources.mjs
-scripts/check-mls-dm.mjs
 scripts/check-pairing-approver.mjs
 scripts/check-pairing-new-device.mjs
 scripts/check-prebuild-pruning.mjs

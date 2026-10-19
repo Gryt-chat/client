@@ -5,6 +5,12 @@
 
 import assert from "node:assert/strict";
 
+import type { MlsReply, MlsServerCapability } from "@gryt/core";
+
+import type { ArchivedMessage } from "@/common";
+
+import type { AttachmentMeta } from "../src/packages/socket/src/components/chatUtils.tsx";
+
 const { archivedRow, dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice, mlsReportCopy, newMessage, sendFailure, withOpenedFiles } =
   await import("../src/packages/socket/src/mls/timeline.ts");
 const { createModeOnlySource } = await import("../src/packages/socket/src/mls/modeOnly.ts");
@@ -18,10 +24,10 @@ const { orderOwnDevices, ownDeviceAdded, ownDeviceLabel, removedHereLine, remove
 );
 const removedHere = await import("../src/packages/socket/src/mls/removedHere.ts");
 
-const tests = [];
-const test = (name, fn) => tests.push({ name, fn });
+const tests: { name: string; fn: () => void | Promise<void> }[] = [];
+const test = (name: string, fn: () => void | Promise<void>) => tests.push({ name, fn });
 
-const row = (id, minute, extra = {}) => ({
+const row = (id: string, minute: number, extra: object = {}) => ({
   conversation_id: "dm_1",
   message_id: id,
   sender_server_id: "kari",
@@ -31,7 +37,7 @@ const row = (id, minute, extra = {}) => ({
   created_at: new Date(Date.UTC(2026, 8, 28, 10, minute)).toISOString(),
   ...extra,
 });
-const ids = (list) => list.map((m) => m.message_id);
+const ids = (list: { message_id: string }[]) => list.map((m) => m.message_id);
 
 test("the merge drops placeholder lines and interleaves both sides by time", () => {
   const placeholder = row("ph", 3, { sender_server_id: "system", mls_placeholder: { seq: 1, sender_server_id: "kari" } });
@@ -87,7 +93,7 @@ test("an archived message becomes a row with its reply, edit and files", () => {
   assert.equal(archivedRow({ ...m, attachments: {}, text: "" }, () => undefined).attachments, null);
 });
 
-function key(id) {
+function key(id: string) {
   return { id, key: "k".repeat(43), iv: "i".repeat(16), mime: "image/png" };
 }
 
@@ -105,11 +111,12 @@ test("every uploaded file's key goes in the message, and a file with no key stop
 
 test("files show as they open, and one that won't open shows as its id", () => {
   const r = row("m", 1, { attachments: ["f1", "f2", "f3"], mls: true });
-  const opened = new Map([
-    ["f1", { file_id: "f1", local_url: "blob:f1" }],
+  const opened = new Map<string, AttachmentMeta | "failed">([
+    ["f1", { file_id: "f1", mime: null, size: null, original_name: null, width: null, height: null, has_thumbnail: false, local_url: "blob:f1" }],
     ["f3", "failed"],
   ]);
   const shown = withOpenedFiles(r, opened).enriched_attachments;
+  assert.ok(shown, "nothing was drawn for the files");
   assert.deepEqual(shown.map((a) => a.file_id), ["f1", "f3"]);
   assert.equal(shown[1].mime, null);
   assert.equal(withOpenedFiles(r, new Map()).enriched_attachments, undefined);
@@ -117,16 +124,16 @@ test("files show as they open, and one that won't open shows as its id", () => {
 
 test("the composer line: quiet when healthy, says why otherwise, and on the web where history lives", () => {
   const none = { undecryptable: 0, lost: null };
-  const app = { lostHistory: false, home: "app", peerName: "Ola" };
+  const app = { lostHistory: false, home: "app", peerName: "Ola" } as const;
   assert.equal(mlsNotice({ kind: "mls" }, none, app), null);
-  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }), /Ola's key changed/);
+  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }) ?? "", /Ola's key changed/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, app), null);
-  assert.match(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, app), /Ola/);
+  assert.match(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, app) ?? "", /Ola/);
   assert.equal(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, app), "1 message couldn't be decrypted on this device.");
-  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, app), /3 messages/);
-  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "removed" }, app), /taken out/);
+  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, app) ?? "", /3 messages/);
+  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "removed" }, app) ?? "", /taken out/);
   assert.equal(mlsNotice({ kind: "mls" }, none, { ...app, lostHistory: true }), "Older messages were cleared from this device.");
-  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, home: "browser" }), /this browser/);
+  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, home: "browser" }) ?? "", /this browser/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, { ...app, home: "browser" }), null);
 });
 
@@ -137,21 +144,27 @@ test("a failed send names what somebody can do something about", () => {
 });
 
 function memoryArchive() {
-  const rows = new Map();
+  const rows = new Map<string, ArchivedMessage>();
   return {
     rows,
-    get: async (_s, _c, id) => rows.get(id) ?? null,
-    put: async (ms) => void ms.forEach((m) => rows.set(m.messageId, m)),
-    remove: async (_s, _c, id) => void rows.delete(id),
+    get: async (_s: string, _c: string, id: string) => rows.get(id) ?? null,
+    put: async (ms: ArchivedMessage[]) => void ms.forEach((m) => rows.set(m.messageId, m)),
+    remove: async (_s: string, _c: string, id: string) => void rows.delete(id),
   };
 }
 const base = { scope: "s", conversationId: "dm_1", at: 1000 };
+/** The row stored under `id`, which has to be there. */
+const stored = (db: ReturnType<typeof memoryArchive>, id: string) => {
+  const m = db.rows.get(id);
+  assert.ok(m, `nothing is stored under ${id}`);
+  return m;
+};
 
 test("a sender's message is stored, edited and deleted", async () => {
   const db = memoryArchive();
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei", replyTo: "q" } });
   await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
-  const edited = db.rows.get("m");
+  const edited = stored(db, "m");
   assert.equal(edited.text, "hallo");
   assert.equal(edited.editedAt, 2000);
   assert.equal(edited.sentAt, 1000);
@@ -166,28 +179,28 @@ test("somebody else can't overwrite, edit or delete your message", async () => {
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "theirs" } });
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "m", text: "edited" } });
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "delete", id: "m" } });
-  assert.equal(db.rows.get("m").text, "mine");
+  assert.equal(stored(db, "m").text, "mine");
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "gone", text: "x" } });
   assert.equal(db.rows.size, 1);
 });
 
 test("anyone in the DM can react, a repeat changes nothing, and taking the last one off clears it", async () => {
   const db = memoryArchive();
-  const react = (senderId, emoji, action) => applyMlsContent(db, { ...base, senderId, content: { type: "reaction", id: "m", emoji, action } });
+  const react = (senderId: string, emoji: string, action: "add" | "remove") => applyMlsContent(db, { ...base, senderId, content: { type: "reaction", id: "m", emoji, action } });
   await applyMlsContent(db, { ...base, senderId: "me", content: { type: "message", id: "m", text: "mine" } });
   await react("ola", "👍", "add");
   await react("ola", "👍", "add");
   await react("me", "👍", "add");
   await react("me", ":owl:", "add");
-  assert.deepEqual(db.rows.get("m").reactions, [
+  assert.deepEqual(stored(db, "m").reactions, [
     { src: "👍", amount: 2, users: ["ola", "me"] },
     { src: ":owl:", amount: 1, users: ["me"] },
   ]);
-  assert.equal(db.rows.get("m").text, "mine");
+  assert.equal(stored(db, "m").text, "mine");
   await react("ola", "👍", "remove");
   await react("me", "👍", "remove");
   await react("me", ":owl:", "remove");
-  assert.equal("reactions" in db.rows.get("m"), false);
+  assert.equal("reactions" in stored(db, "m"), false);
   await react("ola", "👍", "add");
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "reaction", id: "never-had", emoji: "👍", action: "add" } });
   assert.equal(db.rows.has("never-had"), false);
@@ -199,10 +212,12 @@ test("reactions survive an edit and a repeat of the message, and reach the row",
   await applyMlsContent(db, { ...base, senderId: "me", content: { type: "reaction", id: "m", emoji: "👍", action: "add" } });
   await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
   await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hallo" } });
-  const stored = db.rows.get("m");
-  assert.deepEqual(stored.reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
-  assert.deepEqual(archivedRow(stored, () => undefined).reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
-  assert.equal(archivedRow({ ...stored, reactions: undefined }, () => undefined).reactions, null);
+  const row = stored(db, "m");
+  assert.deepEqual(row.reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
+  assert.deepEqual(archivedRow(row, () => undefined).reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
+  const withoutReactions = { ...row };
+  delete withoutReactions.reactions;
+  assert.equal(archivedRow(withoutReactions, () => undefined).reactions, null);
 });
 
 test("a report of an MLS message carries this device's copy, and waits for a server that takes it", () => {
@@ -214,11 +229,16 @@ test("a report of an MLS message carries this device's copy, and waits for a ser
   assert.equal(readMlsReports(undefined), false);
 });
 
-function fakeSocket(reply) {
-  const sent = [];
+/** An ack payload as these checks read it back. */
+type Payload = { [field: string]: string | number | boolean | object | null };
+/** A refusal's error, or null for a reply that went through. */
+const errorOf = (r: MlsReply<object>) => (r.ok ? null : r.error);
+
+function fakeSocket(reply: (event: string, payload: Payload) => object | undefined) {
+  const sent: { event: string; payload: Payload }[] = [];
   return {
     sent,
-    emit(event, payload, ack) {
+    emit(event: string, payload: Payload, ack: (reply: object) => void) {
       sent.push({ event, payload });
       const r = reply(event, payload);
       if (r !== undefined) queueMicrotask(() => ack(r));
@@ -228,7 +248,7 @@ function fakeSocket(reply) {
 const token = async () => "token-1";
 
 test("the transport adds the token and turns binary back into Uint8Arrays", async () => {
-  const socket = fakeSocket((event) =>
+  const socket = fakeSocket((event: string) =>
     event === "mls:log:fetch"
       ? { ok: true, group: null, entries: [{ seq: 1, data: new Uint8Array([1, 2]).buffer }], nextCursor: 1, hasMore: false, gap: false }
       : { ok: true, welcomes: [{ welcomeId: "w", data: Buffer.from([3]) }], groups: [], registered: true, keyPackages: {} },
@@ -236,6 +256,7 @@ test("the transport adds the token and turns binary back into Uint8Arrays", asyn
   const t = socketMlsTransport({ socket, getAccessToken: token });
   const log = await t.fetchLog({ conversationId: "dm_1", after: 0 });
   const sync = await t.sync({ deviceId: "d" });
+  assert.ok(log.ok && sync.ok, "the fake server refused");
   assert.deepEqual(socket.sent[0], { event: "mls:log:fetch", payload: { accessToken: "token-1", conversationId: "dm_1", after: 0 } });
   assert.deepEqual(log.entries[0].data, new Uint8Array([1, 2]));
   assert.ok(sync.welcomes[0].data instanceof Uint8Array);
@@ -245,10 +266,10 @@ test("the transport adds the token and turns binary back into Uint8Arrays", asyn
 test("the transport refuses with no token, and times out a silent server", async () => {
   const socket = fakeSocket(() => undefined);
   const none = socketMlsTransport({ socket, getAccessToken: async () => null });
-  assert.equal((await none.listDevices({})).error, "unauthenticated");
+  assert.equal(errorOf(await none.listDevices({})), "unauthenticated");
   assert.equal(socket.sent.length, 0);
   const silent = socketMlsTransport({ socket, getAccessToken: token, timeoutMs: 5 });
-  assert.equal((await silent.listDevices({})).error, "timeout");
+  assert.equal(errorOf(await silent.listDevices({})), "timeout");
 });
 
 test("placeholder: false only for sends that aren't messages, and the uploads ride along", async () => {
@@ -272,8 +293,8 @@ test("KeyPackages are made again on the server's clock once, after an out-of-dat
       ? { ok: false, error: "key_package_not_yet_valid", message: "fast clock", serverTime: 1_800_000_000 }
       : { ok: true, stored: 1, unclaimed: 1, lastResort: true },
   );
-  const remade = [];
-  const remake = async (req, serverTime) => {
+  const remade: number[] = [];
+  const remake = async (req: { deviceId: string }, serverTime: number) => {
     remade.push(serverTime);
     return { deviceId: req.deviceId, keyPackages: [new Uint8Array([7])] };
   };
@@ -288,14 +309,14 @@ test("KeyPackages are made again on the server's clock once, after an out-of-dat
     getAccessToken: token,
     remake,
   });
-  assert.equal((await refused.publishKeyPackages({ deviceId: "d", keyPackages: [] })).error, "too_many_devices");
+  assert.equal(errorOf(await refused.publishKeyPackages({ deviceId: "d", keyPackages: [] })), "too_many_devices");
   assert.equal(remade.length, 1);
 });
 
 test("the person key is sent again once when the DM key hadn't landed, and nothing else retries", async () => {
-  const answering = (...replies) => {
-    const sent = [];
-    return { sent, emit: (_e, payload, ack) => (sent.push(payload), ack(replies.shift())) };
+  const answering = (...replies: object[]) => {
+    const sent: object[] = [];
+    return { sent, emit: (_e: string, payload: object, ack: (reply: object | undefined) => void) => (sent.push(payload), ack(replies.shift())) };
   };
   const noWait = async () => undefined;
   const once = answering({ ok: false, error: "no_dm_key" }, { ok: true });
@@ -321,8 +342,8 @@ test("only version 1 with suite 1 counts as MLS", () => {
 });
 
 test("somebody seen on MLS stays seen, per server, across tabs", () => {
-  const store = new Map();
-  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  const store = new Map<string, string>();
+  const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
   const a = seenOnMlsFor("srv:a", storage);
   a.add("ola");
   a.add("ola");
@@ -335,10 +356,13 @@ test("somebody seen on MLS stays seen, per server, across tabs", () => {
 /* ── a DM while the archive won't open (GRYT-1553) ────────────────────── */
 
 const memoryStorage = () => {
-  const store = new Map();
-  return { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+  const store = new Map<string, string>();
+  return { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
 };
-const modeOnly = (capability, reply = () => undefined, seen = seenOnMlsFor("srv:a", memoryStorage())) => {
+const modeOnly = (
+  capability: MlsServerCapability | null,
+  reply: (event: string, payload: Payload) => object | undefined = () => undefined,
+  seen = seenOnMlsFor("srv:a", memoryStorage())) => {
   const socket = fakeSocket(reply);
   const source = createModeOnlySource({
     socket,
@@ -352,7 +376,7 @@ const modeOnly = (capability, reply = () => undefined, seen = seenOnMlsFor("srv:
   return { socket, source, seen };
 };
 const MLS = { version: 1, ciphersuites: [1], retentionDays: 30 };
-const archiveClosed = (e) => e.code === "archive_closed";
+const archiveClosed = (e: Error & { code?: string }) => e.code === "archive_closed";
 
 test("with the archive shut and no MLS on the server, a DM still sends and reads over version 1", async () => {
   // Nothing here opens the archive: the source has no store, so this is the state a failed open leaves.
@@ -377,7 +401,7 @@ test("with the archive shut, a server that dropped MLS still says so", async () 
 });
 
 test("with the archive shut and MLS on the server, only a peer without MLS gets version 1", async () => {
-  const devices = (list) => (event) => (event === "mls:devices" ? { ok: true, devices: list } : undefined);
+  const devices = (list: object[]) => (event: string) => (event === "mls:devices" ? { ok: true, devices: list } : undefined);
 
   const without = modeOnly(MLS, devices([{ serverUserId: "me", deviceId: "d1" }]));
   assert.deepEqual(await without.source.modeFor("dm_1", "kari"), { kind: "sealed-v1", reason: "peer_without_mls" });
@@ -407,7 +431,7 @@ test("the composer holds only a DM waiting on its mode, refused, or with a chang
 });
 
 test("the device list puts this device first and names the ones no group shows", () => {
-  const dev = (deviceId, extra = {}) => ({ serverUserId: "kari", deviceId, name: null, addedAt: null, lastSeenAt: null, thisDevice: false, ...extra });
+  const dev = (deviceId: string, extra: object = {}) => ({ serverUserId: "kari", deviceId, name: null, addedAt: null, lastSeenAt: null, thisDevice: false, ...extra });
   const listed = [
     dev("old", { name: "Desktop", addedAt: "2026-09-01T10:00:00.000Z" }),
     dev("unseen"),
@@ -415,7 +439,7 @@ test("the device list puts this device first and names the ones no group shows",
   ];
   assert.deepEqual(orderOwnDevices(listed).map((d) => d.deviceId), ["here", "old", "unseen"]);
   assert.equal(ownDeviceLabel(listed[1]), "Another device");
-  assert.match(ownDeviceAdded(listed[0]), /^Added .*2026/);
+  assert.match(ownDeviceAdded(listed[0]) ?? "", /^Added .*2026/);
   assert.equal(ownDeviceAdded(listed[1]), null, "a server that sends no date shows none");
   assert.equal(
     removeOwnDeviceWarning(listed[0], "Gryt Community"),
@@ -425,16 +449,18 @@ test("the device list puts this device first and names the ones no group shows",
 });
 
 test("a removed device stays removed until a sign-in after the removal (GRYT-1555)", () => {
-  const items = new Map();
-  globalThis.localStorage = {
-    getItem: (k) => items.get(k) ?? null,
-    setItem: (k, v) => items.set(k, String(v)),
-    removeItem: (k) => items.delete(k),
-    key: (i) => [...items.keys()][i] ?? null,
-    get length() {
-      return items.size;
+  const items = new Map<string, string>();
+  Object.assign(globalThis, {
+    localStorage: {
+      getItem: (k: string) => items.get(k) ?? null,
+      setItem: (k: string, v: string) => items.set(k, String(v)),
+      removeItem: (k: string) => items.delete(k),
+      key: (i: number) => [...items.keys()][i] ?? null,
+      get length() {
+        return items.size;
+      },
     },
-  };
+  });
   const { removedHereAt, markRemovedHere, clearRemovedHere, clearRemovedEverywhere, stillRemoved, authTimeOf } = removedHere;
   assert.equal(removedHereAt("srv:a"), null);
   markRemovedHere("srv:a", 5_000_000);
@@ -445,7 +471,7 @@ test("a removed device stays removed until a sign-in after the removal (GRYT-155
   assert.equal(stillRemoved(5_000_000, 4_000), true, "signed in before the removal: a thief's session");
   assert.equal(stillRemoved(5_000_000, 5_001), false, "signed in again after it");
 
-  const token = (claims) => `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`;
+  const token = (claims: object) => `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`;
   assert.equal(authTimeOf(token({ auth_time: 5_001 })), 5_001);
   assert.equal(authTimeOf(token({ sub: "x" })), null);
   assert.equal(authTimeOf(undefined), null);
@@ -454,13 +480,13 @@ test("a removed device stays removed until a sign-in after the removal (GRYT-155
   assert.equal(removedHereAt("srv:a"), null);
   clearRemovedEverywhere();
   assert.equal(removedHereAt("srv:b"), null);
-  delete globalThis.localStorage;
+  Reflect.deleteProperty(globalThis, "localStorage");
 });
 
 test("a DM on a server that removed this device says so, and how to set it up again", () => {
-  const removed = { undecryptable: 0, lost: "device_removed" };
-  const refused = { kind: "refused", reason: "no_own_device" };
-  const opts = { lostHistory: false, home: "app", peerName: "Ola" };
+  const removed = { undecryptable: 0, lost: "device_removed" } as const;
+  const refused = { kind: "refused", reason: "no_own_device" } as const;
+  const opts = { lostHistory: false, home: "app", peerName: "Ola" } as const;
   assert.equal(
     mlsNotice(refused, removed, { ...opts, signedIn: true }),
     "This device was removed from encrypted DMs on this server. To set it up again, sign out and sign back in.",
