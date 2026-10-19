@@ -6,26 +6,28 @@
 
 import assert from "node:assert/strict";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { createServer } from "node:net";
+import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { ActivityEvent } from "../electron/discordIpc.ts";
+import type { ConnectOptions, HelperStatus } from "../electron/helperChannel.ts";
 import { connectHelper, helperPath, isPrivateDir, parseHelperLine } from "../electron/helperChannel.ts";
-import { createPresenceSource } from "../electron/presenceHelper.ts";
+import { createPresenceSource, type PresenceSourceOptions } from "../electron/presenceHelper.ts";
 
 let failures = 0;
-async function check(name, run) {
+async function check(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.stack ?? err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
   }
 }
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-async function until(test, what, ms = 2000) {
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+async function until(test: () => boolean, what: string, ms = 2000) {
   const end = Date.now() + ms;
   while (Date.now() < end) {
     if (test()) return;
@@ -34,7 +36,7 @@ async function until(test, what, ms = 2000) {
   throw new Error(`timed out waiting for ${what}`);
 }
 
-const dirs = [];
+const dirs: string[] = [];
 function privateDir(mode = 0o700) {
   const root = mkdtempSync(join(tmpdir(), "gph-"));
   dirs.push(root);
@@ -45,34 +47,39 @@ function privateDir(mode = 0o700) {
 }
 
 /** Speaks the helper's side of the protocol, as helper/hub.go does. */
-async function fakeHelper(dir, { hello = { type: "hello", version: 1, pid: 1, state: "holding", slot: 0 }, replay = [] } = {}) {
+type Hello = { type: string; version: number; pid?: number; state: string; slot: number };
+
+async function fakeHelper(
+  dir: string,
+  { hello = { type: "hello", version: 1, pid: 1, state: "holding", slot: 0 }, replay = [] }: { hello?: Hello | null; replay?: object[] } = {},
+) {
   const path = join(dir, "helper.sock");
-  const clients = new Set();
-  const received = [];
+  const clients = new Set<Socket>();
+  const received: string[] = [];
   const server = createServer((socket) => {
     clients.add(socket);
     socket.setEncoding("utf8");
-    socket.on("data", (d) => received.push(...d.split("\n").filter(Boolean)));
+    socket.on("data", (d) => received.push(...String(d).split("\n").filter(Boolean)));
     socket.on("close", () => clients.delete(socket));
     if (hello) socket.write(JSON.stringify(hello) + "\n" + replay.map((m) => JSON.stringify(m) + "\n").join(""));
   });
-  await new Promise((r) => server.listen(path, r));
+  await new Promise<void>((r) => server.listen(path, r));
   return {
     path,
     received,
     clients,
-    send: (msg) => {
+    send: (msg: object) => {
       for (const c of clients) c.write(JSON.stringify(msg) + "\n");
     },
     close: () =>
-      new Promise((r) => {
+      new Promise<void>((r) => {
         for (const c of clients) c.destroy();
-        server.close(r);
+        server.close(() => r());
       }),
   };
 }
 
-const activity = (connection, clientId, details) => ({ type: "activity", connection, clientId, activity: details ? { details } : null });
+const activity = (connection: number, clientId: string, details?: string) => ({ type: "activity", connection, clientId, activity: details ? { details } : null });
 
 /* ── Where it lives ──────────────────────────────────────────────────── */
 
@@ -111,8 +118,8 @@ await check("lines are checked before anything uses them", () => {
 
 await check("reads the hello, what's showing, and updates, and can tell it to quit", async () => {
   const helper = await fakeHelper(privateDir(), { replay: [activity(3, "100", "Ranked")] });
-  const events = [];
-  const statuses = [];
+  const events: ActivityEvent[] = [];
+  const statuses: HelperStatus[] = [];
   let closed = false;
   const link = await connectHelper({
     path: helper.path,
@@ -124,7 +131,7 @@ await check("reads the hello, what's showing, and updates, and can tell it to qu
   assert.ok(link);
   assert.deepEqual(link.status(), { state: "holding", slot: 0 });
   await until(() => events.length === 1, "the replayed activity");
-  assert.equal(events[0].activity.details, "Ranked");
+  assert.equal(events[0].activity?.details, "Ranked");
   helper.send({ type: "state", state: "yielded", slot: null });
   await until(() => statuses.length === 2, "the state change");
   link.quit();
@@ -149,21 +156,22 @@ await check("nothing is there, or it never says hello", async () => {
 /* ── Helper first, the in-app socket otherwise ───────────────────────── */
 
 function fakeHost() {
-  const made = [];
+  type HostOptions = Parameters<PresenceSourceOptions["createHost"]>[0];
+  const made: { opts: HostOptions; started: boolean; stopped: boolean }[] = [];
   return {
     made,
-    create: (opts) => {
+    create: (opts: HostOptions) => {
       const host = { opts, started: false, stopped: false };
       made.push(host);
       return {
         start: async () => {
           host.started = true;
-          opts.onState("holding", null);
-          return "holding";
+          opts.onState?.("holding", null);
+          return "holding" as const;
         },
         stop: async () => {
           host.stopped = true;
-          opts.onState("off", null);
+          opts.onState?.("off", null);
         },
         state: () => (host.stopped ? "off" : "holding"),
         holder: () => null,
@@ -172,16 +180,16 @@ function fakeHost() {
   };
 }
 
-function source(path, hosts, extra = {}) {
-  const events = [];
-  const states = [];
+function source(path: string, hosts: ReturnType<typeof fakeHost>, extra: Partial<PresenceSourceOptions> = {}) {
+  const events: ActivityEvent[] = [];
+  const states: { state: string; holder: string | null; via: string | null }[] = [];
   let resets = 0;
   const src = createPresenceSource({
     onActivity: (e) => events.push(e),
     onState: (state, holder, via) => states.push({ state, holder: holder?.name ?? null, via }),
     onReset: () => resets++,
     createHost: hosts.create,
-    connect: (opts) => connectHelper({ ...opts, path, platform: "linux" }),
+    connect: (opts: ConnectOptions) => connectHelper({ ...opts, path, platform: "linux" }),
     findHolder: async () => ({ pid: 9, name: "Discord", isDiscord: true }),
     pollMs: 30,
     ...extra,
@@ -217,9 +225,9 @@ await check("without it, the in-app socket; and when it shows up, the app lets g
   assert.ok(s.resets() >= 1);
   await until(() => s.events.some((e) => e.clientId === "200"), "the helper's activity");
   // On slot 1, games reach whoever has slot 0 first, so settings names them.
-  await until(() => s.states.at(-1).state === "yielded" && s.states.at(-1).holder === "Discord", "the holder of slot 0");
+  await until(() => s.states.at(-1)?.state === "yielded" && s.states.at(-1)?.holder === "Discord", "the holder of slot 0");
   helper.send({ type: "state", state: "holding", slot: 0 });
-  await until(() => s.states.at(-1).state === "holding" && s.states.at(-1).via === "helper", "holding slot 0");
+  await until(() => s.states.at(-1)?.state === "holding" && s.states.at(-1)?.via === "helper", "holding slot 0");
 
   // The helper going away brings the in-app socket back.
   await helper.close();
