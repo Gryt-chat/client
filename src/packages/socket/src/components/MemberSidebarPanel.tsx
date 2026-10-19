@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { RefObject } from "react";
+import type { RefObject } from "react";
 
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { MemberSidebar } from "./MemberSidebar";

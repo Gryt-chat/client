@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 
 export interface TypingUser {
   serverUserId: string;

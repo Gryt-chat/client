@@ -1,5 +1,5 @@
-import { Dispatch, SetStateAction } from "react";
-import { Socket } from "socket.io-client";
+import type { Dispatch, SetStateAction } from "react";
+import type { Socket } from "socket.io-client";
 
 import { getAvatarHash, getServerHttpBase, getStoredAvatar, getUploadsFileUrl } from "@/common";
 

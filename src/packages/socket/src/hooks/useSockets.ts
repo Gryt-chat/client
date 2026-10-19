@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { io, Socket } from "socket.io-client";
+import { io, type Socket } from "socket.io-client";
 
 import { deliverPluginMessage, setPluginApiMessageSender } from "@/addons";
 import connectMp3 from "@/audio/src/assets/connect.mp3";
@@ -13,7 +13,7 @@ import { initKeycloak } from "@/common/src/auth/keycloak";
 import { useSettings } from "@/settings";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
 import { railEntriesJustStarted } from "@/settings/src/hostedServerRail";
-import {
+import type {
   Server,
   serverDetailsList,
   Servers,
@@ -21,9 +21,9 @@ import {
 
 import { type EmbeddedServerState, getElectronAPI } from "../../../../lib/electron";
 import { showReconnectGaveUpToast } from "../components/connectionToasts";
-import { MemberInfo } from "../components/MemberSidebar";
+import type { MemberInfo } from "../components/MemberSidebar";
 import { claimFakeHost, FAKE_VOICE_CHANNELS, fakeDmsOn, fakeHostNow, fakeMembers } from "../dev/fakeDms";
-import { Clients, ServerProfile } from "../types/clients";
+import type { Clients, ServerProfile } from "../types/clients";
 import { installContactGuard } from "../utils/contactFilter";
 import { browserAwayDeps, watchAway } from "../utils/desktopAway";
 import { watchFriendTraffic } from "../utils/friendList";
