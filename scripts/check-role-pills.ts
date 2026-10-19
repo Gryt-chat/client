@@ -15,7 +15,7 @@ const card = readFileSync(
 );
 
 /** Everything after `const rolePills =`, up to the semicolon that ends it. */
-function pillExpression(text) {
+function pillExpression(text: string) {
   const start = text.indexOf("const rolePills =");
   assert.notEqual(
     start,
@@ -53,7 +53,8 @@ const SUMMARIES = [
   { id: "trusted-member", name: "Trusted Member", rank: 50 },
 ];
 
-const named = (member) => pills(member, SUMMARIES).map((p) => p.name);
+type Pill = { name: string };
+const named = (member: { roles?: string[]; role?: string }) => pills(member, SUMMARIES).map((p: Pill) => p.name);
 
 // The report this exists for: holding a real role and the joiner default, and
 // being shown the joiner default under its id.
@@ -83,7 +84,7 @@ assert.deepEqual(
 
 // A server that sent no definitions still gets a readable pill rather than none.
 assert.deepEqual(
-  pills({ roles: ["trusted-member"] }, []).map((p) => p.name),
+  pills({ roles: ["trusted-member"] }, []).map((p: Pill) => p.name),
   ["trusted-member"],
   "with no role definitions the pill disappears instead of falling back to the id",
 );

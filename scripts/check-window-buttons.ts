@@ -24,14 +24,14 @@ assert.ok(
 // TypeScript's only contribution here is the return annotation.
 const js = source[0].replace(": boolean", "");
 
-const drawsWith = (platform, desktop) =>
+const drawsWith = (platform: string, desktop: string | undefined) =>
   new Function("process", `${js}; return drawsWindowButtons;`)({
     platform,
     env: { XDG_CURRENT_DESKTOP: desktop },
   })();
 
 // Hyprland is what was measured on the box; the rest are the same family.
-const cases = [
+const cases: [string | undefined, boolean][] = [
   ["Hyprland", false],
   ["sway", false],
   ["i3", false],
