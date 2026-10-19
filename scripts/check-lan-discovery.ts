@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * How the desktop app finds servers on the network. The Mac App Store build can't use dns-sd,
  * and on macOS a unicast mDNS reply never reaches the app's own socket (GRYT-1273).
@@ -15,13 +13,13 @@ import { buildPtrQuery, handleMdnsResponse } from "../electron/lanDiscovery.ts";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -30,7 +28,7 @@ const source = readFileSync(`${ROOT}/electron/lanDiscovery.ts`, "utf8")
   .replace(/\/\/[^\n]*/g, "");
 
 /** The last question's class. The top bit asks for a unicast reply (RFC 6762, 5.4). */
-const questionClass = (query) => query.readUInt16BE(query.length - 2);
+const questionClass = (query: Buffer) => query.readUInt16BE(query.length - 2);
 
 console.log("lan discovery");
 
@@ -53,11 +51,11 @@ check("the store build asks for a multicast reply", () => {
 
 /* ── Answers ──────────────────────────────────────────────────────── */
 
-function name(labels) {
+function name(labels: string[]) {
   return Buffer.concat([...labels.map((l) => Buffer.concat([Buffer.from([l.length]), Buffer.from(l)])), Buffer.from([0])]);
 }
 
-function record(labels, type, rdata) {
+function record(labels: string[], type: number, rdata: Buffer) {
   const fixed = Buffer.alloc(10);
   fixed.writeUInt16BE(type, 0);
   fixed.writeUInt16BE(1, 2);
@@ -67,7 +65,7 @@ function record(labels, type, rdata) {
 }
 
 /** One server's answer: PTR, SRV to dev.local, TXT, and either an A or an AAAA record. */
-function answer({ ipv4 }) {
+function answer({ ipv4 }: { ipv4: boolean }) {
   const instance = ["Gryt", "_gryt", "_tcp", "local"];
   const srv = Buffer.alloc(6);
   srv.writeUInt16BE(5000, 4);
@@ -85,9 +83,15 @@ function answer({ ipv4 }) {
   return Buffer.concat([header, ...records]);
 }
 
-function discover(pkt, senderIp) {
-  const sent = [];
-  const win = { webContents: { send: (channel, server) => sent.push({ channel, server }) } };
+type Found = { name: string; host: string; port: number; version: string };
+
+function discover(pkt: Buffer, senderIp: string | null) {
+  const sent: { channel: string; server: Found }[] = [];
+  // A window is only asked to send, so that is all this one does.
+  const send = (channel: string, server: Found) => {
+    sent.push({ channel, server });
+  };
+  const win = { webContents: { send } } as Parameters<typeof handleMdnsResponse>[2];
   handleMdnsResponse(pkt, senderIp, win, () => undefined, new Map(), new Map());
   return sent;
 }

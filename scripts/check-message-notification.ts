@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * One decision for the server on screen and the ones in the background. Focus,
  * a mention, the channel's own default and this person's levels all meet in it.
@@ -23,6 +21,7 @@ const sidebar = [
   { kind: "channel", channelId: "general", parentItemId: null },
   { kind: "channel", channelId: "git-activity", parentItemId: "f1" },
 ];
+// The last two are wrong on purpose: an older server's and a broken one's.
 const channels = [
   { id: "general", defaultNotificationLevel: "all" },
   { id: "git-activity", defaultNotificationLevel: "none" },
@@ -31,21 +30,21 @@ const channels = [
   { id: "old-server" },
   { id: "junk", defaultNotificationLevel: "loud" },
 ];
-rememberPlacements(HOST, sidebar, channels);
+rememberPlacements(HOST, sidebar, channels as Parameters<typeof rememberPlacements>[2]);
 
-const from = (sender, conversation_id, thread_id = null) => ({
+const from = (sender: string, conversation_id: string, thread_id: string | null = null) => ({
   conversation_id,
   sender_server_id: sender,
   thread_id,
   text: "hello everyone",
 });
-const naming = (sender, conversation_id, thread_id = null) => ({
+const naming = (sender: string, conversation_id: string, thread_id: string | null = null) => ({
   ...from(sender, conversation_id, thread_id),
   text: "@Sivert can you look at this",
 });
-const onScreen = (windowFocused, mentionsMe = false) => ({ myId: ME, viewingThisServer: true, windowFocused, mentionsMe });
-const background = (windowFocused, mentionsMe = false) => ({ myId: ME, viewingThisServer: false, windowFocused, mentionsMe });
-const level = (id, value) => setNotificationLevel(HOST, { kind: "channel", id }, value);
+const onScreen = (windowFocused: boolean, mentionsMe = false) => ({ myId: ME, viewingThisServer: true, windowFocused, mentionsMe });
+const background = (windowFocused: boolean, mentionsMe = false) => ({ myId: ME, viewingThisServer: false, windowFocused, mentionsMe });
+const level = (id: string, value: Parameters<typeof setNotificationLevel>[2]) => setNotificationLevel(HOST, { kind: "channel", id }, value);
 
 // ── The two paths, on a channel nobody has touched ──────────────────────────
 

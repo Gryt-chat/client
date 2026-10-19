@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Upload URLs carried the file token in `?t=`, where history, logs and screenshots kept it and
 // no identity proof could hold it back. Now each URL is signed for one file for minutes. GRYT-1549.
 
@@ -11,30 +9,32 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
-const load = (path, stubs = {}) =>
+const moduleUrl = (text: string) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const load = (path: string, stubs: Record<string, string> = {}) =>
   moduleUrl(
     ts
       .transpileModule(readFileSync(join(root, path), "utf8"), {
         compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
       })
-      .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) => `${head}"${stubs[spec] ?? import.meta.resolve(spec)}"`),
+      .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_: string, head: string, spec: string) => `${head}"${stubs[spec] ?? import.meta.resolve(spec)}"`),
   );
 
 /** Just enough Storage: what older builds left behind has to be found and removed. */
-function fakeStorage(entries = {}) {
+function fakeStorage(entries: Record<string, string> = {}) {
   const map = new Map(Object.entries(entries));
   return {
     get length() { return map.size; },
-    key: (i) => [...map.keys()][i] ?? null,
-    getItem: (k) => (map.has(k) ? map.get(k) : null),
-    setItem: (k, v) => map.set(k, String(v)),
-    removeItem: (k) => map.delete(k),
-    has: (k) => map.has(k),
+    key: (i: number) => [...map.keys()][i] ?? null,
+    getItem: (k: string) => (map.has(k) ? map.get(k) : null),
+    setItem: (k: string, v: string) => map.set(k, String(v)),
+    removeItem: (k: string) => map.delete(k),
+    has: (k: string) => map.has(k),
   };
 }
-globalThis.localStorage = fakeStorage({ "fileToken_chat.example": "old-token-on-disk", serverSchemeOverrides: "{}" });
-globalThis.sessionStorage = fakeStorage({ "fileToken_other.example": "old-token-in-session" });
+Object.assign(globalThis, {
+  localStorage: fakeStorage({ "fileToken_chat.example": "old-token-on-disk", serverSchemeOverrides: "{}" }),
+  sessionStorage: fakeStorage({ "fileToken_other.example": "old-token-in-session" }),
+});
 
 const FILE_ACCESS = load("src/packages/common/src/utils/fileUrlAuth.ts");
 const access = await import(FILE_ACCESS);
@@ -43,8 +43,8 @@ const tokens = await import(load("src/packages/common/src/utils/tokenStorage.ts"
 
 const HOST = "chat.example";
 const FILE = "0f8a3c52-6a8e-4b8e-9d0e-2f7c1b1e4a90";
-const params = (url) => Object.fromEntries(new URL(url).searchParams);
-const carries = (url) => ["t", "s", "u", "k", "e"].filter((name) => new URL(url).searchParams.has(name));
+const params = (url: string) => Object.fromEntries(new URL(url).searchParams);
+const carries = (url: string) => ["t", "s", "u", "k", "e"].filter((name) => new URL(url).searchParams.has(name));
 
 // The server's own vector (server src/utils/fileUrl.test.ts). Different bytes and every picture 401s.
 {
@@ -67,8 +67,8 @@ const grant = { fileKey: { key, user: "user-1", until: 1_790_043_200, now: nowMs
 
 // A current server: signed, for minutes, and the token it also sent for older clients stays out.
 {
-  const heard = [];
-  const stop = access.subscribeServerFileAccess((host) => heard.push(host));
+  const heard: string[] = [];
+  const stop = access.subscribeServerFileAccess((host: string) => heard.push(host));
   tokens.setServerFileAccess(HOST, grant);
   access.holdServerFileAccess(HOST, grant, nowMs);
   stop();
@@ -98,7 +98,7 @@ const grant = { fileKey: { key, user: "user-1", until: 1_790_043_200, now: nowMs
 
 // Steady inside a five-minute step, so a re-render does not reload every picture; new after it.
 {
-  const at = (ms) => access.fileAccessParams(HOST, FILE, false, ms)[2][1];
+  const at = (ms: number) => access.fileAccessParams(HOST, FILE, false, ms)[2][1];
   const stepStart = Math.floor(nowMs / 300_000) * 300_000;
   assert.equal(at(stepStart), at(stepStart + 299_000), "the URL changed inside one step");
   assert.notEqual(at(stepStart), at(stepStart + 300_000), "the URL never moves on, so it would expire in place");

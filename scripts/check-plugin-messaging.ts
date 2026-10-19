@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Routing a plugin's messages to the right plugin. `pluginMessages.ts` imports
  * nothing, which is why this can drive it without a browser or a socket (GRYT-939).
@@ -24,8 +22,8 @@ resetPluginMessageListeners();
 
 /* Captured rather than silenced, so "a handler that throws is logged" is an
    assertion — and so this check does not print a stack that reads as a failure. */
-const logged = [];
-console.error = (...args) => logged.push(args.map(String).join(" "));
+const logged: string[] = [];
+console.error = (...args: Parameters<typeof console.error>) => logged.push(args.map(String).join(" "));
 
 /* ── topics ──────────────────────────────────────────────────────────────── */
 
@@ -50,8 +48,12 @@ assert.throws(() => subscribe("presence", "a\nb", () => {}), /invalid topic/);
 
 /* ── receiving ───────────────────────────────────────────────────────────── */
 
-const heard = [];
-const stopRef = { fn: subscribe("presence", "playing", (m) => heard.push(m)) };
+const heard: object[] = [];
+// Through a function, so a later assertion on what was heard doesn't narrow away the push.
+const hear = (m: object) => {
+  heard.push(m);
+};
+const stopRef = { fn: subscribe("presence", "playing", hear) };
 
 deliverPluginMessage("presence", { host: "gryt.example", topic: "playing", data: { game: "Doom" } });
 assert.deepEqual(heard, [{ host: "gryt.example", topic: "playing", data: { game: "Doom" } }]);
@@ -59,14 +61,14 @@ assert.deepEqual(heard, [{ host: "gryt.example", topic: "playing", data: { game:
 /* Nothing for another topic. */
 heard.length = 0;
 deliverPluginMessage("presence", { host: "h", topic: "score", data: {} });
-assert.deepEqual(heard, []);
+assert.equal(heard.length, 0);
 
 /* And nothing for another plugin, which is the point of the namespace: two can
    be installed at once and neither can see the other's manifest. */
 heard.length = 0;
 subscribe("scoreboard", "playing", () => {});
 deliverPluginMessage("scoreboard", { host: "h", topic: "playing", data: {} });
-assert.deepEqual(heard, [], "one plugin heard another plugin's message");
+assert.equal(heard.length, 0, "one plugin heard another plugin's message");
 
 /* Delivering to a plugin nobody is listening for is quiet, not an error — most
    servers run no half of most plugins. */
@@ -76,7 +78,7 @@ assert.doesNotThrow(() =>
 
 /* ── one plugin's mistake stays its own ──────────────────────────────────── */
 
-const after = [];
+const after: string[] = [];
 subscribe("presence", "playing", () => {
   throw new Error("plugin bug");
 });
@@ -98,13 +100,14 @@ assert.match(logged[0], /playing/);
    the same message instead of the second seeing what the first left behind. */
 resetPluginMessageListeners();
 
-let secondSaw;
+// The payload is the sending plugin's to shape, so the check names the one field it touches.
+let secondSaw: { topic: string; game?: string } | undefined;
 subscribe("presence", "playing", (m) => {
   m.topic = "rewritten";
-  m.data.game = "rewritten";
+  (m.data as { game?: string }).game = "rewritten";
 });
 subscribe("presence", "playing", (m) => {
-  secondSaw = { topic: m.topic, game: m.data.game };
+  secondSaw = { topic: m.topic, game: (m.data as { game?: string }).game };
 });
 
 const original = { host: "h", topic: "playing", data: { game: "Doom" } };
@@ -114,7 +117,7 @@ assert.deepEqual(secondSaw, { topic: "playing", game: "Doom" }, "one handler rew
 assert.deepEqual(original.data, { game: "Doom" }, "a handler modified the caller's own object");
 
 resetPluginMessageListeners();
-const restop = subscribe("presence", "playing", (m) => heard.push(m));
+const restop = subscribe("presence", "playing", hear);
 stopRef.fn = restop;
 
 /* ── stopping ────────────────────────────────────────────────────────────── */
@@ -128,10 +131,10 @@ assert.deepEqual(heard, [], "unsubscribing did not stop delivery");
  * And the app can drop everything an addon was listening for. Without it a
  * disabled plugin keeps receiving and a reloaded one runs two generations.
  */
-const survivors = [];
+const survivors: number[] = [];
 subscribe("presence", "playing", () => survivors.push(1));
 subscribe("presence", "score", () => survivors.push(1));
-const boardHeard = [];
+const boardHeard: number[] = [];
 subscribe("scoreboard", "playing", () => boardHeard.push(1));
 
 dropListeners("presence");

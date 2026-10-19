@@ -1,5 +1,5 @@
 /* The link to share for a server anyone can join. Kept apart from the hook that copies it,
-   so scripts/check-invite-link.mjs can import it without a bundler. */
+   so scripts/check-invite-link.ts can import it without a bundler. */
 
 import type { EmbeddedServerState } from "../../../../lib/electron";
 import { inviteLink } from "./invite.ts";
