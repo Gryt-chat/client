@@ -8,17 +8,19 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import type { Release, ReleasesAhead } from "../src/components/whatsNewSince.ts";
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SINCE = "src/components/whatsNewSince.ts";
 const DIALOG = "src/packages/socket/src/components/WhatsNewDialog.tsx";
 const NOTES = "src/packages/socket/src/components/ServerReleaseNotes.tsx";
 const MODAL = "src/packages/socket/src/components/ServerSettingsModal.tsx";
-const read = (path) => readFileSync(join(root, path), "utf8");
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const { releasesAhead, MAX_RELEASES } = await import(pathToFileURL(join(root, SINCE)).href);
 
-const rel = (version, extra = {}) => ({ version, date: "2026-09-22", line: `Line for ${version}.`, ...extra });
-const versions = (picked) => picked.releases.map((r) => r.version);
+const rel = (version: string, extra: Partial<Release> = {}): Release => ({ version, date: "2026-09-22", line: `Line for ${version}.`, ...extra });
+const versions = (picked: ReleasesAhead) => picked.releases.map((r) => r.version);
 
 /* ── the range ───────────────────────────────────────────────────────────── */
 
@@ -65,13 +67,13 @@ assert.deepEqual(
 // notes' own imports pointed at stubs so the feed and the hosted list are what we say.
 const ts = (await import("typescript")).default;
 const react = JSON.stringify(import.meta.resolve("react"));
-const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
-const compile = (source, stubs) =>
+const moduleUrl = (text: string) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const compile = (source: string, stubs: Record<string, string>) =>
   ts
     .transpileModule(source, {
       compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     })
-    .outputText.replace(/from "([^"]+)"/g, (_, spec) => `from "${stubs[spec] ?? import.meta.resolve(spec)}"`);
+    .outputText.replace(/from "([^"]+)"/g, (_: string, spec: string) => `from "${stubs[spec] ?? import.meta.resolve(spec)}"`);
 
 const icons = moduleUrl(`
   import { createElement as h } from ${react};
@@ -93,8 +95,10 @@ const dialogUrl = moduleUrl(
   }),
 );
 
-globalThis.__feed = null;
-globalThis.__hosted = [];
+/** What the stubbed feed and hosted-server hooks read, set per case below. */
+const shared = globalThis as typeof globalThis & { __feed: object | null; __hosted: object[] };
+shared.__feed = null;
+shared.__hosted = [];
 const notesSource = read(NOTES);
 const { ServerReleaseNotes } = await import(
   moduleUrl(
@@ -115,13 +119,13 @@ const { ServerReleaseNotes } = await import(
 
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
-const text = (html) => html.replace(/<br\/?>/g, "\n").replace(/<[^>]+>/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#x27;|&rsquo;|’/g, "'").replace(/\s+/g, " ");
-const notes = (props) =>
+const text = (html: string) => html.replace(/<br\/?>/g, "\n").replace(/<[^>]+>/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#x27;|&rsquo;|’/g, "'").replace(/\s+/g, " ");
+const notes = (props: object = {}) =>
   renderToStaticMarkup(createElement(ServerReleaseNotes, { host: "chat.example.org", running: "1.10.20", latest: "1.10.23", beta: false, onClose() {}, ...props }));
 
 // Three behind: three versions under "not on this server yet", security in its own block.
 {
-  globalThis.__feed = { app: [rel("1.11.39")], server: SERVER };
+  shared.__feed = { app: [rel("1.11.39")], server: SERVER };
   const html = notes();
   const said = text(html);
   assert.match(said, /This server runs 1\.10\.20/, "the dialog does not say what the server runs");
@@ -144,16 +148,16 @@ const notes = (props) =>
 
 // Hosted by this app: just that there is nothing to do.
 {
-  globalThis.__hosted = [{ id: "s1", status: "running", config: null, error: null, serverUrl: "http://127.0.0.1:5003" }];
+  shared.__hosted = [{ id: "s1", status: "running", config: null, error: null, serverUrl: "http://127.0.0.1:5003" }];
   const said = text(notes({ host: "127.0.0.1:5003" }));
   assert.match(said, /This app hosts the server, so there's nothing to do/, "a server this app hosts is told to run a command");
   assert.doesNotMatch(said, /gryt pull|docker compose/, "a server this app hosts is shown commands");
-  globalThis.__hosted = [];
+  shared.__hosted = [];
 }
 
 // No list, never an empty one: loading before the feed, a plain line when the site has none yet.
 {
-  globalThis.__feed = null;
+  shared.__feed = null;
   assert.match(text(notes()), /Loading the release notes/, "no feed yet draws an empty dialog");
   assert.doesNotMatch(notes(), /Not on this server yet/, "a heading over nothing");
 }

@@ -9,12 +9,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
+  asIdentityScope,
   deriveDmKeyPair,
   openAttachment,
   openMessage,
   sealAttachment,
   sealMessage,
-  asIdentityScope,
 } from "@gryt/crypto";
 
 import {
@@ -26,7 +26,7 @@ import {
 
 const SCOPE = asIdentityScope("srv:attachments");
 const CONVERSATION = "dm_g0123456789abcdef0123456789abcdef";
-const seed = (n) => Uint8Array.from({ length: 32 }, (_, i) => (i * n + n) % 251);
+const seed = (n: number) => Uint8Array.from({ length: 32 }, (_, i) => (i * n + n) % 251);
 
 const alice = { id: "user_alice", keys: deriveDmKeyPair(seed(3), SCOPE) };
 const bob = { id: "user_bob", keys: deriveDmKeyPair(seed(7), SCOPE) };
@@ -71,6 +71,7 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
     recipientKeys: bob.keys,
   });
 
+  assert.ok(opened, "the recipient could not open the message");
   const key = opened.attachments.server_file_id;
   assert.ok(key, "the recipient got no key for the file");
 
@@ -112,11 +113,13 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
     mime: "image/png",
   });
 
-  const seen = [];
-  globalThis.fetch = async (url, init) => {
-    seen.push({ url, init });
-    return { ok: true, arrayBuffer: async () => ciphertext.buffer.slice(ciphertext.byteOffset, ciphertext.byteOffset + ciphertext.byteLength) };
-  };
+  const seen: { url: string; init?: RequestInit }[] = [];
+  Object.assign(globalThis, {
+    fetch: async (url: string, init?: RequestInit) => {
+      seen.push({ url, init });
+      return { ok: true, arrayBuffer: async () => ciphertext.buffer.slice(ciphertext.byteOffset, ciphertext.byteOffset + ciphertext.byteLength) };
+    },
+  });
 
   const blob = await fetchSealedAttachment({
     url: "https://gryt.test/api/uploads/files/abc",
@@ -130,8 +133,8 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
 
   // No credentials on a request that does not need them. The bytes are useless
   // without the key, and the URL ends up inside a blob the page holds.
-  assert.equal(seen[0].init.credentials, "omit");
-  assert.equal(seen[0].init.headers, undefined, "a bearer token went on the download");
+  assert.equal(seen[0].init?.credentials, "omit");
+  assert.equal(seen[0].init?.headers, undefined, "a bearer token went on the download");
 }
 
 /* ── a video waits for play; everything else opens with the message ──────── */
@@ -142,15 +145,19 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
   const unnamed = sealAttachment({ bytes: FILE, conversationId: CONVERSATION });
   const stored = { video: video.ciphertext, image: image.ciphertext, unnamed: unnamed.ciphertext };
 
-  const seen = [];
-  globalThis.fetch = async (url) => {
-    seen.push(url);
-    const bytes = stored[new URL(url).pathname.split("/").pop()];
-    return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
-  };
+  const seen: string[] = [];
+  Object.assign(globalThis, {
+    fetch: async (url: string) => {
+      seen.push(url);
+      const name = new URL(url).pathname.split("/").pop();
+      assert.ok(name === "video" || name === "image" || name === "unnamed", `fetched ${url}, which no fixture holds`);
+      const bytes = stored[name];
+      return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+    },
+  });
   let token = "A";
-  const kept = [];
-  const openOne = (fileId, meta) =>
+  const kept: string[] = [];
+  const openOne = (fileId: string, meta: typeof video.meta) =>
     openSealedAttachment({
       fileId,
       key: meta,
@@ -159,9 +166,10 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
       keepUrl: (url) => kept.push(url),
     });
 
-  assert.equal(opensOnPlay({ mime: "video/mp4" }), true);
+  const keyFor = (mime?: string) => ({ id: "x", key: "y", iv: "z", mime });
+  assert.equal(opensOnPlay(keyFor("video/mp4")), true);
   for (const mime of ["image/png", "audio/ogg", "application/pdf", undefined]) {
-    assert.equal(opensOnPlay({ mime }), false, `${mime} would wait for a play button it does not have`);
+    assert.equal(opensOnPlay(keyFor(mime)), false, `${mime} would wait for a play button it does not have`);
   }
 
   const drawn = await openOne("video", video.meta);
@@ -170,7 +178,7 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
   assert.equal(kept.length, 0);
   assert.equal(drawn.mime, "video/webm", "a waiting video has to draw as a video, or it gets no play button");
   assert.equal(drawn.original_name, "clip.webm");
-  assert.equal(typeof drawn.open_sealed, "function");
+  assert.ok(typeof drawn.open_sealed === "function", "a waiting video has nothing to open it with");
 
   token = "B";
   const blob = await drawn.open_sealed();
@@ -180,11 +188,11 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
   assert.deepEqual(Array.from(new Uint8Array(await blob.arrayBuffer())), Array.from(FILE));
 
   seen.length = 0;
-  for (const [fileId, meta] of [["image", image.meta], ["unnamed", unnamed.meta]]) {
+  for (const [fileId, meta] of [["image", image.meta], ["unnamed", unnamed.meta]] as const) {
     const opened = await openOne(fileId, meta);
     assert.equal(opened.open_sealed, undefined, `${fileId} was left for a press that nothing draws`);
     assert.ok(opened.local_url?.startsWith("blob:"), `${fileId} did not open with its message`);
-    assert.ok(kept.includes(opened.local_url), `${fileId}'s blob URL is not handed back to be revoked`);
+    assert.ok(kept.includes(opened.local_url ?? ""), `${fileId}'s blob URL is not handed back to be revoked`);
   }
   assert.equal(seen.length, 2);
   for (const url of kept) URL.revokeObjectURL(url);
@@ -198,7 +206,7 @@ const FILE = Uint8Array.from({ length: 3000 }, (_, i) => (i * 37) % 256);
 /* ── a refused download is an error, not an empty file ───────────────────── */
 
 {
-  globalThis.fetch = async () => ({ ok: false, status: 404 });
+  Object.assign(globalThis, { fetch: async () => ({ ok: false, status: 404 }) });
 
   await assert.rejects(
     () =>
