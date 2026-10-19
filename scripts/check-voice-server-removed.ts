@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs the effect that ends a call when its server is removed. A call stuck on
 // RECONNECTING was skipped and held the microphone open for good. GRYT-1322.
 
@@ -24,7 +22,7 @@ const STATES = {
 const ANCHOR = "// Leaving a server while in one of its voice channels should end the call.";
 
 /** The body of the `useEffect` callback that follows `anchor`. */
-function effectBody(text, anchor) {
+function effectBody(text: string, anchor: string) {
   const at = text.indexOf(anchor);
   assert.notEqual(at, -1, `${HOOK} no longer has "${anchor}". Move this check with it.`);
   const arrow = text.indexOf("useEffect(() => {", at);
@@ -41,7 +39,12 @@ function effectBody(text, anchor) {
 const body = effectBody(hook, ANCHOR);
 
 /** Runs the effect once and says whether it ended the call. */
-function endsCall({ state, host = "a.example", servers = {}, viewing = "" }) {
+function endsCall({
+  state,
+  host = "a.example",
+  servers = {},
+  viewing = "",
+}: { state: string; host?: string; servers?: Record<string, object>; viewing?: string }) {
   let ended = 0;
   /* `isConnected` is handed in as well, so this runs against the version of the
      effect that read it and fails on the assertion rather than on a name. */

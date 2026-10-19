@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What a plugin may do, and what it may not. Run against the real module rather
  * than a copy — Node strips the types, which is why this is .mjs (GRYT-928).
@@ -9,18 +7,20 @@ import assert from "node:assert/strict";
 
 /* The module reaches for localStorage at call time, not import time, so a
    stand-in here is enough, and the only way to run this outside a browser. */
-const store = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: (k) => store.delete(k),
-  // `pruneGrants` walks the keys, which is the only way to find grants left by
-  // an addon that is no longer installed.
-  get length() {
-    return store.size;
+const store = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
+    // `pruneGrants` walks the keys, which is the only way to find grants left by
+    // an addon that is no longer installed.
+    get length() {
+      return store.size;
+    },
+    key: (i: number) => [...store.keys()][i] ?? null,
   },
-  key: (i) => [...store.keys()][i] ?? null,
-};
+});
 
 const {
   ADDON_CAPABILITIES,
@@ -107,6 +107,7 @@ setGrantedCapabilities("nowplaying", []);
 assert.equal(addonMay("nowplaying", "status", ["status"]), false);
 
 /* A capability that is not in the catalogue cannot be granted by writing it. */
+// @ts-expect-error -- a capability that doesn't exist, on purpose.
 setGrantedCapabilities("nowplaying", ["read-your-email"]);
 assert.deepEqual(grantedCapabilities("nowplaying"), []);
 
@@ -122,7 +123,7 @@ const broken = {
   removeItem() {},
 };
 const good = globalThis.localStorage;
-globalThis.localStorage = broken;
+Object.assign(globalThis, { localStorage: broken });
 
 assert.deepEqual(grantedCapabilities("nowplaying"), [], "an unreadable store grants nothing");
 assert.doesNotThrow(() => setGrantedCapabilities("nowplaying", ["status"]));
@@ -132,7 +133,7 @@ assert.equal(
   "failing to store a grant must fail closed",
 );
 
-globalThis.localStorage = good;
+Object.assign(globalThis, { localStorage: good });
 
 /* Corrupt JSON is not a grant either. */
 store.set("addons.capabilities.nowplaying", "{not json");
@@ -144,14 +145,15 @@ assert.deepEqual(grantedCapabilities("nowplaying"), []);
  * Everything above went in through `setGrantedCapabilities`, which cleans on the
  * way in. These write the key directly, as another tab or an older build would.
  */
-for (const [written, expected] of [
+const SEEDED: [string, string[]][] = [
   [JSON.stringify(["read-your-email"]), []],
   [JSON.stringify(["status", "read-your-email"]), ["status"]],
   [JSON.stringify("status"), []],
   [JSON.stringify([1, 2, 3]), []],
   [JSON.stringify({ status: true }), []],
   [JSON.stringify(null), []],
-]) {
+];
+for (const [written, expected] of SEEDED) {
   store.set("addons.capabilities.seeded", written);
   assert.deepEqual(
     grantedCapabilities("seeded"),
@@ -173,6 +175,7 @@ assert.equal(
  * side. Either one alone would make the other's mutation survive.
  */
 store.clear();
+// @ts-expect-error -- a capability that doesn't exist, on purpose.
 setGrantedCapabilities("writecheck", ["status", "read-your-email"]);
 assert.equal(
   store.get("addons.capabilities.writecheck"),

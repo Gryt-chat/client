@@ -9,7 +9,7 @@ const src = readFileSync(
   new URL("../src/packages/socket/src/lib/permissionGridLayout.ts", import.meta.url),
   "utf8",
 );
-const num = (name) => {
+const num = (name: string) => {
   const m = src.match(new RegExp(`const ${name} = (\\d+)`));
   assert.ok(m, `${name} not found — did the constant get renamed?`);
   return Number(m[1]);
@@ -19,7 +19,7 @@ const ROLE_COLUMN = num("ROLE_COLUMN");
 const GUTTER = num("GUTTER");
 const MIN_ROLE_COLUMNS = num("MIN_ROLE_COLUMNS");
 
-function hasRoomForPermissionMatrix({ containerWidth, roleCount }) {
+function hasRoomForPermissionMatrix({ containerWidth, roleCount }: { containerWidth: number; roleCount: number }) {
   if (roleCount < MIN_ROLE_COLUMNS) return false;
   const needed =
     PERMISSION_COLUMN + Math.min(roleCount, MIN_ROLE_COLUMNS) * ROLE_COLUMN + GUTTER;

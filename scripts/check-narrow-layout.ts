@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What a narrow window keeps, and what it drops: the member list used to clip out
  * of the window, and a small window is now one channel where there is a mouse.
@@ -309,8 +307,8 @@ assert.doesNotMatch(pageColumn.slice(0, pageColumn.indexOf(">")), /overflowX/, "
 // The tour presses the rail's Account button, which a narrow window doesn't have, so the step opens the page itself.
 const accountStep = tourSteps.find((step) => step.id === "account");
 assert.ok(accountStep?.via?.includes("settings-account"), "the tour's account step no longer presses the rail");
-const opened = [];
-accountStep.enter?.({ openSettings: (tab) => opened.push(tab), closeSettings() {}, setShowAddServer() {} });
+const opened: string[] = [];
+accountStep?.enter?.({ openSettings: (tab: string) => opened.push(tab), closeSettings() {}, setShowAddServer() {} });
 assert.deepEqual(opened, ["account"], "the tour's account step has no way to Account without the rail");
 
 console.log("narrow layout ok: member list yields to the voice and thread panels, tiny window is desktop-only, both settings dialogs fit");

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The member hover card's open state has to live above the grouping, or somebody
 // going offline moves their row and takes the open card with it. GRYT-1067.
 
@@ -59,9 +57,9 @@ function reducer() {
   return new Function(`return (${arrow});`)();
 }
 
-const apply = (current, id, open) => {
+const apply = (current: string | null, id: string, open: boolean) => {
   let next = current;
-  const setOpenCardFor = (fn) => (next = fn(current));
+  const setOpenCardFor = (fn: (previous: string | null) => string | null) => (next = fn(current));
   new Function(
     "setOpenCardFor",
     "serverUserId",

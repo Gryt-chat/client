@@ -10,13 +10,13 @@ import games from "../electron/curated-games.json" with { type: "json" };
 import { createGameIndex, readGameList } from "../electron/gameList.ts";
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

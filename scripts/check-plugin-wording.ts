@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Turning a server's plugin capabilities into something a person can act on. The
  * case worth guarding is the unrecognised one, which a newer server brings.
@@ -56,6 +54,7 @@ assert.match(listed[1], /every message you send/i);
 assert.deepEqual(describeCapabilities(["", "   "]), []);
 for (const junk of [null, undefined, 42, {}, []]) {
   assert.deepEqual(
+    // @ts-expect-error -- junk on purpose; it's what the list has to survive.
     describeCapabilities([junk]),
     [],
     `rendered a row for ${JSON.stringify(junk)}`,
@@ -64,7 +63,11 @@ for (const junk of [null, undefined, 42, {}, []]) {
 
 /* But a real capability alongside junk still shows. Dropping the whole list
    because one entry was wrong is the failure this is checked for. */
-assert.equal(describeCapabilities([null, "moderation", 42]).length, 1);
+assert.equal(
+  // @ts-expect-error -- junk on purpose, next to one real capability.
+  describeCapabilities([null, "moderation", 42]).length,
+  1,
+);
 
 /* Trimmed, because a server that pads a name should not produce a capability
    this build then fails to recognise. */

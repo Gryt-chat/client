@@ -1,22 +1,22 @@
-/* eslint-env node */
-
 // "New device linked" (GRYT-1583): once per new device id, never for this device or one it
 // linked itself, and the first look at a server only takes a baseline.
 
 import assert from "node:assert/strict";
 
-const store = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => void store.set(k, String(v)),
-  removeItem: (k) => void store.delete(k),
-};
+const store = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => void store.set(k, String(v)),
+    removeItem: (k: string) => void store.delete(k),
+  },
+});
 
 const { expectOwnDevice, linkedDeviceLine, linkedDeviceNotices, newOwnDevices, noteOwnDevices } = await import(
   "../src/packages/socket/src/mls/linkedDevices.ts"
 );
 
-const dev = (deviceId, extra = {}) => ({ deviceId, serverUserId: "me", name: null, addedAt: null, lastSeenAt: null, thisDevice: false, ...extra });
+const dev = (deviceId: string, extra: object = {}) => ({ deviceId, serverUserId: "me", name: null, addedAt: null, lastSeenAt: null, thisDevice: false, ...extra });
 
 // The pure diff.
 assert.deepEqual(newOwnDevices(undefined, [dev("a"), dev("b")]), { known: ["a", "b"], fresh: [] }, "first look is a baseline");
@@ -43,7 +43,9 @@ expectOwnDevice("srv:TWO", "x");
 assert.deepEqual(noteOwnDevices("two.example", "srv:TWO", [dev("x")]), []);
 
 // Survives a reload.
-const reloaded = await import(`../src/packages/socket/src/mls/linkedDevices.ts?again`);
+// A query makes Node load the module again rather than hand back the cached one.
+const fresh = "../src/packages/socket/src/mls/linkedDevices.ts?again";
+const reloaded: typeof import("../src/packages/socket/src/mls/linkedDevices.ts") = await import(fresh);
 assert.deepEqual(reloaded.linkedDeviceNotices.get().map((n) => n.deviceId), ["b"]);
 
 linkedDeviceNotices.dismiss("b");

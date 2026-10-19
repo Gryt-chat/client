@@ -16,7 +16,7 @@ import {
   sniffImage,
 } from "../electron/mediaSandboxFormat.ts";
 
-const bytes = (...parts) => new Uint8Array(parts.flatMap((p) => (typeof p === "string" ? [...p].map((c) => c.charCodeAt(0)) : p)));
+const bytes = (...parts: (string | number[])[]) => new Uint8Array(parts.flatMap((p) => (typeof p === "string" ? [...p].map((c) => c.charCodeAt(0)) : p)));
 
 assert.equal(sniffImage(bytes([0xff, 0xd8, 0xff, 0xe0])), "image/jpeg");
 assert.equal(sniffImage(bytes([0x89], "PNG\r\n\x1a\n")), "image/png");
@@ -34,7 +34,7 @@ assert.equal(place(8000, 2000, "inside", 4096, 4096).width, 4096);
 assert.deepEqual(imageBox("upload", true), { width: 1024, height: 1024 });
 assert.deepEqual(imageBox("banner", false), { width: 960, height: 492 });
 
-function riff(...chunks) {
+function riff(...chunks: [string, number[]][]) {
   const body = chunks.flatMap(([fourcc, data]) => {
     const size = [data.length & 0xff, (data.length >> 8) & 0xff, 0, 0];
     return [...bytes(fourcc), ...size, ...data, ...(data.length & 1 ? [0] : [])];
@@ -47,7 +47,7 @@ const lossy = riff(["VP8 ", [1, 2, 3]]);
 const withAlpha = riff(["VP8X", new Array(10).fill(0)], ["ALPH", [9]], ["VP8 ", [1, 2, 3, 4]]);
 const out = buildAnimatedWebp([{ webp: lossy, durationMs: 100 }, { webp: withAlpha, durationMs: 40 }], 300, 200);
 const view = new DataView(out.buffer);
-const tag = (at) => String.fromCharCode(...out.subarray(at, at + 4));
+const tag = (at: number) => String.fromCharCode(...out.subarray(at, at + 4));
 assert.equal(tag(0), "RIFF");
 assert.equal(view.getUint32(4, true), out.length - 8, "RIFF size covers the file");
 assert.equal(tag(8), "WEBP");

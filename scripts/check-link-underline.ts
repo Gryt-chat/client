@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // A link in running text is underlined at rest. Underlining on hover alone
 // leaves it reading as coloured text, and on a touch screen it never resolves.
 
@@ -11,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const src = join(root, "src");
 
-function walk(dir) {
+function walk(dir: string): string[] {
   const out = [];
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);

@@ -12,7 +12,7 @@ const SOURCES = {
   ],
 };
 
-async function fetchJson(urls) {
+async function fetchJson(urls: string[]) {
   for (const url of urls) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
@@ -38,7 +38,7 @@ async function main() {
 
   // Names only in the snapshot: program names come with the daily download when detection is on.
   const list = await fetchJson(SOURCES.games);
-  const games = Array.isArray(list?.games) ? list.games.map(({ id, name }) => ({ id, name })) : [];
+  const games = Array.isArray(list?.games) ? list.games.map(({ id, name }: { id: string; name: string }) => ({ id, name })) : [];
   if (games.length > 1000) {
     await writeFile(new URL("../electron/games-snapshot.json", import.meta.url), JSON.stringify(games));
     console.log(`games-snapshot.json: wrote ${games.length} entries`);

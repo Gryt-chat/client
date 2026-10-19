@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The warning shown before a message-key reset never says "nothing to lose" unless
  * it knows that. An unreadable store used to come back as a confident zero.
@@ -10,15 +8,16 @@ import assert from "node:assert/strict";
 const KEY = "gryt_guest_history";
 
 /** A localStorage that can be made to behave badly on purpose. */
-function installStore(behaviour) {
-  globalThis.localStorage = {
-    getItem(key) {
+function installStore(behaviour: { raw?: string | null; throwOnRead?: boolean }) {
+  const storage = {
+    getItem(key: string) {
       if (behaviour.throwOnRead) throw new DOMException("denied", "SecurityError");
       return key === KEY ? behaviour.raw ?? null : null;
     },
     setItem() {},
     removeItem() {},
   };
+  Object.assign(globalThis, { localStorage: storage });
 }
 
 installStore({ raw: null });
@@ -29,7 +28,7 @@ const { guestScopeRisk } = await import(
 );
 
 /** Re-read with a fresh store behaviour. It reads through on each call. */
-function riskWith(behaviour) {
+function riskWith(behaviour: Parameters<typeof installStore>[0]) {
   installStore(behaviour);
   return guestScopeRisk();
 }

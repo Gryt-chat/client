@@ -10,13 +10,13 @@ import { readFileSync } from "node:fs";
 import { buttonLink, cardHeading, elapsed, gameIconUrl, partyText } from "../src/packages/socket/src/lib/gameCard.ts";
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -27,6 +27,7 @@ check("the heading follows the activity type", () => {
   assert.equal(cardHeading({ type: "listening", name: "x" }), "Listening to");
   assert.equal(cardHeading({ type: "watching", name: "x" }), "Watching");
   assert.equal(cardHeading({ type: "competing", name: "x" }), "Competing in");
+  // @ts-expect-error -- an activity type the card doesn't know, on purpose.
   assert.equal(cardHeading({ type: "streaming", name: "x" }), "Playing");
 });
 

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The PCM mixer in electron/audioMixer.ts. Process loopback per application is
  * Windows only, so the arithmetic and the queueing are checked directly.
@@ -10,7 +8,7 @@ import assert from "node:assert/strict";
 import { AudioMixer, MAX_QUEUED_BYTES, MIX_CHUNK_BYTES } from "../electron/audioMixer.ts";
 
 /** A chunk of `frames` stereo frames where every sample is `value`. */
-function pcm(value, frames = MIX_CHUNK_BYTES / 4) {
+function pcm(value: number, frames = MIX_CHUNK_BYTES / 4) {
   const buf = Buffer.alloc(frames * 4);
   for (let offset = 0; offset + 1 < buf.byteLength; offset += 2) {
     buf.writeInt16LE(value, offset);
@@ -18,7 +16,8 @@ function pcm(value, frames = MIX_CHUNK_BYTES / 4) {
   return buf;
 }
 
-function firstSample(buf) {
+function firstSample(buf: Buffer | null) {
+  assert.ok(buf, "the mixer had nothing to give");
   return buf.readInt16LE(0);
 }
 
@@ -69,6 +68,7 @@ function firstSample(buf) {
   mixer.push("b", pcm(200, MIX_CHUNK_BYTES / 8));
 
   const out = mixer.pull();
+  assert.ok(out, "the mixer had nothing to give");
   assert.equal(firstSample(out), 300);
   assert.equal(out.readInt16LE(MIX_CHUNK_BYTES - 2), 100, "b ran out, a keeps going");
 }
