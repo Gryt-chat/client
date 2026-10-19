@@ -7,7 +7,6 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer, type Server as HttpServer } from "node:http";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,6 +14,7 @@ import { io } from "socket.io-client";
 
 import type { ContactPrefs } from "../src/packages/common/src/hooks/contactPrefs.ts";
 import type { ContactGuardDeps, FilteredEvent } from "../src/packages/socket/src/utils/contactFilter.ts";
+import { type FakeWs, type FakeWss, WebSocketServer } from "./lib/fakeWs.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const {
@@ -24,14 +24,6 @@ const {
   FLOOD_LIMIT,
   installContactGuard,
 } = await import("../src/packages/socket/src/utils/contactFilter.ts");
-
-const require = createRequire(import.meta.url);
-type FakeWs = { send(data: string): void; on(event: "message", listener: (data: Buffer) => void): void; terminate(): void };
-type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; close(done: () => void): void };
-// ws ships no types of its own, so only what this file uses.
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
-  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
-};
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
