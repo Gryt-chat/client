@@ -152,6 +152,15 @@ function PasskeyRow({ credential, onDelete, onRename, deleting }: PasskeyRowProp
   );
 }
 
+function archiveLine(status: ReturnType<typeof useLocalArchive>["status"]): string | null {
+  if (status.kind === "failed") return null;
+  if (status.kind !== "open") return "Opening…";
+  if (status.home === "browser") return "Kept in this browser. Clearing its site data deletes it.";
+  return status.sealed
+    ? "Kept on this device, encrypted with a key your computer's keychain holds."
+    : "Kept on this device. There's no keychain here, so it isn't encrypted on disk.";
+}
+
 function LocalHistorySection() {
   const { status } = useLocalArchive();
 
@@ -160,16 +169,7 @@ function LocalHistorySection() {
     openLocalArchive().catch(() => undefined);
   }, []);
 
-  const line =
-    status.kind === "open"
-      ? status.home === "browser"
-        ? "Kept in this browser. Clearing its site data deletes it."
-        : status.sealed
-          ? "Kept on this device, encrypted with a key your computer's keychain holds."
-          : "Kept on this device. There's no keychain here, so it isn't encrypted on disk."
-      : status.kind === "failed"
-        ? null
-        : "Opening…";
+  const line = archiveLine(status);
 
   return (
     <SettingGroup

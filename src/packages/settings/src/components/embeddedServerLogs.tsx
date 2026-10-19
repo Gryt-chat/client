@@ -137,16 +137,9 @@ export function EmbeddedServerLogs({ serverId }: { serverId: string }) {
                 {SOURCE_LABEL[l.source]}
               </Chip>
               <span
-                style={{
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  color:
-                    l.level === "error"
-                      ? "var(--gryt-danger-11)"
-                      : l.level === "warn"
-                        ? "var(--gryt-warning-11)"
-                        : "var(--gryt-neutral-12)",
-                }}
+                data-level={l.level}
+                className="text-(--gryt-neutral-12) data-[level=error]:text-(--gryt-danger-11) data-[level=warn]:text-(--gryt-warning-11)"
+                style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
               >
                 {l.text}
               </span>

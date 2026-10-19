@@ -27,6 +27,17 @@ const QUALITY_OPTIONS = [
   { value: "4p", label: "4p (7×4)" },
 ];
 
+type Resolution = { w: number; h: number };
+
+function resolutionTip(sent: Resolution | null, actual: Resolution | null | undefined, limitedBy: string | null): string {
+  if (!sent) return "What your camera is producing. Join a voice channel to see what is actually being sent.";
+  if (!actual || (sent.w === actual.w && sent.h === actual.h)) {
+    return `Being sent at ${sent.w}×${sent.h}, which is what your camera is producing.`;
+  }
+  const limit = limitedBy ? `, and the encoder is limited by ${limitedBy}` : "";
+  return `Being sent at ${sent.w}×${sent.h}. Your camera is producing ${actual.w}×${actual.h}${limit}.`;
+}
+
 export function CameraSettings() {
   const {
     cameraID,
@@ -239,13 +250,7 @@ export function CameraSettings() {
               />
               {(sentRes ?? actualRes) && (
                 <Tooltip
-                  title={
-                    sentRes
-                      ? differs
-                        ? `Being sent at ${sentRes.w}×${sentRes.h}. Your camera is producing ${actualRes?.w}×${actualRes?.h}${limitedBy ? `, and the encoder is limited by ${limitedBy}` : ""}.`
-                        : `Being sent at ${sentRes.w}×${sentRes.h}, which is what your camera is producing.`
-                      : "What your camera is producing. Join a voice channel to see what is actually being sent."
-                  }
+                  title={resolutionTip(sentRes, actualRes, limitedBy)}
                 >
                   <Chip tone="neutral"
                     style={{

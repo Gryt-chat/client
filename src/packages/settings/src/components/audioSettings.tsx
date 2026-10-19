@@ -41,6 +41,12 @@ function dedupeByValue(options: SelectOption[]): SelectOption[] {
   });
 }
 
+const MIC_GATE = {
+  gated: { color: "red", label: "GATED" },
+  open: { color: "green", label: "OPEN" },
+  quiet: { color: "gray", label: "QUIET" },
+};
+
 export function AudioSettings() {
   const {
     micID,
@@ -311,6 +317,9 @@ export function AudioSettings() {
 
   const isPTT = inputMode === "push_to_talk";
 
+  const openState = isMicLive ? "open" : "quiet";
+  const gateState = micRawVolume < noiseGate ? "gated" : openState;
+
   return (
     <SettingsContainer>
       <h2>Audio</h2>
@@ -498,8 +507,8 @@ export function AudioSettings() {
           <span className="text-gryt-muted">
             Raw Input: {Math.round(micRawVolume)}% | Processed: {Math.round(micLiveVolume)}%
           </span>
-          <span className="font-medium" color={micRawVolume < noiseGate ? "red" : isMicLive ? "green" : "gray"}>
-            {micRawVolume < noiseGate ? "GATED" : isMicLive ? "OPEN" : "QUIET"}
+          <span className="font-medium" color={MIC_GATE[gateState].color}>
+            {MIC_GATE[gateState].label}
           </span>
         </div>
 

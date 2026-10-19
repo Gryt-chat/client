@@ -170,11 +170,7 @@ export function ThemePreview({ theme, appearance, width }: ThemePreviewProps) {
         offline ? n.muted : hue[MEMBER_HUES[i % MEMBER_HUES.length]],
         REAL.mem.avatar,
         "50%",
-        speaking
-          ? { boxShadow: `0 0 0 ${px(2.5)} ${hue.success}` }
-          : offline
-            ? { opacity: 0.4 }
-            : undefined,
+        speaking ? { boxShadow: `0 0 0 ${px(2.5)} ${hue.success}` } : { opacity: offline ? 0.4 : undefined },
       )}
       {bar(n.text, offline ? 0.32 : 0.6, MEMBER_WIDTHS[i % MEMBER_WIDTHS.length], 14)}
     </div>
@@ -211,7 +207,7 @@ export function ThemePreview({ theme, appearance, width }: ThemePreviewProps) {
             style={{
               display: "block",
               flex: "none",
-              background: i === 0 ? hue.accent : i === 1 ? hue.secondary : n.muted,
+              background: [hue.accent, hue.secondary][i] ?? n.muted,
               opacity: i > 1 ? 0.45 : 1,
               width: px(REAL.rail.icon),
               height: px(REAL.rail.icon),

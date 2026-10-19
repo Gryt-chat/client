@@ -35,6 +35,16 @@ import { useSettings } from "../hooks/useSettings";
 import { sameServer } from "../serverId";
 import { CreateServerPanel } from "./createServer";
 
+const STEP_TITLE = { host: "Create your server", join: "Join a server", choose: "Add a server" };
+
+function stepDescription(step: "host" | "join" | null, isElectron: boolean): string {
+  if (step === "host") return "It runs on this machine, and your friends connect to you.";
+  if (step !== "join") return "Start one of your own, or join somebody else's.";
+  return isElectron
+    ? "Paste the invite a friend sent you, or the address of a server you already know."
+    : "Paste an invite, or enter the HTTPS address of a server you already know.";
+}
+
 export type { FetchInfo };
 
 interface AddNewServerProps {
@@ -317,13 +327,13 @@ export function AddNewServer({
 
   /** "Sign in to join" rather than a disabled button and a tooltip, which touch
       and the keyboard cannot reach. Disabled only when a press does nothing. */
+  const joinLabel = serverInfo?.joinPolicy === "request" ? "Ask to join" : "Join";
+  const openAction = needsAccount
+    ? { label: "Sign in to join", tone: "primary" as const, disabled: false, run: () => void login() }
+    : { label: joinLabel, tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() };
   const joinAction = alreadyMember
     ? { label: "Already joined", tone: "secondary" as const, disabled: true, run: () => {} }
-    : needsAccount
-      ? { label: "Sign in to join", tone: "primary" as const, disabled: false, run: () => void login() }
-      : serverInfo?.joinPolicy === "request"
-        ? { label: "Ask to join", tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() }
-        : { label: "Join", tone: "primary" as const, disabled: !canJoin, run: () => void handleJoin() };
+    : openAction;
 
   return (
     <Dialog.Root
@@ -367,21 +377,11 @@ export function AddNewServer({
                 the gap under the title came from. */}
             <div className="flex flex-col gap-1 items-center">
               <Dialog.Title className="m-0 text-xl font-bold">
-                {step === "host"
-                  ? "Create your server"
-                  : step === "join"
-                    ? "Join a server"
-                    : "Add a server"}
+                {STEP_TITLE[step ?? "choose"]}
               </Dialog.Title>
 
               <Dialog.Description className="m-0 text-center text-sm">
-                {step === "host"
-                  ? "It runs on this machine, and your friends connect to you."
-                  : step === "join"
-                    ? isElectron
-                      ? "Paste the invite a friend sent you, or the address of a server you already know."
-                      : "Paste an invite, or enter the HTTPS address of a server you already know."
-                    : "Start one of your own, or join somebody else's."}
+                {stepDescription(step, isElectron)}
               </Dialog.Description>
             </div>
 
@@ -805,6 +805,18 @@ function OfficialServerOffer({
   );
 }
 
+function PreviewLine({ loading, error, privateInfo, text }: {
+  loading: boolean;
+  error: string | null;
+  privateInfo: boolean;
+  text: string;
+}) {
+  if (loading) return <Skeleton width="5rem" height="0.75rem" />;
+  if (error) return <span className="text-xs">{error}</span>;
+  if (privateInfo) return <span className="text-xs">Public info is off. An invite code can still get you in.</span>;
+  return <span className="text-xs line-clamp-2">{text}</span>;
+}
+
 function ServerPreview({
   host,
   info,
@@ -842,21 +854,7 @@ function ServerPreview({
               rather than the server's profile, and the sentence saying what
               somewhere is should not be behind a press. The address is not
               repeated — it is in the field directly above. */}
-          {loading ? (
-            <Skeleton width="5rem" height="0.75rem" />
-          ) : error ? (
-            <span className="text-xs">
-              {error}
-            </span>
-          ) : privateInfo ? (
-            <span className="text-xs">
-              Public info is off. An invite code can still get you in.
-            </span>
-          ) : (
-            <span className="text-xs line-clamp-2">
-              {info?.description || host}
-            </span>
-          )}
+          <PreviewLine loading={loading} error={error} privateInfo={privateInfo} text={info?.description || host} />
         </div>
 
         {/* The two facts about this server, on one right edge: what it costs

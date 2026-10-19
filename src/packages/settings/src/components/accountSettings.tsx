@@ -268,11 +268,8 @@ export function AccountSettings() {
             style={{ alignSelf: "flex-start" }}
             onClick={() => void login()}
           >
-            {loginInProgress
-              ? "Waiting for sign in…"
-              : isCustom
-                ? "Sign in with your own auth"
-                : "Sign in with Gryt"}
+            {loginInProgress && "Waiting for sign in…"}
+            {!loginInProgress && (isCustom ? "Sign in with your own auth" : "Sign in with Gryt")}
           </Button>
 
           <div className="flex flex-col gap-1">
