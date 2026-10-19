@@ -61,7 +61,10 @@ const statusLines = (() => {
   assert.notEqual(start, -1, `${SIDEBAR} no longer reads rawStatus. Move this check with it.`);
   const ring = sidebar.indexOf("const ringState", start);
   assert.notEqual(ring, -1, `${SIDEBAR} no longer declares ringState after rawStatus. Move this check with it.`);
-  return sidebar.slice(start, sidebar.indexOf(";", ring) + 1).replace(/: ServerRingState/g, "");
+  const fn = sidebar.indexOf("function ringStateOf(");
+  assert.notEqual(fn, -1, `${SIDEBAR} no longer has ringStateOf(). Move this check with it.`);
+  const ringStateOf = sidebar.slice(fn, sidebar.indexOf("\n}\n", fn) + 2).replace(/\(s: \{[^}]*\}\): ServerRingState/, "(s)");
+  return `${ringStateOf}\n${sidebar.slice(start, sidebar.indexOf(";", ring) + 1)}`;
 })();
 
 /* The hover card's connection words, each with the condition it is drawn under. A new one

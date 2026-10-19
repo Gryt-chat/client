@@ -95,8 +95,7 @@ function explainExit(
   source: LogSource,
   code: number | null,
 ): string {
-  const label =
-    source === "sfu" ? "SFU" : source === "worker" ? "Media worker" : "Server";
+  const label = { sfu: "SFU", worker: "Media worker" }[source as string] ?? "Server";
   const lines = recentOutput.get(outputKey(owner, source)) ?? [];
 
   // Prefer a line that names the actual failure over the last line, which is
@@ -347,7 +346,7 @@ function readBundledVersions(): { server?: string; sfu?: string; worker?: string
   const runtimeRoot = packagedRuntimeRoot();
   const packaged = runtimeRoot ? join(runtimeRoot, "versions.json") : null;
   const dev = join(app.getAppPath(), "build", "embedded-server", "versions.json");
-  const path = packaged && existsSync(packaged) ? packaged : existsSync(dev) ? dev : null;
+  const path = [packaged, dev].find((p) => p && existsSync(p)) ?? null;
   if (!path) return {};
 
   try {
@@ -374,7 +373,7 @@ function getWorkerEntryPath(): string | null {
 function getSfuBinaryPath(): string | null {
   const ext = process.platform === "win32" ? ".exe" : "";
   const name = `gryt_sfu${ext}`;
-  const ebOs = process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : "linux";
+  const ebOs = { win32: "win", darwin: "mac" }[process.platform as string] ?? "linux";
   const ebArch = process.arch === "arm64" ? "arm64" : "x64";
   const runtimeRoot = packagedRuntimeRoot();
   const packaged = runtimeRoot ? join(runtimeRoot, "sfu", name) : null;

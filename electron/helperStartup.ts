@@ -193,7 +193,8 @@ export const runQuietly = (command: string, args: string[]): Promise<number> =>
   new Promise((resolve) => {
     execFile(command, args, { timeout: 10_000, windowsHide: true }, (err) => {
       const code = (err as { code?: unknown } | null)?.code;
-      resolve(err ? (typeof code === "number" ? code : 1) : 0);
+      if (!err) resolve(0);
+      else resolve(typeof code === "number" ? code : 1);
     });
   });
 

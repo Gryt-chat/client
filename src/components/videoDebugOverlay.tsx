@@ -194,11 +194,16 @@ function useVideoDebugDiagnostics(enabled: boolean): VideoDiagnostics {
   return diagnostics;
 }
 
+function flag(value: boolean | null | undefined, yes: string, no: string): string | null {
+  if (value == null) return null;
+  return value ? yes : no;
+}
+
 function SenderSection({ s }: { s: SenderDiagnostics }) {
   const stateParts = [
     s.readyState ?? "—",
-    s.enabled == null ? null : s.enabled ? "enabled" : "disabled",
-    s.muted == null ? null : s.muted ? "muted" : "unmuted",
+    flag(s.enabled, "enabled", "disabled"),
+    flag(s.muted, "muted", "unmuted"),
   ].filter(Boolean);
 
   return (
@@ -211,7 +216,7 @@ function SenderSection({ s }: { s: SenderDiagnostics }) {
           {s.frameRate != null ? ` @ ${fmt(s.frameRate, 1)} fps` : ""}
         </div>
         <div>
-          Encoding: {s.encodingActive == null ? "—" : s.encodingActive ? "active" : "inactive"}
+          Encoding: {flag(s.encodingActive, "active", "inactive") ?? "—"}
           {" / "}max {s.maxBitrateKbps != null ? `${fmtInt(s.maxBitrateKbps)} kbps` : "—"}
         </div>
       </div>
@@ -376,7 +381,7 @@ export function VideoDebugOverlay({ isVisible }: VideoDebugOverlayProps) {
       icon={<PiCameraFill size={16} />}
       status={{
         active: isConnected && hasVideo,
-        label: isConnected ? (hasVideo ? "Streaming" : "No video") : "Disconnected",
+        label: isConnected ? flag(hasVideo, "Streaming", "No video") ?? "" : "Disconnected",
       }}
       initialPosition={{ x: window.innerWidth - 680, y: 10 }}
     >

@@ -29,6 +29,12 @@ const SPLASH_COPY = {
   slow: "This is taking longer than it should. Gryt will carry on without an account in a moment.",
 } as const;
 
+function splashMessage(reach: AccountsReach | null, slow: boolean) {
+  if (reach === "unreachable") return "accounts-down";
+  if (reach === "offline") return "offline";
+  return slow ? "slow" : "normal";
+}
+
 export function AuthLoadingOverlay({
   open,
   fadeDurationMs = 450,
@@ -62,14 +68,7 @@ export function AuthLoadingOverlay({
     };
   }, [open]);
 
-  const message =
-    reach === "unreachable"
-      ? "accounts-down"
-      : reach === "offline"
-        ? "offline"
-        : slow
-          ? "slow"
-          : "normal";
+  const message = splashMessage(reach, slow);
 
   useEffect(() => {
     if (!open) {

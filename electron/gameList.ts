@@ -72,7 +72,7 @@ export function createGameIndex(games: readonly GameEntry[], platform: NodeJS.Pl
   const byComm = new Map<string, string>();
 
   // Proton runs Windows games on Linux under their Windows names.
-  const oses: GameOs[] = platform === "linux" ? ["linux", "win32"] : platform === "darwin" ? ["darwin"] : ["win32"];
+  const oses: GameOs[] = ({ linux: ["linux", "win32"], darwin: ["darwin"] } as Record<string, GameOs[]>)[platform] ?? ["win32"];
 
   for (const game of games) {
     for (const id of game.ids) if (!byApp.has(id)) byApp.set(id, game.name);

@@ -68,6 +68,20 @@ async function copyServerAddress(host: string): Promise<void> {
   }
 }
 
+function ringStateOf(s: { isStarting: boolean; isSettling: boolean; isReconnecting: boolean; isConnecting: boolean }): ServerRingState {
+  if (s.isStarting) return "starting";
+  if (s.isSettling) return "settling";
+  if (s.isReconnecting) return "reconnecting";
+  return s.isConnecting ? "connecting" : "none";
+}
+
+function iconOpacity(s: { bright: boolean; isUnavailable: boolean; awaitingApproval: boolean; isReconnecting: boolean }) {
+  if (s.bright) return 1;
+  if (s.isUnavailable) return 0.45;
+  if (s.awaitingApproval) return 0.4;
+  return s.isReconnecting ? undefined : 0.5;
+}
+
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { isSignedIn, login, logout } = useAccount();
   const { nickname, avatarDataUrl, setShowSettings, openSettings } = useSettings();
@@ -439,15 +453,7 @@ function ServerItem({
    */
   const isSettling = !rawStatus && !settleExpired && !isStarting;
 
-  const ringState: ServerRingState = isStarting
-    ? "starting"
-    : isSettling
-      ? "settling"
-      : isReconnecting
-        ? "reconnecting"
-        : isConnecting
-          ? "connecting"
-          : "none";
+  const ringState = ringStateOf({ isStarting, isSettling, isReconnecting, isConnecting });
   /* Waiting on a moderator (GRYT-289). Not a connection state: the server is
      reachable and answering, it just has not let this person in yet. */
   const awaitingApproval = Boolean(servers[host]?.approvalRequestedAt);
@@ -490,16 +496,12 @@ function ServerItem({
                   style={{
                     // A server you just created keeps its colour. Greying it
                     // would say something is wrong; the ring says not ready.
-                    opacity:
-                      currentlyViewingServer?.host === host || isStarting
-                        ? 1
-                        : isUnavailable
-                        ? 0.45
-                        : awaitingApproval
-                        ? 0.4
-                        : isReconnecting
-                        ? undefined
-                        : 0.5,
+                    opacity: iconOpacity({
+                      bright: currentlyViewingServer?.host === host || isStarting,
+                      isUnavailable,
+                      awaitingApproval,
+                      isReconnecting,
+                    }),
                     filter:
                       !isStarting &&
                       (isUnavailable || isReconnecting || awaitingApproval)

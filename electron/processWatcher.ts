@@ -231,9 +231,12 @@ export async function listRunningPrograms(): Promise<string[]> {
     seen.set(key, basename(raw.replace(/\\/g, "/")));
   }
 
-  return [...seen.values()].sort((a, b) =>
-    a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0,
-  );
+  return [...seen.values()].sort((a, b) => {
+    const x = a.toLowerCase();
+    const y = b.toLowerCase();
+    if (x === y) return 0;
+    return x < y ? -1 : 1;
+  });
 }
 
 /* ── The watcher ─────────────────────────────────────────────────────── */

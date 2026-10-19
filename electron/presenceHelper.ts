@@ -134,6 +134,9 @@ export function createPresenceSource(options: PresenceSourceOptions): PresenceSo
       link = null;
       await this.stop();
     },
-    via: () => (link ? "helper" : host ? "app" : null),
+    via: () => {
+      if (link) return "helper";
+      return host ? "app" : null;
+    },
   };
 }
