@@ -55,6 +55,11 @@ const names = (list: { nickname: string; host: string }[]) => list.map((c) => `$
   assert.deepEqual(names(candidatesFor(noDms, "message")), ["Bob@two"], "a server that refuses DMs was offered");
   assert.deepEqual(names(candidatesFor(noDms, "group")), ["Bob@two"], "a server that refuses DMs was offered for a group");
 
+  // Whoever the server says would refuse a new DM is left out; no answer yet offers everybody (GRYT-1815).
+  const reach = [server("one", [person("u-bob", "Bob"), person("u-carol", "Carol")], { reachable: new Set(["u-carol"]) })];
+  assert.deepEqual(names(candidatesFor(reach, "message")), ["Carol@one"], "somebody who'd refuse you was offered");
+  assert.deepEqual(names(candidatesFor(reach, "group")), ["Carol@one"], "somebody who'd refuse you was offered for a group");
+
   // create_groups takes it out of the group list only.
   const noGroups = [server("one", [person("u-bob", "Bob")], { canGroup: false }), servers[1]];
   assert.deepEqual(names(candidatesFor(noGroups, "message")), ["Bob@one", "Bob@two"]);
