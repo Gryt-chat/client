@@ -324,9 +324,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   const rightOfTarget = cut ? cut.left + cut.width + OFFSET : 0;
   const fitsOnTheRight = rightOfTarget + CARD_WIDTH + 16 <= window.innerWidth;
 
-  const card = !cut
-    ? null
-    : step.side === "right"
+  const card = cut && (step.side === "right"
       ? {
           top: Math.min(
             Math.max(cut.top + cut.height / 2 - 90, 16),
@@ -342,7 +340,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
             Math.max(cut.left + cut.width / 2 - CARD_WIDTH / 2, 16),
             window.innerWidth - CARD_WIDTH - 16
           )
-        };
+        });
 
   // **Portaled to body, and it has to be.** The app renders inside
   // `.radix-themes`, a stacking context, so no z-index would beat a dialog.

@@ -1,5 +1,9 @@
 import type { UpdateStatus } from "../lib/electron";
 
+function downloadPhase(autoDownload: boolean | undefined) {
+  return autoDownload ? "downloading" : "waiting";
+}
+
 /** One id for every release, so a newer one redraws the toast in place rather than stacking a second. */
 export const UPDATE_TOAST_ID = "update";
 
@@ -38,7 +42,7 @@ export function nextShown(current: Shown | null, status: UpdateStatus): Shown | 
       version: status.version,
       /* Announced with `autoDownload` means the bytes are already moving —
          the main process says so once electron-updater starts fetching. */
-      phase: status.storeManaged ? "store" : status.autoDownload ? "downloading" : "waiting",
+      phase: status.storeManaged ? "store" : downloadPhase(status.autoDownload),
       /* Only when the release changed: a press during a download installs that same one. */
       newerAfterPress:
         Boolean(status.installWhenReady) &&

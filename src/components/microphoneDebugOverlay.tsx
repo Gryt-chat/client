@@ -16,6 +16,11 @@ const StateDot = ({ on }: { on: boolean }) => (
   <PiCircleFill size={8} color={on ? "var(--gryt-success-11)" : "var(--gryt-danger-11)"} />
 );
 
+function volumeColour(volume: number): string {
+  if (volume > 80) return "var(--gryt-danger-9)";
+  return volume > 50 ? "var(--gryt-warning-9)" : "var(--gryt-success-9)";
+}
+
 export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProps) {
   const { 
     microphoneBuffer, 
@@ -143,7 +148,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
         <div style={{ marginLeft: "8px", fontSize: "11px" }}>
           <div>ID: {micID ? micID.slice(0, 8) + "..." : "None"}</div>
           <div>Name: {currentDevice?.label || "Unknown"}</div>
-          <div>Available: {devicesLoading ? "Loading..." : devicesError ? "Error" : `${devices.length} devices`}</div>
+          <div>Available: {devicesLoading && "Loading..."}{!devicesLoading && devicesError && "Error"}{!devicesLoading && !devicesError && `${devices.length} devices`}</div>
           {devicesError && (
             <div style={{ color: "var(--gryt-danger-11)", fontSize: "10px" }}>
               {devicesError}
@@ -201,8 +206,7 @@ export function MicrophoneDebugOverlay({ isVisible }: MicrophoneDebugOverlayProp
           <div style={{
             width: `${Math.min(processedVolume, 100)}%`,
             height: "100%",
-            backgroundColor: processedVolume > 80 ? "var(--gryt-danger-9)" : 
-                           processedVolume > 50 ? "var(--gryt-warning-9)" : "var(--gryt-success-9)",
+            backgroundColor: volumeColour(processedVolume),
             transition: "width 0.1s ease-out"
           }} />
         </div>

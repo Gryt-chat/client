@@ -61,9 +61,9 @@ export function MainApp() {
 
   /* What a bug report calls "where you were". Recorded here rather than in the
      report form, which would always answer "the report form". */
-  useRememberPlace(
-    showDiscovery ? "discovery" : Object.keys(servers).length > 0 ? "server" : "empty",
-  );
+  const hasServers = Object.keys(servers).length > 0;
+  const emptyPlace = hasServers ? "server" : "empty";
+  useRememberPlace(showDiscovery ? "discovery" : emptyPlace);
 
   /* The page to reopen on the next launch. Not the one above, which is only what
      a bug report says and is never read back. */
@@ -87,13 +87,10 @@ export function MainApp() {
       <DmFeeds />
       <NewMessageDialog />
 
-      {dmSpaceOpen && Object.keys(servers).length > 0 ? (
-        <ServerView dmSpace />
-      ) : showDiscovery ? (
-        <Discovery />
-      ) : Object.keys(servers).length > 0 ? (
-        <ServerView />
-      ) : (
+      {dmSpaceOpen && hasServers && <ServerView dmSpace />}
+      {!(dmSpaceOpen && hasServers) && showDiscovery && <Discovery />}
+      {!dmSpaceOpen && !showDiscovery && hasServers && <ServerView />}
+      {!showDiscovery && !hasServers && (
         /* Was a line of text with a finger emoji pointing at the sidebar. That is
            the tour's job; somebody who dismissed it still ends up here. */
         <div className="flex grow items-center justify-center">

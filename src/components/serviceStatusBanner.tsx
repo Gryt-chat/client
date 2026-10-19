@@ -54,6 +54,12 @@ const TONE: Record<AnnouncementType, string> = {
 const OFFLINE =
   "You're offline, so Gryt couldn't check your account. It'll check again once you're back online.";
 
+/* Not reachable is a warning whatever else is going on. Offline is just a fact. */
+const UNANNOUNCED = {
+  unreachable: { message: GENERIC, Glyph: PiWarningFill },
+  offline: { message: OFFLINE, Glyph: PiInfoFill },
+};
+
 /**
  * Signed in, or launched while accounts couldn't be checked. A guest on a normal
  * day has nothing that breaks when the account services go down.
@@ -144,21 +150,12 @@ export function ServiceStatusBanner() {
 
   if (!banner) return null;
 
-  const message =
+  const { message, Glyph } =
     banner.kind === "announced"
-      ? banner.announcement.message
-      : banner.kind === "offline"
-        ? OFFLINE
-        : GENERIC;
+      ? { message: banner.announcement.message, Glyph: ICON[banner.announcement.type] }
+      : UNANNOUNCED[banner.kind];
   const tone =
     banner.kind === "announced" ? TONE[banner.announcement.type] : "warning";
-  /* Not reachable is a warning whatever else is going on. Offline is just a fact. */
-  const Glyph =
-    banner.kind === "announced"
-      ? ICON[banner.announcement.type]
-      : banner.kind === "offline"
-        ? PiInfoFill
-        : PiWarningFill;
 
   if (message === dismissed) return null;
 
