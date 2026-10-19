@@ -11,8 +11,8 @@ import { openAttachment, sealAttachment } from "@gryt/crypto";
 
 import { openSealedAttachment } from "../src/packages/socket/src/utils/sealedAttachments.ts";
 
-const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-const moduleBody = (path) => stripTypeScriptTypes(read(path)).replace(/^import .*$/gm, "").replace(/^export /gm, "");
+const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const moduleBody = (path: string) => stripTypeScriptTypes(read(path)).replace(/^import .*$/gm, "").replace(/^export /gm, "");
 
 const DOWNLOAD = "src/packages/socket/src/utils/downloadFile.ts";
 const CLIPBOARD = "src/packages/socket/src/utils/mediaClipboard.ts";
@@ -25,48 +25,51 @@ const PLAYER = "src/packages/socket/src/components/ChatMediaPlayer.tsx";
 /* ── a browser small enough to watch: anchors, tabs, toasts, object URLs ─── */
 
 const realFetch = globalThis.fetch;
+type ServerAnswer = { ok: boolean; blob: () => Promise<Blob> };
 const env = {
-  saves: [],
-  tabs: [],
-  toasts: [],
-  fetches: [],
-  made: new Map(),
-  revoked: [],
-  serverAnswer: null,
+  saves: [] as { name: string | undefined; blob: Blob; href: string }[],
+  tabs: [] as string[],
+  toasts: [] as string[],
+  fetches: [] as { url: string; init?: RequestInit }[],
+  made: new Map<string, Blob>(),
+  revoked: [] as string[],
+  serverAnswer: null as ServerAnswer | null,
 };
 const fakeUrl = {
-  createObjectURL(blob) {
+  createObjectURL(blob: Blob) {
     const url = URL.createObjectURL(blob);
     env.made.set(url, blob);
     return url;
   },
-  revokeObjectURL(url) {
+  revokeObjectURL(url: string) {
     env.revoked.push(url);
     URL.revokeObjectURL(url);
   },
 };
 const fakeDocument = {
   body: { appendChild() {}, removeChild() {} },
-  createElement(tag) {
+  createElement(tag: string) {
     assert.equal(tag, "a");
     return {
       href: "",
-      download: undefined,
+      download: undefined as string | undefined,
       click() {
         assert.ok(!env.revoked.includes(this.href), "the object URL was revoked before the download started");
-        env.saves.push({ name: this.download, blob: env.made.get(this.href), href: this.href });
+        const blob = env.made.get(this.href);
+        assert.ok(blob, "the download's object URL was never made");
+        env.saves.push({ name: this.download, blob, href: this.href });
       },
     };
   },
 };
-const recordingFetch = async (url, init) => {
+const recordingFetch = async (url: string, init?: RequestInit) => {
   env.fetches.push({ url, init });
   if (url.startsWith("blob:")) return realFetch(url, init);
   if (!env.serverAnswer) throw new TypeError("Failed to fetch");
   return env.serverAnswer;
 };
 // Stands in for signing again at the moment of use: "t=A" is the link as drawn, "t=B" as fetched.
-function resign(url) {
+function resign(url: string) {
   return url.replace("t=A", "t=B");
 }
 const reset = () => {
@@ -82,15 +85,15 @@ const { saveBlob, readBlobUrl, saveOpenedFile, triggerDownload } = new Function(
   "toast", "document", "window", "URL", "fetch", "freshUploadsFileUrl",
   `${moduleBody(DOWNLOAD)}\nreturn { saveBlob, readBlobUrl, saveOpenedFile, triggerDownload };`,
 )(
-  { error: (message) => env.toasts.push(message) },
+  { error: (message: string) => env.toasts.push(message) },
   fakeDocument,
-  { open: (url) => env.tabs.push(url) },
+  { open: (url: string) => env.tabs.push(url) },
   fakeUrl,
   recordingFetch,
   resign,
 );
 
-const bytesOf = async (blob) => Array.from(new Uint8Array(await blob.arrayBuffer()));
+const bytesOf = async (blob: Blob) => Array.from(new Uint8Array(await blob.arrayBuffer()));
 
 /* ── the file an encrypted message carries, opened the way useChat opens it ─ */
 
@@ -102,13 +105,17 @@ const clip = sealAttachment({ bytes: CLIP, conversationId: CONVERSATION, name: "
 const ciphertext = { picture: picture.ciphertext, clip: clip.ciphertext };
 
 let serverFetches = 0;
-globalThis.fetch = async (url) => {
-  serverFetches++;
-  const bytes = ciphertext[new URL(url).pathname.split("/").pop()];
-  return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
-};
-const kept = [];
-const open = (fileId, meta) =>
+Object.assign(globalThis, {
+  fetch: async (url: string) => {
+    serverFetches++;
+    const name = new URL(url).pathname.split("/").pop();
+    assert.ok(name === "picture" || name === "clip", `fetched ${url}, which no fixture holds`);
+    const bytes = ciphertext[name];
+    return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+  },
+});
+const kept: string[] = [];
+const open = (fileId: string, meta: typeof picture.meta) =>
   openSealedAttachment({
     fileId,
     key: meta,
@@ -155,7 +162,7 @@ assert.notDeepEqual(Array.from(picture.ciphertext.slice(0, 64)), Array.from(PICT
   await saveOpenedFile(async () => {
     throw new Error("503");
   }, "clip.webm");
-  assert.deepEqual(env.saves, [], "a failed decrypt still started a download");
+  assert.equal(env.saves.length, 0, "a failed decrypt still started a download");
   assert.deepEqual(env.tabs, [], "a failed decrypt opened a tab, which could only hold ciphertext");
   assert.equal(env.toasts.length, 1, "a failed Save As happened silently");
 }
@@ -203,14 +210,15 @@ assert.notDeepEqual(Array.from(picture.ciphertext.slice(0, 64)), Array.from(PICT
 /* ── Copy Image takes the image itself when it is here ──────────────────── */
 
 {
-  const written = [];
+  type Copied = { parts: Record<string, Blob> };
+  const written: Copied[] = [];
   const copyImageToClipboard = new Function(
     "fetch", "navigator", "ClipboardItem", "freshUploadsFileUrl",
     `${moduleBody(CLIPBOARD)}\nreturn copyImageToClipboard;`,
   )(
     recordingFetch,
-    { clipboard: { write: async (items) => written.push(...items) } },
-    class { constructor(parts) { this.parts = parts; } },
+    { clipboard: { write: async (items: Copied[]) => written.push(...items) } },
+    class { parts: Record<string, Blob>; constructor(parts: Record<string, Blob>) { this.parts = parts; } },
     resign,
   );
 
@@ -218,7 +226,7 @@ assert.notDeepEqual(Array.from(picture.ciphertext.slice(0, 64)), Array.from(PICT
   const decrypted = await readBlobUrl(pictureMeta.local_url);
   env.fetches = [];
   await copyImageToClipboard(decrypted);
-  assert.deepEqual(env.fetches, [], "Copy Image fetched something for an image it was handed");
+  assert.equal(env.fetches.length, 0, "Copy Image fetched something for an image it was handed");
   assert.deepEqual(await bytesOf(written[0].parts["image/png"]), Array.from(PICTURE), "Copy Image copied something other than the decrypted picture");
 
   reset();
@@ -233,40 +241,44 @@ assert.notDeepEqual(Array.from(picture.ciphertext.slice(0, 64)), Array.from(PICT
 
 {
   const hookBody = moduleBody(VIDEO_HOOK);
-  const readUrls = [];
-  const useSealedVideo = new Function(
+  const readUrls: string[] = [];
+  const sealedVideoHook = new Function(
     "useState", "useRef", "useEffect", "useCallback", "readBlobUrl",
     `${hookBody}\nreturn useSealedVideo;`,
   );
 
   /** One mounted hook: state and refs by slot, effects skipped, callbacks rebuilt when deps change. */
-  function mount(openVideo) {
-    const slots = [];
+  type Held = string | number | boolean | null | undefined | object;
+  type Slot = { value?: Held; current?: Held; fn?: Held; deps?: readonly Held[] };
+
+  const mount = (openVideo: () => Promise<Blob>) => {
+    const slots: Slot[] = [];
     let slot = 0;
-    const same = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
-    const hook = useSealedVideo(
-      (init) => {
+    const same = (a?: readonly Held[], b?: readonly Held[]) =>
+      a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+    const hook = sealedVideoHook(
+      (init: Held) => {
         const i = slot++;
         if (!(i in slots)) slots[i] = { value: init };
         const cell = slots[i];
-        return [cell.value, (next) => { cell.value = typeof next === "function" ? next(cell.value) : next; }];
+        return [cell.value, (next: Held) => { cell.value = typeof next === "function" ? next(cell.value) : next; }];
       },
-      (init) => {
+      (init: Held) => {
         const i = slot++;
         if (!(i in slots)) slots[i] = { current: init };
         return slots[i];
       },
       () => { slot++; },
-      (fn, deps) => {
+      (fn: Held, deps?: readonly Held[]) => {
         const i = slot++;
         if (!slots[i] || !same(slots[i].deps, deps)) slots[i] = { fn, deps };
         return slots[i].fn;
       },
-      async (url) => { readUrls.push(url); return readBlobUrl(url); },
+      async (url: string) => { readUrls.push(url); return readBlobUrl(url); },
     );
     const render = () => { slot = 0; return hook(openVideo); };
     return { render };
-  }
+  };
 
   let opens = 0;
   const openVideo = async () => { opens++; return new Blob([CLIP], { type: "video/webm" }); };
