@@ -1,10 +1,10 @@
 import type { UpdateStatus } from "../lib/electron";
 
-/** One id for every release, so a newer one redraws the toast in place rather than stacking a second. */
 function downloadPhase(autoDownload: boolean | undefined) {
   return autoDownload ? "downloading" : "waiting";
 }
 
+/** One id for every release, so a newer one redraws the toast in place rather than stacking a second. */
 export const UPDATE_TOAST_ID = "update";
 
 /** What the toast is showing about the release it named. */
