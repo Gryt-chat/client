@@ -399,7 +399,8 @@ export function ProfileSettings() {
     return info.permissions.includes("upload_avatar_image");
   };
 
-  const processAndUpload = async (file: File, hosts: string[], worn: string | null) => {
+  const processAndUpload = async (file: File, requestedHosts: string[], worn: string | null) => {
+    let hosts = requestedHosts;
     const minAvatarMaxBytes = getAvatarMaxBytes(hosts);
 
     if (file.size > 25 * 1024 * 1024) {

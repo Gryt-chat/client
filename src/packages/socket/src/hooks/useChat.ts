@@ -676,17 +676,8 @@ export function useChat({
     const isVoiceChat = activeConversationId === currentChannelId;
     const canViewVoice = !isVoiceChat || isConnected;
 
-    if (isVoiceChat && !canViewVoice) {
-      if (currentlyViewingServer) {
-        const channels = serverDetailsList[currentlyViewingServer.host]?.channels || [];
-        const textChannels = channels.filter((channel) => channel.type === 'text');
-        if (textChannels.length > 0) {
-          return;
-        } else {
-          return;
-        }
-      }
-    }
+    // A voice channel's text is closed to somebody not in the call.
+    if (isVoiceChat && !canViewVoice && currentlyViewingServer) return;
 
     const scopedKey = cacheKeyFor(activeConversationId);
     if (!shouldFetchHistory(scopedKey, activeConversationId, currentConnection, messageCache, messageCacheMeta)) {

@@ -121,15 +121,16 @@ export async function saveCardPreset(style: CardStyle, banner: Blob | null | und
   await load();
   try {
     // Absent reads back as undefined and a removed banner as null, which is the difference wanted.
-    if (banner === undefined) banner = await run<Blob | null | undefined>("meta", "readonly", (s) => s.get(CURRENT_BANNER));
+    let stored = banner;
+    if (banner === undefined) stored = await run<Blob | null | undefined>("meta", "readonly", (s) => s.get(CURRENT_BANNER));
     else await run("meta", "readwrite", (s) => s.put(banner, CURRENT_BANNER));
-    if (cardStyleForWire(style) === null && !banner) return;
+    if (cardStyleForWire(style) === null && !stored) return;
     const dupes: string[] = [];
     for (const p of presets) {
       // A migrated swatch has no banner on record, so this one, which knows its banner, replaces it.
-      if (wire(p.style) === wire(style) && (p.banner === undefined || (await sameBanner(p.banner, banner)))) dupes.push(p.id);
+      if (wire(p.style) === wire(style) && (p.banner === undefined || (await sameBanner(p.banner, stored)))) dupes.push(p.id);
     }
-    const preset: CardPreset = { id: crypto.randomUUID(), style, banner, savedAt: Date.now() };
+    const preset: CardPreset = { id: crypto.randomUUID(), style, banner: stored, savedAt: Date.now() };
     const kept = [preset, ...presets.filter((p) => !dupes.includes(p.id))];
     const dropped = kept.slice(PRESET_MAX).map((p) => p.id);
     await run(STORE, "readwrite", (s) => {
