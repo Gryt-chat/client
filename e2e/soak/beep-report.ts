@@ -27,6 +27,8 @@ interface Heard {
 }
 
 const sent: number[] = [];
+const raw: number[] = [];
+const tapped: number[] = [];
 const heard: Heard[] = [];
 let periodMs = 0;
 for (const file of readdirSync(dir).filter((f) => f.endsWith(".jsonl"))) {
@@ -34,11 +36,15 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".jsonl"))) {
     if (!line.includes('"beep.') && !line.includes("harness.config")) continue;
     const e = JSON.parse(line);
     if (e.type === "beep.sent") sent.push(e.sentAt);
+    else if (e.type === "beep.raw") raw.push(e.rawAt);
+    else if (e.type === "beep.tapped") tapped.push(e.tappedAt);
     else if (e.type === "beep.heard") heard.push({ who: e.who, heardAt: e.heardAt, stats: e.stats });
     else if (e.type === "harness.config" && e.beepMs) periodMs = e.beepMs;
   }
 }
 sent.sort((a, b) => a - b);
+raw.sort((a, b) => a - b);
+tapped.sort((a, b) => a - b);
 if (!sent.length || !periodMs) {
   console.error("No beeps in this run. Was it started with GRYT_SOAK_BEEP_MS?");
   process.exit(1);
@@ -99,4 +105,31 @@ for (const who of [...new Set(heard.map((h) => h.who))].sort()) {
       `  ${String((bucket * BUCKET_MS) / 60_000).padStart(6)} ${String(r.delays.length).padStart(3)}  ${fmt(Math.min(...r.delays))} ${fmt(median(r.delays))} ${fmt(Math.max(...r.delays))}   ${fmt(median(r.buffer))}   ${fmt(median(r.target))} ${grew("insertedSamplesForDeceleration")} ${grew("removedSamplesForAcceleration")} ${grew("concealedSamples")}`,
     );
   }
+}
+
+/** The first stamp in `list` at or after `from`, within one period. */
+function firstAfter(list: number[], from: number): number | null {
+  for (const t of list) if (t >= from) return t - from < periodMs ? t : null;
+  return null;
+}
+
+// Where the delay goes, per beep, then the median of each step. The detector hop is in raw, tapped and heard alike.
+if (raw.length && tapped.length) {
+  const steps = { detector: [] as number[], send: [] as number[], wire: [] as number[], total: [] as number[] };
+  const heardAt = heard.map((h) => h.heardAt).sort((a, b) => a - b);
+  for (const s of sent) {
+    const r = firstAfter(raw, s);
+    const t = r === null ? null : firstAfter(tapped, r);
+    const h = t === null ? null : firstAfter(heardAt, t);
+    if (r === null || t === null || h === null) continue;
+    steps.detector.push(r - s);
+    steps.send.push(t - r);
+    steps.wire.push(h - t);
+    steps.total.push(h - s);
+  }
+  console.log(`\nStages over ${steps.total.length} beeps (median ms):`);
+  console.log(`  beep to raw tap (oscillator + detector hop)   ${fmt(median(steps.detector))}`);
+  console.log(`  raw to sent track (the app's send pipeline)   ${fmt(median(steps.send))}`);
+  console.log(`  sent track to heard (encode, network, jitter buffer, decode)  ${fmt(median(steps.wire))}`);
+  console.log(`  total                                         ${fmt(median(steps.total))}`);
 }
