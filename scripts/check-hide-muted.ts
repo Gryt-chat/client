@@ -7,12 +7,16 @@
 
 import assert from "node:assert/strict";
 
-const store = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: (k) => store.delete(k),
-};
+import type { SidebarItem, SidebarReorderEntry } from "../src/packages/settings/src/types/server.ts";
+
+const store = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
+  },
+});
 
 const { getHideMuted, hiddenMutedRows, setHideMuted, subscribeToPrefs } = await import(
   "../src/packages/common/src/hooks/notificationPrefs.ts"
@@ -22,16 +26,17 @@ const { buildReorderPayload, flattenSidebar, moveAmongDrawn, restoreHiddenRows }
 );
 
 const HOST = "gryt.test:5001";
-const folder = (id, position) => ({ id, kind: "folder", label: id, position });
-const channel = (id, position, parentItemId = null) => ({
+const folder = (id: string, position: number): SidebarItem => ({ id, kind: "folder", label: id, position });
+const channel = (id: string, position: number, parentItemId: string | null = null): SidebarItem => ({
   id,
   kind: "channel",
   channelId: id,
   position,
   parentItemId,
 });
-const none = new Set();
-const hidden = (prefs, items, keep = none, channels = []) =>
+type Prefs = Parameters<typeof hiddenMutedRows>[0][string];
+const none = new Set<string>();
+const hidden = (prefs: Prefs, items: SidebarItem[], keep = none, channels: Parameters<typeof hiddenMutedRows>[3] = []) =>
   [...hiddenMutedRows({ [HOST]: prefs }, HOST, items, channels, keep).rows].sort();
 
 // ── What counts as muted ────────────────────────────────────────────────────
@@ -127,15 +132,28 @@ assert.equal(heard, 2);
 
 // ── A drag with rows hidden ─────────────────────────────────────────────────
 
-const byId = (items) => new Map(items.map((i) => [i.id, i]));
-const pick = (items, ids) => { const m = byId(items); return ids.map((id) => m.get(id)); };
-const ids = (items) => items.map((i) => i.id);
+const byId = (items: SidebarItem[]) => new Map(items.map((i) => [i.id, i]));
+const pick = (items: SidebarItem[], ids: string[]) => {
+  const m = byId(items);
+  return ids.map((id) => {
+    const item = m.get(id);
+    assert.ok(item, `no row ${id}`);
+    return item;
+  });
+};
+const ids = (items: SidebarItem[]) => items.map((i) => i.id);
+/** A payload row in its object form, which is the one that states a folder. */
+const stated = (entry: SidebarReorderEntry) => {
+  assert.ok(typeof entry === "object", `${entry} went to the server without its folder`);
+  return entry;
+};
 /* The server numbers rows in the order sent and sorts each folder on its own, so
    what has to hold is the order within each folder and within the top level. */
-const siblings = (items, moved = {}) => {
-  const out = {};
+const siblings = (items: SidebarItem[], moved: Record<string, string> = {}) => {
+  const out: Record<string, string[]> = {};
   for (const i of items) {
-    const parent = i.id in moved ? moved[i.id] : i.kind === "channel" ? i.parentItemId ?? "" : "";
+    let parent = i.kind === "channel" ? i.parentItemId ?? "" : "";
+    if (i.id in moved) parent = moved[i.id];
     (out[parent] ??= []).push(i.id);
   }
   return out;
@@ -171,7 +189,7 @@ assert.deepEqual(
   const order = restoreHiddenRows(pick(sidebar, ["x", "f1", "F", "f3", "z"]), before, gone, "f1");
   assert.deepEqual(siblings(order, { f1: "" }), { "": ["x", "f1", "F", "y", "z"], F: ["f2", "f3"] });
   // Every row goes to the server, each stating its folder.
-  const payload = buildReorderPayload(order, sidebar, "f1", null);
+  const payload = buildReorderPayload(order, sidebar, "f1", null).map(stated);
   assert.deepEqual(payload.map((e) => e.itemId).sort(), ids(sidebar).sort());
   assert.deepEqual(
     Object.fromEntries(payload.map((e) => [e.itemId, e.parentItemId])),
@@ -216,7 +234,7 @@ assert.deepEqual(
   const hiddenIds = new Set(["h1", "h2", "g"]);
   const all = flattenSidebar(items).map((r) => r.item);
   const drawn = flattenSidebar(items.filter((i) => !hiddenIds.has(i.id)));
-  const move = (id, direction) => {
+  const move = (id: string, direction: Parameters<typeof moveAmongDrawn>[2]) => {
     const order = moveAmongDrawn(drawn, id, direction);
     return order && siblings(restoreHiddenRows(order, all, hiddenIds, id));
   };
@@ -241,10 +259,12 @@ assert.deepEqual(
   assert.equal(moveAmongDrawn(drawn, "f2", "down"), null);
 
   // The payload names every row, each in the folder it was in.
-  const order = restoreHiddenRows(moveAmongDrawn(drawn, "b", "up"), all, hiddenIds, "b");
-  const payload = buildReorderPayload(order, items, "b", null);
+  const moved = moveAmongDrawn(drawn, "b", "up");
+  assert.ok(moved, "b could not move up");
+  const order = restoreHiddenRows(moved, all, hiddenIds, "b");
+  const payload = buildReorderPayload(order, items, "b", null).map(stated);
   assert.deepEqual(payload.map((e) => e.itemId).sort(), ids(items).sort());
-  assert.equal(payload.find((e) => e.itemId === "g").parentItemId, "F");
+  assert.equal(payload.find((e) => e.itemId === "g")?.parentItemId, "F");
 }
 
 console.log("hide-muted: ok");

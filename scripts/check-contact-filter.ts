@@ -6,12 +6,15 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server as HttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { io } from "socket.io-client";
+
+import type { ContactPrefs } from "../src/packages/common/src/hooks/contactPrefs.ts";
+import type { ContactGuardDeps, FilteredEvent } from "../src/packages/socket/src/utils/contactFilter.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const {
@@ -23,15 +26,20 @@ const {
 } = await import("../src/packages/socket/src/utils/contactFilter.ts");
 
 const require = createRequire(import.meta.url);
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws");
+type FakeWs = { send(data: string): void; on(event: "message", listener: (data: Buffer) => void): void; terminate(): void };
+type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; close(done: () => void): void };
+// ws ships no types of its own, so only what this file uses.
+const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
+  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
+};
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /* ── the pair id matches the server's ───────────────────────────────────── */
 
 // Copied from packages/server/src/db/sqlite/conversations.ts. If these disagree,
 // every one-to-one reads as a group and the settings stop meaning anything.
-function serverPairId(a, b) {
+function serverPairId(a: string, b: string) {
   const pair = [a, b].sort();
   return `dm_${createHash("sha256").update(pair.join("\0")).digest("hex").slice(0, 32)}`;
 }
@@ -41,14 +49,15 @@ assert.equal(directConversationId("bob", "alice"), serverPairId("alice", "bob"))
 /* ── a server that does what it likes ───────────────────────────────────── */
 
 function hostileServer() {
-  let http = null;
-  let wss = null;
-  let ws = null;
+  let http: HttpServer | null = null;
+  let wss: FakeWss | null = null;
+  let ws: FakeWs | null = null;
   const server = {
     url: "",
     async up() {
-      http = createServer();
-      wss = new WebSocketServer({ server: http });
+      const listening = createServer();
+      http = listening;
+      wss = new WebSocketServer({ server: listening });
       wss.on("connection", (socket) => {
         ws = socket;
         socket.send(`0${JSON.stringify({ sid: "engine", upgrades: [], pingInterval: 60_000, pingTimeout: 60_000, maxPayload: 1_000_000 })}`);
@@ -56,18 +65,23 @@ function hostileServer() {
           if (String(data).startsWith("40")) socket.send(`40${JSON.stringify({ sid: "socket" })}`);
         });
       });
-      await new Promise((resolve) => http.listen(0, "127.0.0.1", resolve));
-      server.url = `http://127.0.0.1:${http.address().port}`;
+      await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+      const address = listening.address();
+      assert.ok(address && typeof address === "object", "the fake server is not on a port");
+      server.url = `http://127.0.0.1:${address.port}`;
     },
     /** A socket.io EVENT packet, the same bytes a real server's emit produces. */
-    send(event, payload) {
+    send(event: string, payload: object) {
+      assert.ok(ws, "nothing has connected to the fake server");
       ws.send(`42${JSON.stringify([event, payload])}`);
     },
     async down() {
       ws?.terminate();
-      await new Promise((resolve) => wss.close(resolve));
-      http.closeAllConnections();
-      await new Promise((resolve) => http.close(resolve));
+      const [listening, sockets] = [http, wss];
+      assert.ok(listening && sockets, "the fake server went down before it came up");
+      await new Promise<void>((resolve) => sockets.close(resolve));
+      listening.closeAllConnections();
+      await new Promise((resolve) => listening.close(resolve));
     },
   };
   return server;
@@ -75,8 +89,8 @@ function hostileServer() {
 
 const ME = "me";
 const FRIEND = "friend";
-const pair = (other) => directConversationId(ME, other);
-const message = (from, conversationId = pair(from)) => ({
+const pair = (other: string) => directConversationId(ME, other);
+const message = (from: string, conversationId = pair(from)) => ({
   message_id: `m-${Math.random()}`,
   conversation_id: conversationId,
   sender_server_id: from,
@@ -84,12 +98,12 @@ const message = (from, conversationId = pair(from)) => ({
   text: "hi",
   created_at: new Date().toISOString(),
 });
-const ringFrom = (from, conversationId = pair(from)) => ({
+const ringFrom = (from: string, conversationId = pair(from)) => ({
   conversation_id: conversationId,
   from: { server_user_id: from, nickname: from },
   expires_at: Date.now() + 30_000,
 });
-const view = (other) => ({
+const view = (other: string) => ({
   conversation_id: pair(other),
   kind: "dm",
   members: [{ server_user_id: other, nickname: other }],
@@ -97,11 +111,11 @@ const view = (other) => ({
 });
 
 /** A client with the guard on, and what the app would have done with each event. */
-async function connected(prefs, { limiter } = {}) {
+async function connected(prefs: ContactPrefs, { limiter }: Pick<ContactGuardDeps, "limiter"> = {}) {
   const server = hostileServer();
   await server.up();
   const socket = io(server.url, { transports: ["websocket"], forceNew: true, reconnection: false });
-  const filtered = [];
+  const filtered: FilteredEvent[] = [];
   const knowledge = emptyKnowledge();
   installContactGuard(socket, {
     host: "hostile.example",
@@ -113,17 +127,22 @@ async function connected(prefs, { limiter } = {}) {
     limiter,
   });
   // What surfacing means: a notification, a badge, an unread mark or a ringing card.
-  const surfaced = { messages: [], rings: [], opened: [] };
+  const surfaced = {
+    messages: [] as ReturnType<typeof message>[],
+    rings: [] as ReturnType<typeof ringFrom>[],
+    opened: [] as ReturnType<typeof view>[],
+  };
   socket.on("chat:new", (m) => surfaced.messages.push(m));
   socket.on("call:incoming", (c) => surfaced.rings.push(c));
   socket.on("dm:opened", (v) => surfaced.opened.push(v));
-  await new Promise((resolve) => socket.once("connect", resolve));
+  await new Promise<void>((resolve) => socket.once("connect", resolve));
   const settle = () => sleep(60);
   return { server, socket, filtered, knowledge, surfaced, settle };
 }
 
-const runs = [];
-async function run(prefs, options, body) {
+type Run = Awaited<ReturnType<typeof connected>>;
+const runs: Run[] = [];
+async function run(prefs: ContactPrefs, options: Pick<ContactGuardDeps, "limiter">, body: (ctx: Run) => Promise<void>) {
   const ctx = await connected(prefs, options);
   runs.push(ctx);
   await body(ctx);
@@ -171,7 +190,7 @@ try {
 
   // A stricter setting covers conversations that are already open (decision 7).
   await (async () => {
-    const prefs = { messages: "everyone", calls: "everyone" };
+    const prefs: ContactPrefs = { messages: "everyone", calls: "everyone" };
     const ctx = await connected(prefs);
     runs.push(ctx);
     ctx.server.send("chat:new", message("chatty"));
@@ -221,8 +240,8 @@ try {
 
   // A later list can't bring back what was held back, until you open it yourself.
   await run({ messages: "nobody", calls: "nobody" }, {}, async ({ server, socket, filtered, knowledge, settle }) => {
-    const lists = [];
-    socket.on("dm:list", (l) => lists.push(l.items.map((i) => i.conversation_id)));
+    const lists: string[][] = [];
+    socket.on("dm:list", (l: { items: { conversation_id: string }[] }) => lists.push(l.items.map((i) => i.conversation_id)));
     server.send("dm:list", { items: [view(FRIEND)] });
     server.send("dm:list", { items: [view(FRIEND), view("stranger")] });
     await settle();
@@ -231,7 +250,7 @@ try {
     knowledge.known.add(pair("stranger"));
     server.send("dm:list", { items: [view(FRIEND), view("stranger")] });
     await settle();
-    assert.equal(lists.at(-1).length, 2, "one you let in should stay listed");
+    assert.equal(lists.at(-1)?.length, 2, "one you let in should stay listed");
   });
 
   // Channels are the server's own business, and never judged here.
