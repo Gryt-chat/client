@@ -7,31 +7,32 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { createPendingUpdate } from "../electron/pendingUpdate.ts";
+import { createPendingUpdate, type DownloadOptions, type UpdateRelease } from "../electron/pendingUpdate.ts";
 import {
   chooseFeedRelease,
   clockTime,
   findFeedRelease,
   lookupFailedMessage,
   newerReleaseTags,
+  type PinnableRelease,
   rateLimitResetAt,
 } from "../electron/updateFeedPin.ts";
-import { CHECKS, PRESSES } from "./lib/updateEntryPoints.mjs";
+import { CHECKS, PRESSES } from "./lib/updateEntryPoints.ts";
 
 let failures = 0;
-async function check(name, run) {
+async function check(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
 console.log("update feed pin");
 
-const release = (tag, { draft = false } = {}) => ({
+const release = (tag: string, { draft = false } = {}) => ({
   tag_name: tag,
   draft,
   prerelease: tag.includes("-"),
@@ -48,9 +49,9 @@ const releases = [
 ];
 
 /* Stands in for the channel yml check: slim and full ship different yml files. */
-const installable = (missing = []) => async (r) => !missing.includes(r.tag_name);
+const installable = (missing: string[] = []) => async (r: PinnableRelease) => !missing.includes(r.tag_name);
 
-const pick = (opts) =>
+const pick = (opts: Partial<Parameters<typeof chooseFeedRelease>[1]> & { current: string }) =>
   chooseFeedRelease(releases, {
     wantPrerelease: false,
     variantSwitchPending: false,
@@ -124,7 +125,7 @@ const atomTags = [
   "v1.11.22", "v1.11.22", "v1.12.0-beta.1", "v1.11.21", "v1.11.21-rc.1", "nightly", "v1.11.20",
 ];
 
-const tagsAbove = (floor, wantPrerelease = false) =>
+const tagsAbove = (floor: string, wantPrerelease = false) =>
   newerReleaseTags(atomTags, { floor, wantPrerelease }).map(({ version }) => version);
 
 await check("the probe starts above what is held, so the download it has is not fetched again", () => {
@@ -148,7 +149,7 @@ await check("the probe hands back the tag it read, once, and skips one that is n
 /* ── When the release list does not come back (GRYT-1170) ───────────── */
 
 const NOW = Date.UTC(2026, 8, 15, 12, 0, 0);
-const utcClock = (at) => new Date(at).toISOString().slice(11, 16);
+const utcClock = (at: number) => new Date(at).toISOString().slice(11, 16);
 const couldNot = "Couldn't check GitHub for updates right now.";
 
 /* What api.github.com sends: a 403 or a 429 once the hour's 60 are spent, retry-after
@@ -195,11 +196,12 @@ const listed = [
   { ...release("v1.10.1"), assets: ["latest-mac.yml", "slim-mac.yml"] },
 ];
 
-const find = (request, channel, yml, consulted = []) =>
-  findFeedRelease(request, {
+type Listed = (typeof listed)[number];
+const find = (request: () => Promise<Response>, channel: { current: string; wantPrerelease: boolean }, yml: string, consulted: string[] = []) =>
+  findFeedRelease<Listed>(request, {
     ...channel,
     variantSwitchPending: false,
-    isInstallable: async (r) => {
+    isInstallable: async (r: Listed) => {
       consulted.push(r.tag_name);
       return r.assets.includes(yml);
     },
@@ -210,7 +212,7 @@ for (const [failureName, failure] of Object.entries(lookupFailures)) {
   for (const [channelName, channel] of Object.entries(channels)) {
     for (const [variantName, yml] of Object.entries(variants)) {
       await check(`${failureName} on ${channelName}, ${variantName}: a failed lookup that says so`, async () => {
-        const consulted = [];
+        const consulted: string[] = [];
         const choice = await find(failure.request, channel, yml, consulted);
 
         assert.equal(choice.kind, "lookup-failed");
@@ -224,7 +226,7 @@ for (const [failureName, failure] of Object.entries(lookupFailures)) {
 
 await check("the same harness with the list served pins by channel and variant", async () => {
   const served = async () => Response.json(listed);
-  const pinned = {};
+  const pinned: Record<string, string> = {};
 
   for (const [channelName, channel] of Object.entries(channels)) {
     for (const [variantName, yml] of Object.entries(variants)) {
@@ -263,7 +265,7 @@ await check("a 403 that is not the rate limit names no time", async () => {
 });
 
 await check("the later of retry-after and x-ratelimit-reset wins", () => {
-  const both = (retryAfter, resetInSeconds) =>
+  const both = (retryAfter: number, resetInSeconds: number) =>
     rateLimitResetAt(
       new Headers({
         "retry-after": String(retryAfter),
@@ -297,7 +299,7 @@ await check("the clock time is hours and minutes, and survives a locale tag ICU 
 
 const main = readFileSync(new URL("../electron/main.ts", import.meta.url), "utf8");
 
-function bodyOf(marker) {
+function bodyOf(marker: string) {
   const start = main.indexOf(marker);
   assert.notEqual(start, -1, `${marker} is gone`);
   return main.slice(start, main.indexOf("\n}\n", start));
@@ -316,7 +318,7 @@ await check("a failed lookup leaves the pin before any feed is set", () => {
   const pin = bodyOf("async function pinFeedToNewestCompleteRelease(");
   const failed = pin.match(/if \(choice\.kind === "lookup-failed"\) \{[\s\S]{0,400}?return choice;\s*\}/);
   assert.ok(failed, "the lookup-failed branch has to return what it found");
-  assert.ok(failed.index < pin.indexOf("setFeedURL("), "the failure has to return before the feed is pinned");
+  assert.ok((failed.index ?? Infinity) < pin.indexOf("setFeedURL("), "the failure has to return before the feed is pinned");
 });
 
 await check("the list request keeps the status that says why", () => {
@@ -388,12 +390,14 @@ await check("the pin hands back the release it pointed the feed at", () => {
 /* ── The two pinned checks, with Automatic updates on and off (GRYT-1206, GRYT-1218) ── */
 
 /* The pin's choice goes through the same `updates.offer` main.ts builds, with each entry
-   point's options from scripts/lib/updateEntryPoints.mjs. */
+   point's options from scripts/lib/updateEntryPoints.ts. */
 const pinned = ["Gryt started at login", "Check for Updates in Settings"];
 
-async function pinAndOffer({ automatic, entry, channel, served = listed, yml = variants.full }) {
-  const downloads = [];
-  const reports = [];
+type PinAndOffer = { automatic: boolean; entry: string; channel: { current: string; wantPrerelease: boolean }; served?: Listed[]; yml?: string };
+
+async function pinAndOffer({ automatic, entry, channel, served = listed, yml = variants.full }: PinAndOffer) {
+  const downloads: { release: UpdateRelease; options: DownloadOptions }[] = [];
+  const reports: UpdateRelease[] = [];
   const updates = createPendingUpdate({
     startDownload: async (release, options) => {
       downloads.push({ release, options });
@@ -409,7 +413,7 @@ async function pinAndOffer({ automatic, entry, channel, served = listed, yml = v
   });
 
   const choice = await find(async () => Response.json(served), channel, yml);
-  assert.equal(choice.kind, "pinned");
+  assert.ok(choice.kind === "pinned", `the lookup came back ${choice.kind}`);
 
   const outcome = updates.offer({ tag: choice.release.tag_name, version: choice.version }, CHECKS[entry].options);
   await new Promise((resolve) => setImmediate(resolve));
@@ -443,10 +447,11 @@ await check("leaving beta with automatic updates off reports the older stable, a
     channel: { current: "1.11.0-beta.1", wantPrerelease: false },
   });
   assert.equal(outcome, "reported");
-  assert.deepEqual(downloads, []);
+  assert.equal(downloads.length, 0);
 
   /* The probe's floor is the running beta, so the press takes what the check reported. */
   const reported = updates.reported();
+  assert.ok(reported, "the check reported nothing");
   assert.equal(reported.tag, "v1.10.2");
   assert.equal(updates.offer(reported, PRESSES["download now, or install with nothing downloaded"].options), "downloading");
   await new Promise((resolve) => setImmediate(resolve));

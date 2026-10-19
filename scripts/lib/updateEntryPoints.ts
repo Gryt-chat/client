@@ -1,7 +1,15 @@
 // Every place in electron/main.ts that finds a release, and what it hands to `updates.offer`.
-// check-update-supersede.mjs runs these with Automatic updates on and off; check-updater-bridge.mjs holds main.ts to them.
+// check-update-supersede.ts runs these with Automatic updates on and off; check-updater-bridge.ts holds main.ts to them.
 
-export const CHECKS = {
+/** Where main.ts finds a release, the call it makes there, and the options that call passes. */
+export type EntryPoint = {
+  from: string;
+  to: string;
+  call: string;
+  options: { announce?: boolean; bypassRollout?: boolean; asked?: boolean };
+};
+
+export const CHECKS: Record<string, EntryPoint> = {
   "the launch check, the periodic check and the tray": {
     from: "function checkForUpdatesInBackground(",
     to: "\n}\n",
@@ -24,7 +32,7 @@ export const CHECKS = {
 
 // Download now in the toast, an install button with nothing downloaded yet, and the
 // Built-in server switch, which is asking for the other build.
-export const PRESSES = {
+export const PRESSES: Record<string, EntryPoint> = {
   "download now, or install with nothing downloaded": {
     from: "function downloadAnnouncedRelease(",
     to: "\n}\n",

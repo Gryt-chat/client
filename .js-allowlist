@@ -16,13 +16,9 @@ scripts/check-builder-config.mjs
 scripts/check-embedded-version.mjs
 scripts/check-extra-resources.mjs
 scripts/check-prebuild-pruning.mjs
-scripts/check-update-feed-pin.mjs
-scripts/check-update-supersede.mjs
-scripts/check-updater-bridge.mjs
 scripts/check-windows-signature.mjs
 scripts/generate-icons.mjs
 scripts/lib/describeVersion.mjs
-scripts/lib/updateEntryPoints.mjs
 scripts/notarize.cjs
 scripts/package-embedded-server.mjs
 scripts/prepare-electron-build.mjs

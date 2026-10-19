@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { CHECKS, PRESSES } from "./lib/updateEntryPoints.mjs";
+import { CHECKS, PRESSES } from "./lib/updateEntryPoints.ts";
 
 const installer = readFileSync(
   new URL("../build/installer.nsh", import.meta.url),
@@ -106,7 +106,7 @@ assert.equal(main.match(/autoUpdater\.quitAndInstall\(/g)?.length, 1);
 
 // The background check has to reach a real check, not just say a release exists.
 // Probing releases.atom fetched nothing, so restart-for-update found nothing (GRYT-625).
-function bodyOf(name) {
+function bodyOf(name: string) {
   const start = main.indexOf(`function ${name}(`);
   assert.notEqual(start, -1, `${name} is gone`);
 
@@ -151,7 +151,7 @@ assert.match(
 assert.match(backgroundCheck, /offerRelease\(/);
 
 // offerRelease hands the release to `updates`, which calls startDownload once the slot is
-// free (check-update-supersede.mjs), and that is downloadRelease's real check.
+// free (check-update-supersede.ts), and that is downloadRelease's real check.
 assert.match(bodyOf("offerRelease"), /updates\.offer\(release, options\) === "ignored"/);
 
 assert.match(main, /createPendingUpdate\(\{\s*startDownload: downloadRelease,/);
@@ -193,7 +193,7 @@ for (const [event, sink] of [
   ["update-not-available", /updates\.notAvailable\(\)/],
   ["update-downloaded", /updates\.downloaded\(info\.version\)/],
   ["error", /updates\.failed\(\)/],
-]) {
+] as const) {
   const start = main.indexOf(`autoUpdater.on("${event}"`);
   assert.notEqual(start, -1, `the ${event} handler is gone`);
   assert.match(main.slice(start, main.indexOf("\n  });\n", start)), sink, `${event} does not reach updates`);
@@ -294,7 +294,7 @@ assert.match(
 );
 
 // One toast id for every release, so a newer one redraws the toast instead of stacking a
-// second beside it. The states it moves through are in check-update-supersede.mjs.
+// second beside it. The states it moves through are in check-update-supersede.ts.
 const toastState = readFileSync(
   new URL("../src/components/updateToastState.ts", import.meta.url),
   "utf8",
@@ -349,7 +349,7 @@ for (const call of ['"launch"', '"interval"', '"resume"', '"focus"', '"setting"'
 }
 
 // Every check that finds a release hands it to offerRelease with the options the supersede
-// test runs. A new one has to be listed in scripts/lib/updateEntryPoints.mjs.
+// test runs. A new one has to be listed in scripts/lib/updateEntryPoints.ts.
 const entryPoints = { ...CHECKS, ...PRESSES };
 
 for (const [name, { from, to, call }] of Object.entries(entryPoints)) {
@@ -364,7 +364,7 @@ for (const [name, { from, to, call }] of Object.entries(entryPoints)) {
 assert.equal(
   main.match(/offerRelease\(/g)?.length,
   Object.keys(entryPoints).length + 1,
-  "a call to offerRelease that scripts/lib/updateEntryPoints.mjs doesn't list",
+  "a call to offerRelease that scripts/lib/updateEntryPoints.ts doesn't list",
 );
 
 // Reported rather than fetched: the toast gets a button, and Settings gets "available".
