@@ -4,10 +4,10 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync,rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const { prunePrebuilds, foreignPrebuilds, wantedDir } = require("./prune-prebuilds.cjs");
@@ -53,7 +53,7 @@ for (const [platform, arch] of [["darwin", "x64"], ["darwin", "arm64"], ["win32"
 
 // appOutDir is the output directory, so the .app sits inside it. Getting that
 // wrong found nothing on macOS and pruned nothing.
-function fakeApp(dirs, layout = "Gryt Chat.app/Contents/Resources/app.asar.unpacked/node_modules") {
+function fakeApp(dirs: string[], layout = "Gryt Chat.app/Contents/Resources/app.asar.unpacked/node_modules") {
   const root = mkdtempSync(join(tmpdir(), "gryt-prebuilds-"));
   const prebuilds = join(root, layout, "uiohook-napi/prebuilds");
   for (const d of dirs) {

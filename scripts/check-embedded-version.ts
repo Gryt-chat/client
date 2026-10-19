@@ -11,10 +11,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describeVersion } from "./lib/describeVersion.mjs";
+import { describeVersion } from "./lib/describeVersion.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "gryt-describe-"));
-const git = (command) =>
+const git = (command: string) =>
   execSync(command, { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 
 try {
@@ -51,7 +51,7 @@ try {
   // Both the SFU and the image worker have two stable tags on one commit,
   // tagged in the same second, and `git describe` returned the lower.
   const plain = mkdtempSync(join(tmpdir(), "gryt-describe-plain-"));
-  const gitPlain = (command) =>
+  const gitPlain = (command: string) =>
     execSync(command, { cwd: plain, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   try {
     gitPlain("git init -q .");
@@ -67,7 +67,7 @@ try {
   /* ── A checkout that is not on a tag says so ──────────────────────── */
 
   const between = mkdtempSync(join(tmpdir(), "gryt-describe-between-"));
-  const gitBetween = (command) =>
+  const gitBetween = (command: string) =>
     execSync(command, { cwd: between, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   try {
     gitBetween("git init -q .");

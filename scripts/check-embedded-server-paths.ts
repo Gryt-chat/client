@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const clientDir = join(here, "..");
 
-const source = readFileSync(join(here, "build-embedded-server.mjs"), "utf8");
+const source = readFileSync(join(here, "build-embedded-server.ts"), "utf8");
 
 // The sibling lookup has to stay first: a plain checkout has no superproject to
 // read, and that is where this has always worked.

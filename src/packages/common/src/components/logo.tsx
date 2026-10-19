@@ -88,7 +88,7 @@ export function LogoIcon({ size = 48, beta = false }: { size?: number; beta?: bo
               on it.
 
               The square artboard lives in `public/logo-square.svg` and has one
-              consumer, `scripts/generate-icons.mjs`, because a launcher
+              consumer, `scripts/generate-icons.ts`, because a launcher
               applies its own mask and wants the full frame. Everywhere a
               person looks at the mark — the READMEs, both favicons, the tray,
               this component — it is round. */}

@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
+
 import pngToIco from "png-to-ico";
+import sharp from "sharp";
 
 const rootDir = process.cwd();
 /*
@@ -31,7 +32,7 @@ const ROUNDED_MASK = Buffer.from(
  * The square artboard with its corners taken off. `dest-in` keeps the source only
  * where the mask is opaque, so the corners end up genuinely transparent.
  */
-async function roundedSource(size) {
+async function roundedSource(size: number) {
   const flat = await sharp(sourceSvg)
     .resize(1024, 1024, {
       fit: "contain",
@@ -47,7 +48,7 @@ async function roundedSource(size) {
   });
 }
 
-async function fileExists(filePath) {
+async function fileExists(filePath: string) {
   try {
     await fs.access(filePath);
     return true;

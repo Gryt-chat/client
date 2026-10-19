@@ -2,10 +2,10 @@
 
 /**
  * Builds the embedded server resources, SFU for this platform only.
- * Usage: node scripts/build-embedded-server.mjs [--skip-sfu|--skip-server|--skip-worker]
+ * Usage: node scripts/build-embedded-server.ts [--skip-sfu|--skip-server|--skip-worker]
  */
 
-import { execSync } from "child_process";
+import { execSync, type ExecSyncOptions } from "child_process";
 import {
   cpSync,
   existsSync,
@@ -17,7 +17,7 @@ import {
 import { dirname, join, resolve, sep } from "path";
 import { fileURLToPath } from "url";
 
-import { describeVersion } from "./lib/describeVersion.mjs";
+import { describeVersion } from "./lib/describeVersion.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = join(__dirname, "..");
@@ -47,7 +47,7 @@ function superprojectRoot() {
  * Beside the client in a normal checkout and nowhere near it in a worktree, where
  * this used to fail as `spawnSync /bin/sh ENOENT` and name a shell.
  */
-function packageDir(name) {
+function packageDir(name: string) {
   const sibling = join(CLIENT_DIR, "..", name);
   if (existsSync(sibling)) return sibling;
 
@@ -88,17 +88,19 @@ const platform = process.platform;
 const arch = process.arch;
 
 // electron-builder naming: win/mac/linux, x64/arm64
-const ebOs =
-  platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux";
+let ebOs = "linux";
+if (platform === "win32") ebOs = "win";
+else if (platform === "darwin") ebOs = "mac";
 const ebArch = arch === "arm64" ? "arm64" : "x64";
 
 // Go naming: windows/darwin/linux, amd64/arm64
-const goOs =
-  platform === "win32" ? "windows" : platform === "darwin" ? "darwin" : "linux";
+let goOs = "linux";
+if (platform === "win32") goOs = "windows";
+else if (platform === "darwin") goOs = "darwin";
 const goArch = arch === "arm64" ? "arm64" : "amd64";
 const sfuExt = platform === "win32" ? ".exe" : "";
 
-function run(command, options = {}) {
+function run(command: string, options: ExecSyncOptions = {}) {
   /* A missing cwd makes execSync report `spawnSync /bin/sh ENOENT`, which reads
      as a missing shell and sends people to their PATH. */
   if (options.cwd && !existsSync(options.cwd)) {
@@ -114,7 +116,7 @@ function run(command, options = {}) {
   });
 }
 
-function assertExists(path, message) {
+function assertExists(path: string, message: string) {
   if (!existsSync(path)) {
     throw new Error(message || `Missing expected path: ${path}`);
   }
@@ -133,7 +135,7 @@ if (ifMissing) {
    * never again. Only what moved is rebuilt, because the Go build is slow.
    */
   const built = readBuiltVersions();
-  const stale = (have, builtVersion, dir) =>
+  const stale = (have: boolean, builtVersion: string | undefined, dir: string) =>
     !have || (existsSync(dir) && builtVersion !== describeVersion(dir));
 
   const serverStale = stale(haveServer, built.server, SERVER_DIR);
@@ -374,7 +376,7 @@ if (skipWorker) {
  * built moves, or the next run believes an old binary is current.
  */
 const previous = readBuiltVersions();
-const versionFor = (skipped, dir, prior) => {
+const versionFor = (skipped: boolean, dir: string, prior: string | undefined) => {
   if (skipped) return prior ?? "unknown";
   return existsSync(dir) ? describeVersion(dir) : "unknown";
 };

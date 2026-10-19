@@ -21,8 +21,8 @@ const VERSION_SORT = [
  * The tag, not package.json: these repos release by tagging and leave the file
  * alone. Tags on the commit come first, highest wins — describe picks the lower.
  */
-export function describeVersion(dir) {
-  const git = (command) =>
+export function describeVersion(dir: string) {
+  const git = (command: string) =>
     execSync(command, {
       cwd: dir,
       encoding: "utf8",
