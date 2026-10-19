@@ -195,7 +195,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
   return (
     <>
       {actions.messageText && (
-        <ContextMenu.Item onClick={() => copyToClipboard(actions.messageText!)}>
+        <ContextMenu.Item onClick={() => copyToClipboard(actions.messageText ?? "")}>
           <div className="flex items-center gap-1">
             <PiCopyFill size={14} />
             Copy Message

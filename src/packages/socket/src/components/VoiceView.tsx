@@ -704,8 +704,10 @@ export const VoiceView = ({
       if (!watching && !held.has(audioId)) {
         held.set(audioId, gain.gain.value);
         gain.gain.setValueAtTime(0, gain.context.currentTime);
-      } else if (watching && held.has(audioId)) {
-        gain.gain.setValueAtTime(held.get(audioId)!, gain.context.currentTime);
+      } else if (watching) {
+        const level = held.get(audioId);
+        if (level === undefined) continue;
+        gain.gain.setValueAtTime(level, gain.context.currentTime);
         held.delete(audioId);
       }
     }
@@ -984,7 +986,7 @@ export const VoiceView = ({
 
         return {
           ...prev,
-          ...(streamChanged ? { stream: currentStream! } : {}),
+          ...(streamChanged && currentStream ? { stream: currentStream } : {}),
           ...(audioIdChanged ? { audioStreamId: latestAudioStreamId } : {}),
         };
       });
@@ -1282,7 +1284,7 @@ export const VoiceView = ({
                   onPopout={handleFocusedPopout}
                   onStopWatching={
                     isScreenTile && !focusIsSelf && focusClient?.screenShareVideoStreamID
-                      ? () => stopWatchingShare(focusClient.screenShareVideoStreamID!)
+                      ? () => stopWatchingShare(focusClient.screenShareVideoStreamID ?? "")
                       : undefined
                   }
                 />
@@ -1309,18 +1311,18 @@ export const VoiceView = ({
                   isServerDeafened={focusMember?.isServerDeafened}
                   onKick={
                     adminActions?.onKickUser && focusServerUserId
-                      ? () => adminActions.onKickUser!(focusServerUserId)
+                      ? () => adminActions.onKickUser?.(focusServerUserId)
                       : undefined
                   }
                   onBan={
                     adminActions?.onBanUser && focusServerUserId
-                      ? () => adminActions.onBanUser!(focusServerUserId)
+                      ? () => adminActions.onBanUser?.(focusServerUserId)
                       : undefined
                   }
                   onServerMute={
                     adminActions?.onServerMuteUser && focusServerUserId
                       ? (muted) =>
-                          adminActions.onServerMuteUser!(
+                          adminActions.onServerMuteUser?.(
                             focusServerUserId,
                             muted,
                           )
@@ -1329,7 +1331,7 @@ export const VoiceView = ({
                   onServerDeafen={
                     adminActions?.onServerDeafenUser && focusServerUserId
                       ? (deafened) =>
-                          adminActions.onServerDeafenUser!(
+                          adminActions.onServerDeafenUser?.(
                             focusServerUserId,
                             deafened,
                           )
@@ -1338,7 +1340,7 @@ export const VoiceView = ({
                   onToggleRole={
                     adminActions?.onToggleRole && focusServerUserId
                       ? (role, hold) =>
-                          adminActions.onToggleRole!(focusServerUserId, role, hold)
+                          adminActions.onToggleRole?.(focusServerUserId, role, hold)
                       : undefined
                   }
                   onPopoutVideo={handleFocusedPopout}

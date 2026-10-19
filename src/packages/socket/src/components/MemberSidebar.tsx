@@ -181,16 +181,16 @@ const MemberItem = ({
       isSelf={isSelf}
       canDisconnect={!!adminActions?.onDisconnectUser}
       isInVoice={member.hasJoinedChannel}
-      onDisconnectFromVoice={adminActions?.onDisconnectUser ? () => adminActions.onDisconnectUser!(member.serverUserId) : undefined}
+      onDisconnectFromVoice={adminActions?.onDisconnectUser ? () => adminActions.onDisconnectUser?.(member.serverUserId) : undefined}
       role={currentUserRole}
       targetRole={member.role}
       isServerMuted={member.isServerMuted}
       isServerDeafened={member.isServerDeafened}
-      onKick={adminActions?.onKickUser ? () => adminActions.onKickUser!(member.serverUserId) : undefined}
-      onBan={adminActions?.onBanUser ? () => adminActions.onBanUser!(member.serverUserId) : undefined}
-      onServerMute={adminActions?.onServerMuteUser ? (muted) => adminActions.onServerMuteUser!(member.serverUserId, muted) : undefined}
-      onServerDeafen={adminActions?.onServerDeafenUser ? (deafened) => adminActions.onServerDeafenUser!(member.serverUserId, deafened) : undefined}
-      onToggleRole={adminActions?.onToggleRole ? (role, hold) => adminActions.onToggleRole!(member.serverUserId, role, hold) : undefined}
+      onKick={adminActions?.onKickUser ? () => adminActions.onKickUser?.(member.serverUserId) : undefined}
+      onBan={adminActions?.onBanUser ? () => adminActions.onBanUser?.(member.serverUserId) : undefined}
+      onServerMute={adminActions?.onServerMuteUser ? (muted) => adminActions.onServerMuteUser?.(member.serverUserId, muted) : undefined}
+      onServerDeafen={adminActions?.onServerDeafenUser ? (deafened) => adminActions.onServerDeafenUser?.(member.serverUserId, deafened) : undefined}
+      onToggleRole={adminActions?.onToggleRole ? (role, hold) => adminActions.onToggleRole?.(member.serverUserId, role, hold) : undefined}
       targetRoles={member.roles}
       onOpenDm={onOpenDm && !isSelf ? () => onOpenDm(member.serverUserId) : undefined}
       /* Not on your own row: the server refuses blocking yourself, so the item

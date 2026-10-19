@@ -378,8 +378,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   </span>
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} />
-                {meta.isFirstEdited && (
-                  <Tooltip title={`Edited ${new Date(m.edited_at!).toLocaleString()}`}>
+                {meta.isFirstEdited && m.edited_at && (
+                  <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
                       (edited)
                     </span>
@@ -779,7 +779,7 @@ function MessageContent({
       </AnimatePresence>
       {m.reply_to_message_id && (
         <div
-          onClick={() => scrollToMessage(m.reply_to_message_id!)}
+          onClick={() => m.reply_to_message_id && scrollToMessage(m.reply_to_message_id)}
           style={{
             borderLeft: "2px solid var(--gryt-accent-8)",
             paddingLeft: "8px",
