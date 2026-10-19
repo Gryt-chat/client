@@ -6,10 +6,10 @@ import { subscribeWithSnapshot } from "../src/packages/settings/src/hooks/liveSn
 
 console.log("live startup snapshot");
 
-let resolve;
-const read = () => new Promise((done) => { resolve = done; });
-let live;
-const seen = [];
+let resolve: ((value: string) => void) | undefined;
+const read = () => new Promise<string>((done) => { resolve = done; });
+let live: ((value: string) => void) | undefined;
+const seen: string[] = [];
 const stop = subscribeWithSnapshot(
   read,
   (onValue) => {
@@ -19,13 +19,14 @@ const stop = subscribeWithSnapshot(
   (value) => seen.push(value),
 );
 
+assert.ok(live && resolve, "the subscription never started");
 live("running game");
 resolve("nothing running");
 await Promise.resolve();
 assert.deepEqual(seen, ["running game"], "a stale snapshot replaced the live event");
 stop();
 
-const initial = [];
+const initial: string[] = [];
 const stopInitial = subscribeWithSnapshot(
   async () => "running game",
   () => () => {},

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Direct messages are a place you go, and an empty conversation exists only while you
 // are looking at it. Sivert: "I dont want it to be a toggle view". GRYT-1146.
 

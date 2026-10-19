@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs the store behind the Discovery badge. Sivert: "i just restart my client and
 // its like 'I found 5 new servers!'". A restart must not re-announce. GRYT-1142.
 
@@ -13,16 +11,16 @@ const SOURCE = "src/packages/settings/src/hooks/lanServerMemory.ts";
 const source = readFileSync(join(root, SOURCE), "utf8");
 
 /** A localStorage good enough for this module, over a plain object. */
-function fakeStore(initial = {}) {
-  const data = { ...initial };
+function fakeStore(initial: Record<string, string> = {}) {
+  const data: Record<string, string> = { ...initial };
   return {
     data,
     get length() {
       return Object.keys(data).length;
     },
-    key: (i) => Object.keys(data)[i] ?? null,
-    getItem: (k) => (k in data ? data[k] : null),
-    setItem: (k, v) => {
+    key: (i: number) => Object.keys(data)[i] ?? null,
+    getItem: (k: string) => (k in data ? data[k] : null),
+    setItem: (k: string, v: string) => {
       data[k] = String(v);
     },
   };
@@ -35,7 +33,7 @@ Object.defineProperty(globalThis, "localStorage", { get: () => store, configurab
 
 const api = await import(`../${SOURCE}`);
 /** A fresh launch against the same store: the module reads it on every call. */
-const load = (next) => {
+const load = (next?: ReturnType<typeof fakeStore>) => {
   if (next) store = next;
   return api;
 };

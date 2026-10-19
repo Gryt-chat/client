@@ -2,17 +2,18 @@
  * Draws the macOS menu bar icon. A template image is alpha only, so the shape
  * carries the meaning: the bird's face is cut out and its features drawn inside.
  */
-import sharp from "sharp";
-import { readFileSync, writeFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import {
+  type Icon,
   Microphone,
   MicrophoneSlash,
   SpeakerSlash,
 } from "@phosphor-icons/react";
+import { readFileSync, writeFileSync } from "fs";
+import { dirname,join } from "path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import sharp from "sharp";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const buildDir = join(__dirname, "..", "build");
@@ -53,7 +54,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" 
  * Rasterised at high density first, then trimmed and scaled down. 288 dpi, not the
  * SVG's 512px box; height rather than a square, because the menu bar fixes height.
  */
-async function render(height, file, source = svg) {
+async function render(height: number, file: string, source = svg) {
   const png = await sharp(Buffer.from(source), { density: 288 })
     .trim()
     .resize({
@@ -82,7 +83,6 @@ await render(48, "trayTemplate@3x.png");
 // No template mechanism on either, so these are colour discs with a glyph. A slash
 // across the mark reads as "Gryt is disabled", not "your microphone is off".
 
-const PURPLE = "#A495E3"; // the bird, straight from public/logo.svg
 const INK = "#2E2D5F"; // the mark's ground, and the most legible glyph colour
                        // on every disc — 4.82:1 on the purple where white is 2.63:1
 const GREEN = "#34B075";
@@ -98,7 +98,7 @@ const C = 256;
  * The inner markup of a phosphor glyph, scaled onto the disc. createElement rather
  * than calling the component: phosphor's are forwardRef objects and calling throws.
  */
-function glyph(Icon, frac) {
+function glyph(Icon: Icon, frac: number) {
   const markup = renderToStaticMarkup(createElement(Icon, { weight: "fill" }));
   const inner = markup.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
   const size = R * 2 * frac;
@@ -106,7 +106,7 @@ function glyph(Icon, frac) {
   return `<g transform="translate(${C - size / 2} ${C - size / 2}) scale(${scale})" fill="${INK}">${inner}</g>`;
 }
 
-function disc(fill, inner) {
+function disc(fill: string, inner: string) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <circle cx="${C}" cy="${C}" r="${R}" fill="${fill}"/>
   <g fill="${INK}">${inner}</g>

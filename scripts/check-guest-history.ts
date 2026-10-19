@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The guest history reads what earlier versions of itself wrote, and only claims
  * a date it actually has — an invented one is evidence, and it is wrong.
@@ -10,17 +8,19 @@ import assert from "node:assert/strict";
 const KEY = "gryt_guest_history";
 
 /** A localStorage that actually stores, so writes can be read back. */
-function installStore(raw) {
+function installStore(raw: string | null) {
   let value = raw ?? null;
-  globalThis.localStorage = {
-    getItem: (key) => (key === KEY ? value : null),
-    setItem: (key, next) => {
-      if (key === KEY) value = next;
+  Object.assign(globalThis, {
+    localStorage: {
+      getItem: (key: string) => (key === KEY ? value : null),
+      setItem: (key: string, next: string) => {
+        if (key === KEY) value = next;
+      },
+      removeItem: () => {
+        value = null;
+      },
     },
-    removeItem: () => {
-      value = null;
-    },
-  };
+  });
   return () => (value === null ? null : JSON.parse(value));
 }
 
@@ -54,6 +54,7 @@ const readBack = installStore(null);
 const before = Date.now();
 rememberGuestScope(A);
 const first = getGuestVisit(A);
+assert.ok(first, "remembering a scope left no visit");
 assert.ok(typeof first.lastUsed === "number", "remembering a scope stamps a date");
 assert.ok(first.lastUsed >= before, "and the date is now, not the epoch");
 
@@ -65,7 +66,7 @@ assert.ok(!Array.isArray(readBack()), "writes use the object shape");
 first.lastUsed = 0;
 installStore(JSON.stringify({ [A]: { lastUsed: 0 } }));
 rememberGuestScope(A);
-assert.ok(getGuestVisit(A).lastUsed > 0, "a second visit updates the date");
+assert.ok((getGuestVisit(A)?.lastUsed ?? 0) > 0, "a second visit updates the date");
 
 // ── Scopes taken in from elsewhere get no date ──────────────────────────────
 
@@ -78,7 +79,7 @@ assert.ok(hasGuestScope(B), "but they are still known, so the offer is made");
 // An existing date survives a backfill that names the same scope.
 installStore(JSON.stringify({ [A]: { lastUsed: 1234 } }));
 rememberGuestScopes([A, B]);
-assert.equal(getGuestVisit(A).lastUsed, 1234, "a known scope keeps its date");
+assert.equal(getGuestVisit(A)?.lastUsed, 1234, "a known scope keeps its date");
 
 // ── Junk, and things that are not there ─────────────────────────────────────
 
@@ -102,13 +103,15 @@ assert.ok(hasGuestScope(B), "and leaves the others alone");
 
 // ── An unreadable store is empty rather than an error ───────────────────────
 
-globalThis.localStorage = {
-  getItem() {
-    throw new DOMException("denied", "SecurityError");
+Object.assign(globalThis, {
+  localStorage: {
+    getItem() {
+      throw new DOMException("denied", "SecurityError");
+    },
+    setItem() {},
+    removeItem() {},
   },
-  setItem() {},
-  removeItem() {},
-};
+});
 assert.equal(getGuestVisit(A), null);
 assert.deepEqual(listGuestScopes(), []);
 

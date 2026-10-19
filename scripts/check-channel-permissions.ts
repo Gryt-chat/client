@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The matrix on a channel scope, and what it sends. Inherit is the absence of a
  * row; Custom and Everyone are not scope ids.
@@ -8,10 +6,11 @@
 import assert from "node:assert/strict";
 
 import {
-  CUSTOM_VALUE,
-  EVERYONE_VALUE,
   cellState,
+  type ChannelRule,
+  CUSTOM_VALUE,
   describeRules,
+  EVERYONE_VALUE,
   indexRules,
   nextCellState,
   scopeChoiceFromValue,
@@ -22,16 +21,16 @@ import {
 } from "../src/packages/settings/src/channelPermissionRules.ts";
 import {
   describeFolderRules,
-  FOLLOW_FOLDER_VALUE,
   folderFollowNote,
   folderMoveAction,
+  FOLLOW_FOLDER_VALUE,
   followFolderLabel,
   followingFolderDescription,
 } from "../src/packages/settings/src/folderPermissionRules.ts";
 
 // ── cells ──────────────────────────────────────────────────────────
 
-const RULES = [
+const RULES: ChannelRule[] = [
   { roleId: "member", permission: "read_messages", effect: "deny" },
   { roleId: "mod", permission: "send_messages", effect: "allow" },
 ];

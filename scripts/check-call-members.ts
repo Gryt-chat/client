@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * A call can see who is in it. The server blanks the conversation id out of the
  * payloads that reach everybody, and `voice:call:members` is the repair (GRYT-680).
@@ -11,17 +9,23 @@ import {
   applyCallMemberships,
   rememberCallMembers,
 } from "../src/packages/socket/src/lib/callMembers.ts";
+import type { Client, Clients } from "../src/packages/socket/src/types/clients.ts";
 
 const PAIR = "dm_1111111111111111111111111111aaaa";
 
+/** A whole client, with what each check is about given and the rest at rest. */
+function client(about: Pick<Client, "serverUserId" | "nickname" | "hasJoinedChannel" | "voiceChannelId">): Client {
+  return { isMuted: false, isDeafened: false, color: "", streamID: "", isAFK: false, ...about };
+}
+
 /** A client as `server:clients` sends it: in a call, with the id blanked out. */
-function inACall(serverUserId) {
-  return { serverUserId, nickname: serverUserId, hasJoinedChannel: true, voiceChannelId: "" };
+function inACall(serverUserId: string) {
+  return client({ serverUserId, nickname: serverUserId, hasJoinedChannel: true, voiceChannelId: "" });
 }
 
 /* ── The id is written back onto the people in the call ──────────────────── */
 {
-  const clients = { s1: inACall("user_alice"), s2: inACall("user_bob") };
+  const clients: Clients = { s1: inACall("user_alice"), s2: inACall("user_bob") };
   const next = applyCallMemberships(clients, { [PAIR]: ["user_alice", "user_bob"] });
 
   assert.equal(next.s1.voiceChannelId, PAIR);
@@ -30,10 +34,10 @@ function inACall(serverUserId) {
 
 /* ── And not onto anybody else ───────────────────────────────────────────── */
 {
-  const clients = {
+  const clients: Clients = {
     s1: inACall("user_alice"),
     // Somebody in a voice channel, minding their own business.
-    s2: { serverUserId: "user_cleo", nickname: "Cleo", hasJoinedChannel: true, voiceChannelId: "general" },
+    s2: client({ serverUserId: "user_cleo", nickname: "Cleo", hasJoinedChannel: true, voiceChannelId: "general" }),
   };
   const next = applyCallMemberships(clients, { [PAIR]: ["user_alice"] });
 
@@ -45,8 +49,8 @@ function inACall(serverUserId) {
 {
   // The server says they are no longer in voice; the remembered membership is
   // one message behind. Writing the id back would keep them on screen.
-  const clients = {
-    s1: { serverUserId: "user_bob", nickname: "Bob", hasJoinedChannel: false, voiceChannelId: "" },
+  const clients: Clients = {
+    s1: client({ serverUserId: "user_bob", nickname: "Bob", hasJoinedChannel: false, voiceChannelId: "" }),
   };
   const next = applyCallMemberships(clients, { [PAIR]: ["user_bob"] });
 
@@ -56,10 +60,10 @@ function inACall(serverUserId) {
 /* ── Nothing to do is the same object ────────────────────────────────────── */
 {
   // This runs inside the `server:clients` handler, which fires constantly.
-  const clients = { s1: inACall("user_alice") };
+  const clients: Clients = { s1: inACall("user_alice") };
   assert.equal(applyCallMemberships(clients, {}), clients);
 
-  const already = { s1: { ...inACall("user_alice"), voiceChannelId: PAIR } };
+  const already: Clients = { s1: { ...inACall("user_alice"), voiceChannelId: PAIR } };
   assert.equal(
     applyCallMemberships(already, { [PAIR]: ["user_alice"] }),
     already,
@@ -77,14 +81,14 @@ function inACall(serverUserId) {
 
   // Which matters because the ids would otherwise be written back onto whoever
   // reconnects with them next.
-  const clients = { s1: inACall("user_alice") };
+  const clients: Clients = { s1: inACall("user_alice") };
   assert.equal(applyCallMemberships(clients, emptied), clients);
 }
 
 /* ── Two calls do not bleed into each other ──────────────────────────────── */
 {
   const OTHER = "dm_2222222222222222222222222222bbbb";
-  const clients = { s1: inACall("user_alice"), s2: inACall("user_cleo") };
+  const clients: Clients = { s1: inACall("user_alice"), s2: inACall("user_cleo") };
   const next = applyCallMemberships(clients, {
     [PAIR]: ["user_alice"],
     [OTHER]: ["user_cleo"],

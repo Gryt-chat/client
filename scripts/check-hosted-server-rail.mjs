@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Deleting a hosted server takes every rail entry whose id or loopback address is its own,
 // and nobody else's. Entries joined on a LAN or .local address used to survive it. GRYT-1219.
 

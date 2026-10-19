@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs the presence hook and the label beside it. Sivert was in a call with an open
 // microphone and nothing on screen saying so, so nothing here may go dark. GRYT-1136.
 
@@ -24,7 +22,7 @@ const STATES = {
 };
 
 /** A function declaration's body, from its brace to the one that closes it. */
-function bodyOf(text, signature, where) {
+function bodyOf(text: string, signature: string, where: string) {
   const at = text.indexOf(signature);
   assert.notEqual(at, -1, `${where} no longer has "${signature}". Move this check with it.`);
   const start = text.indexOf("{", at);
@@ -50,7 +48,13 @@ function inCallSource() {
   return hook.slice(start, end + 1);
 }
 
-function presence({ state, host = "", channelId = "", isMuted = false, isServerMuted = false }) {
+function presence({
+  state,
+  host = "",
+  channelId = "",
+  isMuted = false,
+  isServerMuted = false,
+}: { state: string; host?: string; channelId?: string; isMuted?: boolean; isServerMuted?: boolean }) {
   return new Function(
     "SFUConnectionState",
     "useSFU",
@@ -66,11 +70,11 @@ function presence({ state, host = "", channelId = "", isMuted = false, isServerM
       currentChannelConnected: channelId,
     }),
     () => ({ isMuted, isServerMuted }),
-    (factory) => factory(),
+    (factory: () => object) => factory(),
   );
 }
 
-const label = (voice) =>
+const label = (voice: object) =>
   new Function("SFUConnectionState", "voice", `return (${bodyOf(sidebar, "function voiceLabel", SIDEBAR)
     .replace(/^\{/, "(() => {")
     .replace(/\}$/, "})()")})`)(STATES, voice);
