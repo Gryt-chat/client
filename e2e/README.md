@@ -175,7 +175,7 @@ GRYT_SOAK_TUNNEL_SFU=wss://test-sfu.gryt.chat \
 GRYT_SOAK_DIRECT_SERVER=http://192.168.50.147:5030 GRYT_SOAK_DIRECT_SFU=ws://192.168.50.147:5035 \
 GRYT_SOAK_PING=192.168.50.1,192.168.50.147,1.1.1.1 \
   yarn playwright test --config e2e/soak/playwright.config.ts
-node e2e/soak/report.mjs e2e/soak/runs/<run>
+node e2e/soak/report.ts e2e/soak/runs/<run>
 ```
 
 The report lists every drop with its reason, its close code and how long it took to come

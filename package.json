@@ -164,7 +164,7 @@
     "test:group-picture-upload": "node --disable-warning=ExperimentalWarning scripts/check-group-picture-upload.ts",
     "test:webhook-avatar-upload": "node --disable-warning=ExperimentalWarning scripts/check-webhook-avatar-upload.ts",
     "test:webhook-cards": "node --disable-warning=ExperimentalWarning scripts/check-webhook-cards.ts",
-    "test:examples": "node --test examples/examples.test.mjs",
+    "test:examples": "node --test examples/examples.test.ts",
     "test:member-invite": "node scripts/check-member-invite.ts",
     "test:invite-link": "node --disable-warning=ExperimentalWarning scripts/check-invite-link.ts",
     "test:addon-capabilities": "node scripts/check-addon-capabilities.ts",
