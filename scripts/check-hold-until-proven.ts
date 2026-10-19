@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server as HttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,11 +17,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = readFileSync(join(root, "src/packages/socket/src/utils/serverAuth.ts"), "utf8");
 
 // serverAuth.ts's own relative imports, resolved from where it sits rather than from here.
-const resolveFromGuard = (spec) =>
+const resolveFromGuard = (spec: string) =>
   spec.startsWith("./") ? new URL(`../src/packages/socket/src/utils/${spec.slice(2)}.ts`, import.meta.url).href : import.meta.resolve(spec);
 
 // Only what the guard asks of @/common. A proof is good when it echoes the nonce it answers.
-const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const moduleUrl = (text: string) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
 const COMMON = moduleUrl(`
   let n = 0;
   export const createClientNonce = () => "nonce-" + ++n;
@@ -41,37 +41,43 @@ const compiled = ts
   .transpileModule(source.replace(/const IDENTITY_TIMEOUT_MS = \d+;/, `const IDENTITY_TIMEOUT_MS = ${WAIT_MS};`), {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   })
-  .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) =>
+  .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_: string, head: string, spec: string) =>
     `${head}"${spec === "@/common" ? COMMON : resolveFromGuard(spec)}"`);
 const { guardSocket } = await import(moduleUrl(compiled));
 console.error = () => {};
 
 // What engine.io-client itself opens sockets with in Node, so it is here whenever the client is.
 const require = createRequire(import.meta.url);
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws");
+type FakeWs = { send(data: string): void; on(event: "close" | "message", listener: (data: Buffer) => void): void; terminate(): void };
+type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; close(done: () => void): void };
+// ws ships no types of its own, so only what this file uses.
+const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
+  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
+};
 
 const TOKEN = "access-token-that-must-not-leak";
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Enough engine.io and socket.io for a client to connect, on one port. `proves` says whether
  * it answers `server:identify`; every event it is sent is kept, per connection.
  */
 function fakeServer() {
-  let http = null;
-  let wss = null;
-  const live = new Set();
+  let http: HttpServer | null = null;
+  let wss: FakeWss | null = null;
+  const live = new Set<FakeWs>();
   const server = {
     proves: true,
-    connections: [],
+    connections: [] as string[][],
     url: "",
     async up() {
-      http = createServer();
-      wss = new WebSocketServer({ server: http });
+      const listening = createServer();
+      http = listening;
+      wss = new WebSocketServer({ server: listening });
       wss.on("connection", (ws) => {
         live.add(ws);
         ws.on("close", () => live.delete(ws));
-        const heard = [];
+        const heard: string[] = [];
         server.connections.push(heard);
         const proves = server.proves;
         ws.send(`0${JSON.stringify({ sid: `e${server.connections.length}`, upgrades: [], pingInterval: 60_000, pingTimeout: 60_000, maxPayload: 1_000_000 })}`);
@@ -86,8 +92,10 @@ function fakeServer() {
           }
         });
       });
-      await new Promise((resolve) => http.listen(0, "127.0.0.1", resolve));
-      server.url = `http://127.0.0.1:${http.address().port}`;
+      await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+      const address = listening.address();
+      assert.ok(address && typeof address === "object", "the fake server is not on a port");
+      server.url = `http://127.0.0.1:${address.port}`;
     },
     /** The socket goes and the server stays, as a restart looks from the client once it is back. */
     drop() {
@@ -95,19 +103,23 @@ function fakeServer() {
     },
     async down() {
       server.drop();
-      await new Promise((resolve) => wss.close(resolve));
-      http.closeAllConnections();
-      await new Promise((resolve) => http.close(resolve));
+      const [listening, sockets] = [http, wss];
+      assert.ok(listening && sockets, "the fake server went down before it came up");
+      await new Promise<void>((resolve) => sockets.close(resolve));
+      listening.closeAllConnections();
+      await new Promise((resolve) => listening.close(resolve));
     },
   };
   return server;
 }
 
 /** The client's own shape: guarded, then session:restore with the token on every connect. */
-async function client(server) {
+type Decision = { action: string; failure?: { reason: string } };
+
+async function client(server: ReturnType<typeof fakeServer>) {
   const socket = io(server.url, { transports: ["websocket"], forceNew: true, reconnectionDelay: 50, reconnectionDelayMax: 50, randomizationFactor: 0 });
-  const seen = { refused: null, connects: 0 };
-  guardSocket(socket, "h", (decision) => (seen.refused = decision));
+  const seen = { refused: null as Decision | null, connects: 0 };
+  guardSocket(socket, "h", (decision: Decision) => (seen.refused = decision));
   socket.on("connect", () => {
     seen.connects++;
     socket.emit("session:restore", { accessToken: TOKEN });
@@ -115,7 +127,7 @@ async function client(server) {
   return { socket, seen };
 }
 
-async function until(what, test, ms = 3_000) {
+async function until(what: string, test: () => boolean, ms = 3_000) {
   const end = Date.now() + ms;
   while (!test()) {
     if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
@@ -123,8 +135,8 @@ async function until(what, test, ms = 3_000) {
   }
 }
 
-const events = (heard) => heard.map((t) => JSON.parse(t.slice(2))[0]);
-const leaked = (heard) => heard.filter((t) => t.includes(TOKEN));
+const events = (heard: string[]) => heard.map((t) => JSON.parse(t.slice(2))[0]);
+const leaked = (heard: string[]) => heard.filter((t) => t.includes(TOKEN));
 const servers = [];
 const sockets = [];
 
@@ -167,7 +179,7 @@ try {
       assert.deepEqual(leaked(heard), [], `the token reached a server that never proved itself: ${heard.join(" ")}`);
       assert.deepEqual(events(heard), ["server:identify"], "something other than the identity request went to an unproved server");
     }
-    assert.equal(seen.refused.failure.reason, "proof_withdrawn");
+    assert.equal(seen.refused?.failure?.reason, "proof_withdrawn");
     assert.equal(socket.connected, false, "the refused socket is still open");
   }
 

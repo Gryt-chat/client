@@ -5,12 +5,15 @@
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server as HttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { io } from "socket.io-client";
+
+import type { ContactPrefs } from "../src/packages/common/src/hooks/contactPrefs.ts";
+import type { FilteredEvent } from "../src/packages/socket/src/utils/contactFilter.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const { directConversationId, emptyKnowledge, installContactGuard } = await import(
@@ -20,12 +23,17 @@ const { confirmFriend, emptyBook, friendState, parseFriendList, reconcile, uncon
   await import("../src/packages/socket/src/utils/friendList.ts");
 
 const require = createRequire(import.meta.url);
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws");
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+type FakeWs = { send(data: string): void; on(event: "message", listener: (data: Buffer) => void): void; terminate(): void };
+type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; close(done: () => void): void };
+// ws ships no types of its own, so only what this file uses.
+const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
+  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
+};
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const at = new Date(0).toISOString();
-const person = (id) => ({ serverUserId: id, nickname: id, at });
-const list = ({ friends = [], incoming = [], outgoing = [] } = {}) => ({
+const person = (id: string) => ({ serverUserId: id, nickname: id, at });
+const list = ({ friends = [] as string[], incoming = [] as string[], outgoing = [] as string[] } = {}) => ({
   friends: friends.map(person),
   incoming: incoming.map(person),
   outgoing: outgoing.map(person),
@@ -65,16 +73,17 @@ const list = ({ friends = [], incoming = [], outgoing = [] } = {}) => ({
 /* ── a server that says what it likes ───────────────────────────────────── */
 
 function hostileServer() {
-  let http = null;
-  let wss = null;
-  let ws = null;
-  const received = [];
+  let http: HttpServer | null = null;
+  let wss: FakeWss | null = null;
+  let ws: FakeWs | null = null;
+  const received: [string, object][] = [];
   const server = {
     url: "",
     received,
     async up() {
-      http = createServer();
-      wss = new WebSocketServer({ server: http });
+      const listening = createServer();
+      http = listening;
+      wss = new WebSocketServer({ server: listening });
       wss.on("connection", (socket) => {
         ws = socket;
         socket.send(`0${JSON.stringify({ sid: "engine", upgrades: [], pingInterval: 60_000, pingTimeout: 60_000, maxPayload: 1_000_000 })}`);
@@ -84,29 +93,34 @@ function hostileServer() {
           else if (text.startsWith("42")) received.push(JSON.parse(text.slice(2)));
         });
       });
-      await new Promise((resolve) => http.listen(0, "127.0.0.1", resolve));
-      server.url = `http://127.0.0.1:${http.address().port}`;
+      await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+      const address = listening.address();
+      assert.ok(address && typeof address === "object", "the fake server is not on a port");
+      server.url = `http://127.0.0.1:${address.port}`;
     },
-    send(event, payload) {
+    send(event: string, payload: object) {
+      assert.ok(ws, "nothing has connected to the fake server");
       ws.send(`42${JSON.stringify([event, payload])}`);
     },
     async down() {
       ws?.terminate();
-      await new Promise((resolve) => wss.close(resolve));
-      http.closeAllConnections();
-      await new Promise((resolve) => http.close(resolve));
+      const [listening, sockets] = [http, wss];
+      assert.ok(listening && sockets, "the fake server went down before it came up");
+      await new Promise<void>((resolve) => sockets.close(resolve));
+      listening.closeAllConnections();
+      await new Promise((resolve) => listening.close(resolve));
     },
   };
   return server;
 }
 
 const ME = "me";
-const ringFrom = (from) => ({
+const ringFrom = (from: string) => ({
   conversation_id: directConversationId(ME, from),
   from: { server_user_id: from, nickname: from },
   expires_at: Date.now() + 30_000,
 });
-const view = (other) => ({
+const view = (other: string) => ({
   conversation_id: directConversationId(ME, other),
   kind: "dm",
   members: [{ server_user_id: other, nickname: other }],
@@ -116,10 +130,10 @@ const view = (other) => ({
 const server = hostileServer();
 await server.up();
 const socket = io(server.url, { transports: ["websocket"], forceNew: true, reconnection: false });
-const prefs = { messages: "everyone", calls: "friends" };
+const prefs: ContactPrefs = { messages: "everyone", calls: "friends" };
 const book = emptyBook();
 const knowledge = emptyKnowledge();
-const filtered = [];
+const filtered: FilteredEvent[] = [];
 installContactGuard(socket, {
   host: "hostile.example",
   selfId: () => ME,
@@ -127,14 +141,14 @@ installContactGuard(socket, {
   knowledge,
   persist: () => {},
   onFiltered: (event) => filtered.push(event),
-  friends: { isFriend: (id) => book.friends.has(id), hasAny: () => book.friends.size > 0 },
+  friends: { isFriend: (id: string) => book.friends.has(id), hasAny: () => book.friends.size > 0 },
 });
 watchFriendTraffic(socket, { book, prefs: () => prefs, persist: () => {} });
-const rings = [];
-const notices = [];
+const rings: string[] = [];
+const notices: string[] = [];
 socket.on("call:incoming", (c) => rings.push(c.from.server_user_id));
 socket.on("friend:request:incoming", (n) => notices.push(n.serverUserId));
-await new Promise((resolve) => socket.once("connect", resolve));
+await new Promise<void>((resolve) => socket.once("connect", resolve));
 const settle = () => sleep(60);
 
 try {
@@ -184,18 +198,22 @@ try {
 
 /* ── the book is kept on this device, and only here ─────────────────────── */
 
-const store = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: (k) => store.delete(k),
-};
+const store = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
+  },
+});
 const friends = await import("../src/packages/socket/src/hooks/friendsStore.ts");
 const kept = friends.friendBookFor("a.example");
 kept.asked.set("pal", 5);
 kept.friends.set("old", { nickname: "Old", since: 1 });
 friends.persistFriendBook("a.example");
-const saved = JSON.parse(store.get("gryt_friends"));
+const written = store.get("gryt_friends");
+assert.ok(written, "the friend book was never written");
+const saved = JSON.parse(written);
 assert.deepEqual(Object.keys(saved), ["a.example"]);
 assert.deepEqual(saved["a.example"].asked, { pal: 5 });
 assert.equal(friends.firstNoticeOf("a.example", "asker"), true);

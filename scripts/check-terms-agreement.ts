@@ -31,16 +31,16 @@ assert.deepEqual(agreementAt(new Date("2026-09-16T10:00:00.000Z"), "2026-09-03")
 
 const NOW = new Date("2026-09-16T10:00:00.000Z");
 
-function syncStorage(initial = null) {
+function syncStorage(initial: string | null = null) {
   const storage = {
     value: initial,
     reads: 0,
-    writes: [],
+    writes: [] as string[],
     read() {
       storage.reads++;
       return storage.value;
     },
-    write(value) {
+    write(value: string) {
       storage.writes.push(value);
       storage.value = value;
     },
@@ -152,7 +152,7 @@ function counter() {
 
 // ── the gate, over storage that answers later ───────────────────────
 
-function asyncStorage(value) {
+function asyncStorage(value: string | null) {
   const storage = {
     reads: 0,
     read() {

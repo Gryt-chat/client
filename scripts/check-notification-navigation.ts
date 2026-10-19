@@ -8,12 +8,15 @@ import { readFileSync } from "node:fs";
 
 /* ── just enough window for the notification module ─────────────────────── */
 
-globalThis.window = new EventTarget();
-window.focus = () => {};
-const raised = [];
-globalThis.Notification = class {
+Object.assign(globalThis, { window: Object.assign(new EventTarget(), { focus: () => {} }) });
+const raised: FakeNotification[] = [];
+class FakeNotification {
   static permission = "granted";
-  constructor(title, options = {}) {
+  title: string;
+  body: string;
+  onclick: (() => void) | null;
+  closed: boolean;
+  constructor(title: string, options: { body?: string } = {}) {
     this.title = title;
     this.body = options.body ?? "";
     this.onclick = null;
@@ -23,7 +26,8 @@ globalThis.Notification = class {
   close() {
     this.closed = true;
   }
-};
+}
+Object.assign(globalThis, { Notification: FakeNotification });
 
 const { onDesktopNotificationOpen, showDesktopNotification } = await import("../src/packages/lib/desktopNotification.ts");
 const { NO_CHANNEL, selectChannel } = await import("../src/packages/socket/src/utils/channelSelection.ts");
@@ -33,13 +37,15 @@ const { NO_CHANNEL, selectChannel } = await import("../src/packages/socket/src/u
 const ALPHA = "alpha.example:5000";
 const BRAVO = "bravo.example:5000";
 
-function channels(...rows) {
+function channels(...rows: [string, string?][]) {
   return rows.map(([id, type = "text"]) => ({ id, type }));
 }
 
-function app(serverChannels) {
-  const saved = {};
-  let viewing = null;
+type Destination = { host: string; channelId: string };
+
+function app(serverChannels: Record<string, ReturnType<typeof channels>>) {
+  const saved: Record<string, string> = {};
+  let viewing: string | null = null;
   let selection = NO_CHANNEL;
   const shown = () => {
     selection = selectChannel(selection, viewing, viewing ? serverChannels[viewing] : undefined, viewing ? saved[viewing] ?? null : null);
@@ -50,24 +56,25 @@ function app(serverChannels) {
     shown,
     viewing: () => viewing,
     /** Clicking a server in the rail. */
-    view(host) {
+    view(host: string) {
       viewing = host;
       return shown();
     },
     /** Clicking a text channel: picked here, and saved as this server's last. */
-    pick(channelId) {
+    pick(channelId: string) {
+      assert.ok(viewing, "picked a channel with no server open");
       selection = { host: viewing, channelId };
       saved[viewing] = channelId;
       return shown();
     },
     /** What mainApp does with a notification click. */
-    opened({ host, channelId }) {
+    opened({ host, channelId }: Destination) {
       if (!serverChannels[host]) return shown();
       saved[host] = channelId;
       viewing = host;
       return shown();
     },
-    load(host, list) {
+    load(host: string, list: ReturnType<typeof channels>) {
       serverChannels[host] = list;
       return shown();
     },
@@ -89,7 +96,7 @@ function app(serverChannels) {
   const stop = onDesktopNotificationOpen(gryt.opened);
   showDesktopNotification("Sender", "ping", { host: BRAVO, channelId: "bravo-notes" });
   assert.equal(raised.length, 1, "no browser notification was raised");
-  raised[0].onclick();
+  raised[0].onclick?.();
   stop();
 
   assert.ok(raised[0].closed, "the notification stayed open after its click");
@@ -104,19 +111,21 @@ function app(serverChannels) {
 /* ── the Electron bridge carries the destination both ways ──────────────── */
 
 {
-  let sent = null;
-  let clicked = null;
-  window.electronAPI = {
-    showNotification: (payload) => {
-      sent = payload;
+  let sent = null as { destination?: Destination } | null;
+  let clicked = null as ((destination?: Destination) => void) | null;
+  Object.assign(window, {
+    electronAPI: {
+      showNotification: (payload: { destination?: Destination }) => {
+        sent = payload;
+      },
+      onNotificationClick: (callback: (destination?: Destination) => void) => {
+        clicked = callback;
+        return () => {
+          clicked = null;
+        };
+      },
     },
-    onNotificationClick: (callback) => {
-      clicked = callback;
-      return () => {
-        clicked = null;
-      };
-    },
-  };
+  });
   const gryt = app({ [ALPHA]: channels(["general"], ["alpha-notes"]), [BRAVO]: channels(["general"], ["bravo-notes"]) });
   gryt.view(ALPHA);
   gryt.pick("alpha-notes");
@@ -125,14 +134,14 @@ function app(serverChannels) {
   showDesktopNotification("Sender", "ping", { host: BRAVO, channelId: "bravo-notes" });
   assert.deepEqual(sent?.destination, { host: BRAVO, channelId: "bravo-notes" }, "the destination did not reach the main process");
   assert.equal(typeof clicked, "function", "nothing listens for the main process's click");
-  clicked(sent.destination);
+  clicked?.(sent?.destination);
   assert.equal(gryt.shown(), "bravo-notes");
   stop();
   assert.equal(clicked, null, "the click listener outlived its unsubscribe");
   delete window.electronAPI;
 
   // The main process and the preload can't run here, so only their wiring is checked: both ends name one channel.
-  const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+  const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
   const channel = /webContents\.send\("([^"]+)", destination\)/.exec(read("electron/main.ts"))?.[1];
   assert.ok(channel, "electron/main.ts no longer sends a clicked notification's destination back");
   assert.ok(read("electron/preload.ts").includes(`ipcRenderer.on("${channel}", handler)`), `the preload doesn't listen on "${channel}"`);
