@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
+
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";

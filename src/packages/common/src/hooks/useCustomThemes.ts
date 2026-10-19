@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import type { GrytTheme } from "@gryt/ui";
 import { decodeGrytTheme, grytPresetsById } from "@gryt/ui";
 import { useCallback, useState } from "react";

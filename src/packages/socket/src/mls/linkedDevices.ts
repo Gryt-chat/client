@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import type { MlsOwnDevice } from "@gryt/core";
 
 /* "New device linked" (GRYT-1583): when one of your devices turns up on a server, your other

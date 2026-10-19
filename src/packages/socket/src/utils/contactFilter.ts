@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 

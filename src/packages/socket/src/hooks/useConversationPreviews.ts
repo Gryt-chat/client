@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: caught errors are unknown until checked. Remove as each is typed (GRYT-1792). */
+
 import { useEffect, useState } from "react";
 
 import { getOwnServerUserId, identityScopeFor, openLocalArchive } from "@/common";

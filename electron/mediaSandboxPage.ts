@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /// <reference lib="dom" />
 
 /* Runs in the media sandbox window: a sandboxed renderer with no Node, no network and no

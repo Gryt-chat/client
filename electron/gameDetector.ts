@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /** Known games spotted by their program, for the ones that don't send Rich Presence (GRYT-1636).
     Asks once per game, and only "this app id is running" ever leaves this module. */
 

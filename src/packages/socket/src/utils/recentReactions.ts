@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 const STORAGE_PREFIX = "gryt:recentReactions";
 const MAX_STORED = 30;
 const DEFAULT_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "👎"];

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 /**
  * Routing a plugin's messages to the right plugin. Nothing but this keeps one of
  * two installed plugins from hearing the other's, so it imports nothing (GRYT-939).

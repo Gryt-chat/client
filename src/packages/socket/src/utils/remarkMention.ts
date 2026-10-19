@@ -1,8 +1,21 @@
-import type { PhrasingContent, Root, Text } from "mdast";
+import type { Data, Parent, PhrasingContent, Root, Text } from "mdast";
 import type { Plugin } from "unified";
 import { CONTINUE, visit } from "unist-util-visit";
 
 import { mentionTarget } from "@/lib/mentionTokens";
+
+/** The node this plugin adds, so mdast knows it as phrasing content (GRYT-1792). */
+interface MentionNode extends Parent {
+  type: "mention";
+  children: Text[];
+  data?: Data & { hName: string; hProperties: Record<string, string | undefined> };
+}
+
+declare module "mdast" {
+  interface PhrasingContentMap {
+    mention: MentionNode;
+  }
+}
 
 export type MentionableMember = {
   nickname: string;
@@ -54,8 +67,8 @@ function buildReplacements(
         hName: "span",
         hProperties: { "data-mention-id": id ?? "", className: "chat-mention" },
       },
-      children: [{ type: "text", value: `@${original}` } as Text],
-    } as unknown as PhrasingContent);
+      children: [{ type: "text", value: `@${original}` }],
+    } satisfies MentionNode);
 
     changed = true;
     remaining = remaining.slice(earliest + 1 + matchedLen);
@@ -89,8 +102,8 @@ export function createRemarkMention(members: MentionableMember[]): Plugin<[], Ro
       const mentionNode = {
         type: "mention",
         data: { hName: "span", hProperties },
-        children: [{ type: "text", value: target.kind === "channel" ? "#channel" : at } as Text],
-      } as unknown as PhrasingContent;
+        children: [{ type: "text", value: target.kind === "channel" ? "#channel" : at }],
+      } satisfies MentionNode;
       (parent.children as PhrasingContent[]).splice(index, 1, mentionNode);
       return [CONTINUE, index] as const;
     });

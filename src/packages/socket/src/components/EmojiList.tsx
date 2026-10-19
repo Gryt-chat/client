@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: responses from other services arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 import { Button, IconButton, TextField } from "@gryt/ui";
 import { type ChangeEvent, useState } from "react";
 import toast from "react-hot-toast";

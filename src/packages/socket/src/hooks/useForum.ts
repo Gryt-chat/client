@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken } from "@/common";
 
@@ -65,7 +68,7 @@ export interface UseForumResult {
 }
 
 export function useForum(
-  socketConnection: unknown,
+  socketConnection: Socket | null,
   conversationId: string,
   serverHost: string | undefined,
 ): UseForumResult {

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 // ── Remembered scheme ────────────────────────────────────────────────────────
 //
 // Plain is the default: Gryt's server has no TLS of its own, and a deployment

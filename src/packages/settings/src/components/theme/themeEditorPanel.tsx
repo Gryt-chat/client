@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import type { GrytAppearance } from "@gryt/ui";
 import { Button, encodeDraft,ThemeEditor } from "@gryt/ui";
 import { ArrowCounterClockwise, Link as LinkIcon, X } from "@phosphor-icons/react";

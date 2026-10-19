@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
+
 /**
  * Decision 4's record: people seen on MLS, per server, never sealed to with version 1 again.
  * A peer pin has no field for it yet, so it sits next to the pins in localStorage.

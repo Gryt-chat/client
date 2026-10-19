@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /** What's playing, read from the OS media controls (GRYT-1637), for a "Listening to" card.
     Windows reads its media session, Linux MPRIS, and macOS asks Spotify and Music directly. */
 

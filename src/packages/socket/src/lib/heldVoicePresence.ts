@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
+
 import type { Client, Clients } from "../types/clients";
 
 /** Each member's last `hasJoinedChannel` entry, by serverUserId, and the socket that sent it. */

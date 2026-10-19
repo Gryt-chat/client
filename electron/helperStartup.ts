@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /**
  * Starting gryt-helper at login, only once somebody turns it on (GRYT-1605). Nothing here
  * runs at install, first launch or update; the settings switch is the only way in.

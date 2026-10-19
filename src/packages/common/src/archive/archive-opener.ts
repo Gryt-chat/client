@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
+
 import { ArchiveKeyError, type ArchiveKeyErrorCode, type Keychain, loadArchiveKey } from "../auth/archive-key.ts";
 import { archiveKeySlot, forgetRetiredMlsDevice, retiredMlsDevices, wipeServer } from "./archive-db.ts";
 import { MessageArchive } from "./message-archive.ts";

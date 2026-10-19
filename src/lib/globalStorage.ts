@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
+
 /**
  * Backs localStorage with a JSON file in Electron's userData directory. Call
  * `initGlobalStorage()` **before** React renders. A no-op on the web.

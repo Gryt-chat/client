@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 /* A handle for driving the client from a debugger, or from an agent over CDP.
    Dev builds only: `import.meta.env.DEV` folds this whole file away (GRYT-1115). */
 
@@ -127,6 +129,6 @@ export type AiToolkit = typeof toolkit;
 
 /** Called from main.tsx, already behind `import.meta.env.DEV`. */
 export function installAiToolkit(): void {
-  (window as unknown as { gryt: AiToolkit }).gryt = toolkit;
+  Object.assign(window, { gryt: toolkit });
   console.info("[dev] window.gryt is here. gryt.help() lists what it does.");
 }

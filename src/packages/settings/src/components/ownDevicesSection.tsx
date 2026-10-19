@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import type { MlsOwnDevice } from "@gryt/core";
 import { Alert, Avatar, Button, Chip, IconButton, Tooltip } from "@gryt/ui";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import { Accordion, Alert, Avatar, Button, Checkbox, Chip, Spinner, Surface, TextField } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /* The desktop stand-in for the image worker's jail (GRYT-1664). A hidden, sandboxed Chromium
    renderer decodes and writes out uploads for a server hosted from the app. */
 import { BrowserWindow, ipcMain, session, type WebContents } from "electron";

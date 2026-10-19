@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /**
  * The game list at github.com/Gryt-chat/rich-presence (`games.json`), fetched so a game
  * outside our curated list still gets a real name, and so detection knows program names.

@@ -12,8 +12,8 @@ type PinnedEvent = { conversation_id: string; message_id: string; pinned_at: str
 
 /** Pinned messages (GRYT-1619). `pinnedAt` overlays what the fetched messages carried,
     so a pin made since the history loaded shows without a refetch. */
-export function usePins(socketConnection: unknown, conversationId: string, serverHost?: string) {
-  const socket = (socketConnection as Socket | undefined) ?? null;
+export function usePins(socketConnection: Socket | null | undefined, conversationId: string, serverHost?: string) {
+  const socket = socketConnection ?? null;
   const [live, setLive] = useState<Record<string, string | null>>({});
   const [list, setList] = useState<ChatMessage[] | null>(null);
   const [failed, setFailed] = useState(false);

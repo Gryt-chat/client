@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
+
 /**
  * Your own card, kept locally so a server you join next gets it too, the way the
  * designed owl does. One card for every server, like the status line under your name.

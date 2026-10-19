@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 export type UploadEmojiViaXhrResult =
   | { ok: true; status: number; name: string; file_id: string }
   | { ok: false; status: number; error: string; message: string };

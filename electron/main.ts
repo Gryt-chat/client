@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 import { execFile, spawn } from "child_process";
 import {
   app,
@@ -1030,6 +1032,8 @@ function variantSwitchPending(): boolean {
 /** electron-updater returns false on `eq(latest, current)` before it looks at
     the channel, so a variant switch is invisible without this. */
 function applyVariantSwitchSpoof(): void {
+  // electron-updater types currentVersion as read-only; the dev build sets it on purpose.
+  // eslint-disable-next-line no-restricted-syntax
   (autoUpdater as unknown as { currentVersion: semver.SemVer }).currentVersion =
     new semver.SemVer(variantSwitchPending() ? "0.0.0" : app.getVersion());
 }

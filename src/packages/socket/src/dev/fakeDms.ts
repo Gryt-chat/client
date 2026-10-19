@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
+
 /**
  * Fake friends, conversations and presence for looking at the messages space against
  * the canvas boards without nine real accounts. `?fakedms`, dev only (GRYT-1741).

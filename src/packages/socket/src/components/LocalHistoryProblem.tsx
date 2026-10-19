@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: caught errors are unknown until checked. Remove as each is typed (GRYT-1792). */
+
 import { Button } from "@gryt/ui";
 import { useState } from "react";
 import toast from "react-hot-toast";

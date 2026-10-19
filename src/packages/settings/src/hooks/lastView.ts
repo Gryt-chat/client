@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: stored and parsed data arrives unchecked and is validated here. Remove as each is typed (GRYT-1792). */
+
 import { getUserValue, setUserValue } from "./userStorage";
 
 /* What was on screen when Gryt last closed, so the next launch opens the same

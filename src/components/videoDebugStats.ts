@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 /** One entry of a getStats report. Browsers leave out what they don't track, so every field is optional. */
 export type Stat = { id: string; type: string; timestamp: number } & Record<string, unknown>;
 

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import type { DmSealingMode, MlsDmContent, MlsOwnDevice, MlsServerCapability } from "@gryt/core";
 import { useSyncExternalStore } from "react";
 import type { Socket } from "socket.io-client";
@@ -303,6 +305,8 @@ async function refresh(host: string): Promise<void> {
         return;
       }
       state.session = createMlsSession({
+        // socket.io's generic on/off don't fit SessionSocket's plain signature.
+        // eslint-disable-next-line no-restricted-syntax
         socket: state.socket as unknown as SessionSocket,
         storeScope: scope,
         dmScope: scope,

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 import { ChildProcess, fork, spawn } from "child_process";
 import { app, BrowserWindow } from "electron";
 import { existsSync, readFileSync } from "fs";

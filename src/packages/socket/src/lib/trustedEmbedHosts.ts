@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 /* Sites somebody chose to always load embeds from, on this device (GRYT-1670). Asked per site,
    since trusting YouTube is not trusting whatever else gets linked. */
 

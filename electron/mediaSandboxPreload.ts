@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: IPC messages and files on disk arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /* The media sandbox page's only way out: take a job, hand back a result. Nothing else from
    Electron reaches the page. */
 import { contextBridge, ipcRenderer } from "electron";

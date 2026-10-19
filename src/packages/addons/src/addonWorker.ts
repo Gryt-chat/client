@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 /// <reference lib="webworker" />
 
 /**
@@ -183,7 +185,7 @@ const gryt = {
   },
 };
 
-(globalThis as unknown as { gryt: typeof gryt }).gryt = gryt;
+Object.assign(globalThis, { gryt });
 
 self.addEventListener("message", (event: MessageEvent<HostMessage>) => {
   const message = event.data;

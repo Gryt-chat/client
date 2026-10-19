@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import { Dispatch, MutableRefObject, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { Socket } from "socket.io-client";
@@ -214,6 +216,8 @@ export function useChatSend({
      the server changes, and what the old one still held fails with its text back. */
   useEffect(() => {
     if (!currentConnection) return;
+    // socket.io's generic on/off don't fit QueueSocket's plain signature.
+    // eslint-disable-next-line no-restricted-syntax
     const queue = new SendQueue(currentConnection as unknown as ConstructorParameters<typeof SendQueue>[0], {
       emit: (nonce) => emitSendRef.current(nonce),
       onGiveUp: (nonce) => {

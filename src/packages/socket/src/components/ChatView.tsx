@@ -130,7 +130,7 @@ export const ChatView = memo(({
   editMessage?: (messageId: string, conversationId: string, newText: string) => void;
   currentUserId?: string;
   currentUserNickname?: string;
-  socketConnection?: unknown;
+  socketConnection?: Socket | null;
   serverHost?: string;
   memberList?: Record<string, MemberInfo>;
   /** `chatMessages` arrives filtered, but the thread panel's come from
@@ -251,7 +251,7 @@ export const ChatView = memo(({
 
   // Threads live here so both the desktop and mobile chat views get them for
   // free — the socket, conversation and member list are all already in hand.
-  const threads = useThreads(socketConnection, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
+  const threads = useThreads(socketConnection ?? null, conversationKey ?? "", serverHost, currentUserId, currentUserNickname);
   const isForum = layout === "forum" && conversationKind !== "dm";
   const pins = usePins(socketConnection, conversationKey ?? "", serverHost);
   // The server's rule: manage_messages in a channel, anyone in a DM.
@@ -343,7 +343,7 @@ export const ChatView = memo(({
       : "This deletes the message for everyone. You can't undo it.";
 
   const { typingUsers, emitTyping, emitStopTyping } = useTypingIndicator(
-    (socketConnection as Socket) ?? null,
+    socketConnection ?? null,
     conversationKey ?? "",
   );
 
@@ -354,7 +354,7 @@ export const ChatView = memo(({
     emitTyping: emitThreadTyping,
     emitStopTyping: emitThreadStopTyping,
   } = useTypingIndicator(
-    (socketConnection as Socket) ?? null,
+    socketConnection ?? null,
     conversationKey ?? "",
     threads.open?.thread.thread_id ?? null,
   );
@@ -730,7 +730,7 @@ export const ChatView = memo(({
   const postPoll = useCallback((poll: NewPoll) => {
     const accessToken = getServerAccessToken(serverHost ?? "");
     if (!socketConnection || !accessToken || !conversationKey) return;
-    (socketConnection as Socket).emit("chat:send", { conversationId: conversationKey, accessToken, poll });
+    socketConnection?.emit("chat:send", { conversationId: conversationKey, accessToken, poll });
   }, [socketConnection, serverHost, conversationKey]);
 
   const renderThreadComposer = useCallback(
@@ -888,7 +888,7 @@ export const ChatView = memo(({
 
           {isForum ? (
             <ForumView
-              socketConnection={socketConnection}
+              socketConnection={socketConnection ?? null}
               conversationId={conversationKey ?? ""}
               serverHost={serverHost}
               currentUserId={currentUserId}

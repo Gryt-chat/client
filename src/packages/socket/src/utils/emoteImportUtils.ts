@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: responses from other services arrive unchecked. Remove as each is typed (GRYT-1792). */
+
 /**
  * The bits of importing emotes that do not care where they came from. The four
  * places the sources differ are in emoteImportSources.ts.

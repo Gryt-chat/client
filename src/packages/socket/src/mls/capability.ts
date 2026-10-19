@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: not typed yet. Remove as each is typed (GRYT-1792). */
+
 import type { MlsServerCapability } from "@gryt/core";
 
 /** `server:info.mls`, and only suite 1 and version 1, which is all this app speaks. */

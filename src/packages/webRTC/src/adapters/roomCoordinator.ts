@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 import type { RoomAccess, RoomCoordinator } from "@gryt/voice";
 import type { Socket } from "socket.io-client";
 

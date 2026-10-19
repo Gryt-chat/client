@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types -- unknown: socket payloads arrive unchecked and are validated here. Remove as each is typed (GRYT-1792). */
+
 /**
  * What a plugin says it wants to do, and what somebody has agreed to. A granted
  * capability bounds what a plugin can read, not where it sends what it was given.
