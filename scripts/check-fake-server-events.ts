@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The fixture that starts before the socket handler. A source check, the way
  * `check-fake-participants.mjs` is: these modules read `import.meta.env`.
@@ -8,7 +6,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 const events = read("../src/packages/socket/src/dev/fakeServerEvents.ts");
 const chat = read("../src/packages/socket/src/dev/fakeChat.ts");

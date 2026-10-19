@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What the client draws per channel: the server's list for that channel where it
  * sent one (GRYT-1416), and the server-wide list where it did not.
@@ -9,7 +7,7 @@ import assert from "node:assert/strict";
 
 const { canInChannel, CHANNEL_PERMISSIONS } = await import("../src/packages/socket/src/lib/permissions.ts");
 
-const serverWide = (held) => (permission) => held.includes(permission);
+const serverWide = (held: string[]) => (permission: string) => held.includes(permission);
 const everything = serverWide([...CHANNEL_PERMISSIONS, "kick_members"]);
 const readOnly = serverWide(["read_messages"]);
 

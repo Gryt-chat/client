@@ -1,4 +1,4 @@
-/* A type-only import so scripts/check-server-order.mjs can import this module:
+/* A type-only import so scripts/check-server-order.ts can import this module:
    a value import would send Node looking for an extensionless file. */
 import type { Servers } from "./types/server";
 

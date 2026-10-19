@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The wiring behind reporting a person. It reads source: what it catches is the
  * class of breakage that typechecks — a dropped prop, a wrong gate (GRYT-746).
@@ -11,7 +9,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 const menu = read("src/packages/socket/src/components/UserContextMenu.tsx");
 const sidebar = read("src/packages/socket/src/components/MemberSidebar.tsx");

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The order of the server rail, and what the client opens on launch. Both read
  * `orderServerHosts`; the launch focus used insertion order until GRYT-642.
@@ -10,8 +8,8 @@ import assert from "node:assert/strict";
 import { orderServerHosts } from "../src/packages/settings/src/serverOrder.ts";
 
 /** Only the keys matter here, so the values are placeholders. */
-const serversOf = (...hosts) =>
-  Object.fromEntries(hosts.map((host) => [host, { host }]));
+const serversOf = (...hosts: string[]) =>
+  Object.fromEntries(hosts.map((host) => [host, { host }])) as Parameters<typeof orderServerHosts>[0];
 
 // Nothing dragged: the rail is the order servers were added in.
 assert.deepEqual(

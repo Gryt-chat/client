@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /** GRYT-1663. A line a second about the call, for the bug report: deltas, gaps and the cap. */
 
 import assert from "node:assert/strict";
@@ -36,6 +34,6 @@ const lines = callTimeline();
 assert.equal(lines.length, 300, "capped");
 assert.match(lines[0], /^call started /, "the start line survives the cap");
 endCallTimeline();
-assert.match(callTimeline().at(-1), /^call ended after /);
+assert.match(callTimeline().at(-1) ?? "", /^call ended after /);
 
 console.log("call timeline: ok");

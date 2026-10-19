@@ -3,7 +3,7 @@
 import { fileURLToPath } from "url";
 
 import { buildHelper } from "./build-helper.mjs";
-import checkExtraResources from "./check-extra-resources.mjs";
+import checkExtraResources from "./check-extra-resources.ts";
 import { HELPER_RESOURCE_PREFIX, isMasBuild, isSlimBuild } from "./variant.mjs";
 
 // electron-builder accepts one beforeBuild hook. Package the runtime first,

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Every path that sends a message goes through the seal. `performRetry` did not,
  * so a retried message went out in the clear and looked identical (GRYT-765).
@@ -14,7 +12,7 @@ const source = readFileSync(
 );
 
 /** The body of one `const <name> = useCallback(` up to its closing line. */
-function callback(name) {
+function callback(name: string) {
   const start = source.indexOf(`const ${name} = useCallback(`);
   assert.notEqual(start, -1, `${name} is gone — check this file still describes it`);
 

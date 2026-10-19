@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The dev fixtures, where being convincing is the whole requirement. Two
  * properties that look like taste until they break.
@@ -15,7 +13,7 @@ const participants = readFileSync(
   "utf8",
 );
 
-const names = [...participants.matchAll(/^\s{2}"([^"]+)",$/gm)].map((m) => m[1]);
+const names = [...participants.matchAll(/^\s{2}"([^"]+)",$/gm)].map((m) => m[1] ?? "");
 assert.ok(names.length >= 20, `only found ${names.length} fake names`);
 
 /**
@@ -23,7 +21,7 @@ assert.ok(names.length >= 20, `only found ${names.length} fake names`);
  * owls. Six names share a colour, so a repeat reads as broken tinting (GRYT-648).
  */
 const GRID = 18;
-const front = names.slice(0, GRID).map((n) => owlAvatarColour(avatarSeed(n)));
+const front = names.slice(0, GRID).map((n) => owlAvatarColour(avatarSeed(n) ?? n));
 
 assert.equal(
   new Set(front).size,
@@ -39,7 +37,7 @@ const chat = readFileSync(
 
 // The layouts the fixture exists to exercise. A conversation that reads better
 // and stops covering these is a downgrade, and an easy one to make.
-for (const [what, pattern] of [
+const COVERED: [string, RegExp][] = [
   ["a code block", /```ts/],
   ["a link preview", /https:\/\/gryt\.chat/],
   ["a mention", /@\$\{selfNickname\}/],
@@ -48,7 +46,8 @@ for (const [what, pattern] of [
   ["a custom emoji on its own", /customOr\(emoji/],
   ["a reaction", /reactTo:/],
   ["two people at once", /together: true/],
-]) {
+];
+for (const [what, pattern] of COVERED) {
   assert.match(chat, pattern, `the fake chat no longer covers ${what}`);
 }
 

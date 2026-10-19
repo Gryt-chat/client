@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The signature check that decides whether a Windows release is allowed out. A
  * cloud signing CLI that cannot find its credentials exits 0 having done nothing.

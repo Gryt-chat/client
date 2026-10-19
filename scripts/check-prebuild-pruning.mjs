@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Which native prebuilds survive packaging. The dangerous outcome is keeping
  * none: node-gyp-build resolves the binary the first time a hotkey fires.

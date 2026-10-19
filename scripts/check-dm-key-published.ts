@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * A returning member says what key to encrypt to them. `publishDmKey` ran only
  * from `server:joined`, which a client holding a token never reaches (GRYT-758).
@@ -70,7 +68,7 @@ const source = readFileSync(
 );
 
 /** The body of one `socket.on("<event>", ...)` handler, to its closing line. */
-function handlerBody(event) {
+function handlerBody(event: string) {
   const opener = `socket.on("${event}"`;
   const start = source.indexOf(opener);
   assert.notEqual(start, -1, `there is no ${event} handler any more`);
