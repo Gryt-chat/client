@@ -10,18 +10,20 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (path) => readFileSync(join(root, path), "utf8");
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const HELPER = "src/packages/socket/src/utils/uploadWebhookAvatar.ts";
 const TAB = "src/packages/socket/src/components/ServerWebhooksTab.tsx";
 
 const helperSource = stripTypeScriptTypes(read(HELPER)).replace(/^export /gm, "");
-const load = (fetch) =>
+const load = (fetch: ReturnType<typeof fakeServer>["fetch"]) =>
   new Function("fetch", `${helperSource}\nreturn { uploadWebhookAvatar, WEBHOOK_AVATAR_NEEDS_UPDATE };`)(fetch);
 
-function fakeServer(answer) {
-  const calls = [];
-  const fetch = async (url, init) => {
+type Init = { headers: Record<string, string>; body: FormData };
+
+function fakeServer(answer: (url: string) => { status: number; body: object | string }) {
+  const calls: { url: string; init: Init }[] = [];
+  const fetch = async (url: string, init: Init) => {
     calls.push({ url, init });
     const { status, body } = answer(url);
     return {
@@ -67,14 +69,14 @@ const headers = { Authorization: "Bearer tok" };
 
 /* ── an older server: no route, and no second try at a full-size one ────── */
 {
-  const server = fakeServer((url) =>
+  const server = fakeServer((url: string) =>
     url.endsWith("/api/uploads/webhook-avatar")
       ? { status: 404, body: "<pre>Cannot POST /api/uploads/webhook-avatar</pre>" }
       : { status: 201, body: { fileId: "stored-full-size", avatarFileId: "stored-full-size" } },
   );
   const { uploadWebhookAvatar, WEBHOOK_AVATAR_NEEDS_UPDATE } = load(server.fetch);
 
-  await assert.rejects(uploadWebhookAvatar("http://h", headers, picture, "hook.png"), (e) => e.message === WEBHOOK_AVATAR_NEEDS_UPDATE);
+  await assert.rejects(uploadWebhookAvatar("http://h", headers, picture, "hook.png"), (e: Error) => e.message === WEBHOOK_AVATAR_NEEDS_UPDATE);
   assert.deepEqual(server.calls.map((c) => c.url), ["http://h/api/uploads/webhook-avatar"], "it fell back to another upload route");
 }
 

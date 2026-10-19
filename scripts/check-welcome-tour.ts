@@ -14,7 +14,7 @@ const SOURCE = "src/packages/settings/src/hooks/useSettings.ts";
 const plain = stripTypeScriptTypes(readFileSync(join(root, SOURCE), "utf8"));
 
 /** A function declaration's body, from its brace to the one that closes it. */
-function bodyOf(signature) {
+function bodyOf(signature: string) {
   const at = plain.indexOf(signature);
   assert.notEqual(at, -1, `${SOURCE} no longer has "${signature}". Move this check with it.`);
   const start = plain.indexOf("{", at + signature.length);
@@ -30,7 +30,7 @@ const completeWelcome = bodyOf("function completeWelcome(");
 
 /* completeWelcome run against a user store, with the state setters recording what
    they were given. `stored` is what the settings load left behind. */
-function run(stored, options) {
+function run(stored: Record<string, string | boolean>, options?: object) {
   const values = new Map(Object.entries(stored));
   const state = { showTour: false, hasSeenWelcome: false, welcomeWritten: false };
   new Function(
@@ -43,11 +43,11 @@ function run(stored, options) {
     completeWelcome,
   )(
     options,
-    (v) => (state.hasSeenWelcome = v),
+    (v: boolean) => (state.hasSeenWelcome = v),
     () => (state.welcomeWritten = true),
-    (v) => (state.showTour = v),
-    (key, fallback) => (values.has(key) ? values.get(key) : fallback),
-    (key, value) => values.set(key, value),
+    (v: boolean) => (state.showTour = v),
+    (key: string, fallback: string | boolean) => (values.has(key) ? values.get(key) : fallback),
+    (key: string, value: string | boolean) => values.set(key, value),
   );
   return { ...state, hasSeenTour: values.get("hasSeenTour") ?? false };
 }

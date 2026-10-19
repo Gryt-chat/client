@@ -11,11 +11,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIR = "src/packages/socket/src/components";
-const read = (file) => readFileSync(join(root, DIR, file), "utf8");
+const read = (file: string) => readFileSync(join(root, DIR, file), "utf8");
 const { emojiQueryAt } = await import(pathToFileURL(join(root, DIR, "emojiQuery.ts")).href);
 
 /** `text` with `|` marking the caret, the way mobile's autocomplete tests read. */
-const at = (withCaret) => emojiQueryAt(withCaret.replace("|", ""), withCaret.indexOf("|"));
+const at = (withCaret: string) => emojiQueryAt(withCaret.replace("|", ""), withCaret.indexOf("|"));
 
 // ── which colons start a shortcode ─────────────────────────────────
 
@@ -47,7 +47,7 @@ assert.equal(at("nice :smile:|"), null, "a finished shortcode is not a query");
 // ── who gets the key ───────────────────────────────────────────────
 
 /** Everything from `opener` to the brace that closes the block it opens. */
-function block(text, opener, what) {
+function block(text: string, opener: string, what: string) {
   const found = text.indexOf(opener);
   assert.ok(found >= 0, `no longer has ${what}`);
   const start = found + opener.length - 1;
@@ -60,7 +60,7 @@ function block(text, opener, what) {
 }
 
 /** The body of a file's `handleKeyDown`, types stripped, to run as itself. */
-function keyHandler(file) {
+function keyHandler(file: string) {
   const source = read(file);
   const start = source.indexOf("const handleKeyDown = useCallback(");
   assert.ok(start >= 0, `${file} no longer has handleKeyDown. Move this check with it.`);
@@ -90,8 +90,10 @@ const editor = new Function(...EDITOR_ARGS, keyHandler("ChatEditor.tsx"));
  * One key press, as the browser runs it. A list is null when no query opened it,
  * and [] when one did and nothing matched. Returns what happened.
  */
-function press(key, { shiftKey = false, emoji = null, mention = null, isEditing = false, text = "hi" } = {}) {
-  const happened = [];
+type Press = { shiftKey?: boolean; emoji?: string[] | null; mention?: string[] | null; isEditing?: boolean; text?: string };
+
+function press(key: string, { shiftKey = false, emoji = null, mention = null, isEditing = false, text = "hi" }: Press = {}) {
+  const happened: string[] = [];
   const e = {
     key,
     shiftKey,
@@ -100,12 +102,13 @@ function press(key, { shiftKey = false, emoji = null, mention = null, isEditing 
     preventDefault() { this.defaultPrevented = true; },
     stopPropagation() { this.stopped = true; },
     isDefaultPrevented() { return this.defaultPrevented; },
+    nativeEvent: null as object | null,
   };
   e.nativeEvent = e;
 
-  for (const [name, handler, results] of [["emoji", emojiList, emoji], ["mention", mentionList, mention]]) {
+  for (const [name, handler, results] of [["emoji", emojiList, emoji], ["mention", mentionList, mention]] as const) {
     if (results === null || e.stopped) continue;
-    handler(e, true, results, 0, (r) => happened.push(`${name} picked ${r}`),
+    handler(e, true, results, 0, (r: string) => happened.push(`${name} picked ${r}`),
       () => happened.push(`${name} closed`), () => {}, { current: false });
   }
   if (!e.stopped) {
@@ -119,7 +122,7 @@ function press(key, { shiftKey = false, emoji = null, mention = null, isEditing 
 }
 
 /** The emoji list for `text` as the editor would open it, given what the search finds. */
-const emojiFor = (withCaret, matches) => (at(withCaret) ? matches : null);
+const emojiFor = (withCaret: string, matches: string[]) => (at(withCaret) ? matches : null);
 
 // The report, pasted or typed: one Enter sends it.
 assert.deepEqual(press("Enter", { emoji: emojiFor("http://192.168.50.196:3000|", []) }), ["sent"],
