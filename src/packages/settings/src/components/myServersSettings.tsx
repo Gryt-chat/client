@@ -23,6 +23,12 @@ import { serverToManage } from "../hostedServers";
 import { EmbeddedServerLogs } from "./embeddedServerLogs";
 import { HIGHLIGHT_MS, SettingsContainer } from "./settingsComponents";
 
+const RUN_STATE = {
+  running: { color: "green", label: "Running" },
+  starting: { color: "amber", label: "Starting…" },
+  stopped: { color: "gray", label: "Stopped" },
+} as const;
+
 /**
  * The servers you run, as opposed to the ones you have joined. They share one
  * SFU, so a second one costs a server process and an image worker.
@@ -244,6 +250,8 @@ function HostedServerCard({
 
   const isRunning = server.status === "running";
   const isStarting = server.status === "starting";
+  const startState = isStarting ? "starting" : "stopped";
+  const runState = isRunning ? "running" : startState;
   const hasError = server.status === "error";
   const name = server.config?.serverName ?? "My Server";
   const port = server.config?.serverPort;
@@ -277,10 +285,8 @@ function HostedServerCard({
               <span className="text-sm font-bold truncate">
                 {name}
               </span>
-              <Chip tone="neutral"
-                color={isRunning ? "green" : isStarting ? "amber" : "gray"}
-              >
-                {isRunning ? "Running" : isStarting ? "Starting…" : "Stopped"}
+              <Chip tone="neutral" color={RUN_STATE[runState].color}>
+                {RUN_STATE[runState].label}
               </Chip>
             </div>
 

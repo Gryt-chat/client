@@ -105,6 +105,13 @@ function ratingColor(estimatedMs: number | null): string {
   return "var(--gryt-danger-11)";
 }
 
+function ratingChip(estimatedMs: number | null) {
+  if (estimatedMs === null) return "gray";
+  if (estimatedMs < 30) return "green";
+  if (estimatedMs < 80) return "blue";
+  return estimatedMs < 150 ? "orange" : "red";
+}
+
 function ratingLabel(estimatedMs: number | null): string {
   if (estimatedMs === null) return "No data";
   if (estimatedMs < 30) return "Excellent";
@@ -140,12 +147,7 @@ export function LatencyPanel() {
               {ms(latency.estimatedOneWayMs)}
             </span>
             <Chip tone="neutral"
-              color={
-                latency.estimatedOneWayMs === null ? "gray"
-                  : latency.estimatedOneWayMs < 30 ? "green"
-                    : latency.estimatedOneWayMs < 80 ? "blue"
-                      : latency.estimatedOneWayMs < 150 ? "orange" : "red"
-              }
+              color={ratingChip(latency.estimatedOneWayMs)}
             >
               {ratingLabel(latency.estimatedOneWayMs)}
             </Chip>

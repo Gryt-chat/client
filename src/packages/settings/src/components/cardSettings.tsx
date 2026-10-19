@@ -68,6 +68,14 @@ async function sendBanner(host: string, file: File | null): Promise<void> {
   if (!r.ok) throw new Error((await r.text().catch(() => "")) || `HTTP ${r.status}`);
 }
 
+function bannerHint(videoHosts: number, allHosts: number): string {
+  if (videoHosts === 0) return "Pictures only: none of your servers takes a video banner.";
+  if (videoHosts < allHosts) {
+    return `A video banner goes to the ${videoHosts} of your servers that take one. The others keep the banner they have.`;
+  }
+  return "A picture or a short video. A video plays silently, up to ten seconds.";
+}
+
 export function CardSettings() {
   const stored = useStoredCard();
   const { sockets, serverProfiles, serverDetailsList, memberLists } = useSockets();
@@ -184,9 +192,8 @@ export function CardSettings() {
   }, [connected.join(" "), memberLists]); // eslint-disable-line react-hooks/exhaustive-deps
   const bannerUrl = bannerPreview === undefined ? serverBanner : bannerPreview;
   // A picked file says its own type; the server's says it in the member list.
-  const bannerType: "image" | "video" = bannerPreview === undefined
-    ? (serverBannerIsVideo ? "video" : "image")
-    : pendingBanner?.type.startsWith("video/") ? "video" : "image";
+  const isVideoBanner = bannerPreview === undefined ? serverBannerIsVideo : Boolean(pendingBanner?.type.startsWith("video/"));
+  const bannerType: "image" | "video" = isVideoBanner ? "video" : "image";
   const dirty = cardDirty || pendingBanner !== undefined;
 
   const changeBanner = (file: File | null) => {
@@ -293,11 +300,7 @@ export function CardSettings() {
           }
         >
           <span className="text-xs text-gryt-muted">
-            {videoBannerHosts.length === 0
-              ? "Pictures only: none of your servers takes a video banner."
-              : videoBannerHosts.length < bannerHosts.length
-                ? `A video banner goes to the ${videoBannerHosts.length} of your servers that take one. The others keep the banner they have.`
-                : "A picture or a short video. A video plays silently, up to ten seconds."}
+            {bannerHint(videoBannerHosts.length, bannerHosts.length)}
           </span>
           <div className="flex flex-wrap gap-2">
             <Button size="small" disabled={bannerBusy} onClick={() => bannerInput.current?.click()}>
@@ -401,7 +404,7 @@ export function CardSettings() {
                   <figcaption className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-gryt-muted">
                     <ToggleGroup
                       value={[stage]}
-                      onValueChange={(v) => setStage(v[0] === "light" ? "light" : v[0] === "dark" ? "dark" : stage)}
+                      onValueChange={(v) => setStage(v[0] === "light" || v[0] === "dark" ? v[0] : stage)}
                       aria-label="Preview on"
                     >
                       <Toggle value="light" size="small">Light app</Toggle>

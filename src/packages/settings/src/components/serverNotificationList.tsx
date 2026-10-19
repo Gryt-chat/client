@@ -24,6 +24,11 @@ const CHOICES: { label: string; value: string }[] = [
   { label: "Nothing", value: "none" },
 ];
 
+const OVERRULED_BY = {
+  none: "Muted by your global level",
+  mentions: "Limited to mentions by your global level",
+};
+
 /**
  * Every server in the rail, and how loud each one is. The levels were only ever
  * reachable by right-clicking one icon at a time, with no way to see the set.
@@ -69,11 +74,7 @@ export function ServerNotificationList() {
                   global setting" under a server that is already quieter than
                   the ceiling would be noise on every row. */}
               <span className="truncate text-xs text-gryt-muted">
-                {overruled
-                  ? global === "none"
-                    ? "Muted by your global level"
-                    : "Limited to mentions by your global level"
-                  : host}
+                {overruled ? OVERRULED_BY[global === "none" ? "none" : "mentions"] : host}
               </span>
             </div>
             <Select

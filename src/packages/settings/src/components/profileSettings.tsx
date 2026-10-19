@@ -122,15 +122,7 @@ async function uploadAvatarToHost(host: string, file: Blob): Promise<{ avatarFil
     data = {};
   }
   if (!r.ok) {
-    const msg =
-      (typeof data?.message === "string" && data.message.trim().length > 0)
-        ? data.message
-        : (typeof data?.error === "string" && data.error.trim().length > 0)
-          ? data.error
-          : (raw && raw.trim().length > 0)
-            ? raw.trim()
-            : `HTTP ${r.status} ${r.statusText || ""}`.trim();
-    throw new Error(msg);
+    throw new Error(uploadError(data, raw, r));
   }
   return (data || {}) as { avatarFileId?: string; processing?: boolean };
 }
@@ -151,15 +143,7 @@ async function removeAvatarFromHost(host: string): Promise<void> {
     data = {};
   }
   if (!r.ok) {
-    const msg =
-      (typeof data?.message === "string" && data.message.trim().length > 0)
-        ? data.message
-        : (typeof data?.error === "string" && data.error.trim().length > 0)
-          ? data.error
-          : (raw && raw.trim().length > 0)
-            ? raw.trim()
-            : `HTTP ${r.status} ${r.statusText || ""}`.trim();
-    throw new Error(msg);
+    throw new Error(uploadError(data, raw, r));
   }
 }
 
@@ -259,7 +243,7 @@ function ProfileEditor({
           </div>
         </button>
         <span className="text-xs">
-          {uploading ? "Uploading..." : removing ? "Removing..." : "Click to change avatar"}
+          {avatarHint(uploading, removing)}
         </span>
       </div>
 
@@ -360,6 +344,21 @@ function ActivityField() {
       />
     </div>
   );
+}
+
+function uploadError(data: Record<string, unknown>, raw: string, r: Response): string {
+  const said = [data.message, data.error].find((v): v is string => typeof v === "string" && v.trim().length > 0);
+  return said ?? (raw.trim() || `HTTP ${r.status} ${r.statusText || ""}`.trim());
+}
+
+function reasonText(reason: unknown, fallback: string): string {
+  if (reason instanceof Error) return reason.message;
+  return typeof reason === "string" ? reason : fallback;
+}
+
+function avatarHint(uploading: boolean, removing: boolean): string {
+  if (uploading) return "Uploading...";
+  return removing ? "Removing..." : "Click to change avatar";
 }
 
 export function ProfileSettings() {
@@ -499,10 +498,7 @@ export function ProfileSettings() {
       results.forEach((r, idx) => {
         const host = hosts[idx];
         if (r.status !== "fulfilled") {
-          const reason =
-            r.reason instanceof Error
-              ? r.reason.message
-              : (typeof r.reason === "string" ? r.reason : "Upload failed");
+          const reason = reasonText(r.reason, "Upload failed");
           failed.push({ host, reason });
           return;
         }
@@ -573,10 +569,7 @@ export function ProfileSettings() {
       results.forEach((r, idx) => {
         const host = hosts[idx];
         if (r.status !== "fulfilled") {
-          const reason =
-            r.reason instanceof Error
-              ? r.reason.message
-              : (typeof r.reason === "string" ? r.reason : "Remove failed");
+          const reason = reasonText(r.reason, "Remove failed");
           failed.push({ host, reason });
           return;
         }

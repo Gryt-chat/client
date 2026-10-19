@@ -128,11 +128,7 @@ function AddonCard({
       }}>
       <div style={{
           height: 120,
-          background: bannerUrl
-            ? undefined
-            : isTheme
-            ? "linear-gradient(135deg, var(--gryt-accent-9), var(--gryt-accent-9))"
-            : "linear-gradient(135deg, var(--gryt-secondary-9), var(--gryt-secondary-9))",
+          background: bannerUrl ? undefined : PLACEHOLDER_BANNER[addon.type === "theme" ? "theme" : "plugin"],
           backgroundImage: bannerUrl ? `url(${bannerUrl})` : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -263,6 +259,11 @@ function AddonCapabilities({ addon }: { addon: AddonManifest }) {
     </div>
   );
 }
+
+const PLACEHOLDER_BANNER = {
+  theme: "linear-gradient(135deg, var(--gryt-accent-9), var(--gryt-accent-9))",
+  plugin: "linear-gradient(135deg, var(--gryt-secondary-9), var(--gryt-secondary-9))",
+};
 
 export function AddonsSettings() {
   const { addons, enabledIds, toggleAddon, openAddonsFolder } = useAddons();
