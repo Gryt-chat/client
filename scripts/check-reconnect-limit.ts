@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // A dead server used to be retried every five seconds for as long as the app was
 // open, and the toast saying so never went away. GRYT-1137.
 
@@ -15,7 +13,7 @@ const hook = readFileSync(join(root, HOOK), "utf8");
 const toasts = readFileSync(join(root, TOASTS), "utf8");
 
 /** A declaration's body, from its brace to the one that closes it. */
-function bodyOf(text, signature, where) {
+function bodyOf(text: string, signature: string, where: string) {
   const at = text.indexOf(signature);
   assert.notEqual(at, -1, `${where} no longer has "${signature}". Move this check with it.`);
   const start = text.indexOf("{", at + signature.length);
@@ -27,7 +25,7 @@ function bodyOf(text, signature, where) {
   throw new Error(`unbalanced braces after "${signature}" in ${where}`);
 }
 
-function constant(text, name, where) {
+function constant(text: string, name: string, where: string) {
   const found = text.match(new RegExp(`const ${name}(?::[^=]+)? = ([0-9_]+)`));
   assert.ok(found, `${where} no longer declares ${name}. Move this check with it.`);
   return Number(found[1].replace(/_/g, ""));
@@ -86,9 +84,10 @@ function constant(text, name, where) {
     "the host is recorded somewhere other than the reconnect_failed handler",
   );
 
-  const run = (entries, gaveUpHosts) => {
-    const reconnected = [];
-    const marked = [];
+  type Socket = { connected?: boolean; active?: boolean; reconnection?: boolean } | null;
+  const run = (entries: [string, Socket][], gaveUpHosts: string[]) => {
+    const reconnected: string[] = [];
+    const marked: Record<string, string>[] = [];
     const gaveUp = new Set(gaveUpHosts);
     new Function(
       "sockets",
@@ -108,7 +107,7 @@ function constant(text, name, where) {
         ]),
       ),
       gaveUp,
-      (fn) => marked.push(fn({})),
+      (fn: (status: Record<string, string>) => Record<string, string>) => marked.push(fn({})),
     );
     return { reconnected, marked, gaveUp };
   };

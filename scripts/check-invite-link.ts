@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Invite links, with and without a code (GRYT-1291). A link to an open server names only the host,
 // and every place that reads one used to want both halves or showed nothing.
 
@@ -9,18 +7,18 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 /* ── a window for invite.ts, which reads location and writes session storage ── */
 
-function fakeWindow(url) {
+function fakeWindow(url: string) {
   const parsed = new URL(url);
-  const store = new Map();
-  const replaced = [];
+  const store = new Map<string, string>();
+  const replaced: string[] = [];
   const storage = {
-    getItem: (k) => (store.has(k) ? store.get(k) : null),
-    setItem: (k, v) => store.set(k, String(v)),
-    removeItem: (k) => store.delete(k),
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
   };
   const location = {
     href: parsed.href,
@@ -29,9 +27,8 @@ function fakeWindow(url) {
     search: parsed.search,
     hash: parsed.hash,
   };
-  const history = { replaceState: (_s, _t, next) => replaced.push(next) };
-  globalThis.window = { location, history, sessionStorage: storage };
-  globalThis.sessionStorage = storage;
+  const history = { replaceState: (_s: object | null, _t: string, next: string) => replaced.push(next) };
+  Object.assign(globalThis, { window: { location, history, sessionStorage: storage }, sessionStorage: storage });
   return { store, replaced };
 }
 
@@ -137,7 +134,8 @@ for (const url of ["https://app.gryt.chat/invite?code=abc", "https://app.gryt.ch
   assert.deepEqual(pickPublicHost("127.0.0.1:5040", { ...hosted, customAdvertisedAddresses: ["2001:db8::7"] }), { kind: "ok", host: "[2001:db8::7]:5040" });
   assert.deepEqual(pickPublicHost("192.168.1.20:5040", null), { kind: "none" });
 
-  const servers = [{ id: "a", status: "running", error: null, serverUrl: "http://127.0.0.1:5040", config: { ...hosted, customAdvertisedAddresses: ["203.0.113.4"] } }];
+  // Only the addressing half of a hosted config matters to the match.
+  const servers = [{ id: "a", status: "running", error: null, serverUrl: "http://127.0.0.1:5040", config: { ...hosted, customAdvertisedAddresses: ["203.0.113.4"] } }] as Parameters<typeof hostedAdvertisement>[1];
   assert.equal(hostedAdvertisement("localhost:5040", servers)?.serverPort, 5040, "a hosted server at localhost wasn't matched");
   assert.equal(hostedAdvertisement("chat.example.com:5040", servers), null, "a remote server on the same port was taken for ours");
   assert.deepEqual(openServerLink("127.0.0.1:5040", hostedAdvertisement("127.0.0.1:5040", servers)), { kind: "ok", url: "https://gryt.chat/invite?host=203.0.113.4%3A5040" });
@@ -155,7 +153,7 @@ for (const url of ["https://app.gryt.chat/invite?code=abc", "https://app.gryt.ch
 
 /* ── the invite dialog ─────────────────────────────────────────────────────── */
 
-const base = {
+const base: Parameters<typeof inviteDialogView>[0] = {
   linkCode: "",
   typedCode: "",
   lookup: "info",
@@ -166,7 +164,7 @@ const base = {
   accountRequired: false,
   awaitingApproval: false,
 };
-const view = (patch) => inviteDialogView({ ...base, ...patch });
+const view = (patch: Partial<Parameters<typeof inviteDialogView>[0]>) => inviteDialogView({ ...base, ...patch });
 
 // A host-only link to an open server joins with nothing typed.
 {
@@ -249,7 +247,10 @@ assert.deepEqual(view({ lookup: "private", info: null, accountRequired: true }).
 }
 
 assert.deepEqual(view({ alreadyMember: true }).action, { kind: "go-to-server" });
-assert.equal(view({ lookup: "loading", info: null }).action.kind === "join" && view({ lookup: "loading", info: null }).action.disabled, true);
+{
+  const { action } = view({ lookup: "loading", info: null });
+  assert.equal(action.kind === "join" && action.disabled, true);
+}
 
 /* ── the desktop's gryt://invite ───────────────────────────────────────────── */
 

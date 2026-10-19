@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs useChatScroll's own ResizeObserver effect against a fake scroller, so a
 // message hidden behind the not-encrypted warning fails here. GRYT-1067.
 
@@ -16,7 +14,7 @@ const SOURCE = join(
 const source = readFileSync(SOURCE, "utf8");
 
 /** The effect that holds the bottom, from its arrow's brace to the match. */
-function holdTheBottomEffect(text) {
+function holdTheBottomEffect(text: string) {
   const anchor = text.indexOf('if (!el || typeof ResizeObserver === "undefined") return;');
   assert.notEqual(
     anchor,
@@ -44,9 +42,9 @@ const body = holdTheBottomEffect(source).replace("<HTMLElement>", "");
  * the way an element appearing above the composer does.
  */
 function fakeScroller() {
-  const observed = [];
+  const observed: object[] = [];
   const rows = [1, 2, 3].map((n) => ({ row: n }));
-  const callbacks = [];
+  const callbacks: (() => void)[] = [];
   let scrollTop = 300;
   const el = {
     scrollHeight: 900,
@@ -59,18 +57,19 @@ function fakeScroller() {
       scrollTop = Math.max(0, Math.min(v, this.scrollHeight - this.clientHeight));
     },
     querySelectorAll: () => rows,
-    shrinkBy(px) {
+    shrinkBy(px: number) {
       this.clientHeight -= px;
       for (const cb of callbacks.slice()) cb();
     },
   };
 
   class FakeResizeObserver {
-    constructor(cb) {
+    cb: () => void;
+    constructor(cb: () => void) {
       this.cb = cb;
       callbacks.push(cb);
     }
-    observe(target) {
+    observe(target: object) {
       observed.push(target);
     }
     disconnect() {
@@ -82,7 +81,7 @@ function fakeScroller() {
   return { el, rows, observed, FakeResizeObserver };
 }
 
-function run({ atBottom, detached = false }) {
+function run({ atBottom, detached = false }: { atBottom: boolean; detached?: boolean }) {
   const { el, rows, observed, FakeResizeObserver } = fakeScroller();
   const cleanup = new Function(
     "scrollRef",

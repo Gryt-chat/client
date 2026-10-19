@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // An outage must not end anybody's session. Only a rejected grant clears the
 // tokens; everything else keeps them and retries. GRYT-1104, GRYT-1178.
 
@@ -8,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { SignInAttempt } from "../src/lib/signInRetry.ts";
 import { retryDelayMs, startSignInRetry } from "../src/lib/signInRetry.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -19,7 +18,7 @@ const kc = readFileSync(join(root, KC), "utf8");
 const hook = readFileSync(join(root, HOOK), "utf8");
 
 /** Everything from `opener` to the brace that closes the block it opens. */
-function block(text, opener, what) {
+function block(text: string, opener: string, what: string) {
   const at = text.indexOf(opener);
   assert.ok(at >= 0, `no longer has ${what}`);
   const start = at + opener.length - 1;
@@ -141,9 +140,11 @@ assert.match(
 /* ── a launch that couldn't reach accounts tries again later ──────────────── */
 
 /** Runs the retry against scripted answers, with timers that fire on demand. */
-async function runRetry(answers) {
-  const timers = [];
-  const finished = [];
+type Timer = { run: () => void; ms: number; cancelled: boolean; fired?: boolean };
+
+async function runRetry(answers: (SignInAttempt | Error)[]) {
+  const timers: Timer[] = [];
+  const finished: string[] = [];
   let calls = 0;
   const stop = startSignInRetry({
     attempt: async () => {
@@ -154,7 +155,7 @@ async function runRetry(answers) {
     onFinished: (result) => finished.push(result),
     delayMs: (failures) => failures * 1000,
     schedule: (run, ms) => {
-      const timer = { run, ms, cancelled: false };
+      const timer: Timer = { run, ms, cancelled: false };
       timers.push(timer);
       return () => (timer.cancelled = true);
     },
@@ -201,18 +202,18 @@ try {
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(r.timers.length, 1, "a failed try did not schedule another");
     r.stop();
-    assert.equal(r.timers.at(-1).cancelled, true, "stopping the retry left its timer running");
+    assert.equal(r.timers.at(-1)?.cancelled, true, "stopping the retry left its timer running");
     while (await r.tick());
     assert.equal(r.calls(), 1, "the retry ran again after it was stopped");
     assert.deepEqual(r.finished, [], "a stopped retry still reported an answer");
   }
   {
     /* Stopped mid-try, as when somebody presses Sign in while one is out. */
-    let answer;
-    const finished = [];
+    let answer: ((result: SignInAttempt) => void) | undefined;
+    const finished: string[] = [];
     let scheduled = 0;
     const stop = startSignInRetry({
-      attempt: () => new Promise((resolve) => (answer = resolve)),
+      attempt: () => new Promise<SignInAttempt>((resolve) => (answer = resolve)),
       onFinished: (result) => finished.push(result),
       schedule: () => {
         scheduled += 1;
@@ -220,6 +221,7 @@ try {
       },
     });
     stop();
+    assert.ok(answer, "the retry never tried");
     answer("unavailable");
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(scheduled, 0, "a retry stopped mid-try scheduled another anyway");

@@ -12,10 +12,8 @@ e2e/soak/report.mjs
 electron-builder.config.cjs
 scripts/build-embedded-server.mjs
 scripts/build-helper.mjs
-scripts/check-auth-outage.mjs
 scripts/check-builder-config.mjs
 scripts/check-chat-retry.mjs
-scripts/check-chat-scroll-anchor.mjs
 scripts/check-clear-local-history.mjs
 scripts/check-composer-enter.mjs
 scripts/check-contact-filter.mjs
@@ -41,11 +39,8 @@ scripts/check-hold-until-proven.mjs
 scripts/check-hosted-server-reconnect.mjs
 scripts/check-http-proof-gate.mjs
 scripts/check-identity-timeout.mjs
-scripts/check-invite-link.mjs
-scripts/check-lan-discovery.mjs
 scripts/check-local-archive.mjs
 scripts/check-manage-server.mjs
-scripts/check-message-notification.mjs
 scripts/check-message-vault-reseal.mjs
 scripts/check-message-vault-upgrade.mjs
 scripts/check-mls-dm.mjs
@@ -54,11 +49,9 @@ scripts/check-new-message.mjs
 scripts/check-notification-navigation.mjs
 scripts/check-pairing-approver.mjs
 scripts/check-pairing-new-device.mjs
-scripts/check-plugin-messaging.mjs
 scripts/check-prebuild-pruning.mjs
 scripts/check-presence-helper.mjs
 scripts/check-reconnect-grace.mjs
-scripts/check-reconnect-limit.mjs
 scripts/check-rich-presence.mjs
 scripts/check-role-pills.mjs
 scripts/check-same-server.mjs
@@ -71,10 +64,8 @@ scripts/check-server-release-notes.mjs
 scripts/check-service-status.mjs
 scripts/check-settings-index.mjs
 scripts/check-sidebar-tree.mjs
-scripts/check-signed-file-urls.mjs
 scripts/check-stable-attachment-urls.mjs
 scripts/check-terms-agreement.mjs
-scripts/check-ui-scale.mjs
 scripts/check-unknown-apps.mjs
 scripts/check-unread-split.mjs
 scripts/check-unread-tracker.mjs
