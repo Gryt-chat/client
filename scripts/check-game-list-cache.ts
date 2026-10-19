@@ -19,23 +19,23 @@ import {
 } from "../electron/gameListCache.ts";
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
-async function checkAsync(name, run) {
+async function checkAsync(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -68,11 +68,11 @@ check("the first entry for an id wins", () => {
     { id: "1", name: "First" },
     { id: "1", name: "Second" },
   ]);
-  assert.equal(index.get("1").name, "First");
+  assert.equal(index.get("1")?.name, "First");
 });
 
 check("lookup order: overrides, then downloaded, then bundled, then unknown", () => {
-  const overrides = (id) => (id === "1" ? "Override Game" : null);
+  const overrides = (id: string) => (id === "1" ? "Override Game" : null);
   const downloaded = createGameLookup([{ id: "1", name: "Downloaded Game" }, { id: "2", name: "Downloaded Only" }]);
   const bundled = createGameLookup([{ id: "1", name: "Bundled Game" }, { id: "2", name: "Bundled Fallback" }, { id: "3", name: "Bundled Only" }]);
   const sources = { overrides, downloaded, bundled };
@@ -100,6 +100,7 @@ try {
 
   check("a fresh cache isn't stale, a day-old one is", () => {
     const cache = readCache(dir);
+    assert.ok(cache, "the cache was never written");
     assert.equal(isStale(cache, cache.fetchedAt), false);
     assert.equal(isStale(cache, cache.fetchedAt + REFRESH_INTERVAL_MS - 1), false);
     assert.equal(isStale(cache, cache.fetchedAt + REFRESH_INTERVAL_MS), true);
@@ -116,19 +117,20 @@ try {
 
 const okBody = Array.from({ length: 150 }, (_, i) => ({ id: String(i + 1), name: `Game ${i}`, icon_hash: "h" }));
 
-function fakeFetch(script) {
+// Each scripted answer has only the fields the fetcher reads, so it stands in for a Response.
+function fakeFetch(script: (() => object | Promise<object>)[]) {
   let call = 0;
   return async () => {
     const behavior = script[Math.min(call, script.length - 1)];
     call += 1;
-    return behavior();
+    return (await behavior()) as Response;
   };
 }
 
 await checkAsync("the first source that answers with enough entries wins", async () => {
   const fetchImpl = fakeFetch([() => ({ ok: true, json: async () => okBody })]);
   const entries = await fetchGamesFile(fetchImpl, ["https://a.example/detectable.json"]);
-  assert.equal(entries.length, 150);
+  assert.equal(entries?.length, 150);
 });
 
 await checkAsync("a failing first source falls back to the second", async () => {
@@ -139,7 +141,7 @@ await checkAsync("a failing first source falls back to the second", async () => 
     () => ({ ok: true, json: async () => okBody }),
   ]);
   const entries = await fetchGamesFile(fetchImpl, ["https://a.example/x", "https://b.example/x"]);
-  assert.equal(entries.length, 150);
+  assert.equal(entries?.length, 150);
 });
 
 await checkAsync("a non-array or too-small body is rejected, not treated as the list shrinking", async () => {
@@ -165,7 +167,7 @@ try {
   await checkAsync("no cache yet: fetches, and a good response is written", async () => {
     const fetchImpl = fakeFetch([() => ({ ok: true, json: async () => okBody })]);
     const index = await maybeRefreshGames({ userDataDir: dir2, fetchImpl });
-    assert.equal(index.get("1").name, "Game 0");
+    assert.equal(index.get("1")?.name, "Game 0");
     assert.ok(readCache(dir2));
   });
 
@@ -177,7 +179,7 @@ try {
     };
     const index = await maybeRefreshGames({ userDataDir: dir2, fetchImpl });
     assert.equal(called, false);
-    assert.equal(index.get("1").name, "Game 0");
+    assert.equal(index.get("1")?.name, "Game 0");
   });
 
   await checkAsync("a stale cache triggers a fetch", async () => {
@@ -194,7 +196,7 @@ try {
       now: () => Date.now() + REFRESH_INTERVAL_MS + 1,
     });
     assert.equal(called, true);
-    assert.equal(index.get("1").name, "Refreshed");
+    assert.equal(index.get("1")?.name, "Refreshed");
   });
 
   await checkAsync("a broken response on a stale cache keeps the old entries, doesn't wipe them", async () => {
@@ -205,9 +207,9 @@ try {
       fetchImpl,
       now: () => Date.now() + 2 * REFRESH_INTERVAL_MS,
     });
-    assert.deepEqual([...index.values()], before.entries);
+    assert.deepEqual([...index.values()], before?.entries);
     // The file on disk is untouched too, not just the returned index.
-    assert.deepEqual(readCache(dir2).entries, before.entries);
+    assert.deepEqual(readCache(dir2)?.entries, before?.entries);
   });
 } finally {
   rmSync(dir2, { recursive: true, force: true });
