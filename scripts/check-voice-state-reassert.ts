@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The client re-asserts its own voice state after a reconnect: the stash is only
  * as new as the break. A source check — the failure is an effect (GRYT-644).

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Which account a cached certificate is allowed to speak for. Signed in as one
  * account, the client joined as another whose certificate was still valid (GRYT-905).

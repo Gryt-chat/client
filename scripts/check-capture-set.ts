@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The capture-set planning in electron/captureSet.ts. Stop one too many and the
  * share goes silent; keep one too many and a deselected application still goes out.

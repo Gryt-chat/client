@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The countdown that ends a call nobody else is in. The boundaries are the whole
  * of this, and none of the ways to get them wrong look wrong (GRYT-711).

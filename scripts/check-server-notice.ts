@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * What a server is allowed to put on this screen. Every word ships in the client:
  * a panel carrying the server's text is phishing with a border (GRYT-896).

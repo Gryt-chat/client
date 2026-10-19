@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The screen-share audio copy in src/lib/screenShareAudio.ts. Somebody in another
  * app's voice chat has to be able to tell, before sharing, what goes out.

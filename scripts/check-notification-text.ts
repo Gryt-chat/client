@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The text a desktop notification shows has to read like the message, not
  * like its markdown. A join message's mention was the one Sivert caught raw.

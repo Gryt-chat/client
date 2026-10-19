@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // When camera and desktop video compete, keep desktop high priority and let
 // the webcam give up resolution first. The engine writes them; controls.tsx hands it these.
 

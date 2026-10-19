@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * How a member's invite reads on the Members tab. The failure that matters is a
  * shut invite drawn as live, or a live one drawn as shut (GRYT-923).

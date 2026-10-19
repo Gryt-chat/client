@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The floor on a typed message password: twelve characters, where it used to be four.
  * Only where a password is chosen; an old short one still opens (GRYT-1473).

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The audio stream id in voice:screen:state. Naming a stream whose capture has died
 // leaves viewers waiting on audio that never arrives.
 

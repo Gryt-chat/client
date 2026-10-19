@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Every server's token used to be refreshed in the same tick on one four-minute
 // timer. Each server now has its own, planned from its token. GRYT-1140, GRYT-1143.
 
