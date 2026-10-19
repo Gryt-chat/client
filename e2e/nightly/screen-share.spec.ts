@@ -9,6 +9,7 @@ import {
   stopSharing,
   tileVideo,
   unfocusTile,
+  watchShare,
 } from "./support/call";
 import { expect, test } from "./support/fixtures";
 
@@ -21,6 +22,7 @@ test("a shared screen reaches the other guest, and a second one keeps playing wh
   await joinVoice(bob);
 
   await shareScreen(bob);
+  await watchShare(alice.page, bob.name);
   const screen = tileVideo(alice.page, `${bob.name}'s Screen`);
   await expectFramesDecoded(alice, `${bob.name}'s screen`);
   await expectPlaying(screen);
@@ -32,6 +34,7 @@ test("a shared screen reaches the other guest, and a second one keeps playing wh
   // GRYT-1319: a second share goes out on the first one's sender, under its stream id. Focusing
   // a tile mounts the call controls again, and they announce the share again.
   await shareScreen(bob);
+  await watchShare(alice.page, bob.name);
   await expectPlaying(screen);
   await focusTile(bob.page, "Your Screen");
   await expectPlaying(screen, 1);

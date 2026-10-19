@@ -15,6 +15,7 @@ import {
   turnCameraOff,
   turnCameraOn,
   unfocusTile,
+  watchShare,
 } from "./support/call";
 import { expect, test } from "./support/fixtures";
 import { videoSendPriorities } from "./support/webrtc";
@@ -79,6 +80,7 @@ function watch(alice: Guest, bob: Guest) {
     },
     async share(forSeconds = 0) {
       await shareScreen(alice);
+      await watchShare(bob.page, alice.name);
       await expectPlaying(screen, forSeconds);
       played.screen.push(await playedStream(screen));
     },
