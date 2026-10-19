@@ -76,11 +76,10 @@ export async function shareScreen(guest: Guest): Promise<void> {
 
 /** Somebody else's share waits for a click before it plays (GRYT-1681), so the viewer presses Watch stream. */
 export async function watchShare(page: Page, sharer: string): Promise<void> {
-  await page
-    .locator('[data-gryt="share-unwatched"]')
-    .filter({ hasText: `${sharer} is sharing their screen` })
-    .getByRole("button", { name: "Watch stream" })
-    .click();
+  const waiting = page.locator('[data-gryt="share-unwatched"]').filter({ hasText: `${sharer} is sharing their screen` });
+  // A share again under the first one's stream id (GRYT-1319) counts as watched already, so it plays with no button.
+  await expect(waiting.or(tileVideo(page, `${sharer}'s Screen`)).first()).toBeAttached();
+  if (await waiting.count()) await waiting.getByRole("button", { name: "Watch stream" }).click();
 }
 
 export async function stopSharing(guest: Guest): Promise<void> {
