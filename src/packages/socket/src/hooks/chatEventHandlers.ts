@@ -1,4 +1,4 @@
-import { Dispatch, MutableRefObject, SetStateAction } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
 import type { ChatMessage } from "../components/chatUtils";
 import { handleRateLimitError } from "../utils/rateLimitHandler";

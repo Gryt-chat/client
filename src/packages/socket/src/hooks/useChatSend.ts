@@ -1,6 +1,6 @@
-import { Dispatch, MutableRefObject, SetStateAction, useCallback, useEffect, useRef, useState } from "react";
+import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
 import type { SealDecision, SealedAttachmentKey } from "@/common";

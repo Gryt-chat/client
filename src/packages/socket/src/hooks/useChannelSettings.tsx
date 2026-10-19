@@ -1,4 +1,4 @@
-import { MutableRefObject, useCallback, useEffect, useRef } from "react";
+import { type MutableRefObject, useCallback, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 
 import { ServerErrorToast, serverIconSrc } from "@/common";

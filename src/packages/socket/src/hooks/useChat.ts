@@ -1,6 +1,6 @@
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import useSound from "use-sound";
 
 import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
@@ -8,7 +8,7 @@ import type { SealDecision } from "@/common";
 import { getOwnServerUserId, getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useAccount, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
 import { useSettings } from "@/settings";
-import { type ForumTag,serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
+import type { ForumTag, serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
@@ -22,7 +22,7 @@ import { isOnScreen, warnUnreadOnScreen } from "../utils/onScreenConversation";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { sealedNotificationBody } from "../utils/sealedNotification";
 import {
-  ChatErrorPayload,
+  type ChatErrorPayload,
   type ChatErrorRef,
   handleAttachmentsSettled,
   handleChatErrorEvent,

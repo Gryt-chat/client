@@ -1,7 +1,7 @@
 import { type LatencyBreakdown, useVoiceLatency } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { useEffect, useRef } from "react";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 
 const REPORT_INTERVAL_MS = 2000;
 
