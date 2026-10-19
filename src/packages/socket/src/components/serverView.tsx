@@ -102,6 +102,24 @@ const fakeCallOptionsFromUrl = readFakeCallOptions(window.location.search);
 /** The messages list is wider than the channel list: two lines a row, with previews. */
 const DM_LIST_WIDTH_PX = 320;
 
+function connectionLine(status: string | undefined, unreachable: boolean, name: string) {
+  if (status === "reconnecting") return { long: `Reconnecting to ${name}…`, short: "Reconnecting…" };
+  return unreachable ? { long: `Can’t reach ${name}`, short: "Can’t reach it" } : null;
+}
+
+function voiceWidthFor(s: { chatTakenOver: boolean; voiceWidth: string; isMaximized: boolean; shownVoiceWidth: number }): string {
+  if (s.chatTakenOver) return "100%";
+  if (s.voiceWidth === "0px") return "0px";
+  return s.isMaximized ? "100%" : `${s.shownVoiceWidth}px`;
+}
+
+function sidePanelOf(s: { searchOpen: boolean; dmSpace: boolean | undefined; dmSearchOpen: boolean; activeDm: boolean; isTiny: boolean }) {
+  if (s.searchOpen && !s.dmSpace) return "search";
+  if (s.dmSpace && s.dmSearchOpen) return "dm-search";
+  if (s.dmSpace && s.activeDm && !s.isTiny) return "dm-member";
+  return "members";
+}
+
 /**
  * `dmSpace` swaps the channel sidebar for every server's conversations and drops
  * the member panel. The rest is the same view, keys and all (GRYT-1134).
@@ -1154,17 +1172,16 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   /** One element for two layouts: the tiny window renders this and nothing else,
       and a second copy is thirty props to keep in step. */
+  const reachLine = connectionLine(currentConnectionStatus, isServerUnreachable, serverName || host);
+  const narrowDmDetail = isTiny || isMobile ? dmHeaderDetail : undefined;
+  const wideOrMobile = isMobile ? "mobile" : "wide";
+  const layout = isTiny ? "tiny" : wideOrMobile;
+  const sidePanel = sidePanelOf({ searchOpen, dmSpace, dmSearchOpen, activeDm: !!activeDm, isTiny });
   const chatView = dmSpace && !activeDm ? (
     <MessagesHome onSearch={openDmSearch} />
   ) : (
       <ChatView
-        offlineLine={
-          currentConnectionStatus === "reconnecting"
-            ? `Reconnecting to ${serverName || host}…`
-            : isServerUnreachable
-              ? `Can’t reach ${serverName || host}`
-              : undefined
-        }
+        offlineLine={reachLine?.long}
         /* Wide enough for the thread to sit beside the conversation rather than
            take the chat pane. */
         threadBeside={threadBeside}
@@ -1195,7 +1212,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         conversationKind={activeDm ? "dm" : "channel"}
         headerAction={dmHeaderActions}
         headerLead={tinyBack}
-        headerDetail={activeDm ? (isTiny || isMobile ? dmHeaderDetail : undefined) : <ChannelDescription text={activeChannelDescription} />}
+        headerDetail={activeDm ? narrowDmDetail : <ChannelDescription text={activeChannelDescription} />}
         headerIcon={activeDm && !isTiny && !isMobile ? dmHeaderIcon : undefined}
         headerSubtitle={activeDm && !isTiny && !isMobile ? dmHeaderSubtitle : undefined}
         moreMenu={channelMoreMenu}
@@ -1250,7 +1267,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         {!dmSpace && currentConnectionStatus === "connected" && (
           <SecurityNoticeBanner host={host} serverInfo={serverDetails.server_info} hostedHere={!!hostedHere} />
         )}
-        {isTiny ? (
+        {layout === "tiny" && (
           /* One channel and no way to change it; the way out is a bigger window.
              A call is the exception, or the microphone has no button to close it. */
           <div className="flex" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
@@ -1278,7 +1295,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               streamSources={voiceStreamSources}
             />
           </div>
-        ) : isMobile ? (
+        )}
+        {layout === "mobile" && (
           <MobileServerView
             dmSpace={dmSpace}
             onOpenDm={requestOpenDm}
@@ -1359,7 +1377,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             videoStreams={voiceVideoStreams}
             streamSources={voiceStreamSources}
           />
-        ) : (
+        )}
+        {layout === "wide" && (
           <div className="flex w-full gap-4" style={{
               flex: 1, overflow: "hidden",
             }}>
@@ -1407,7 +1426,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={leftSidebarContentRef}
               isUnreachableWhileConnected={isServerUnreachable}
-              statusLine={currentConnectionStatus === "reconnecting" ? "Reconnecting…" : isServerUnreachable ? "Can’t reach it" : undefined}
+              statusLine={reachLine?.short}
               onMouseEnter={openLeftSidebar}
               onMouseLeave={closeLeftSidebar}
               serverName={serverName}
@@ -1452,15 +1471,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
                 /* Focusing a stream makes it the big one inside the panel and
                    leaves the app where it was. Hiding the chat is its own press. */
-                voiceWidth={
-                  chatTakenOver
-                    ? "100%"
-                    : voiceWidth === "0px"
-                      ? "0px"
-                      : isMaximized
-                        ? "100%"
-                        : `${shownVoiceWidth}px`
-                }
+                voiceWidth={voiceWidthFor({ chatTakenOver, voiceWidth, isMaximized, shownVoiceWidth })}
                 maxWidth={
                   // Both of these hide the chat, so the width reserved for a
                   // minimum chat column would otherwise cap the panel.
@@ -1498,7 +1509,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 {chatView}
               </div>
             </div>
-            {searchOpen && !dmSpace ? (
+            {sidePanel === "search" && (
               <SearchPanel
                 key={searchStartIn?.value ?? "all"}
                 startIn={searchStartIn}
@@ -1518,7 +1529,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   });
                 }}
               />
-            ) : dmSpace && dmSearchOpen ? (
+            )}
+            {sidePanel === "dm-search" && (
               <SearchPanel
                 key={activeDm?.conversation_id ?? "all"}
                 socketConnection={null}
@@ -1545,7 +1557,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   setPendingJump({ conversationId: hit.conversation_id, messageId: hit.message_id, nonce: Date.now() });
                 }}
               />
-            ) : dmSpace && activeDm && !isTiny ? (
+            )}
+            {sidePanel === "dm-member" && activeDm && (
               /* Folds like the channel list rather than vanishing. The negative margin takes
                  back the row's gap, so a closed panel leaves no strip. */
               <motion.div
@@ -1590,7 +1603,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 />
               )}
               </motion.div>
-            ) : (
+            )}
+            {sidePanel === "members" && (
             <MemberSidebarPanel
               // Closed for good, not collapsed: the server stops sending the list,
               // so an open panel would show whatever was last cached.

@@ -123,7 +123,7 @@ for (let w = 300; w <= TINY_MAX_WIDTH; w += 1) {
 // GRYT-1343: the space kept its list only in the wide layout, and a long name pushed the header out.
 {
   const view = readFileSync(new URL("../src/packages/socket/src/components/serverView.tsx", import.meta.url), "utf8");
-  const tiny = view.slice(view.indexOf("{isTiny ? ("), view.indexOf(") : isMobile ? ("));
+  const tiny = view.slice(view.indexOf("{layout === \"tiny\" && ("), view.indexOf("{layout === \"mobile\" && ("));
   assert.match(tiny, /showTinyList \? \(\s*<DmSpaceSidebar[^>]*\bfill\b/, "the tiny window has no conversation list to go back to");
   assert.match(view, /headerLead=\{tinyBack\}/, "the tiny window's conversation has no way back to the list");
   assert.match(view, /className="[^"]*\bmin-w-0\b[^"]*" data-gryt="server-view"/, "the server view can't shrink below its header's one-line name");
