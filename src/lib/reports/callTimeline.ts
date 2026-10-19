@@ -26,9 +26,13 @@ let before: CallStatsSample | null = null;
 const ms = (v: number | null) => (v === null ? "?" : `${Math.round(v)}ms`);
 
 /** One line: what the call looked like this second, and what changed since the last. */
+function lostSince(now: number | null, before: number | null | undefined): string {
+  if (now === null) return "?";
+  return before == null ? String(now) : `+${now - before}`;
+}
+
 export function formatCallSample(secs: number, now: CallStatsSample, prev: CallStatsSample | null): string {
-  const lost =
-    now.packetsLost === null ? "?" : prev?.packetsLost == null ? String(now.packetsLost) : `+${now.packetsLost - prev.packetsLost}`;
+  const lost = lostSince(now.packetsLost, prev?.packetsLost);
   return [
     `+${secs}s`,
     `socket ${ms(now.socketRttMs)}`,

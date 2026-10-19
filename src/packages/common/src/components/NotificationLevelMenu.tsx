@@ -75,9 +75,7 @@ export function NotificationLevelMenu({
           parentItemId: placement?.parentItemId ?? null,
           defaultLevel: getPlacement(host, scope.id)?.defaultLevel ?? null,
         })
-      : scope.kind === "folder"
-        ? (getOwnLevel(host, { kind: "server" }) ?? "all")
-        : "all";
+      : (scope.kind === "folder" && getOwnLevel(host, { kind: "server" })) || "all";
 
   /* What this scope currently comes out as: its own setting, else what it inherits. */
   const resolved: NotificationLevel = own ?? inherited;

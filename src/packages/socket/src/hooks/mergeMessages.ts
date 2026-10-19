@@ -15,7 +15,7 @@ function compareMessages(a: ChatMessage, b: ChatMessage): number {
   if (!!a.pending !== !!b.pending) return a.pending ? 1 : -1;
   const diff = millis(a.created_at) - millis(b.created_at);
   if (diff !== 0) return diff;
-  return a.message_id < b.message_id ? -1 : a.message_id > b.message_id ? 1 : 0;
+  return a.message_id < b.message_id ? -1 : Number(a.message_id > b.message_id);
 }
 
 /**

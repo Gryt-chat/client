@@ -94,11 +94,14 @@ function commit(next: FilteredItem[]): void {
 /** What they did, in a few words. */
 export function filteredSummary(item: FilteredItem): string {
   const times = item.count === 1 ? "" : ` ${item.count} times`;
-  const what =
-    item.kind === "call" ? `Called you${times}`
-      : item.kind === "conversation" ? "Started a conversation"
-        : item.count === 1 ? "Sent a message" : `Sent ${item.count} messages`;
+  const what = filteredAction(item, times);
   return item.reason === "flood" ? `${what}, in a burst` : what;
+}
+
+function filteredAction(item: FilteredItem, times: string): string {
+  if (item.kind === "call") return `Called you${times}`;
+  if (item.kind === "conversation") return "Started a conversation";
+  return item.count === 1 ? "Sent a message" : `Sent ${item.count} messages`;
 }
 
 /** A conversation and its messages are one row, and a call is its own. */
@@ -113,7 +116,8 @@ export function recordFiltered(event: FilteredEvent): void {
   // The conversation arriving adds no message to the count; its first message does.
   const opened = event.kind === "conversation";
   const kind = opened ? (prev?.kind ?? "conversation") : event.kind;
-  const count = opened ? (prev?.count ?? 1) : prev?.kind === "conversation" ? 1 : (prev?.count ?? 0) + 1;
+  const nextCount = prev?.kind === "conversation" ? 1 : (prev?.count ?? 0) + 1;
+  const count = opened ? (prev?.count ?? 1) : nextCount;
   const item: FilteredItem = {
     host: event.host,
     conversationId: event.conversationId,
