@@ -157,23 +157,6 @@ module.exports = {
       ],
       rules: { "no-nested-ternary": "off" },
     },
-    // Reassigned parameters from before the rule.
-    {
-      files: [
-        "src/packages/settings/src/components/profileSettings.tsx",
-        "src/packages/socket/src/lib/memberCard/cardPresets.ts",
-      ],
-      rules: { "no-param-reassign": "off" },
-    },
-    // else after return from before the rule.
-    {
-      files: [
-        "src/packages/settings/src/hooks/useServerSettings.ts",
-        "src/packages/socket/src/hooks/registerServerSocketEvents.ts",
-        "src/packages/socket/src/hooks/useChat.ts",
-      ],
-      rules: { "no-else-return": "off" },
-    },
     // Files that still use unknown, by why. The goal is to empty these lists (GRYT-1792).
     // unknown: socket payloads arrive unchecked and are validated there.
     {

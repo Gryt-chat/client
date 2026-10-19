@@ -86,12 +86,9 @@ function useServerSettingsHook(): ServerSettings {
     } else {
       setCurrentlyViewingServer((currentServer) => {
         const server = servers[host];
-        if (server) {
-          return server;
-        } else {
-          console.error("Server not found:", host);
-          return currentServer;
-        }
+        if (server) return server;
+        console.error("Server not found:", host);
+        return currentServer;
       });
     }
   }, [servers]);

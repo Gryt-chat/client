@@ -701,9 +701,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         });
       }
       return;
-    } else {
-      toast.error(`Failed to join server ${host}: ${errorInfo.error}`);
     }
+    toast.error(`Failed to join server ${host}: ${errorInfo.error}`);
   });
 
   /** Sent into that call's own room and nowhere else, so receiving it is the
