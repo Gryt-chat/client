@@ -17,7 +17,6 @@ scripts/check-discord-ipc.mjs
 scripts/check-embedded-runtime-cleanup.mjs
 scripts/check-embedded-version.mjs
 scripts/check-extra-resources.mjs
-scripts/check-http-proof-gate.mjs
 scripts/check-local-archive.mjs
 scripts/check-mls-dm.mjs
 scripts/check-pairing-approver.mjs
@@ -26,7 +25,6 @@ scripts/check-prebuild-pruning.mjs
 scripts/check-sealed-attachments.mjs
 scripts/check-security-notice.mjs
 scripts/check-server-release-notes.mjs
-scripts/check-service-status.mjs
 scripts/check-update-feed-pin.mjs
 scripts/check-update-supersede.mjs
 scripts/check-updater-bridge.mjs

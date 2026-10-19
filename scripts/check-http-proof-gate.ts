@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server as HttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,15 +21,19 @@ const network = globalThis.fetch.bind(globalThis);
 
 /** Enough XMLHttpRequest for the emoji uploads: open, a header, send, and error events. */
 class FakeXhr extends EventTarget {
-  open(method, url) {
+  method = "";
+  url = "";
+  headers: Record<string, string> = {};
+  status = 0;
+  open(method: string, url: string) {
     this.method = method;
     this.url = url;
     this.headers = {};
   }
-  setRequestHeader(name, value) {
+  setRequestHeader(name: string, value: string) {
     this.headers[name] = value;
   }
-  send(body) {
+  send(body: BodyInit | null) {
     network(this.url, { method: this.method, headers: this.headers, body }).then(
       (res) => {
         this.status = res.status;
@@ -39,34 +43,33 @@ class FakeXhr extends EventTarget {
     );
   }
 }
-globalThis.XMLHttpRequest = FakeXhr;
+Object.assign(globalThis, { XMLHttpRequest: FakeXhr });
 
 // serverAuth.ts's own relative imports, resolved from where it sits rather than from here.
-const resolveFromGuard = (spec) =>
+const resolveFromGuard = (spec: string) =>
   spec.startsWith("./") ? new URL(`../src/packages/socket/src/utils/${spec.slice(2)}.ts`, import.meta.url).href : import.meta.resolve(spec);
 
 // Only what the guard asks of @/common. A proof is good when it echoes the nonce it answers.
-const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const moduleUrl = (text: string) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
 // The real one, since a refusal has to leave nothing that signs upload URLs (GRYT-1549).
 const FILE_ACCESS = moduleUrl(
   ts
     .transpileModule(readFileSync(join(root, "src/packages/common/src/utils/fileUrlAuth.ts"), "utf8"), {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     })
-    .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) => `${head}"${import.meta.resolve(spec)}"`),
+    .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_: string, head: string, spec: string) => `${head}"${import.meta.resolve(spec)}"`),
 );
 const fileAccess = await import(FILE_ACCESS);
 // An older server's token on disk, which may only come out once that server has proved itself.
-const disk = new Map();
-const fakeStorage = { getItem: (k) => disk.get(k) ?? null, setItem: (k, v) => disk.set(k, v), removeItem: (k) => disk.delete(k), key: (i) => [...disk.keys()][i] ?? null, get length() { return disk.size; } };
-globalThis.localStorage = fakeStorage;
-globalThis.sessionStorage = fakeStorage;
+const disk = new Map<string, string>();
+const fakeStorage = { getItem: (k: string) => disk.get(k) ?? null, setItem: (k: string, v: string) => disk.set(k, v), removeItem: (k: string) => disk.delete(k), key: (i: number) => [...disk.keys()][i] ?? null, get length() { return disk.size; } };
+Object.assign(globalThis, { localStorage: fakeStorage, sessionStorage: fakeStorage });
 const TOKEN_STORAGE = moduleUrl(
   ts
     .transpileModule(readFileSync(join(root, "src/packages/common/src/utils/tokenStorage.ts"), "utf8"), {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
     })
-    .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) =>
+    .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_: string, head: string, spec: string) =>
       `${head}"${spec === "./fileUrlAuth" ? FILE_ACCESS : import.meta.resolve(spec)}"`),
 );
 const COMMON = moduleUrl(`
@@ -88,14 +91,14 @@ const compiled = ts
   .transpileModule(source.replace(/const IDENTITY_TIMEOUT_MS = \d+;/, `const IDENTITY_TIMEOUT_MS = ${WAIT_MS};`), {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   })
-  .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) =>
+  .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_: string, head: string, spec: string) =>
     `${head}"${spec === "@/common" ? COMMON : resolveFromGuard(spec)}"`);
 const { guardSocket } = await import(moduleUrl(compiled));
 console.error = () => {};
 
 // fetchServerInfo as shipped, from the add-server and invite dialogs. The stubs hand it a stored token.
 const JOIN = "src/packages/settings/src/hooks/useServerJoin.ts";
-const INFO_STUBS = {
+const INFO_STUBS: Record<string, string> = {
   "@/common": moduleUrl(`
     export const getServerAccessToken = () => ${JSON.stringify("access-token-that-must-not-leak")};
     export const getServerHttpBase = (host, scheme) => (scheme ?? "http") + "://" + host;
@@ -114,43 +117,50 @@ const INFO_STUBS = {
   "../serverId": moduleUrl("export const sameServer = () => false;"),
   "./useSettings": moduleUrl("export const useSettings = () => ({});"),
 };
-globalThis.window ??= globalThis;
+Object.assign(globalThis, { window: globalThis });
 const { fetchServerInfo } = await import(
   moduleUrl(
     ts
       .transpileModule(readFileSync(join(root, JOIN), "utf8"), {
         compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
       })
-      .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_, head, spec) => `${head}"${INFO_STUBS[spec] ?? import.meta.resolve(spec)}"`),
+      .outputText.replace(/(\bimport\s[^;]*?\bfrom\s*)"([^"]+)"/g, (_: string, head: string, spec: string) => `${head}"${INFO_STUBS[spec] ?? import.meta.resolve(spec)}"`),
   )
 );
 
 const require = createRequire(import.meta.url);
-const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws");
+type FakeWs = { send(data: string): void; on(event: "close" | "message", listener: (data: Buffer) => void): void; terminate(): void };
+type FakeWss = { on(event: "connection", listener: (ws: FakeWs) => void): void; close(done: () => void): void };
+// ws ships no types of its own, so only what this file uses.
+const { WebSocketServer } = createRequire(require.resolve("engine.io-client"))("ws") as {
+  WebSocketServer: new (options: { server: HttpServer }) => FakeWss;
+};
 
 const TOKEN = "access-token-that-must-not-leak";
 const BEARER = { Authorization: `Bearer ${TOKEN}` };
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** A Gryt server on one port: socket.io over WebSocket, and HTTP that writes down every request. */
 function fakeServer() {
-  let http = null;
-  let wss = null;
-  const live = new Set();
+  let http: HttpServer | null = null;
+  let wss: FakeWss | null = null;
+  const live = new Set<FakeWs>();
   const server = {
     proves: true,
     /** Every HTTP request, in order, with its Authorization header. */
-    requests: [],
+    requests: [] as { path: string | undefined; auth: string | null; at: number }[],
     /** When each identity answer went out, to put the HTTP requests against. */
-    proofsAt: [],
+    proofsAt: [] as number[],
+    host: "",
     url: "",
     async up() {
-      http = createServer((req, res) => {
+      const listening = createServer((req, res) => {
         server.requests.push({ path: req.url, auth: req.headers.authorization ?? null, at: performance.now() });
         res.writeHead(200, { "content-type": "application/json" });
         res.end("{}");
       });
-      wss = new WebSocketServer({ server: http });
+      http = listening;
+      wss = new WebSocketServer({ server: listening });
       wss.on("connection", (ws) => {
         live.add(ws);
         ws.on("close", () => live.delete(ws));
@@ -167,8 +177,10 @@ function fakeServer() {
           }
         });
       });
-      await new Promise((resolve) => http.listen(0, "127.0.0.1", resolve));
-      server.host = `127.0.0.1:${http.address().port}`;
+      await new Promise<void>((resolve) => listening.listen(0, "127.0.0.1", resolve));
+      const address = listening.address();
+      assert.ok(address && typeof address === "object", "the fake server is not on a port");
+      server.host = `127.0.0.1:${address.port}`;
       server.url = `http://${server.host}`;
     },
     drop() {
@@ -176,22 +188,27 @@ function fakeServer() {
     },
     async down() {
       server.drop();
-      await new Promise((resolve) => wss.close(resolve));
-      http.closeAllConnections();
-      await new Promise((resolve) => http.close(resolve));
+      const [listening, sockets] = [http, wss];
+      assert.ok(listening && sockets, "the fake server went down before it came up");
+      await new Promise<void>((resolve) => sockets.close(resolve));
+      listening.closeAllConnections();
+      await new Promise((resolve) => listening.close(resolve));
     },
   };
   return server;
 }
 
-function connect(server) {
+type FakeServer = ReturnType<typeof fakeServer>;
+type Decision = { action: string; failure?: { reason: string } };
+
+function connect(server: FakeServer) {
   const socket = io(server.url, { transports: ["websocket"], forceNew: true, reconnectionDelay: 50, reconnectionDelayMax: 50, randomizationFactor: 0 });
-  const seen = { refused: null };
-  guardSocket(socket, server.host, (decision) => (seen.refused = decision));
+  const seen = { refused: null as Decision | null };
+  guardSocket(socket, server.host, (decision: Decision) => (seen.refused = decision));
   return { socket, seen };
 }
 
-async function until(what, test, ms = 3_000) {
+async function until(what: string, test: () => boolean, ms = 3_000) {
   const end = Date.now() + ms;
   while (!test()) {
     if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
@@ -200,8 +217,8 @@ async function until(what, test, ms = 3_000) {
 }
 
 /** What the emoji upload does, reduced to whether it went or failed. */
-function xhrUpload(url) {
-  return new Promise((resolve) => {
+function xhrUpload(url: string) {
+  return new Promise<string>((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.addEventListener("load", () => resolve("sent"));
     xhr.addEventListener("error", () => resolve("failed"));
@@ -211,8 +228,8 @@ function xhrUpload(url) {
   });
 }
 
-const withToken = (server) => server.requests.filter((r) => r.auth?.includes(TOKEN));
-const servers = [];
+const withToken = (server: FakeServer) => server.requests.filter((r) => r.auth?.includes(TOKEN));
+const servers: FakeServer[] = [];
 const sockets = [];
 async function started(proves = true) {
   const server = fakeServer();
@@ -253,7 +270,7 @@ try {
     disk.set(`fileToken_${failing.host}`, "legacy-token");
     const second = connect(failing);
     sockets.push(second.socket);
-    await until("the refusal", () => second.seen.refused);
+    await until("the refusal", () => second.seen.refused !== null);
     assert.equal(fileAccess.hasServerFileAccess(failing.host), false, "a server that never proved itself got the stored token in its URLs");
   }
 
@@ -264,7 +281,7 @@ try {
     assert.ok(fileAccess.fileAccessParams(server.host, "f1", false).length > 0, "the key was not taken, so nothing was tested");
     const { socket, seen } = connect(server);
     sockets.push(socket);
-    await until("the refusal", () => seen.refused);
+    await until("the refusal", () => seen.refused !== null);
     assert.deepEqual(fileAccess.fileAccessParams(server.host, "f1", false), [], "a refused server still gets signed upload URLs");
   }
 
