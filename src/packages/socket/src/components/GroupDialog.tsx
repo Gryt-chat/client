@@ -10,6 +10,7 @@ import {
 } from "@/common";
 
 import { conversationTitle, type DirectConversation } from "../hooks/useDirectMessages";
+import { useReachable } from "../hooks/useReachable";
 import { uploadGroupPicture } from "../utils/uploadGroupPicture";
 import { EmojiText } from "./EmojiText";
 import type { MemberInfo } from "./MemberSidebar";
@@ -169,13 +170,16 @@ export const GroupDialog = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, existing?.conversation_id]);
 
-  /** Everybody who could be added: not you, and not a bot, which the server refuses. */
+  const reachable = useReachable(open)[serverHost];
+
+  /** Everybody who could be added: not you, not a bot, and nobody who'd refuse you (GRYT-1815). */
   const candidates = useMemo(
     () =>
       members
         .filter((m) => m.serverUserId !== currentServerUserId && !m.isBot)
+        .filter((m) => !reachable || reachable.has(m.serverUserId) || existing?.members.some((x) => x.server_user_id === m.serverUserId))
         .sort((a, b) => a.nickname.localeCompare(b.nickname)),
-    [members, currentServerUserId],
+    [members, currentServerUserId, reachable, existing],
   );
 
   const alreadyIn = useMemo(

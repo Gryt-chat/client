@@ -19,8 +19,8 @@ export interface StoredContactPrefs {
   servers: Record<string, ContactOverride>;
 }
 
-/** Sivert's defaults, 2026-09-24. The server holds the same pair. */
-export const DEFAULT_CONTACT_PREFS: ContactPrefs = { messages: "everyone", calls: "friends" };
+/** Sivert's defaults, messages tightened to friends 2026-10-19 (GRYT-1814). The server holds the same pair. */
+export const DEFAULT_CONTACT_PREFS: ContactPrefs = { messages: "friends", calls: "friends" };
 
 const STORAGE_KEY = "gryt_contact_prefs";
 

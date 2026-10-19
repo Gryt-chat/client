@@ -31,6 +31,8 @@ export interface ServerPeople {
   canMessage: boolean;
   /** `create_groups` there. */
   canGroup: boolean;
+  /** Who'd take a new DM from you there (`contact:reachable`). Unset until it answers, which offers everybody. */
+  reachable?: ReadonlySet<string>;
 }
 
 export type NewMessageMode = "message" | "group";
@@ -44,6 +46,7 @@ export function candidatesFor(servers: ServerPeople[], mode: NewMessageMode): Ca
     for (const member of server.members) {
       // The server refuses a bot in either, and without your own id every row could be you.
       if (member.isBot || !server.selfId || member.serverUserId === server.selfId) continue;
+      if (server.reachable && !server.reachable.has(member.serverUserId)) continue;
       out.push({
         host: server.host,
         serverUserId: member.serverUserId,

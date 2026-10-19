@@ -9,6 +9,7 @@ import { requestConversation } from "../hooks/dmSpace";
 import { setNewMessageOpen, useNewMessageOpen } from "../hooks/newMessageDialog";
 import { conversationTitle } from "../hooks/useDirectMessages";
 import { canOnServer } from "../hooks/usePermissions";
+import { useReachable } from "../hooks/useReachable";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
 import {
@@ -77,6 +78,8 @@ export function NewMessageDialog() {
     sentName.current = "";
   }, [open]);
 
+  const reachable = useReachable(open);
+
   const serverName = (host: string) => servers[host]?.name || host;
 
   const people = useMemo(
@@ -91,9 +94,10 @@ export function NewMessageDialog() {
             members: memberLists[host] ?? [],
             canMessage: canOnServer(info, "send_direct_messages") && !dmsOff.has(host),
             canGroup: canOnServer(info, "create_groups"),
+            reachable: reachable[host],
           };
         }),
-    [sockets, serverConnectionStatus, serverDetailsList, memberLists, dmsOff],
+    [sockets, serverConnectionStatus, serverDetailsList, memberLists, dmsOff, reachable],
   );
 
   const everyone = useMemo(() => candidatesFor(people, mode), [people, mode]);
