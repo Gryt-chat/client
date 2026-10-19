@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   accountsCameBack,
+  type Announcement,
   checkAccountsAtLaunch,
   checkAccountServices,
   classifyReach,
@@ -26,28 +27,28 @@ import {
 } from "../src/lib/serviceStatus.ts";
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
 /** `check` for the ones that have to await something. */
-async function checkAsync(name, run) {
+async function checkAsync(name: string, run: () => void | Promise<void>) {
   try {
     await run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
-const at = (ts, extra = {}) => ({
+const at = (ts: string, extra: object = {}) => ({
   timestamp: ts,
   type: "outage",
   message: `notice ${ts}`,
@@ -107,8 +108,8 @@ check("a live announcement comes through", () => {
       },
     ],
   });
-  assert.equal(a.message, "An issue has appeared and we are investigating it.");
-  assert.equal(a.type, "outage");
+  assert.equal(a?.message, "An issue has appeared and we are investigating it.");
+  assert.equal(a?.type, "outage");
 });
 
 check("the newest live announcement wins", () => {
@@ -120,7 +121,7 @@ check("the newest live announcement wins", () => {
       at("2026-09-07T19:00:00Z"),
     ],
   });
-  assert.equal(a.timestamp, "2026-09-07T20:30:00Z");
+  assert.equal(a?.timestamp, "2026-09-07T20:30:00Z");
 });
 
 check("a resolved incident stops the banner even with history above it", () => {
@@ -137,12 +138,12 @@ check("an unknown severity is treated as a plain notice", () => {
   const a = pickAnnouncement({
     announcements: [at("2026-09-07T18:00:00Z", { type: "catastrophe" })],
   });
-  assert.equal(a.type, "none");
+  assert.equal(a?.type, "none");
 });
 
 /* ── Which of the two sources wins ───────────────────────────────────── */
 
-const NOTICE = { message: "We're investigating", type: "outage", timestamp: "z" };
+const NOTICE: Announcement = { message: "We're investigating", type: "outage", timestamp: "z" };
 
 check("one failed probe says nothing", () => {
   /* A blip is not an outage, and a banner that flickers teaches people to
@@ -152,20 +153,20 @@ check("one failed probe says nothing", () => {
 });
 
 check("repeated failures raise the generic banner", () => {
-  assert.equal(decideBanner(null, FAILURES_BEFORE_BANNER).kind, "unreachable");
-  assert.equal(decideBanner(null, 9).kind, "unreachable");
+  assert.equal(decideBanner(null, FAILURES_BEFORE_BANNER)?.kind, "unreachable");
+  assert.equal(decideBanner(null, 9)?.kind, "unreachable");
 });
 
 check("an announcement wins over the generic banner", () => {
   const b = decideBanner(NOTICE, 9);
-  assert.equal(b.kind, "announced");
+  assert.ok(b?.kind === "announced", `the banner is ${b?.kind}, not the announcement`);
   assert.equal(b.announcement.message, "We're investigating");
 });
 
 check("an announcement shows even while everything is reachable", () => {
   /* Warning people before taking something down is what the status page is
      for, and nothing has failed yet at that point. */
-  assert.equal(decideBanner(NOTICE, 0).kind, "announced");
+  assert.equal(decideBanner(NOTICE, 0)?.kind, "announced");
 });
 
 /* ── The response cannot break the app ───────────────────────────────── */
@@ -174,6 +175,7 @@ check("a long message is cut rather than allowed to bury the app", () => {
   const a = pickAnnouncement({
     announcements: [at("2026-09-07T18:00:00Z", { message: "m".repeat(2000) })],
   });
+  assert.ok(a, "a long message was dropped");
   assert.ok(a.message.length <= 240, `message was ${a.message.length}`);
 });
 
@@ -246,15 +248,19 @@ await checkAsync("a rejected request does not read as silence", async () => {
 });
 
 await checkAsync("a 5xx does not read as silence", async () => {
-  globalThis.fetch = async () => ({ ok: false, status: 503 });
+  Object.assign(globalThis, {
+    fetch: async () => ({ ok: false, status: 503 }),
+  });
   const result = await fetchAnnouncement(STATUS_API_URL);
   assert.equal(result.ok, false, "a 503 reported success");
 });
 
 await checkAsync("an empty feed is a success with nothing to say", async () => {
-  globalThis.fetch = async () => ({
-    ok: true,
-    json: async () => ({ announcements: [] }),
+  Object.assign(globalThis, {
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({ announcements: [] }),
+    }),
   });
   const result = await fetchAnnouncement(STATUS_API_URL);
   assert.equal(result.ok, true, "a feed that answered reported failure");
@@ -262,9 +268,11 @@ await checkAsync("an empty feed is a success with nothing to say", async () => {
 });
 
 await checkAsync("a live notice comes back through the result", async () => {
-  globalThis.fetch = async () => ({
-    ok: true,
-    json: async () => ({ announcements: [at("2026-09-08T12:00:00Z")] }),
+  Object.assign(globalThis, {
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({ announcements: [at("2026-09-08T12:00:00Z")] }),
+    }),
   });
   const result = await fetchAnnouncement(STATUS_API_URL);
   assert.equal(result.ok && result.announcement?.type, "outage");
@@ -300,9 +308,9 @@ check("the icon is chosen per severity, not hardcoded", () => {
 const ISSUER = "https://auth.gryt.chat/realms/gryt";
 
 /** A fetch that answers per host: "ok", "502", "throw", or "hang" until aborted. */
-function network(hosts) {
-  const calls = [];
-  const fetchImpl = async (url, init = {}) => {
+function network(hosts: Record<string, string>) {
+  const calls: string[] = [];
+  const fetchImpl = async (url: string, init: RequestInit = {}) => {
     calls.push(String(url));
     const host = new URL(url).host;
     const behaviour = hosts[host] ?? "throw";
@@ -322,9 +330,9 @@ function network(hosts) {
   return { calls, fetchImpl };
 }
 
-async function withNetwork(hosts, run) {
+async function withNetwork<T>(hosts: Record<string, string>, run: (calls: string[]) => Promise<T>) {
   const { calls, fetchImpl } = network(hosts);
-  globalThis.fetch = fetchImpl;
+  Object.assign(globalThis, { fetch: fetchImpl });
   try {
     return await run(calls);
   } finally {
@@ -386,11 +394,11 @@ await checkAsync("the launch check runs once, and trouble clears when accounts c
     assert.equal(calls.filter((c) => c === ISSUER).length, 1, "the issuer was probed twice at launch");
   });
   assert.equal(getLaunchTrouble(), "unreachable");
-  assert.equal(decideBanner(null, 0, getLaunchTrouble()).kind, "unreachable", "launch trouble waited for a second failure");
+  assert.equal(decideBanner(null, 0, getLaunchTrouble())?.kind, "unreachable", "launch trouble waited for a second failure");
   assert.equal(accountsCameBack(), false, "the sign-in retry was told accounts are back during the outage");
 
   settleLaunchTrouble("offline");
-  assert.equal(decideBanner(null, 0, getLaunchTrouble()).kind, "offline", "losing the connection still reads as down");
+  assert.equal(decideBanner(null, 0, getLaunchTrouble())?.kind, "offline", "losing the connection still reads as down");
   assert.equal(accountsCameBack(), false, "offline was taken for accounts coming back");
 
   settleLaunchTrouble("reachable");
@@ -417,7 +425,7 @@ await checkAsync("a healthy launch leaves nothing behind", async () => {
 });
 
 check("an announcement still wins over launch trouble", () => {
-  assert.equal(decideBanner(NOTICE, 0, "unreachable").kind, "announced");
+  assert.equal(decideBanner(NOTICE, 0, "unreachable")?.kind, "announced");
 });
 
 const splash = readFileSync(`${ROOT}/src/components/AuthLoadingOverlay.tsx`, "utf8");
