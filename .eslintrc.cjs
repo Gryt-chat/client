@@ -41,18 +41,15 @@ module.exports = {
     ],
   },
   overrides: [
+    // Tests may assert non-null: a wrong guess fails the test, which is the point.
+    {
+      files: ["**/*.spec.ts"],
+      rules: { "@typescript-eslint/no-non-null-assertion": "off" },
+    },
     // Non-null assertions from before the rule.
     {
       files: [
-        "e2e/nightly/electron.spec.ts",
         "e2e/support/app.ts",
-        "e2e/tests/approve-device.spec.ts",
-        "e2e/tests/dm.spec.ts",
-        "e2e/tests/link-device.spec.ts",
-        "e2e/tests/messages.spec.ts",
-        "e2e/tests/send-across-restart.spec.ts",
-        "e2e/tests/sidebar-folders.spec.ts",
-        "e2e/tests/whats-new.spec.ts",
         "electron/main.ts",
         "electron/mediaSandboxPage.ts",
         "src/main.tsx",
