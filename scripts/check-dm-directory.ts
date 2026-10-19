@@ -16,7 +16,9 @@ import {
   setHostConversations,
 } from "../src/packages/socket/src/hooks/dmDirectory.ts";
 
-const conv = (id, at) => ({ conversation_id: id, last_message_at: at });
+type Conversation = Parameters<typeof setHostConversations>[1][number];
+// Only the fields the directory sorts and keys on.
+const conv = (id: string, at: string | null) => ({ conversation_id: id, last_message_at: at }) as Conversation;
 const ids = () => getDirectorySnapshot().map((e) => `${e.host}/${e.conversation.conversation_id}`);
 
 resetDirectory();
@@ -104,8 +106,8 @@ assert.deepEqual(ids(), ["a:1/dm_2"], "forgetting twice changed something");
    Newest message on top. An empty conversation only while it is the open one,
    and then above everything, since it is where you are. */
 {
-  const entry = (host, id, at) => ({ host, conversation: conv(id, at) });
-  const listed = (entries, visiting) =>
+  const entry = (host: string, id: string, at: string | null) => ({ host, conversation: conv(id, at) });
+  const listed = (entries: ReturnType<typeof entry>[], visiting: string | null) =>
     listedConversations(entries, visiting).map((e) => `${e.host}/${e.conversation.conversation_id}`);
 
   const entries = [
@@ -137,8 +139,8 @@ assert.deepEqual(ids(), ["a:1/dm_2"], "forgetting twice changed something");
 {
   resetDirectory();
   const members = [{ server_user_id: "u-bob", nickname: "Bob", avatar_file_id: null, avatar_worn: null }];
-  const group = (name, icon) => ({
-    conversation_id: "dm_g1", kind: "group", name, icon_file_id: icon, members,
+  const group = (name: string | null, icon: string | null): Conversation => ({
+    conversation_id: "dm_g1", kind: "group", name, icon_file_id: icon, members, other: members[0],
     last_message_at: null, created_at: "2026-09-21T10:00:00Z",
   });
   setHostConversations("a:1", [group(null, null)]);

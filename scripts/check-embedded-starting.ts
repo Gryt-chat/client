@@ -12,7 +12,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SIDEBAR = "src/components/sidebar.tsx";
 const MANAGER = "electron/embeddedServerManager.ts";
 const PRESENCE = "src/packages/webRTC/src/adapters/useVoicePresence.ts";
-const read = (p) => readFileSync(join(root, p), "utf8");
+const read = (p: string) => readFileSync(join(root, p), "utf8");
 const sidebar = read(SIDEBAR);
 const manager = read(MANAGER);
 const presence = read(PRESENCE);
@@ -78,7 +78,9 @@ const cardLabels = (() => {
   return found;
 })();
 
-function rail({ embedded, voice, socket, settleExpired = false }) {
+type Rail = { embedded: string | undefined; voice: (typeof CALLS)[keyof typeof CALLS]; socket: string | undefined; settleExpired?: boolean };
+
+function rail({ embedded, voice, socket, settleExpired = false }: Rail) {
   const labels = cardLabels.map(({ condition, label }) => `(${condition}) && ${JSON.stringify(label)}`);
   return new Function(
     "serverConnectionStatus",
@@ -141,7 +143,7 @@ for (const socket of SOCKET) {
 
 // Once the manager is not booting it, the card says what the socket says: it can't be reached.
 for (const embedded of ["running", "stopped", "error", undefined]) {
-  const said = (socket, settleExpired = false) => rail({ embedded, voice: CALLS["no call"], socket, settleExpired }).labels;
+  const said = (socket: string | undefined, settleExpired = false) => rail({ embedded, voice: CALLS["no call"], socket, settleExpired }).labels;
   const down = ["Can&rsquo;t reach it"];
   assert.deepEqual(said("disconnected"), down, `a ${embedded ?? "remote"} server with a socket that gave up doesn't say it can't be reached`);
   assert.deepEqual(said(undefined, true), down, `a ${embedded ?? "remote"} server that never answered doesn't say it can't be reached`);

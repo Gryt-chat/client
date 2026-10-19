@@ -21,7 +21,7 @@ const PRIMITIVES = [
   "packages/socket/src/components/NoticeDialog.tsx",
 ];
 
-function walk(dir) {
+function walk(dir: string): string[] {
   const out = [];
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
@@ -56,28 +56,28 @@ for (const file of PRIMITIVES) {
 // window, and an inline maxWidth or a max-w class replaces that cap (GRYT-1212).
 const POPUPS = new Set(["Dialog.Popup", "AlertDialog.Popup"]);
 
-const tag = (node) => node.tagName.getText();
+const tag = (node: ts.JsxOpeningLikeElement) => node.tagName.getText();
 
-function opening(node) {
+function opening(node: ts.Node) {
   if (ts.isJsxElement(node)) return node.openingElement;
   if (ts.isJsxSelfClosingElement(node)) return node;
   return null;
 }
 
-function attribute(element, name) {
+function attribute(element: ts.JsxOpeningLikeElement, name: string) {
   return element.attributes.properties.find(
-    (prop) => ts.isJsxAttribute(prop) && prop.name.getText() === name,
+    (prop): prop is ts.JsxAttribute => ts.isJsxAttribute(prop) && prop.name.getText() === name,
   );
 }
 
-function everyNode(node, visit) {
+function everyNode(node: ts.Node, visit: (node: ts.Node) => void) {
   visit(node);
   ts.forEachChild(node, (child) => everyNode(child, visit));
 }
 
 /** Every class token in a className, from string literals, templates and cn() calls. */
-function classTokens(attr) {
-  const tokens = [];
+function classTokens(attr: ts.JsxAttribute | undefined) {
+  const tokens: string[] = [];
   if (!attr?.initializer) return tokens;
   everyNode(attr.initializer, (node) => {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
@@ -90,7 +90,7 @@ function classTokens(attr) {
 }
 
 /** The utility with its variants taken off: `sm:max-w-md` is `max-w-md`. */
-function utility(token) {
+function utility(token: string) {
   let depth = 0;
   let cut = 0;
   for (let i = 0; i < token.length; i++) {
@@ -101,8 +101,8 @@ function utility(token) {
   return token.slice(cut);
 }
 
-function styleKeys(attr) {
-  const keys = [];
+function styleKeys(attr: ts.JsxAttribute | undefined) {
+  const keys: string[] = [];
   if (!attr?.initializer) return keys;
   everyNode(attr.initializer, (node) => {
     if (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) {
@@ -112,7 +112,7 @@ function styleKeys(attr) {
   return keys;
 }
 
-function containsButton(node) {
+function containsButton(node: ts.Node) {
   let found = false;
   everyNode(node, (child) => {
     const el = opening(child);
@@ -122,7 +122,7 @@ function containsButton(node) {
 }
 
 /** How many of a row's own children hold a button, a group of them counting as one. */
-function buttonsIn(row) {
+function buttonsIn(row: ts.JsxElement) {
   let count = 0;
   for (const child of row.children) {
     if (ts.isJsxExpression(child) ? child.expression && containsButton(child.expression) : opening(child) && containsButton(child)) {
@@ -132,14 +132,14 @@ function buttonsIn(row) {
   return count;
 }
 
-const problems = [];
+const problems: string[] = [];
 
 for (const file of files.filter((f) => f.endsWith(".tsx"))) {
   const text = readFileSync(file, "utf8");
   if (!text.includes(".Popup")) continue;
   const name = relative(src, file).split("\\").join("/");
   const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const at = (node) => `${name}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
+  const at = (node: ts.Node) => `${name}:${sf.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
 
   everyNode(sf, (node) => {
     const popup = opening(node);
