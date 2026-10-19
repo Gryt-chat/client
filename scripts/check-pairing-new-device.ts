@@ -6,9 +6,11 @@
 import assert from "node:assert/strict";
 
 import { createApproverPairing, createNewDevicePairing } from "@gryt/core";
-import { base64Url } from "@gryt/crypto";
+import { asIdentityScope, base64Url } from "@gryt/crypto";
 
-import { ISSUER, memoryKeycloak, memoryRelay } from "./pairing-fakes.mjs";
+import type { ArchivedMessage } from "@/common";
+
+import { ISSUER, memoryKeycloak, memoryRelay, waitFor } from "./pairing-fakes.ts";
 
 const { createPairingOidc } = await import("../src/lib/pairing/oidc.ts");
 const { describeThisDevice } = await import("../src/lib/pairing/device.ts");
@@ -19,10 +21,13 @@ const { historyLines, newDeviceEndText } = await import("../src/lib/pairing/newD
 
 // ── the install, recorded ────────────────────────────────────────────
 
-function recordingDeps(existingPins = {}) {
-  const log = [];
+type LinkDeps = Parameters<typeof createLinkStorage>[0];
+type Pins = ReturnType<LinkDeps["pinStore"]["read"]>;
+
+function recordingDeps(existingPins: Pins = {}) {
+  const log: (string | number | null | undefined)[][] = [];
   let pins = existingPins;
-  const deps = {
+  const deps: LinkDeps = {
     installIdentity: async (seed, keys) => void log.push(["identity", seed.length, keys.length]),
     expectLineage: (host, origin) => void log.push(["lineage", host, origin]),
     pinStore: { read: () => pins, write: (next) => { pins = next; log.push(["pins", Object.keys(next).length]); } },
@@ -39,13 +44,15 @@ function recordingDeps(existingPins = {}) {
 
 const PIN = { thumbprint: "t", dmPublicKey: base64Url(new Uint8Array(32).fill(7)), firstSeenAt: 1, lastSeenAt: 2 };
 
-function envelope(extra = {}) {
+type Envelope = Parameters<ReturnType<typeof createApproverPairing>["approve"]>[0];
+
+function envelope(extra: Partial<Envelope> = {}): Envelope {
   return {
     seed: new Uint8Array(32).map((_, i) => i + 1),
     keys: [],
     servers: [
-      { host: "chat.example", name: "Chat", scope: "srv:ORIGINKEY", scheme: "https" },
-      { host: "lan.local:5003", name: "LAN", scope: "lan.local:5003" },
+      { host: "chat.example", name: "Chat", scope: asIdentityScope("srv:ORIGINKEY"), scheme: "https" },
+      { host: "lan.local:5003", name: "LAN", scope: asIdentityScope("lan.local:5003") },
     ],
     pins: { "srv:ORIGINKEY": { "member-a": { ...PIN, seenOnMls: true }, "member-b": PIN } },
     from: "Sivert's laptop",
@@ -53,21 +60,16 @@ function envelope(extra = {}) {
   };
 }
 
-const waitFor = (machine, phases, ms = 10_000) =>
-  new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Stuck in ${machine.state.phase}, wanted ${phases}`)), ms);
-    const check = (s) => {
-      if (!phases.includes(s.phase)) return false;
-      clearTimeout(timer);
-      unsubscribe();
-      resolve(s);
-      return true;
-    };
-    const unsubscribe = machine.subscribe(check);
-    check(machine.state);
-  });
+type Link = {
+  env: Envelope;
+  keycloak?: ReturnType<typeof memoryKeycloak>;
+  deps?: ReturnType<typeof recordingDeps>;
+  added?: [string, string][];
+  history?: Parameters<typeof createApproverPairing>[0]["history"];
+  sink?: Parameters<typeof createNewDevicePairing>[0]["history"];
+};
 
-async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), added = [], history, sink }) {
+async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), added = [], history, sink }: Link) {
   const relay = memoryRelay();
   const n = createNewDevicePairing({
     relay,
@@ -82,8 +84,8 @@ async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), 
     fetch: keycloak.fetch,
     history,
     lateWindowMs: 10,
-    devices: (host) => ({
-      addOwnDevice: async (deviceId) => (added.push([host, deviceId]), []),
+    devices: (host: string) => ({
+      addOwnDevice: async (deviceId: string) => (added.push([host, deviceId]), []),
       groupPositions: async () => [],
     }),
   });
@@ -103,10 +105,10 @@ async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), 
 
 {
   const deps = recordingDeps({ "srv:ORIGINKEY member-b": { ...PIN, thumbprint: "mine" } });
-  const added = [];
+  const added: [string, string][] = [];
   const { n, a } = await link({ env: envelope(), deps, added });
   const joining = await waitFor(n, ["joining", "ended"]);
-  assert.equal(joining.phase, "joining", `ended: ${joining.reason}`);
+  assert.equal(joining.phase, "joining", `ended: ${JSON.stringify(joining)}`);
   assert.equal(joining.from, "Sivert's laptop");
 
   assert.deepEqual(deps.log, [
@@ -118,11 +120,12 @@ async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), 
     ["servers", 2, null],
   ]);
   assert.equal(deps.pins()["srv:ORIGINKEY member-b"].thumbprint, "mine", "a pin this device made is kept");
-  assert.equal(deps.pins()["srv:ORIGINKEY member-a"].seenOnMls, undefined, "the flag goes to its own store");
+  // PeerPin has no seenOnMls, which is the point: it must not have come along from the envelope.
+  assert.equal((deps.pins()["srv:ORIGINKEY member-a"] as { seenOnMls?: boolean }).seenOnMls, undefined, "the flag goes to its own store");
 
   await n.ready([{ host: "chat.example", deviceId: "dev-n" }]);
   const done = await waitFor(a, ["done", "ended"]);
-  assert.equal(done.phase, "done", `ended: ${done.reason}`);
+  assert.equal(done.phase, "done", `ended: ${JSON.stringify(done)}`);
   assert.deepEqual(added, [["chat.example", "dev-n"]]);
   await waitFor(n, ["done"]);
 }
@@ -135,7 +138,7 @@ const account = { issuer: ISSUER, clientId: "gryt-web", identityUrl: "https://id
   const keycloak = memoryKeycloak();
   const { n } = await link({ env: envelope({ account }), deps, keycloak });
   const joining = await waitFor(n, ["joining", "ended"]);
-  assert.equal(joining.phase, "joining", `ended: ${joining.reason}`);
+  assert.equal(joining.phase, "joining", `ended: ${JSON.stringify(joining)}`);
   assert.deepEqual(deps.log.slice(-4), [
     ["identity", 32, 0],
     ["servers", 2, "user-1"],
@@ -161,7 +164,7 @@ const account = { issuer: ISSUER, clientId: "gryt-web", identityUrl: "https://id
   const deps = recordingDeps();
   const { n } = await link({ env: envelope({ account }), deps, keycloak: memoryKeycloak({ sub: "someone-else" }) });
   const ended = await waitFor(n, ["ended", "joining"]);
-  assert.equal(ended.phase, "ended");
+  assert.ok(ended.phase === "ended", "a sign-in as somebody else went through");
   assert.equal(ended.reason, "wrong_account");
   assert.deepEqual(deps.log, [], "nothing kept");
 }
@@ -178,7 +181,7 @@ const account = { issuer: ISSUER, clientId: "gryt-web", identityUrl: "https://id
   await waitFor(n, ["comparing"]);
   await waitFor(a, ["confirming"]);
   await n.mismatch();
-  assert.equal(n.state.reason, "mismatch");
+  assert.equal(n.state.phase === "ended" && n.state.reason, "mismatch");
   assert.equal((await waitFor(a, ["ended"])).phase, "ended");
   assert.deepEqual(deps.log, []);
 }
@@ -186,9 +189,13 @@ const account = { issuer: ISSUER, clientId: "gryt-web", identityUrl: "https://id
 // ── the wire formats ─────────────────────────────────────────────────
 
 {
-  const answers = [];
-  const oidc = createPairingOidc(async () => answers.shift());
-  const reply = (status, body) => ({ status, json: async () => body });
+  const reply = (status: number, body: object | null) => ({ status, json: async () => body });
+  const answers: ReturnType<typeof reply>[] = [];
+  const oidc = createPairingOidc(async () => {
+    const answer = answers.shift();
+    assert.ok(answer, "the client asked Keycloak more often than this case answers");
+    return answer;
+  });
   const req = { issuer: ISSUER, clientId: "gryt-web", deviceCode: "d", codeVerifier: "v" };
   for (const [status, body, want] of [
     [400, { error: "authorization_pending" }, "pending"],
@@ -197,7 +204,7 @@ const account = { issuer: ISSUER, clientId: "gryt-web", identityUrl: "https://id
     [400, { error: "access_denied" }, "denied"],
     [503, null, "pending"],
     [200, { access_token: "a" }, "denied"],
-  ]) {
+  ] as const) {
     answers.push(reply(status, body));
     assert.equal((await oidc.deviceToken(req)).status, want, `${status} ${JSON.stringify(body)}`);
   }
@@ -234,12 +241,12 @@ assert.deepEqual(mergePeerPins({}, {}).pins, {});
     text: `hi ${i}`,
     attachments: {},
   }));
-  const archive = {
+  const archive: NonNullable<Link["history"]> = {
     conversations: async () => [{ scope: "srv:ORIGINKEY", conversationId: "dm-1", count: rows.length }],
-    page: async (scope, conversationId, { before, limit }) =>
+    page: async (_scope, _conversationId, { before, limit }) =>
       rows.filter((r) => !before || r.sentAt < before.sentAt).slice(-limit).map(toHistoryRecord),
   };
-  const put = [];
+  const put: ArchivedMessage[] = [];
   const sink = historySink(async () => ({ put: async (m) => void put.push(...m) }));
   const { n, a } = await link({ env: envelope(), history: archive, sink });
   await waitFor(n, ["joining"]);
@@ -253,7 +260,7 @@ assert.deepEqual(mergePeerPins({}, {}).pins, {});
 
 // An archive that won't take it: linked, and the reason says the history is what failed.
 {
-  const archive = {
+  const archive: NonNullable<Link["history"]> = {
     conversations: async () => [{ scope: "s", conversationId: "c", count: 1 }],
     page: async (scope, conversationId, { before }) =>
       before ? [] : [toHistoryRecord({ scope, conversationId, messageId: "x", sentAt: 1, senderId: "a", text: "t", attachments: {} })],
@@ -264,15 +271,17 @@ assert.deepEqual(mergePeerPins({}, {}).pins, {});
   await waitFor(n, ["joining"]);
   await n.ready([]);
   const ended = await waitFor(n, ["done", "ended"]);
+  assert.ok(ended.phase === "ended", "a history the archive refused finished as done");
   assert.equal(ended.reason, "history_failed");
   assert.ok(deps.log.some(([what]) => what === "identity"), "the keys stay in place");
   assert.match(newDeviceEndText("history_failed"), /^You're linked/);
 }
 
-for (const reason of ["history_failed", "access_denied", "expired_token"]) {
+for (const reason of ["history_failed", "access_denied", "expired_token"] as const) {
   assert.notEqual(newDeviceEndText(reason), "Linking stopped before it finished.", `${reason} has its own line`);
 }
-const progress = (over) => ({ messages: 0, total: null, chunks: 0, listed: 0, missing: 0, refused: 0, truncated: false, oldest: null, complete: false, ...over });
+type Progress = NonNullable<Parameters<typeof historyLines>[0]>;
+const progress = (over: Partial<Progress>): Progress => ({ messages: 0, total: null, chunks: 0, listed: 0, missing: 0, refused: 0, truncated: false, oldest: null, complete: false, ...over });
 assert.deepEqual(historyLines(null), []);
 assert.deepEqual(historyLines(progress({ messages: 3 })), ["Getting your message history: 3 so far"]);
 assert.deepEqual(historyLines(progress({ messages: 3, total: 9 })), ["Getting your message history: 3 of 9"]);
