@@ -86,7 +86,7 @@ assert.match(
 
 // Focusing a tile mounts a new Controls. The ids live per connection, so the new one
 // still names the streams the far side receives (GRYT-1319).
-const pc = {};
+const pc = {} as RTCPeerConnection;
 assert.equal(senderStreamId(pc, "camera", "camera-1"), "camera-1");
 // replaceTrack keeps the first stream's id, so a camera restart doesn't rename it.
 assert.equal(senderStreamId(pc, "camera", "camera-2"), "camera-1");
@@ -101,7 +101,7 @@ assert.equal(senderStreamId(pc, "camera", "camera-3"), "camera-1");
 assert.equal(senderStreamId(pc, "screenVideo", "share-3"), "share-1");
 
 // A new connection has new senders. With no connection at all, the stream's own id.
-assert.equal(senderStreamId({}, "screenVideo", "share-4"), "share-4");
+assert.equal(senderStreamId({} as RTCPeerConnection, "screenVideo", "share-4"), "share-4");
 assert.equal(senderStreamId(null, "camera", "camera-5"), "camera-5");
 
 for (const role of ["camera", "screenVideo", "screenAudio"]) {

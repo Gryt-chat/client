@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The half of pinning that is this client's: the store and its wrappers. The
  * assertions go through raw `localStorage`, because both failures are silent.
@@ -7,16 +5,19 @@
 
 import assert from "node:assert/strict";
 
-import { PEER_PINS_KEY, signDmKeyBinding, deriveDmKeyPair } from "@gryt/crypto";
+import { deriveDmKeyPair,PEER_PINS_KEY, signDmKeyBinding } from "@gryt/crypto";
+
 import { asIdentityScope } from "../src/packages/common/src/auth/identity-seed.ts";
 
-const backing = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (backing.has(k) ? backing.get(k) : null),
-  setItem: (k, v) => backing.set(k, String(v)),
-  removeItem: (k) => backing.delete(k),
-  clear: () => backing.clear(),
-};
+const backing = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (backing.has(k) ? backing.get(k) : null),
+    setItem: (k: string, v: string) => backing.set(k, String(v)),
+    removeItem: (k: string) => backing.delete(k),
+    clear: () => backing.clear(),
+  },
+});
 
 const {
   evaluatePeerKey,
@@ -28,12 +29,13 @@ const {
   markPeerCompared,
   pinPeerKey,
 } = await import("../src/packages/common/src/auth/peer-keys.ts");
+type PeerPin = NonNullable<ReturnType<typeof getPeerPin>>;
 
 const SCOPE = asIdentityScope("srv:abc123");
 const OTHER_SCOPE = asIdentityScope("srv:def456");
 const BOB = "user_bob";
 
-const seed = (n) => Uint8Array.from({ length: 32 }, (_, i) => (i * n + n) % 251);
+const seed = (n: number) => Uint8Array.from({ length: 32 }, (_, i) => (i * n + n) % 251);
 
 async function identity() {
   const pair = await crypto.subtle.generateKey(
@@ -58,14 +60,14 @@ const bind = ({ dmSeed = 7, scope = SCOPE } = {}) =>
   });
 
 /** What is actually on disk, read without going through the module under test. */
-const stored = () => JSON.parse(localStorage.getItem(PEER_PINS_KEY) ?? "{}");
+const stored = (): Record<string, PeerPin> => JSON.parse(localStorage.getItem(PEER_PINS_KEY) ?? "{}");
 
 /* ── a pin lands in localStorage, under the key the package names ───────── */
 
 {
   const binding = await bind();
   const first = await evaluatePeerKey({ scope: SCOPE, memberId: BOB, binding });
-  assert.equal(first.kind, "first");
+  assert.ok(first.kind === "first", `the first look came back as ${first.kind}`);
   assert.equal(localStorage.getItem(PEER_PINS_KEY), null,
     "evaluating must not write; the caller decides when to pin");
 
@@ -73,7 +75,7 @@ const stored = () => JSON.parse(localStorage.getItem(PEER_PINS_KEY) ?? "{}");
 
   const raw = stored();
   assert.equal(Object.keys(raw).length, 1, "the pin has to reach storage");
-  assert.equal(Object.values(raw)[0].thumbprint, first.verified.identityThumbprint);
+  assert.equal(Object.values(raw)[0]?.thumbprint, first.verified.identityThumbprint);
 
   // `PEER_PINS_KEY` is the package's constant rather than a copy, so mobile and
   // the desktop cannot drift onto two names for the same thing.
@@ -105,22 +107,25 @@ const stored = () => JSON.parse(localStorage.getItem(PEER_PINS_KEY) ?? "{}");
     [key]: { ...raw[key], comparedAt: 1234 },
   }));
 
-  assert.equal(getPeerPin(SCOPE, BOB).comparedAt, 1234,
+  assert.equal(getPeerPin(SCOPE, BOB)?.comparedAt, 1234,
     "a pin has to be read from storage every time, not cached at import");
 }
 
 /* ── every wrapper passes the store, not just the ones read so far ──────── */
 
 {
+  const pin = getPeerPin(SCOPE, BOB);
+  assert.ok(pin, "Bob's pin is gone");
   assert.equal(markPeerCompared(SCOPE, BOB, {
-    thumbprint: getPeerPin(SCOPE, BOB).thumbprint,
-    dmPublicKey: getPeerPin(SCOPE, BOB).dmPublicKey,
+    thumbprint: pin.thumbprint,
+    dmPublicKey: pin.dmPublicKey,
   }, 5678), true);
   assert.equal(stored()[Object.keys(stored())[0]].comparedAt, 5678,
     "markPeerCompared has to write through to storage");
 
   const other = await bind({ scope: OTHER_SCOPE });
   const there = await evaluatePeerKey({ scope: OTHER_SCOPE, memberId: BOB, binding: other });
+  assert.ok(there.kind === "first", `the other scope's first look came back as ${there.kind}`);
   pinPeerKey(OTHER_SCOPE, BOB, there.verified);
   assert.equal(Object.keys(stored()).length, 2);
 
@@ -137,20 +142,23 @@ const stored = () => JSON.parse(localStorage.getItem(PEER_PINS_KEY) ?? "{}");
 
 {
   const working = globalThis.localStorage;
-  globalThis.localStorage = {
-    getItem() { throw new Error("blocked"); },
-    setItem() { throw new Error("full"); },
-  };
+  Object.assign(globalThis, {
+    localStorage: {
+      getItem() { throw new Error("blocked"); },
+      setItem() { throw new Error("full"); },
+    },
+  });
 
   assert.deepEqual(localPeerPinStore.read(), {},
     "an unreadable store reads as empty rather than throwing into a member list");
+  // @ts-expect-error -- not a pin, on purpose; the store has to survive writing it.
   localPeerPinStore.write({ a: 1 });
 
   const binding = await bind();
   assert.equal((await evaluatePeerKey({ scope: SCOPE, memberId: BOB, binding })).kind,
     "first", "a decision still comes back when storage is gone");
 
-  globalThis.localStorage = working;
+  Object.assign(globalThis, { localStorage: working });
 }
 
 console.log(

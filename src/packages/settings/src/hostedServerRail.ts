@@ -1,6 +1,6 @@
 import { normalizeHost } from "@gryt/core";
 
-// Type-only, so scripts/check-hosted-server-rail.mjs can import this module in Node.
+// Type-only, so scripts/check-hosted-server-rail.ts can import this module in Node.
 import type { EmbeddedServerState } from "../../../lib/electron";
 import { sameServer, socketServerId } from "./serverId.ts";
 import type { Servers } from "./types/server";

@@ -1,6 +1,6 @@
 /**
  * The colour a voice tile is painted, derived from the avatar on it. **Its own
- * module so `scripts/check-tile-contrast.mjs` can import rather than reimplement.**
+ * module so `scripts/check-tile-contrast.ts` can import rather than reimplement.**
  */
 
 /** A tile's colour, as the three parts of an `hsl()`. */

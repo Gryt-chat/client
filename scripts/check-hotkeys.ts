@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The combo grammar in src/lib/hotkeys.ts, checked without a browser. These are
  * persisted, so a changed token silently unbinds what people already had.
@@ -22,7 +20,9 @@ const {
   releasesMouseEvent,
 } = hotkeys;
 
-const key = (code, mods = {}) => ({
+type Mods = { ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean };
+
+const key = (code: string, mods: Mods = {}) => ({
   code,
   ctrlKey: !!mods.ctrl,
   shiftKey: !!mods.shift,
@@ -30,7 +30,7 @@ const key = (code, mods = {}) => ({
   metaKey: !!mods.meta,
 });
 
-const mouse = (button, mods = {}) => ({
+const mouse = (button: number, mods: Mods = {}) => ({
   button,
   ctrlKey: !!mods.ctrl,
   shiftKey: !!mods.shift,

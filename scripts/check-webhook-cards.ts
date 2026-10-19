@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Webhook cards (GRYT-1186): a fallback line is not drawn twice, file ids become upload URLs,
 // and nothing on a card can count as a mention of the viewer.
 
@@ -9,7 +7,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (path) => readFileSync(join(root, path), "utf8");
+const read = (path: string) => readFileSync(join(root, path), "utf8");
 
 const HELPERS = "src/packages/socket/src/utils/webhookCards.ts";
 const ROW = "src/packages/socket/src/components/MessageRow.tsx";
@@ -61,8 +59,8 @@ const stored = {
   footer: { text: "ci.example.com", icon_file_id: "footer-icon" },
   timestamp: "2026-09-15T07:42:00Z",
 };
-const asked = [];
-const fileUrl = (fileId, kind) => {
+const asked: [string, string][] = [];
+const fileUrl = (fileId: string, kind: string) => {
   asked.push([fileId, kind]);
   return `http://chat.example/api/uploads/files/${fileId}?${kind === "icon" ? "thumb=1&" : ""}t=A`;
 };
@@ -138,8 +136,8 @@ assert.doesNotMatch(viewSource, /mention:\$\{/, `${VIEW} decides a mention witho
 assert.ok((viewSource.match(/isMentioned=\{mentionsViewer\(m, currentUserId(, massViewer)?\)\}/g) ?? []).length >= 1);
 
 // Only the row and the card component read `cards`. Anything else is a way for a card to ping.
-function files(dir) {
-  return readdirSync(dir).flatMap((name) => {
+function files(dir: string): string[] {
+  return readdirSync(dir).flatMap((name): string[] => {
     const full = join(dir, name);
     if (statSync(full).isDirectory()) return files(full);
     return /\.(ts|tsx)$/.test(name) ? [full] : [];

@@ -13,20 +13,20 @@ const require = createRequire(import.meta.url);
 const { load } = require("js-yaml");
 
 let failures = 0;
-function check(name, run) {
+function check(name: string, run: () => void) {
   try {
     run();
     console.log(`  ok  ${name}`);
   } catch (err) {
     failures += 1;
-    console.error(`  FAIL  ${name}\n        ${err.stack ?? err.message}`);
+    console.error(`  FAIL  ${name}\n        ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
   }
 }
 
-const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const yml = load(read("electron-builder.yml"));
 
-function configFor(env) {
+function configFor(env: Record<string, string>) {
   const out = execFileSync(process.execPath, ["-e", "console.log(JSON.stringify(require('./electron-builder.config.cjs')))"], {
     cwd: new URL("..", import.meta.url),
     env: { ...process.env, GRYT_MAS: "", GRYT_VARIANT: "", ...env },
@@ -35,11 +35,11 @@ function configFor(env) {
 }
 
 check("every desktop build carries the helper for its own arch", () => {
-  const entry = yml.extraResources.find((e) => e.from === "build/helper/${arch}/");
+  const entry = yml.extraResources.find((e: { from: string }) => e.from === "build/helper/${arch}/");
   assert.ok(entry, "no helper in extraResources");
   assert.equal(entry.to, "helper/");
   for (const variant of ["", "slim"]) {
-    assert.ok(configFor({ GRYT_VARIANT: variant }).extraResources.some((e) => e.from === "build/helper/${arch}/"), `variant ${variant || "full"}`);
+    assert.ok(configFor({ GRYT_VARIANT: variant }).extraResources.some((e: { from: string }) => e.from === "build/helper/${arch}/"), `variant ${variant || "full"}`);
   }
 });
 
@@ -52,7 +52,7 @@ check("the beforeBuild hook builds it for the arch it's called with, and fails l
 });
 
 check("SMAppService finds the agent, and it points at the helper in this bundle", () => {
-  const extra = yml.mac.extraFiles.find((e) => e.from === "build/chat.gryt.helper.plist");
+  const extra = yml.mac.extraFiles.find((e: { from: string }) => e.from === "build/chat.gryt.helper.plist");
   assert.equal(extra?.to, "Library/LaunchAgents/chat.gryt.helper.plist");
   const plist = read("build/chat.gryt.helper.plist");
   assert.match(plist, /<key>BundleProgram<\/key>\s*<string>Contents\/Resources\/helper\/gryt-helper<\/string>/);
@@ -63,7 +63,7 @@ check("SMAppService finds the agent, and it points at the helper in this bundle"
 
 check("the Mac App Store build leaves both out", () => {
   const mas = configFor({ GRYT_MAS: "1" });
-  assert.equal(mas.extraResources.some((e) => String(e.from).startsWith("build/helper/")), false);
+  assert.equal(mas.extraResources.some((e: { from: string }) => String(e.from).startsWith("build/helper/")), false);
   assert.deepEqual(mas.mac.extraFiles, []);
   assert.match(read("scripts/prepare-electron-build.mjs"), /if \(!isMasBuild\(\)\) \{\s*const platform/);
 });
