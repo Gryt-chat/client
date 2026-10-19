@@ -9,6 +9,8 @@ import { stripTypeScriptTypes } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import type { Release, ReleasesToShow } from "../src/components/whatsNewSince.ts";
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = "src/components/whatsNew.tsx";
 const FEED = "src/lib/changelogFeed.ts";
@@ -23,7 +25,7 @@ const { CHANGELOG_URL, RETRY_DELAYS_MS, loadChangelog, resetChangelogFeed, sleep
 );
 
 /** Everything from `opener` to the brace that closes the block it opens. */
-function block(text, opener, what) {
+function block(text: string, opener: string, what: string) {
   const at = text.indexOf(opener);
   assert.ok(at >= 0, `no longer has ${what}`);
   const start = at + opener.length - 1;
@@ -36,7 +38,7 @@ function block(text, opener, what) {
 }
 
 /** A function body's types stripped by Node. A bare block holding `return` does not parse alone. */
-const strip = (braces) => stripTypeScriptTypes(`async () => ${braces}`).slice("async () => ".length);
+const strip = (braces: string) => stripTypeScriptTypes(`async () => ${braces}`).slice("async () => ".length);
 
 /* The second useEffect is the one that decides; the first only subscribes. */
 const body = strip(
@@ -68,21 +70,36 @@ const findReleasesBody = strip(
 ).slice(1, -1);
 
 /** One run of the effect, with the store, the network and the waiting faked. */
-async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn, asked, beta }) {
+/** One answer from the site: unreachable, a failed request, or a changelog. */
+type Attempt = { offline?: boolean; ok?: boolean; app?: Release[] };
+type Run = {
+  seen: string | null;
+  version: string;
+  app?: Release[];
+  offline?: boolean;
+  storeUser?: string | null;
+  joined?: boolean;
+  attempts?: Attempt[];
+  abortOn?: number;
+  asked?: number;
+  beta?: boolean;
+};
+
+async function run({ seen, version, app, offline, storeUser, joined, attempts, abortOn, asked, beta }: Run) {
   /* The feed keeps the last copy for everyone, so each run starts from an app that
      has fetched nothing yet. */
   resetChangelogFeed();
   const store = { value: seen };
-  const picks = [];
-  const fetched = [];
-  const slept = [];
+  const picks: ReleasesToShow[] = [];
+  const fetched: { url: string; cache?: RequestCache; aborted?: boolean }[] = [];
+  const slept: number[] = [];
   const controller = new AbortController();
 
   /* Each attempt's answer in turn, the last one repeating. `app`/`offline`
      describe a site that always says the same thing. */
-  const answers = attempts ?? [offline ? { offline: true } : { app }];
+  const answers: Attempt[] = attempts ?? [offline ? { offline: true } : { app }];
 
-  const fetch = (url, init) => {
+  const fetch = (url: string, init?: RequestInit) => {
     fetched.push({ url, cache: init?.cache, aborted: init?.signal?.aborted });
     if (fetched.length === abortOn) controller.abort();
     const answer = answers[Math.min(fetched.length - 1, answers.length - 1)];
@@ -91,13 +108,13 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
     return Promise.resolve({ ok: true, json: () => Promise.resolve({ app: answer.app }) });
   };
 
-  const fakeSleep = (ms) => {
+  const fakeSleep = (ms: number) => {
     slept.push(ms);
     return Promise.resolve();
   };
   const findReleases = new AsyncFunction("loadChangelog", "version", "signal", findReleasesBody).bind(
     null,
-    (signal, options) => loadChangelog(signal, { ...options, fetch, sleep: fakeSleep }),
+    (signal: AbortSignal, options: object) => loadChangelog(signal, { ...options, fetch, sleep: fakeSleep }),
   );
 
   const fn = new Function(
@@ -111,9 +128,9 @@ async function run({ seen, version, app, offline, storeUser, joined, attempts, a
 
   await fn(
     () => store.value,
-    (_k, v) => (store.value = v),
+    (_k: string, v: string) => (store.value = v),
     findReleases,
-    (picked) => picks.push(picked),
+    (picked: ReleasesToShow) => picks.push(picked),
     version,
     class {
       signal = controller.signal;
@@ -327,8 +344,8 @@ const BETA = { version: "1.12.0-beta.1", date: "2026-09-15", line: "Beta.", chan
 // Compiled with the TypeScript the client already has. @gryt/ui and the owl are
 // stubbed, so a Chip shows its tone as an attribute and the portal draws inline.
 const ts = (await import("typescript")).default;
-const moduleUrl = (text) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
-const STUBS = {
+const moduleUrl = (text: string) => `data:text/javascript;base64,${Buffer.from(text).toString("base64")}`;
+const STUBS: Record<string, string> = {
   "@gryt/ui": moduleUrl(`
     import { createElement as h, Fragment } from ${JSON.stringify(import.meta.resolve("react"))};
     const pass = ({ children }) => h(Fragment, null, children);
@@ -348,7 +365,9 @@ const iconSet = readFileSync(join(root, "src/lib/icons.tsx"), "utf8");
 for (const name of iconNames) {
   assert.match(iconSet, new RegExp(`export const ${name}: Icon =`), `${name} is not an icon src/lib/icons.tsx exports`);
 }
-STUBS[iconImport[0].match(/"([^"]+)"/)[1]] = moduleUrl(`
+const iconsFrom = iconImport[0].match(/"([^"]+)"/)?.[1];
+assert.ok(iconsFrom);
+STUBS[iconsFrom] = moduleUrl(`
   import { createElement as h } from ${JSON.stringify(import.meta.resolve("react"))};
   const mark = (name) => ({ className, size }) => h("i", { className, "data-icon": name, "data-size": size });
   ${iconNames.map((name) => `export const ${name} = mark(${JSON.stringify(name)});`).join("\n  ")}
@@ -357,11 +376,11 @@ const compiled = ts
   .transpileModule(dialog, {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   })
-  .outputText.replace(/from "([^"]+)"/g, (_, spec) => `from "${STUBS[spec] ?? import.meta.resolve(spec)}"`);
+  .outputText.replace(/from "([^"]+)"/g, (_: string, spec: string) => `from "${STUBS[spec] ?? import.meta.resolve(spec)}"`);
 const { AREAS, KIND_ORDER, ReleaseBody, WhatsNewDialog, grouped, ordered, readableDate } = await import(
   moduleUrl(`${compiled}\nexport { AREAS, KIND_ORDER, ReleaseBody, grouped, ordered, readableDate };`)
 );
-const c = (kind, text) => ({ kind, text });
+const c = (kind: string, text: string) => ({ kind, text });
 
 assert.deepEqual(
   KIND_ORDER,
@@ -403,7 +422,7 @@ assert.deepEqual(
   const changes = ["security", "fixed", "new", "changed", "odd", "fixed"].map((kind, i) => c(kind, `change ${i}`));
   const out = ordered(changes);
   assert.equal(out.length, changes.length, "ordering lost or duplicated a change");
-  const pairs = (list) => list.map((x) => `${x.kind}:${x.text}`).sort();
+  const pairs = (list: { kind: string; text: string }[]) => list.map((x) => `${x.kind}:${x.text}`).sort();
   assert.deepEqual(pairs(out), pairs(changes), "ordering changed a change, or gave its text another kind");
 }
 
@@ -413,7 +432,7 @@ const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 
 /** Each list row drawn: the pills in it, and the text beside them. */
-function rows(html) {
+function rows(html: string) {
   const pill = /<span class="whats-new-kind" data-tone="([^"]*)">([^<]*)<\/span>/g;
   return [...html.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map(([, row]) => ({
     pills: [...row.matchAll(pill)].map(([, tone, label]) => `${label}/${tone}`),
@@ -488,7 +507,7 @@ const SEVERAL_FIXES = {
 // The rows share one pill column, so every change's text starts at the same place.
 {
   const style = readFileSync(join(root, "src/style.css"), "utf8");
-  const rule = (selector) => {
+  const rule = (selector: string) => {
     const at = style.indexOf(`\n${selector} {`);
     assert.notEqual(at, -1, `src/style.css no longer has ${selector}. Move this check with it.`);
     return style.slice(at, style.indexOf("}", at));
@@ -499,7 +518,8 @@ const SEVERAL_FIXES = {
 
 /* ── a heading over each area (GRYT-1339) ────────────────────────────────── */
 
-const at = (area, kind, text) => ({ kind, area, text });
+type Change = { kind: string; text: string; area?: string | number | null };
+const at = (area: string | number | null, kind: string, text: string): Change => ({ kind, area, text });
 
 // The same seven as the site's AREAS, in the same order. An eighth there lands under its own id here.
 assert.deepEqual(
@@ -517,7 +537,8 @@ assert.deepEqual(
 );
 
 /** Each group's heading and its changes' text, for comparing. */
-const byArea = (changes) => grouped(changes).map(({ label, changes: list }) => [label, list.map((x) => x.text)]);
+const byArea = (changes: Change[]) =>
+  grouped(changes).map(({ label, changes: list }: { label: string; changes: Change[] }) => [label, list.map((x) => x.text)]);
 
 // AREAS order however the release was written, as written inside an area, and no area last.
 assert.deepEqual(
@@ -552,13 +573,13 @@ assert.deepEqual(
  * What a release draws, in order: the line, each heading with its level, and each row
  * as `pill: text`. Everything inside the security block is marked `security ›`.
  */
-function drawn(html) {
+function drawn(html: string): string[] {
   const parts =
     /<p class="whats-new-line">([^<]*)<\/p>|<div class="whats-new-group whats-new-security">([\s\S]*?<\/ul>)<\/div>|<(h[34]) class="whats-new-area">(?:<i[^>]*><\/i>)?<span class="whats-new-area-name">([^<]*)<\/span><\/h[34]>|<li\b[^>]*>([\s\S]*?)<\/li>/g;
-  const plain = (text) => text.replace(/&amp;/g, "&");
+  const plain = (text: string) => text.replace(/&amp;/g, "&");
   return [...html.matchAll(parts)].flatMap(([, line, security, level, heading, row]) => {
     if (line !== undefined) return [`line: ${plain(line)}`];
-    if (security !== undefined) return drawn(security).map((part) => `security › ${part}`);
+    if (security !== undefined) return drawn(security).map((part: string) => `security › ${part}`);
     if (heading !== undefined) return [`${level} ${plain(heading)}`];
     return [row.replace(/<span class="whats-new-kind" data-tone="[^"]*">([^<]*)<\/span>/, "$1: ").replace(/<[^>]+>/g, "")];
   });
@@ -657,7 +678,7 @@ for (const changes of [
     createElement(WhatsNewDialog, { releases: [SPREAD, SEVERAL_FIXES, OLD], since: "1.9.3", capped: false, onClose() {} }),
   );
   const [spread, fixes, old] = html.split('<section class="whats-new-release">').slice(1);
-  const headings = (part) => drawn(part).filter((x) => /^(security › )?h[34] /.test(x));
+  const headings = (part: string) => drawn(part).filter((x) => /^(security › )?h[34] /.test(x));
   assert.deepEqual(
     headings(spread),
     ["security › h4 Security", "h4 Voice & video", "h4 Chat", "h4 Servers & invites", "h4 Other"],
@@ -677,7 +698,7 @@ for (const changes of [
 /* ── a mark per area, and a heading that stays put (GRYT-1402) ───────────── */
 
 /** Each heading drawn, as `name: icon`, the security block's included. */
-function marks(html) {
+function marks(html: string) {
   const heading = /<h[34] class="whats-new-area"><i[^>]*data-icon="([^"]*)"[^>]*><\/i><span class="whats-new-area-name">([^<]*)<\/span>/g;
   return [...html.matchAll(heading)].map(([, icon, name]) => `${name.replace(/&amp;/g, "&")}: ${icon}`);
 }
@@ -716,7 +737,7 @@ function marks(html) {
 // The line, the security block and the areas share the release's pill column, and stack together on a narrow card.
 {
   const style = readFileSync(join(root, "src/style.css"), "utf8");
-  const rule = (selector) => {
+  const rule = (selector: string) => {
     const found = style.indexOf(`\n${selector} {`);
     assert.notEqual(found, -1, `src/style.css no longer has ${selector}. Move this check with it.`);
     return style.slice(found, style.indexOf("}", found));
@@ -737,9 +758,9 @@ function marks(html) {
   assert.match(block, /var\(--gryt-danger-6\)/, "the security block has no danger-red edge");
   assert.match(rule(".whats-new-security > .whats-new-area"), /color: var\(--gryt-danger-11\)/, "the Security heading isn't danger red");
   assert.doesNotMatch(block, /#[0-9a-f]{3,8}\b|rgb\(/i, "the security block uses a colour of its own instead of the theme's");
-  const inline = (value) => value.trim().split(/\s+/)[1];
-  const margin = inline(block.match(/\n\s*margin: ([^;]+);/)[1]);
-  const padding = inline(block.match(/\n\s*padding: ([^;]+);/)[1]);
+  const inline = (value: string | undefined) => value?.trim().split(/\s+/)[1];
+  const margin = inline(block.match(/\n\s*margin: ([^;]+);/)?.[1]);
+  const padding = inline(block.match(/\n\s*padding: ([^;]+);/)?.[1]);
   assert.equal(margin, `-${padding}`, "the security block's side margin doesn't cancel its padding, so its pills leave the column");
 
   /* A sticky box may only move inside its own grid area, so the heading and the rows
@@ -771,7 +792,7 @@ function marks(html) {
 /* `new Date("2026-09-08")` is UTC midnight, so west of Greenwich a release is
    dated the day before it happened. */
 {
-  const withTZ = (tz, run) => {
+  const withTZ = <T>(tz: string, run: () => T) => {
     const before = process.env.TZ;
     process.env.TZ = tz;
     try {
@@ -854,13 +875,13 @@ assert.match(
 );
 
 // And markLoaded does the telling, rather than only being called.
-const notified = [];
+const notified: string[] = [];
 new Function(
   "userId", "loadedListeners", "setLoadedFor",
   block(store, "function markLoaded(userId: string): void {", "markLoaded")
     .slice(1, -1)
     .replace("loadedFor = userId;", "setLoadedFor(userId);"),
-)("user_1", [(id) => notified.push(id)], () => {});
+)("user_1", [(id: string) => notified.push(id)], () => {});
 assert.deepEqual(notified, ["user_1"], "markLoaded does not tell its listeners");
 
 console.log(
