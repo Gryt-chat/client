@@ -1,7 +1,5 @@
-// CommonJS because electron-builder loads the config, and this with it, through require().
-
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
 /**
  * Drops the native prebuilds for platforms the package cannot run on. An
@@ -9,7 +7,7 @@ const path = require("node:path");
  */
 
 /** Directory names node-gyp-build looks for, `${platform}-${arch}`. */
-function wantedDir(electronPlatformName, arch) {
+export function wantedDir(electronPlatformName: string, arch: string): string {
   // A Mac App Store build packs as `mas`, but runs with process.platform "darwin".
   const platform = electronPlatformName === "mas" ? "darwin" : electronPlatformName;
   return `${platform}-${arch}`;
@@ -19,7 +17,7 @@ function wantedDir(electronPlatformName, arch) {
  * What to delete from one prebuilds directory. Separated from the filesystem so
  * it can be tested against a list rather than a packaged app.
  */
-function foreignPrebuilds(present, electronPlatformName, arch) {
+export function foreignPrebuilds(present: string[], electronPlatformName: string, arch: string): string[] {
   const keep = wantedDir(electronPlatformName, arch);
   return present.filter((name) => name !== keep).sort();
 }
@@ -28,13 +26,18 @@ function foreignPrebuilds(present, electronPlatformName, arch) {
  * Returns what it kept and removed, so a caller can fail rather than log. Finding
  * no match is an error: removing everything is the dangerous outcome.
  */
-function prunePrebuilds(appOutDir, electronPlatformName, arch, { dryRun = false } = {}) {
+export function prunePrebuilds(
+  appOutDir: string,
+  electronPlatformName: string,
+  arch: string,
+  { dryRun = false } = {},
+): { kept: string[]; removed: string[] } {
   // Walked from appOutDir rather than a fixed prefix: macOS begins with
   // `<name>.app/Contents` and the others with `resources`.
-  const roots = [];
-  const walk = (dir, depth) => {
+  const roots: string[] = [];
+  const walk = (dir: string, depth: number): void => {
     if (depth > 10) return;
-    let entries;
+    let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
@@ -52,8 +55,8 @@ function prunePrebuilds(appOutDir, electronPlatformName, arch, { dryRun = false 
 
   walk(appOutDir, 0);
 
-  const removed = [];
-  const kept = [];
+  const removed: string[] = [];
+  const kept: string[] = [];
 
   for (const root of roots) {
     const present = fs.readdirSync(root, { withFileTypes: true })
@@ -77,5 +80,3 @@ function prunePrebuilds(appOutDir, electronPlatformName, arch, { dryRun = false 
 
   return { kept, removed };
 }
-
-module.exports = { prunePrebuilds, foreignPrebuilds, wantedDir };

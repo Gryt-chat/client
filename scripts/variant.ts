@@ -1,15 +1,13 @@
-/* eslint-env node */
-
 /**
  * Which of the two builds this is. `slim` leaves the embedded server out; read
  * from the environment, because three places that never call each other need it.
  */
-export function isSlimBuild() {
+export function isSlimBuild(): boolean {
   return process.env.GRYT_VARIANT === "slim";
 }
 
 /** The Mac App Store build. Independent of slim, which it can be as well. */
-export function isMasBuild() {
+export function isMasBuild(): boolean {
   return process.env.GRYT_MAS === "1";
 }
 

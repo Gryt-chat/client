@@ -27,7 +27,7 @@ export interface StartupDeps {
   /** process.resourcesPath when packaged. */
   resourcesPath: string;
   isPackaged: boolean;
-  /** The client checkout in development, where scripts/build-helper.mjs puts helper/dist. */
+  /** The client checkout in development, where scripts/build-helper.ts puts helper/dist. */
   devRoot: string;
   mas: boolean;
   /** process.windowsStore: MSIX keeps its registry writes to itself, so a Run value would never be seen. */

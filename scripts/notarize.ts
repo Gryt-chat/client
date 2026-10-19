@@ -1,12 +1,9 @@
-// Note: kept as CJS because electron-builder loads afterSign hooks via require().
+import path from "node:path";
 
-const path = require("node:path");
+import type { AfterPackContext } from "electron-builder";
 
-/**
- * electron-builder afterSign hook.
- * @param {import("electron-builder").AfterPackContext} context
- */
-exports.default = async function notarizeHook(context) {
+/** electron-builder afterSign hook. */
+export default async function notarizeHook(context: AfterPackContext): Promise<void> {
   if (process.platform !== "darwin") return;
   // App Store Connect checks a store build itself, and notarytool rejects its signature.
   if (context.electronPlatformName === "mas") return;
@@ -23,7 +20,7 @@ exports.default = async function notarizeHook(context) {
   }
 
   // Lazy-load so local dev doesn't need the dependency.
-  const { notarize } = require("@electron/notarize");
+  const { notarize } = await import("@electron/notarize");
 
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(context.appOutDir, `${appName}.app`);
@@ -32,10 +29,9 @@ exports.default = async function notarizeHook(context) {
 
   if (keychainProfile) {
     await notarize({ appPath, keychainProfile });
-  } else {
+  } else if (appleApiKey && appleApiKeyId && appleApiIssuer) {
     await notarize({ appPath, appleApiKey, appleApiKeyId, appleApiIssuer });
   }
 
   console.log("[notarize] Done");
-};
-
+}

@@ -307,7 +307,7 @@ jobs:
         working-directory: helper
     steps:
       - uses: actions/checkout@v4
-      # Kept in step with GO_TOOLCHAIN in scripts/build-helper.mjs. On macos-latest, dyld aborts Go 1.22 test binaries (missing LC_UUID).
+      # Kept in step with GO_TOOLCHAIN in scripts/build-helper.ts. On macos-latest, dyld aborts Go 1.22 test binaries (missing LC_UUID).
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26.5"

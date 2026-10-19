@@ -27,8 +27,8 @@ An `activity` of `null` means that game cleared it or went away. When an app con
 ## Building and testing
 
 ```bash
-node scripts/build-helper.mjs          # helper/dist/gryt-helper for this machine
+node scripts/build-helper.ts          # helper/dist/gryt-helper for this machine
 cd helper && go test ./...
 ```
 
-`build-helper.mjs` pins Go 1.26.5 through `GOTOOLCHAIN`, and Go downloads it if a different one is installed. The release workflow sets up Go 1.22 for the SFU. Go 1.22 leaves `LC_UUID` out of Mac binaries, and on the macOS CI runner dyld refused to load its test binary because of that.
+`build-helper.ts` pins Go 1.26.5 through `GOTOOLCHAIN`, and Go downloads it if a different one is installed. The release workflow sets up Go 1.22 for the SFU. Go 1.22 leaves `LC_UUID` out of Mac binaries, and on the macOS CI runner dyld refused to load its test binary because of that.

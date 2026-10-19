@@ -8,16 +8,10 @@ examples/presence/source.mjs
 # eslint 8 reads its config only from JavaScript.
 .eslintrc.cjs
 
-# electron-builder loads these itself, as its config and hooks, plus what they import and a check that loads them.
-# Only a real desktop build shows whether it takes TypeScript, so they wait for one (GRYT-1800).
+# Release Client names this file, so it moves in step with that workflow (GRYT-1806).
 electron-builder.config.cjs
-scripts/build-helper.mjs
-scripts/check-extra-resources.mjs
+
+# The Windows signing hook, what it imports, and the check that loads it. Only a Windows build runs them (GRYT-1800).
 scripts/check-windows-signature.mjs
-scripts/notarize.cjs
-scripts/package-embedded-server.mjs
-scripts/prepare-electron-build.mjs
-scripts/prune-prebuilds.cjs
 scripts/sign-windows.cjs
-scripts/variant.mjs
 scripts/windows-signature.mjs

@@ -1,13 +1,11 @@
-/* eslint-env node */
-
 import {
   closeSync,
   copyFileSync,
   existsSync,
   mkdirSync,
   openSync,
-  readSync,
   readdirSync,
+  readSync,
   rmSync,
 } from "fs";
 import { dirname, join } from "path";
@@ -20,12 +18,7 @@ const sourceDir = join(clientDir, "build", "embedded-server");
 const archivePath = join(clientDir, "build", "embedded-server.tar.gz");
 const nativeDir = join(clientDir, "build", "embedded-native");
 
-const ebOs =
-  process.platform === "win32"
-    ? "win"
-    : process.platform === "darwin"
-      ? "mac"
-      : "linux";
+const ebOs = ({ win32: "win", darwin: "mac" } as Record<string, string>)[process.platform] ?? "linux";
 const ebArch = process.arch === "arm64" ? "arm64" : "x64";
 const sfuDir = join("sfu", `${ebOs}-${ebArch}`);
 
@@ -38,7 +31,7 @@ for (const entry of ["versions.json", "server", "worker", sfuDir]) {
 rmSync(archivePath, { force: true });
 rmSync(nativeDir, { recursive: true, force: true });
 
-const nativeEntries = new Set();
+const nativeEntries = new Set<string>();
 const binaryMagics = new Set([
   "7f454c46", // ELF
   "cafebabe", // Mach-O universal
@@ -48,7 +41,7 @@ const binaryMagics = new Set([
   "feedfacf", // Mach-O 64-bit
 ]);
 
-function isNativeBinary(path) {
+function isNativeBinary(path: string): boolean {
   const fd = openSync(path, "r");
   try {
     const header = Buffer.alloc(4);
@@ -60,7 +53,7 @@ function isNativeBinary(path) {
   }
 }
 
-function stageNativeBinaries(relativeDir = "") {
+function stageNativeBinaries(relativeDir = ""): void {
   const absoluteDir = join(sourceDir, relativeDir);
   for (const entry of readdirSync(absoluteDir, { withFileTypes: true })) {
     const relative = join(relativeDir, entry.name);

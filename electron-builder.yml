@@ -2,7 +2,7 @@ appId: com.gryt.chat
 # Fails the build if anything in extraResources is missing. electron-builder
 # skips a missing extraResource silently, which shipped v1.4.0-beta.5 with no
 # menu bar icon.
-beforeBuild: ./scripts/prepare-electron-build.mjs
+beforeBuild: ./scripts/prepare-electron-build.ts
 productName: Gryt Chat
 copyright: "Copyright © 2022-2026 Gryt Chat"
 artifactName: "Gryt-Chat-${version}-${os}-${arch}.${ext}"
@@ -122,7 +122,7 @@ publish:
   repo: gryt
   releaseType: release
 
-afterSign: scripts/notarize.cjs
+afterSign: scripts/notarize.ts
 
 # Also what puts x-scheme-handler/gryt in the Linux desktop entries. Leave
 # linux.mimeTypes unset: each Linux target adds the scheme to it again (GRYT-976).

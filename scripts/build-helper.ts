@@ -1,8 +1,6 @@
-/* eslint-env node */
-
 /**
  * Builds helper/ (GRYT-1605) with Go.
- * Usage: node scripts/build-helper.mjs [--platform darwin|linux|win32] [--arch x64|arm64] [--out dir]
+ * Usage: node scripts/build-helper.ts [--platform darwin|linux|win32] [--arch x64|arm64] [--out dir]
  */
 
 import { execFileSync } from "child_process";
@@ -11,16 +9,20 @@ import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const CLIENT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
-const GOOS = { darwin: "darwin", linux: "linux", win32: "windows" };
-const GOARCH = { x64: "amd64", arm64: "arm64" };
+const GOOS: Record<string, string> = { darwin: "darwin", linux: "linux", win32: "windows" };
+const GOARCH: Record<string, string> = { x64: "amd64", arm64: "arm64" };
 /** Go fetches this toolchain if the one on PATH differs. The release sets up 1.22, whose Mac binaries lack LC_UUID. */
 export const GO_TOOLCHAIN = "go1.26.5";
 
-export function helperFileName(platform = process.platform) {
+export function helperFileName(platform: string = process.platform): string {
   return platform === "win32" ? "gryt-helper.exe" : "gryt-helper";
 }
 
-export function buildHelper({ platform = process.platform, arch = process.arch, out = join(CLIENT_DIR, "helper", "dist") } = {}) {
+export function buildHelper({
+  platform = process.platform,
+  arch = process.arch,
+  out = join(CLIENT_DIR, "helper", "dist"),
+}: { platform?: string; arch?: string; out?: string } = {}): string {
   if (!GOOS[platform] || !GOARCH[arch]) throw new Error(`no helper build for ${platform}-${arch}`);
   const version = JSON.parse(readFileSync(join(CLIENT_DIR, "package.json"), "utf8")).version;
   mkdirSync(out, { recursive: true });
@@ -40,7 +42,7 @@ export function buildHelper({ platform = process.platform, arch = process.arch, 
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const arg = (name) => {
+  const arg = (name: string) => {
     const at = process.argv.indexOf(`--${name}`);
     return at === -1 ? undefined : process.argv[at + 1];
   };
