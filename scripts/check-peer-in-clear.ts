@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The banner's three states, and the rule that picks between them. Two clients
 // can disagree about one conversation and neither is told (GRYT-1124).
 
@@ -15,7 +13,7 @@ const view = readFileSync(join(root, VIEW), "utf8");
 const notice = readFileSync(join(root, NOTICE), "utf8");
 
 /** Everything from `opener` to the brace that closes the block it opens. */
-function block(text, opener, what) {
+function block(text: string, opener: string, what: string) {
   const at = text.indexOf(opener);
   assert.ok(at >= 0, `no longer has ${what}`);
   const start = at + opener.length - 1;
@@ -34,12 +32,12 @@ const decide = new Function(
   `return (() => ${body})();`,
 );
 
-const name = (m) => m.sender_nickname;
-const run = (opts) =>
+const name = (m: { sender_nickname: string }) => m.sender_nickname;
+const run = (opts: { kind?: string; sealing?: object | null; messages?: object[] }) =>
   decide(opts.kind ?? "dm", opts.sealing, opts.messages ?? [], "me", name);
 
-const them = (sealed, id = "them") => ({ sender_server_id: id, sender_nickname: "Carlo", sealed });
-const mine = (sealed) => ({ sender_server_id: "me", sender_nickname: "Sivert", sealed });
+const them = (sealed: boolean, id = "them") => ({ sender_server_id: id, sender_nickname: "Carlo", sealed });
+const mine = (sealed: boolean) => ({ sender_server_id: "me", sender_nickname: "Sivert", sealed });
 
 // The case this exists for: we seal, their newest arrived in the clear.
 assert.equal(

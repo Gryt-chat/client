@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The sealed seed on web and Electron: `@gryt/crypto`'s format over hash-wasm and
  * WebCrypto. Two KDF implementations are only safe while this proves they agree (GRYT-1473).
@@ -18,10 +16,10 @@ import {
 } from "../src/packages/common/src/auth/identity-vault.ts";
 import { webVaultKdfs } from "../src/packages/common/src/auth/vault-kdfs.ts";
 
-const hex = (bytes) => Buffer.from(bytes).toString("hex");
-const utf8 = (text) => new TextEncoder().encode(text);
-const text = (bytes) => new TextDecoder().decode(bytes);
-const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+const hex = (bytes: Uint8Array) => Buffer.from(bytes).toString("hex");
+const utf8 = (text: string) => new TextEncoder().encode(text);
+const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
+const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((v, i) => v === b[i]);
 
 const WORDS =
   "abandon amount liar amount expire adjust cage candy arch gather drum bullet " +

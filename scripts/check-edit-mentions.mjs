@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /** GRYT-1461. Parsing a stored mention into edit-box segments and
     reserializing them unchanged must give back the exact same bytes. */
 

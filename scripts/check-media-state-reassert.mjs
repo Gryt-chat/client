@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * The client says the camera and the screen share are still on, after a reconnect
  * that did not move either. A source check: the failure is an effect (GRYT-612).

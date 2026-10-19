@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 /**
  * Which conversations are hidden, given what this device stored and what the
  * server last sent. Hiding never leaves the device, so nothing else checks it.
@@ -7,14 +5,18 @@
 
 import assert from "node:assert/strict";
 
+import type { DirectoryEntry } from "../src/packages/socket/src/hooks/dmDirectory.ts";
+
 /* A store, since the module reads and writes one at import time and node has
    none. Kept deliberately dumb: the point is the rules above it. */
-const store = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: (k) => store.delete(k),
-};
+const store = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+    setItem: (k: string, v: string) => store.set(k, String(v)),
+    removeItem: (k: string) => store.delete(k),
+  },
+});
 
 const {
   hideConversation,
@@ -28,14 +30,13 @@ const {
 const HOST = "a:5001";
 const ME = "server-user-me";
 
-const entry = (id, at, host = HOST) => ({
-  host,
-  conversation: { conversation_id: id, last_message_at: at },
-});
+// Only the id and the last message's time matter to the rules, so the rest is left out.
+const entry = (id: string, at: string | null, host = HOST) =>
+  ({ host, conversation: { conversation_id: id, last_message_at: at } }) as DirectoryEntry;
 
-const split = (entries, now) =>
+const split = (entries: ReturnType<typeof entry>[], now: number) =>
   splitHidden(entries, (host) => hiddenFor(host, ME), now);
-const idsOf = (rows) => rows.map((r) => r.conversation.conversation_id);
+const idsOf = (rows: ReturnType<typeof entry>[]) => rows.map((r) => r.conversation.conversation_id);
 
 // ── nothing hidden ─────────────────────────────────────────────────────────
 resetHiddenConversations();
@@ -146,17 +147,19 @@ store.clear();
    A private window, or a browser with site data blocked. The list has to draw. */
 {
   const kept = globalThis.localStorage;
-  globalThis.localStorage = {
-    getItem: () => {
-      throw new Error("denied");
+  Object.assign(globalThis, {
+    localStorage: {
+      getItem: () => {
+        throw new Error("denied");
+      },
+      setItem: () => {
+        throw new Error("denied");
+      },
+      removeItem: () => {
+        throw new Error("denied");
+      },
     },
-    setItem: () => {
-      throw new Error("denied");
-    },
-    removeItem: () => {
-      throw new Error("denied");
-    },
-  };
+  });
 
   resetHiddenConversations();
   assert.deepEqual(hiddenFor(HOST, ME), {}, "a reading failure was not survivable");
@@ -167,7 +170,7 @@ store.clear();
   const { hidden } = split([entry("dm_1", null)], now + 1000);
   assert.deepEqual(idsOf(hidden), ["dm_1"]);
 
-  globalThis.localStorage = kept;
+  Object.assign(globalThis, { localStorage: kept });
 }
 
 /* ── stored nonsense ────────────────────────────────────────────────────────

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // GRYT-1497 left proof_withdrawn blocks on servers that had proved themselves. They are
 // cleared once, and the pin stays, so a server that still offers no proof is refused again.
 
@@ -11,18 +9,20 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** localStorage as far as server-pins can tell, with a way to look underneath. */
-const items = new Map();
-globalThis.localStorage = {
-  getItem: (k) => (items.has(k) ? items.get(k) : null),
-  setItem: (k, v) => items.set(k, String(v)),
-  removeItem: (k) => items.delete(k),
-};
-const raw = (k) => JSON.parse(items.get(k) ?? "null");
+const items = new Map<string, string>();
+Object.assign(globalThis, {
+  localStorage: {
+    getItem: (k: string) => (items.has(k) ? items.get(k) : null),
+    setItem: (k: string, v: string) => items.set(k, String(v)),
+    removeItem: (k: string) => items.delete(k),
+  },
+});
+const raw = (k: string) => JSON.parse(items.get(k) ?? "null");
 
 const pins = await import("../src/packages/common/src/auth/server-pins.ts");
 
-const b64 = (bytes) => Buffer.from(bytes).toString("base64url");
-const json64 = (value) => b64(new TextEncoder().encode(JSON.stringify(value)));
+const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64url");
+const json64 = (value: object) => b64(new TextEncoder().encode(JSON.stringify(value)));
 
 /** A server identity key, and what it answers to `server:identify`. */
 async function serverKey() {
@@ -30,7 +30,7 @@ async function serverKey() {
   const { kty, crv, x, y } = await crypto.subtle.exportKey("jwk", publicKey);
   const jwk = { kty, crv, x, y };
   const keyId = await pins.jwkThumbprint(jwk);
-  const prove = async (nonce) => {
+  const prove = async (nonce: string) => {
     const input = `${json64({ alg: "ES256", kid: keyId, jwk })}.${json64({ nonce, iss: keyId })}`;
     const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, privateKey, new TextEncoder().encode(input));
     return `${input}.${b64(new Uint8Array(sig))}`;
@@ -73,9 +73,9 @@ pins.applyServerProofDecision(HOST, silent);
 
 // Another key at the address is still refused, and the key_mismatch block still bites.
 const swapped = await pins.evaluateServerProof({ host: HOST, proof: await stranger.prove("n3"), sentNonce: "n3" });
-assert.equal(swapped.failure?.reason, "key_mismatch", "a different key at a cleared address was let through");
+assert.equal("failure" in swapped ? swapped.failure.reason : undefined, "key_mismatch", "a different key at a cleared address was let through");
 const known = await pins.evaluateServerProof({ host: OTHER, proof: await impostor.prove("n4"), sentNonce: "n4" });
-assert.equal(known.failure?.reason, "blocked", "the key_mismatch block kept through the clear stopped refusing");
+assert.equal("failure" in known ? known.failure.reason : undefined, "blocked", "the key_mismatch block kept through the clear stopped refusing");
 
 // It ran once: the block made just now stays through the next launch.
 assert.equal(raw("serverIdentityWithdrawnBlocksCleared"), true, "nothing records that the clear ran");

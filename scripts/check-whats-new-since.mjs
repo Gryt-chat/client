@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Going from 1.11.9 to 1.11.11 showed 1.11.11 and never 1.11.10. The selection runs
 // here as itself, and the dialog and the effect are checked for using it. GRYT-1160.
 

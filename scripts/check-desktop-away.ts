@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // An open desktop blocked phone pushes all day: AFK was only ever set in voice. Now the
 // desktop says it's away after a minute out of focus or five without input. GRYT-1699.
 
@@ -14,10 +12,10 @@ const { IDLE_MS, UNFOCUSED_MS, watchAway } = await import("../src/packages/socke
 function fakeDesktop({ focused = true } = {}) {
   let now = 1_000_000;
   let focus = focused;
-  const focusListeners = new Set();
-  const inputListeners = new Set();
-  const ticks = new Set();
-  const seen = [];
+  const focusListeners = new Set<(focused: boolean) => void>();
+  const inputListeners = new Set<() => void>();
+  const ticks = new Set<() => void>();
+  const seen: boolean[] = [];
   const stop = watchAway((away) => seen.push(away), {
     now: () => now,
     focused: () => focus,
@@ -28,11 +26,11 @@ function fakeDesktop({ focused = true } = {}) {
   return {
     seen,
     stop,
-    later(ms) {
+    later(ms: number) {
       now += ms;
       for (const cb of ticks) cb();
     },
-    setFocus(f) {
+    setFocus(f: boolean) {
       focus = f;
       for (const cb of focusListeners) cb(f);
     },
