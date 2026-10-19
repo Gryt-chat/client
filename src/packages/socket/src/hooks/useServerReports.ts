@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 
 import type { MemberInfo } from "../components/MemberSidebar";
 

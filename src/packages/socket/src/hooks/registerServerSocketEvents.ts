@@ -1,7 +1,7 @@
 import { warmSfuSelection } from "@gryt/voice";
-import { createElement, Dispatch, MutableRefObject, SetStateAction } from "react";
+import { createElement, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import toast from "react-hot-toast";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 
 import { setAnnouncedPlugins } from "@/addons";
 import {
@@ -36,7 +36,7 @@ import {
 } from "@/common";
 import { rememberChannelNames } from "@/lib/channelDirectory";
 import { claimOutcomeToast, guestIsGone, takeClaimOutcome } from "@/lib/identityClaimOutcome";
-import {
+import type {
   Server,
   serverDetails,
   serverDetailsList,
@@ -45,7 +45,7 @@ import {
 
 import { PiArrowsClockwiseFill, PiClockFill, PiInfoFill } from "../../../../lib/icons";
 import { type DmKeyFix, dmKeyWarningsOff, showDmKeyWarning } from "../components/dmKeyWarningToast";
-import { MemberInfo } from "../components/MemberSidebar";
+import type { MemberInfo } from "../components/MemberSidebar";
 import {
   applyCallMemberships,
   type CallMemberships,
@@ -54,7 +54,7 @@ import {
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { attachServerMls, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
-import { Clients, ServerProfile } from "../types/clients";
+import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { setExternalEmojisAllowed } from "../utils/externalEmojiPolicy";

@@ -15,9 +15,9 @@ import { useLanDiscovery } from "@/settings/src/hooks/useLanDiscovery";
 import { useServerSettings } from "@/settings/src/hooks/useServerSettings";
 import { sameServer } from "@/settings/src/serverId";
 import { orderServerHosts } from "@/settings/src/serverOrder";
-import { Server, Servers } from "@/settings/src/types/server";
+import type { Server, Servers } from "@/settings/src/types/server";
 
-import { type LanServer } from "../../../../lib/electron";
+import type { LanServer } from "../../../../lib/electron";
 import { setDmSpaceOpen } from "./dmSpace";
 import { useSockets } from "./useSockets";
 

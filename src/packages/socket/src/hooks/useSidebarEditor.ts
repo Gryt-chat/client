@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 
 import { getServerAccessToken, type NotificationLevel } from "@/common";
@@ -13,7 +13,7 @@ import {
   scopeSetPayload,
 } from "@/settings/src/channelPermissionRules";
 import { type ChannelScopeState, folderMoveAction } from "@/settings/src/folderPermissionRules";
-import { Channel, serverDetailsList as ServerDetailsList,SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
+import type { Channel, serverDetailsList as ServerDetailsList, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { type ChannelKind, fieldsToKind, kindToFields } from "../components/channelKind";
 import type { ForumTagDraft } from "../components/ForumTagsField";

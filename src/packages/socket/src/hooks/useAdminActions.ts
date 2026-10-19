@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
-import { Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
 
 import type { MemberInfo } from "../components/MemberSidebar";
 import { emitAuthenticated } from "../utils/tokenManager";
