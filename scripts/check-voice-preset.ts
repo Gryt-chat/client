@@ -8,7 +8,7 @@ const off = { eSportsModeEnabled: false, noiseGate: 0, micVolume: 100, inputMode
 
 assert.equal(presetOf({ ...PRESET_SWITCHES.quality, ...off }), "quality", "the defaults didn't read as Best quality");
 assert.equal(presetOf({ ...PRESET_SWITCHES.low_latency, ...off }), "low_latency");
-assert.equal(presetOf({ ...PRESET_SWITCHES.quality, eSportsModeEnabled: true }), "esports", "eSports mode lost to the switches");
+assert.equal(presetOf({ ...PRESET_SWITCHES.quality, ...off, eSportsModeEnabled: true }), "esports", "eSports mode lost to the switches");
 assert.equal(presetOf({ ...PRESET_SWITCHES.quality, autoGainEnabled: true, ...off }), "custom", "auto gain on still read as a preset");
 assert.equal(presetOf({ rnnoiseEnabled: true, autoGainEnabled: false, compressorEnabled: false, ...off }), "custom");
 
