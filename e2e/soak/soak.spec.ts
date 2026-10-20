@@ -83,6 +83,9 @@ test("soak", async () => {
     const outsideSince = new Map<CallClient, number>();
     const lastVideos = new Map<CallClient, string>();
     let lastStatus = 0;
+    // GRYT_SOAK_MUTE_SECONDS: the beeper mutes 30 s in for this long. A beep heard in between is a leak.
+    const muteMs = Number(process.env.GRYT_SOAK_MUTE_SECONDS || 0) * 1000;
+    let muteStep: "muted" | "unmuted" | null = muteMs > 0 && config.beepMs && clients[0] ? null : "unmuted";
 
     while (Date.now() < deadline && !existsSync(run.path("STOP"))) {
       for (const client of clients) {
@@ -108,6 +111,14 @@ test("soak", async () => {
           client.track.write("harness.rejoin_failed", { error: (err as Error).message.slice(0, 500) });
           outsideSince.set(client, Date.now());
         }
+      }
+
+      const into = Date.now() - started;
+      if (muteStep !== "unmuted" && into >= 30_000 + (muteStep === "muted" ? muteMs : 0)) {
+        const label = muteStep === "muted" ? "Unmute microphone" : "Mute microphone";
+        await clients[0].page.getByRole("button", { name: label }).first().click();
+        muteStep = muteStep === "muted" ? "unmuted" : "muted";
+        harness.write(`harness.${muteStep}`, { who: clients[0].who });
       }
 
       if (Date.now() - lastStatus >= STATUS_EVERY_MS) {
