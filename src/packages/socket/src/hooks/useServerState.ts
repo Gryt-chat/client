@@ -118,6 +118,7 @@ export function useServerState(): UseServerStateResult {
     currentChannelConnected,
     isConnected,
     isConnecting,
+    transportSpeaking,
   } = useSFU();
 
   const lastActivityTimeRef = useRef(Date.now());
@@ -362,8 +363,11 @@ export function useServerState(): UseServerStateResult {
             if (isAFKRef.current) setIsAFK(false);
           }
         } else {
-          if (!client.streamID || !streamSources[client.streamID]) return;
-          speaking = isSpeaking(streamSources[client.streamID].analyser, 0.1);
+          const source = client.streamID ? streamSources[client.streamID] : undefined;
+          // Own-transport voice has no WebRTC stream to analyse; the transport says who it hears (GRYT-1830).
+          const heard = !!client.serverUserId && !!transportSpeaking?.has(client.serverUserId);
+          if (!source && !heard) return;
+          speaking = heard || (!!source && isSpeaking(source.analyser, 0.1));
         }
 
         const key = heldKey(clientID, client);
@@ -379,6 +383,7 @@ export function useServerState(): UseServerStateResult {
     microphoneBuffer.finalAnalyser,
     isTransmitting,
     streamSources,
+    transportSpeaking,
     heldClients,
     selfClientId,
     currentlyViewingServer,

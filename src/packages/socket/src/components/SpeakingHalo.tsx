@@ -10,10 +10,13 @@ const HALO_MAX_SCALE = 1.32;
  */
 export function SpeakingHalo({
   analyser,
+  getDb,
   hue,
   size,
 }: {
   analyser: AnalyserNode | undefined;
+  /** dBFS from somewhere other than an analyser: own-transport voice has none (GRYT-1830). */
+  getDb?: () => number;
   hue: number;
   size: number;
 }) {
@@ -21,13 +24,13 @@ export function SpeakingHalo({
 
   useEffect(() => {
     const el = ref.current;
-    if (!analyser || !el) return;
+    if ((!analyser && !getDb) || !el) return;
 
     let frame = 0;
     let smoothed = 0;
 
     const tick = () => {
-      const level = volumeToLevel(getVolumeDb(analyser));
+      const level = volumeToLevel(analyser ? getVolumeDb(analyser) : (getDb?.() ?? -Infinity));
       smoothed += (level - smoothed) * (level > smoothed ? 0.45 : 0.1);
 
       el.style.transform = `scale(${1 + smoothed * (HALO_MAX_SCALE - 1)})`;
@@ -38,9 +41,9 @@ export function SpeakingHalo({
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [analyser]);
+  }, [analyser, getDb]);
 
-  if (!analyser) return null;
+  if (!analyser && !getDb) return null;
 
   return (
     <div
