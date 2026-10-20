@@ -16,17 +16,28 @@ export const PRESET_SWITCHES: Record<"quality" | "low_latency", ProcessingSwitch
   low_latency: { rnnoiseEnabled: false, autoGainEnabled: false, compressorEnabled: false },
 };
 
-export function presetOf(settings: ProcessingSwitches & { eSportsModeEnabled: boolean }): VoicePreset {
+/** Low latency also takes the direct path: no gate in the way, and volume left as the microphone gives it. */
+export const LOW_LATENCY_GATE = 0;
+export const LOW_LATENCY_VOLUME = 100;
+
+export interface PresetInputs extends ProcessingSwitches {
+  eSportsModeEnabled: boolean;
+  noiseGate: number;
+  micVolume: number;
+  inputMode: "voice_activity" | "push_to_talk";
+}
+
+const sameSwitches = (s: ProcessingSwitches, wanted: ProcessingSwitches) =>
+  s.rnnoiseEnabled === wanted.rnnoiseEnabled &&
+  s.autoGainEnabled === wanted.autoGainEnabled &&
+  s.compressorEnabled === wanted.compressorEnabled;
+
+export function presetOf(settings: PresetInputs): VoicePreset {
   if (settings.eSportsModeEnabled) return "esports";
-  for (const name of ["quality", "low_latency"] as const) {
-    const wanted = PRESET_SWITCHES[name];
-    if (
-      settings.rnnoiseEnabled === wanted.rnnoiseEnabled &&
-      settings.autoGainEnabled === wanted.autoGainEnabled &&
-      settings.compressorEnabled === wanted.compressorEnabled
-    ) {
-      return name;
-    }
+  if (sameSwitches(settings, PRESET_SWITCHES.quality)) return "quality";
+  const gateOff = settings.inputMode === "push_to_talk" || settings.noiseGate === LOW_LATENCY_GATE;
+  if (sameSwitches(settings, PRESET_SWITCHES.low_latency) && gateOff && settings.micVolume === LOW_LATENCY_VOLUME) {
+    return "low_latency";
   }
   return "custom";
 }

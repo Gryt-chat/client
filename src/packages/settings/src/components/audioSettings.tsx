@@ -9,7 +9,7 @@ import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
 import { PiArrowsClockwiseFill, PiWarningFill } from "../../../../lib/icons";
-import { PRESET_SWITCHES, presetOf, type VoicePreset } from "../hooks/voicePreset";
+import { LOW_LATENCY_GATE, LOW_LATENCY_VOLUME, PRESET_SWITCHES, presetOf, type VoicePreset } from "../hooks/voicePreset";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
 /** Visualizer refresh rate. 30 fps is plenty for a level meter. */
@@ -56,8 +56,8 @@ const PRESETS: Record<VoicePreset, { label: string; description: string }> = {
     description: "Noise reduction and the compressor are on. Together they add about 36 ms before your voice is sent.",
   },
   low_latency: {
-    label: "Low latency · 0 to 12 ms",
-    description: "Noise reduction, auto gain and the compressor are off. With the gate at 0 or push to talk, and volume at 100%, your microphone skips processing entirely.",
+    label: "Low latency · no processing",
+    description: "Noise reduction, auto gain and the compressor off, the gate at 0 and volume at 100%, so your microphone skips processing entirely. With voice activity your mic is always open; push to talk below keeps it closed until you hold the key.",
   },
   esports: {
     label: "eSports · lowest",
@@ -344,7 +344,7 @@ export function AudioSettings() {
   const openState = isMicLive ? "open" : "quiet";
   const gateState = micRawVolume < noiseGate ? "gated" : openState;
 
-  const preset = presetOf({ rnnoiseEnabled, autoGainEnabled, compressorEnabled, eSportsModeEnabled });
+  const preset = presetOf({ rnnoiseEnabled, autoGainEnabled, compressorEnabled, eSportsModeEnabled, noiseGate, micVolume, inputMode });
   const choosePreset = (next: VoicePreset) => {
     if (next === "custom" || next === preset) return;
     if (next === "esports") return setESportsModeEnabled(true);
@@ -354,6 +354,10 @@ export function AudioSettings() {
     setRnnoiseEnabled(rnnoise);
     setAutoGainEnabled(autoGain);
     setCompressorEnabled(compressor);
+    if (next === "low_latency") {
+      setNoiseGate(LOW_LATENCY_GATE);
+      setMicVolume(LOW_LATENCY_VOLUME);
+    }
   };
 
   return (
