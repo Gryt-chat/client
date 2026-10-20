@@ -246,7 +246,7 @@ function UpdateControls() {
         title={switchingToBeta ? "Turn on beta releases?" : "Turn off beta releases?"}
         description={
           switchingToBeta
-            ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features."
+            ? "Gryt will close and reopen to install the latest beta. Beta builds can have bugs and unfinished features. Voice calls there use our new, experimental voice connection."
             : "Gryt will close and reopen to install the latest stable version. That is older than the beta you are on now, so anything added since will be gone until it reaches stable."
         }
         confirmLabel={switchingToBeta ? "Turn on beta" : "Turn off beta"}
