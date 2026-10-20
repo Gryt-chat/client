@@ -159,6 +159,14 @@ async function joinCall(
         }
       }
       Object.defineProperty(window, "RTCPeerConnection", { value: PublicOnly, configurable: true, writable: true });
+      // The own voice transport races every offered address, so a private one is pointed at a closed port and loses.
+      const NativeTransport = window.WebTransport;
+      class PublicTransport extends NativeTransport {
+        constructor(url: string | URL, options?: WebTransportOptions) {
+          super(PRIVATE.test(` ${new URL(url).hostname}`) ? "https://127.0.0.1:9/" : url, options);
+        }
+      }
+      Object.defineProperty(window, "WebTransport", { value: PublicTransport, configurable: true, writable: true });
     });
   }
   // Wraps the soak script's RTCPeerConnection, so both see every connection whichever runs first.
