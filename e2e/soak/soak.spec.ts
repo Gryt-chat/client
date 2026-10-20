@@ -66,7 +66,7 @@ test("soak", async () => {
         trackers.push(track);
         for (let attempt = 1; attempt <= START_ATTEMPTS; attempt++) {
           try {
-            const beep = config.beepMs ? { send: clients.length === 0, periodMs: config.beepMs } : null;
+            const beep = config.beepMs ? { send: clients.length === 0, periodMs: config.beepMs, echo: process.env.GRYT_SOAK_ECHO === "1" } : null;
             clients.push(await startCallClient(who, group, track, appUrl, config.camera, beep));
             break;
           } catch (err) {

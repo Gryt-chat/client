@@ -98,7 +98,14 @@ export async function startCallClient(
   beep: BeepConfig | null = null,
 ): Promise<CallClient> {
   const name = uniqueName(`Soak${group.name[0].toUpperCase()}`);
-  const browser: Browser = await chromium.launch({ args: BROWSER_ARGS });
+  // GRYT_SOAK_REMOTE_BROWSER=ws://host:port: listeners run on another machine's Playwright server; its loopback is this one's.
+  const remote = process.env.GRYT_SOAK_REMOTE_BROWSER;
+  const browser: Browser = remote && !beep?.send
+    ? await chromium.connect(remote, {
+      exposeNetwork: "<loopback>",
+      headers: { "x-playwright-launch-options": JSON.stringify({ args: BROWSER_ARGS }) },
+    })
+    : await chromium.launch({ args: BROWSER_ARGS });
   browser.on("disconnected", () => track.write("browser.disconnected"));
   try {
     return await joinCall(who, group, track, appUrl, camera, browser, name, beep);
