@@ -133,6 +133,13 @@ async function joinCall(
       for (const key of ["rnnoiseEnabled", "autoGainEnabled", "compressorEnabled"]) localStorage.setItem(`user:${device}:${key}`, "false");
     });
   }
+  if (beep?.send && process.env.GRYT_SOAK_PTT === "1") {
+    await context.addInitScript(() => {
+      const device = localStorage.getItem("gryt.deviceId");
+      localStorage.setItem(`user:${device}:inputMode`, JSON.stringify("push_to_talk"));
+      localStorage.setItem(`user:${device}:pushToTalkKey`, JSON.stringify("KeyV"));
+    });
+  }
   if (process.env.GRYT_SOAK_OWN_TRANSPORT === "1") {
     await context.addInitScript(() => localStorage.setItem("gryt.ownAudioTransport", "1"));
   }

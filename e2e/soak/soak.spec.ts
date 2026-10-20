@@ -84,6 +84,10 @@ test("soak", async () => {
     const lastVideos = new Map<CallClient, string>();
     let lastStatus = 0;
     // GRYT_SOAK_MUTE_SECONDS: the beeper mutes 30 s in for this long. A beep heard in between is a leak.
+    // With GRYT_SOAK_PTT=1 it's in push to talk and holds V for that window instead: heard only then.
+    const ptt = process.env.GRYT_SOAK_PTT === "1";
+    // GRYT_SOAK_SWITCH_MIC=1: the beeper picks another microphone 30 s in. Beeps after it mean the voice followed.
+    let switchMic = process.env.GRYT_SOAK_SWITCH_MIC === "1" && config.beepMs !== null && clients.length > 0;
     const muteMs = Number(process.env.GRYT_SOAK_MUTE_SECONDS || 0) * 1000;
     let muteStep: "muted" | "unmuted" | null = muteMs > 0 && config.beepMs && clients[0] ? null : "unmuted";
 
@@ -115,10 +119,33 @@ test("soak", async () => {
 
       const into = Date.now() - started;
       if (muteStep !== "unmuted" && into >= 30_000 + (muteStep === "muted" ? muteMs : 0)) {
-        const label = muteStep === "muted" ? "Unmute microphone" : "Mute microphone";
-        await clients[0].page.getByRole("button", { name: label }).first().click();
+        const { page } = clients[0];
+        if (ptt) {
+          await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+          await (muteStep === "muted" ? page.keyboard.up("KeyV") : page.keyboard.down("KeyV"));
+        } else {
+          const label = muteStep === "muted" ? "Unmute microphone" : "Mute microphone";
+          await page.getByRole("button", { name: label }).first().click();
+        }
         muteStep = muteStep === "muted" ? "unmuted" : "muted";
-        harness.write(`harness.${muteStep}`, { who: clients[0].who });
+        harness.write(`harness.${muteStep}`, { who: clients[0].who, ptt });
+      }
+
+      if (switchMic && into >= 30_000) {
+        switchMic = false;
+        const { page } = clients[0];
+        await page.locator('[data-tour="profile"]').click();
+        await page.locator('[data-tour="menu-settings"]').click();
+        const dialog = page.getByRole("dialog", { name: "Settings", exact: true });
+        await dialog.getByRole("button", { name: "Voice & video" }).click();
+        await dialog.getByRole("button", { name: "Audio", exact: true }).click();
+        const picker = dialog.getByText("Microphone", { exact: true }).locator("xpath=../..").getByRole("combobox");
+        const from = await picker.textContent();
+        await picker.click();
+        await page.getByRole("option").filter({ hasNotText: from ?? "" }).first().click();
+        const to = await picker.textContent();
+        await page.keyboard.press("Escape");
+        harness.write("harness.mic_switched", { who: clients[0].who, from, to });
       }
 
       if (Date.now() - lastStatus >= STATUS_EVERY_MS) {
