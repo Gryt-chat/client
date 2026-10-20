@@ -119,6 +119,7 @@ export function useServerState(): UseServerStateResult {
     isConnected,
     isConnecting,
     transportSpeaking,
+    transportUsers,
   } = useSFU();
 
   const lastActivityTimeRef = useRef(Date.now());
@@ -469,7 +470,9 @@ export function useServerState(): UseServerStateResult {
       const userVol = client.serverUserId
         ? (userVolumes[client.serverUserId] ?? 100) / 100
         : 1;
-      const finalGain = isDeafened ? 0 : baseGain * userVol;
+      // Heard over the own transport already: their WebRTC copy only exists for peers without it (GRYT-1831).
+      const duplicate = !!client.serverUserId && !!transportUsers?.has(client.serverUserId);
+      const finalGain = isDeafened || duplicate ? 0 : baseGain * userVol;
       streamSources[client.streamID].gain.gain.setValueAtTime(
         finalGain,
         audioContext.currentTime || 0
@@ -477,6 +480,7 @@ export function useServerState(): UseServerStateResult {
     });
   }, [
     userVolumes,
+    transportUsers,
     outputVolume,
     isDeafened,
     clients,
