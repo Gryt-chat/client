@@ -1,5 +1,7 @@
 import { Avatar, Skeleton, Tooltip } from "@gryt/ui";
+import { useSFU } from "@gryt/voice";
 import { motion } from "motion/react";
+import { useCallback } from "react";
 
 import { PiCameraFill,PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { SpeakingHalo } from "./SpeakingHalo";
@@ -80,6 +82,12 @@ export function ConnectedUser({
   serverHost?: string;
 }) {
   const hue = tileHue(nickname, avatarColor, { nickname, worn: avatarWorn });
+  // Own-transport voice has no analyser; the transport reports its level, as on the tile (GRYT-1830).
+  const { getTransportLevels } = useSFU();
+  const transportDb = useCallback(
+    () => (serverUserId ? (getTransportLevels?.()?.users.get(serverUserId) ?? -Infinity) : -Infinity),
+    [getTransportLevels, serverUserId],
+  );
 
   return (
     <UserContextMenu
@@ -116,6 +124,7 @@ export function ConnectedUser({
           <div className="flex items-center justify-center relative" style={{ flexShrink: 0 }}>
             <SpeakingHalo
               analyser={speakingAnalyser}
+              getDb={isSelf ? undefined : transportDb}
               hue={hue}
               size={SIDEBAR_AVATAR_PX}
             />

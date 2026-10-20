@@ -1,8 +1,8 @@
 import { Avatar, Button, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
-import { useMicrophone } from "@gryt/voice";
+import { useMicrophone, useSFU } from "@gryt/voice";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
@@ -389,6 +389,12 @@ export function VoiceParticipantCard({
   // this only reads what the voice connection already set up.
   const { microphoneBuffer } = useMicrophone(false);
   const watchedShares = useWatchedShares();
+  // Own-transport voice has no analyser to draw a halo from; the transport reports its level (GRYT-1830).
+  const { getTransportLevels } = useSFU();
+  const transportDb = useCallback(
+    () => (serverUserId ? (getTransportLevels?.()?.users.get(serverUserId) ?? -Infinity) : -Infinity),
+    [getTransportLevels, serverUserId],
+  );
 
   if (isScreenTile) {
     const remoteScreen = client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] ?? null : null;
@@ -640,7 +646,12 @@ export function VoiceParticipantCard({
     >
       <div className="flex items-center justify-center relative">
         {!compact && (
-          <SpeakingHalo analyser={speakingAnalyser} hue={hue} size={avatarPx} />
+          <SpeakingHalo
+            analyser={speakingAnalyser}
+            getDb={isSelf ? undefined : transportDb}
+            hue={hue}
+            size={avatarPx}
+          />
         )}
 
         <Avatar
