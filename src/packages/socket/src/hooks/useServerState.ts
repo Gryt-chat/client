@@ -120,6 +120,7 @@ export function useServerState(): UseServerStateResult {
     isConnecting,
     transportSpeaking,
     transportUsers,
+    setTransportUserGains,
   } = useSFU();
 
   const lastActivityTimeRef = useRef(Date.now());
@@ -464,6 +465,14 @@ export function useServerState(): UseServerStateResult {
     if (!currentlyViewingServer || !audioContext) return;
     const hostClients = clients[currentlyViewingServer.host] || {};
     const baseGain = sliderToOutputGain(outputVolume);
+    // The own transport takes the same per-user volume; its output gain already carries the rest.
+    setTransportUserGains?.(
+      new Map(
+        Object.values(hostClients).flatMap((c) =>
+          c.serverUserId && userVolumes[c.serverUserId] !== undefined ? [[c.serverUserId, userVolumes[c.serverUserId] / 100] as const] : [],
+        ),
+      ),
+    );
 
     Object.values(hostClients).forEach((client) => {
       if (!client.streamID || !streamSources[client.streamID]) return;
@@ -481,6 +490,7 @@ export function useServerState(): UseServerStateResult {
   }, [
     userVolumes,
     transportUsers,
+    setTransportUserGains,
     outputVolume,
     isDeafened,
     clients,

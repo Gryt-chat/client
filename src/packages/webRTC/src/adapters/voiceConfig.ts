@@ -7,14 +7,17 @@ import {
 } from "@gryt/voice";
 import { useMemo } from "react";
 
+import { IS_BETA_BUILD } from "@/common";
 import { useSettings } from "@/settings";
 
-/** The own voice transport (GRYT-1818), on by default on the way to dropping WebRTC audio (GRYT-1831). `localStorage["gryt.ownAudioTransport"] = "0"` turns it off. */
+/** The own voice transport (GRYT-1818): on in beta builds on the way to dropping WebRTC audio (GRYT-1831), off in stable.
+    `localStorage["gryt.ownAudioTransport"]` = "1" or "0" overrides either way. */
 function ownTransportOn(): boolean {
   try {
-    return localStorage.getItem("gryt.ownAudioTransport") !== "0";
+    const set = localStorage.getItem("gryt.ownAudioTransport");
+    return set === null ? IS_BETA_BUILD : set === "1";
   } catch {
-    return true;
+    return IS_BETA_BUILD;
   }
 }
 const loadOpusWasm = (): Promise<ArrayBuffer> => fetch(opusWasmUrl()).then((r) => r.arrayBuffer());
