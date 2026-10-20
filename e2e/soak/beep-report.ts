@@ -118,9 +118,10 @@ if (raw.length && tapped.length) {
   const steps = { detector: [] as number[], send: [] as number[], wire: [] as number[], total: [] as number[] };
   const heardAt = heard.map((h) => h.heardAt).sort((a, b) => a - b);
   for (const s of sent) {
+    // Each tap anchored to the beep, not to the tap before it: on the direct path the sent track can beat the raw tap.
     const r = firstAfter(raw, s);
-    const t = r === null ? null : firstAfter(tapped, r);
-    const h = t === null ? null : firstAfter(heardAt, t);
+    const t = firstAfter(tapped, s);
+    const h = firstAfter(heardAt, s);
     if (r === null || t === null || h === null) continue;
     steps.detector.push(r - s);
     steps.send.push(t - r);
