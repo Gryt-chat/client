@@ -143,6 +143,24 @@ async function joinCall(
   if (process.env.GRYT_SOAK_OWN_TRANSPORT === "1") {
     await context.addInitScript(() => localStorage.setItem("gryt.ownAudioTransport", "1"));
   }
+  // Hiding ours isn't enough when the SFU advertises a LAN address too: drop its private candidates as well.
+  if (group.hideLocal) {
+    await context.addInitScript(() => {
+      const PRIVATE = /\s(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|f[cd][0-9a-f]{2}:)/i;
+      const keep = (line: string) => !(line.startsWith("a=candidate:") && PRIVATE.test(line));
+      const Native = window.RTCPeerConnection;
+      class PublicOnly extends Native {
+        setRemoteDescription(d: RTCSessionDescriptionInit) {
+          return super.setRemoteDescription({ type: d.type, sdp: d.sdp?.split("\r\n").filter(keep).join("\r\n") });
+        }
+        addIceCandidate(c?: RTCIceCandidateInit | null) {
+          if (c?.candidate && !keep(`a=${c.candidate}`)) return Promise.resolve();
+          return super.addIceCandidate(c ?? undefined);
+        }
+      }
+      Object.defineProperty(window, "RTCPeerConnection", { value: PublicOnly, configurable: true, writable: true });
+    });
+  }
   // Wraps the soak script's RTCPeerConnection, so both see every connection whichever runs first.
   await watchPeerConnections(context, group.hideLocal);
 
