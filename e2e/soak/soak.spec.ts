@@ -67,7 +67,7 @@ test("soak", async () => {
         for (let attempt = 1; attempt <= START_ATTEMPTS; attempt++) {
           try {
             const beep = config.beepMs ? { send: clients.length === 0, periodMs: config.beepMs, echo: process.env.GRYT_SOAK_ECHO === "1" } : null;
-            clients.push(await startCallClient(who, group, track, appUrl, config.camera, beep));
+            clients.push(await startCallClient(who, group, track, appUrl, config.camera, beep, clients.length === 0));
             break;
           } catch (err) {
             track.write("harness.start_failed", { attempt, error: (err as Error).message.slice(0, 2000) });
@@ -160,6 +160,14 @@ test("soak", async () => {
       await wait(CHECK_EVERY_MS);
     }
     harness.write("harness.done", { stoppedEarly: existsSync(run.path("STOP")) });
+    // GRYT_SOAK_RECORD=1: what each listener heard, as raw interleaved stereo float32 at 48 kHz.
+    if (process.env.GRYT_SOAK_RECORD === "1") {
+      const seconds = Number(process.env.GRYT_SOAK_RECORD_SECONDS || 20);
+      for (const client of clients.slice(1)) {
+        const b64 = await client.page.evaluate((s) => (window as unknown as { __soakRecording(s: number): string }).__soakRecording(s), seconds);
+        writeFileSync(run.path(`recording-${client.who}.f32`), Buffer.from(b64, "base64"));
+      }
+    }
   } finally {
     // Guests leave test.gryt.chat when done. A local server's first guest owns it and can't.
     await Promise.all(clients.map((client) => client.close(client.group.name !== "local")));

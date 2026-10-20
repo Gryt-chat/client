@@ -10,6 +10,7 @@ import { type BeepConfig, beepScript } from "./beepScript";
 import type { Group } from "./config";
 import type { Fields } from "./jsonl";
 import { type PageScriptConfig, soakPageScript } from "./pageScript";
+import { recordScript } from "./recordScript";
 import { redact } from "./redact";
 import type { Tracker } from "./tracker";
 
@@ -96,8 +97,11 @@ export async function startCallClient(
   appUrl: string,
   camera: boolean,
   beep: BeepConfig | null = null,
+  first = false,
 ): Promise<CallClient> {
   const name = uniqueName(`Soak${group.name[0].toUpperCase()}`);
+  // GRYT_SOAK_MIC_FILE: the first client's microphone plays this file (WAV) on a loop.
+  const micFile = process.env.GRYT_SOAK_MIC_FILE;
   // GRYT_SOAK_REMOTE_BROWSER=ws://host:port: listeners run on another machine's Playwright server; its loopback is this one's.
   const remote = process.env.GRYT_SOAK_REMOTE_BROWSER;
   const browser: Browser = remote && !beep?.send
@@ -105,10 +109,10 @@ export async function startCallClient(
       exposeNetwork: "<loopback>",
       headers: { "x-playwright-launch-options": JSON.stringify({ args: BROWSER_ARGS }) },
     })
-    : await chromium.launch({ args: BROWSER_ARGS });
+    : await chromium.launch({ args: first && micFile ? [...BROWSER_ARGS, `--use-file-for-fake-audio-capture=${micFile}`] : BROWSER_ARGS });
   browser.on("disconnected", () => track.write("browser.disconnected"));
   try {
-    return await joinCall(who, group, track, appUrl, camera, browser, name, beep);
+    return await joinCall(who, group, track, appUrl, camera, browser, name, beep, first);
   } catch (err) {
     await browser.close().catch(() => undefined);
     throw err;
@@ -124,6 +128,7 @@ async function joinCall(
   browser: Browser,
   name: string,
   beep: BeepConfig | null,
+  first: boolean,
 ): Promise<CallClient> {
   const context = await browser.newContext({
     baseURL: appUrl,
@@ -140,6 +145,15 @@ async function joinCall(
       for (const key of ["rnnoiseEnabled", "autoGainEnabled", "compressorEnabled"]) localStorage.setItem(`user:${device}:${key}`, "false");
     });
   }
+  // Music through the call: no processing, as the Low latency preset, so the recording is the transport and codec.
+  if (process.env.GRYT_SOAK_MIC_FILE) {
+    await context.addInitScript(() => {
+      const device = localStorage.getItem("gryt.deviceId");
+      const off = { rnnoiseEnabled: false, autoGainEnabled: false, compressorEnabled: false, noiseGate: 0, micVolume: 100 };
+      for (const [key, value] of Object.entries(off)) localStorage.setItem(`user:${device}:${key}`, JSON.stringify(value));
+    });
+  }
+  if (!first && process.env.GRYT_SOAK_RECORD === "1") await context.addInitScript(recordScript);
   if (beep?.send && process.env.GRYT_SOAK_PTT === "1") {
     await context.addInitScript(() => {
       const device = localStorage.getItem("gryt.deviceId");
