@@ -151,4 +151,18 @@ export function beepScript(config: BeepConfig): void {
     }
   }
   Object.defineProperty(w, "RTCPeerConnection", { value: BeepPeer, configurable: true, writable: true });
+
+  // The own voice transport (GRYT-1818) plays from a worklet, not a WebRTC track. Tapped through a track so it pays the same hop.
+  const Worklet = w.AudioWorkletNode as typeof AudioWorkletNode;
+  class BeepWorklet extends Worklet {
+    constructor(context: BaseAudioContext, name: string, options?: AudioWorkletNodeOptions) {
+      super(context, name, options);
+      if (name !== "gryt-transport-receive" || !(context instanceof AudioContext)) return;
+      const out = context.createMediaStreamDestination();
+      this.connect(out);
+      const [track] = out.stream.getAudioTracks();
+      onsets(track, (heardAt, peak) => emit("beep.heard", { heardAt, track: track.id, peak, stats: null, transport: true }));
+    }
+  }
+  Object.defineProperty(w, "AudioWorkletNode", { value: BeepWorklet, configurable: true, writable: true });
 }

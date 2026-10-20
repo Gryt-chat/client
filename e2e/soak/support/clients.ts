@@ -133,6 +133,9 @@ async function joinCall(
       for (const key of ["rnnoiseEnabled", "autoGainEnabled", "compressorEnabled"]) localStorage.setItem(`user:${device}:${key}`, "false");
     });
   }
+  if (process.env.GRYT_SOAK_OWN_TRANSPORT === "1") {
+    await context.addInitScript(() => localStorage.setItem("gryt.ownAudioTransport", "1"));
+  }
   // Wraps the soak script's RTCPeerConnection, so both see every connection whichever runs first.
   await watchPeerConnections(context, group.hideLocal);
 

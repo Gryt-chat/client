@@ -1,12 +1,24 @@
-import type {
-  CameraFps,
-  CaptureQuality,
-  ScreenShareFps,
-  VoiceConfig,
+import {
+  type CameraFps,
+  type CaptureQuality,
+  opusWasmUrl,
+  type ScreenShareFps,
+  type VoiceConfig,
 } from "@gryt/voice";
 import { useMemo } from "react";
 
 import { useSettings } from "@/settings";
+
+/** The own voice transport (GRYT-1818), off until it's measured against WebRTC: `localStorage["gryt.ownAudioTransport"] = "1"`. */
+function readOwnTransportFlag(): boolean {
+  try {
+    return localStorage.getItem("gryt.ownAudioTransport") === "1";
+  } catch {
+    return false;
+  }
+}
+const loadOpusWasm = (): Promise<ArrayBuffer> => fetch(opusWasmUrl()).then((r) => r.arrayBuffer());
+const audioTransportWasm = readOwnTransportFlag() ? loadOpusWasm : undefined;
 
 /**
  * The client's settings, in the shape the engine asks for — **the one place that
@@ -49,6 +61,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
       connection: {
         stunHosts,
         eSportsMode: s.eSportsModeEnabled,
+        audioTransportWasm,
       },
     }),
     [
