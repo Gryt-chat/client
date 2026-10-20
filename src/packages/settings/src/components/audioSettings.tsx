@@ -9,6 +9,7 @@ import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
 import { PiArrowsClockwiseFill, PiWarningFill } from "../../../../lib/icons";
+import { PRESET_SWITCHES, presetOf, type VoicePreset } from "../hooks/voicePreset";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
 /** Visualizer refresh rate. 30 fps is plenty for a level meter. */
@@ -47,6 +48,27 @@ const MIC_GATE = {
   quiet: { color: "gray", label: "QUIET" },
 };
 
+/* The numbers are measured (voice#53): RNNoise ~20 ms, compressor 6, and the limiter that
+   runs while any processing is on 10. "Lowest" is the 10 ms frames on top of no processing. */
+const PRESETS: Record<VoicePreset, { label: string; description: string }> = {
+  quality: {
+    label: "Best quality · about 36 ms",
+    description: "Noise reduction and the compressor are on. Together they add about 36 ms before your voice is sent.",
+  },
+  low_latency: {
+    label: "Low latency · 0 to 12 ms",
+    description: "Noise reduction, auto gain and the compressor are off. With the gate at 0 or push to talk, and volume at 100%, your microphone skips processing entirely.",
+  },
+  esports: {
+    label: "eSports · lowest",
+    description: "Everything off, push to talk, and your voice sent in 10 ms pieces. The lowest delay Gryt has.",
+  },
+  custom: {
+    label: "Custom",
+    description: "Your own mix of the switches below. Pick a preset to set them all at once.",
+  },
+};
+
 export function AudioSettings() {
   const {
     micID,
@@ -73,6 +95,8 @@ export function AudioSettings() {
     setCompressorEnabled,
     compressorAmount,
     setCompressorAmount,
+    eSportsModeEnabled,
+    setESportsModeEnabled,
     isMuted,
     setIsMuted,
     inputMode,
@@ -320,9 +344,34 @@ export function AudioSettings() {
   const openState = isMicLive ? "open" : "quiet";
   const gateState = micRawVolume < noiseGate ? "gated" : openState;
 
+  const preset = presetOf({ rnnoiseEnabled, autoGainEnabled, compressorEnabled, eSportsModeEnabled });
+  const choosePreset = (next: VoicePreset) => {
+    if (next === "custom" || next === preset) return;
+    if (next === "esports") return setESportsModeEnabled(true);
+    // Leaving eSports first puts back the input mode and gate it took over.
+    if (eSportsModeEnabled) setESportsModeEnabled(false);
+    const { rnnoiseEnabled: rnnoise, autoGainEnabled: autoGain, compressorEnabled: compressor } = PRESET_SWITCHES[next];
+    setRnnoiseEnabled(rnnoise);
+    setAutoGainEnabled(autoGain);
+    setCompressorEnabled(compressor);
+  };
+
   return (
     <SettingsContainer>
       <h2>Audio</h2>
+
+      <SettingGroup title="Voice preset" description={PRESETS[preset].description}>
+        <Select
+          value={preset}
+          onValueChange={(v) => choosePreset(v as VoicePreset)}
+          options={(Object.keys(PRESETS) as VoicePreset[])
+            // Custom is a state you end up in, not one you pick.
+            .filter((key) => key !== "custom" || preset === "custom")
+            .map((key) => ({ label: PRESETS[key].label, value: key }))}
+        />
+      </SettingGroup>
+
+      <Divider />
 
       {/* First, because it decides what the rest of this section even shows:
           push to talk hides the noise gate below. It used to live further down
@@ -415,7 +464,7 @@ export function AudioSettings() {
 
       <SliderSetting
         title={`Microphone volume: ${micVolume}%`}
-        description="Your microphone input level (100% = unchanged, 200% = 2x boost)"
+        description="Your microphone input level (100% = unchanged, 200% = 2x boost). At 100%, with no processing and no gate, your microphone skips processing entirely."
         value={micVolume}
         onChange={setMicVolume}
         max={MAX_VOLUME_PERCENT}
@@ -540,6 +589,9 @@ export function AudioSettings() {
 
       {/* ── Voice Processing ── */}
       <span className="font-bold text-gryt-muted">Voice Processing</span>
+      <span className="text-gryt-muted">
+        While any of these is on, a limiter also runs to catch loud peaks. It adds about 10 ms.
+      </span>
 
       <ToggleSetting
         title="Noise reduction"
@@ -554,7 +606,7 @@ export function AudioSettings() {
 
       <ToggleSetting
         title="Auto gain"
-        description="Brings your microphone to a target volume. Quiet speech is boosted, loud speech is reduced."
+        description="Brings your microphone to a target volume. Quiet speech is boosted, loud speech is reduced. No delay of its own."
         checked={autoGainEnabled}
         onCheckedChange={setAutoGainEnabled}
         statusText={autoGainEnabled
@@ -577,7 +629,7 @@ export function AudioSettings() {
 
       <ToggleSetting
         title="Compressor"
-        description="Narrows the gap between your quietest and loudest, so your level stays steadier. Runs after auto gain."
+        description="Narrows the gap between your quietest and loudest, so your level stays steadier. Runs after auto gain, and adds about 6 ms."
         checked={compressorEnabled}
         onCheckedChange={setCompressorEnabled}
         statusText={compressorEnabled
