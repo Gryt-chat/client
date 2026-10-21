@@ -283,7 +283,7 @@ function ProfileEditor({
           <span className="text-xs">
             {scopedToServer
               ? `This is how other people on ${scopedToServer} see you.`
-              : "Used on servers you join from now on. Use Sync to apply it to servers you are already on."}
+              : "This is your main identity. It follows the first server in your sidebar, and servers you join get it. Use Sync to apply it to servers you're already on."}
           </span>
           <TextField
             placeholder="Enter a nickname"

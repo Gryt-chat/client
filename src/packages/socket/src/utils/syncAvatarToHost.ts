@@ -44,8 +44,8 @@ async function uploadAvatarToServer(
 }
 
 /**
- * Upload the locally stored avatar to a server if it hasn't been synced yet.
- * Compares hashes to avoid redundant uploads.
+ * Upload the locally stored avatar to a server that has none for you. A server's own picture is
+ * per server once set, as the look is: the main identity changing must not overwrite it on reconnect.
  */
 export async function syncAvatarToHost(
   host: string,
@@ -58,9 +58,8 @@ export async function syncAvatarToHost(
   const stored = await getStoredAvatar(userId).catch(() => null);
   if (!stored?.blob) return;
 
+  if (currentAvatarFileId) return;
   const localHash = await getAvatarHash(stored.blob);
-  const lastUploadedHash = localStorage.getItem(`avatarHash:${host}`);
-  if (currentAvatarFileId && localHash === lastUploadedHash) return;
 
   const result = await uploadAvatarToServer(host, accessToken, stored.blob);
   const { avatarFileId } = result;
