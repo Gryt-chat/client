@@ -100,6 +100,11 @@ extraResources:
     to: helper/
     filter:
       - "**/*"
+  # gryt-voice (GRYT-1837), the same way. Only built on macOS so far, and a missing one is skipped.
+  - from: build/voice/${arch}/
+    to: voice/
+    filter:
+      - "**/*"
   # Kept as one archive so Squirrel.Mac stages one signed resource instead of
   # traversing roughly 14,000 server/worker dependency files. The client
   # extracts it into its private app-data runtime on first launch.

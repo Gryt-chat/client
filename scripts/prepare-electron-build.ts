@@ -2,8 +2,9 @@ import type { BeforeBuildContext } from "electron-builder";
 import { fileURLToPath } from "url";
 
 import { buildHelper } from "./build-helper.ts";
+import { buildVoiceHelper } from "./build-voice-helper.ts";
 import checkExtraResources from "./check-extra-resources.ts";
-import { HELPER_RESOURCE_PREFIX, isMasBuild, isSlimBuild } from "./variant.ts";
+import { HELPER_RESOURCE_PREFIX, isMasBuild, isSlimBuild, VOICE_RESOURCE_PREFIX } from "./variant.ts";
 
 // electron-builder accepts one beforeBuild hook. Package the runtime first,
 // then retain the existing fail-fast validation for every extra resource.
@@ -24,6 +25,8 @@ export default async function beforeBuild(context?: BeforeBuildContext): Promise
     const platform = context?.platform?.nodeName ?? process.platform;
     const arch = context?.arch ?? process.arch;
     console.log(`  gryt-helper: ${buildHelper({ platform, arch, out: fileURLToPath(new URL(`../${HELPER_RESOURCE_PREFIX}${arch}`, import.meta.url)) })}`);
+    const voice = buildVoiceHelper({ platform, out: fileURLToPath(new URL(`../${VOICE_RESOURCE_PREFIX}${arch}`, import.meta.url)) });
+    console.log(`  gryt-voice: ${voice ?? `not built for ${platform} yet`}`);
   }
 
   return checkExtraResources();

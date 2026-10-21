@@ -166,6 +166,7 @@ import {
   patchUser,
   saveUser,
 } from "./userStore";
+import { registerVoiceHelper, voiceHelperPath } from "./voiceHelper";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -3056,6 +3057,14 @@ if (!gotSingleInstanceLock) {
         "get-app-version",
         () => app.getVersion()
       );
+
+      registerVoiceHelper(voiceHelperPath({
+        platform: process.platform,
+        arch: process.arch,
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        devRoot: join(__dirname, ".."),
+      }));
 
       ipcMain.handle(
         "get-slim-variant",

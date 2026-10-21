@@ -68,6 +68,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-app-version");
   },
 
+  // gryt-voice, the native voice engine's process (GRYT-1837).
+  voiceHelper: {
+    available: (): Promise<boolean> => ipcRenderer.invoke("voice-helper-available"),
+    start: (start: { addrs: string[]; session: number; key: string; effects: number[] }): Promise<boolean> =>
+      ipcRenderer.invoke("voice-helper-start", start),
+    send: (line: string) => ipcRenderer.send("voice-helper-send", line),
+    onReport(callback: (line: string) => void) {
+      const listener = (_event: unknown, line: string) => callback(line);
+      ipcRenderer.on("voice-helper-report", listener);
+      return () => ipcRenderer.removeListener("voice-helper-report", listener);
+    },
+    onExit(callback: () => void) {
+      ipcRenderer.on("voice-helper-exit", callback);
+      return () => ipcRenderer.removeListener("voice-helper-exit", callback);
+    },
+  },
+
   onHotkeyDown(callback: (action: string) => void) {
     const listener = (_event: unknown, action: string) => callback(action);
     ipcRenderer.on("hotkey-down", listener);

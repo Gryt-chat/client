@@ -121,6 +121,8 @@ module.exports = {
         "electron/richPresence.ts",
         "electron/updateFeedPin.ts",
         "electron/userStore.ts",
+        "electron/voiceHelper.ts",
+        "electron/voiceHelperLines.ts",
       ],
       rules: { "@typescript-eslint/ban-types": "off" },
     },
