@@ -78,6 +78,8 @@ interface ChatEditorProps {
   onCancel?: () => void;
   onTyping?: () => void;
   onStopTyping?: () => void;
+  /** Anything in the box changed: text or files. */
+  onChange?: () => void;
   isEditing?: boolean;
   memberList?: MentionMember[];
   /** Channels a `#` offers. Only ones this member can see. */
@@ -274,7 +276,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, unencrypted, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, isEditing, memberList, channelList, serverHost }, ref) => {
+  ({ placeholder, unencrypted, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, onChange, isEditing, memberList, channelList, serverHost }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [dragFrom, setDragFrom] = useState<number | null>(null);
     const [dropAt, setDropAt] = useState<number | null>(null);
@@ -298,6 +300,10 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     onSendRef.current = onSend;
     const onTypingRef = useRef(onTyping);
     onTypingRef.current = onTyping;
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+    // A file added, removed or sent counts as a change too.
+    useEffect(() => onChangeRef.current?.(), [pendingFiles]);
     const onStopTypingRef = useRef(onStopTyping);
     onStopTypingRef.current = onStopTyping;
     const channelListRef = useRef(channelList);
@@ -478,6 +484,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       updateAutocompleteQueries();
       const body = editorRef.current ? serializeContentEditable(editorRef.current).trim() : "";
       setLength(body.length);
+      onChangeRef.current?.();
       if (body.length > 0) {
         onTypingRef.current?.();
       } else {
@@ -588,6 +595,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       }
       autoResize(el);
       setLength(text.trim().length);
+      onChangeRef.current?.();
       requestAnimationFrame(() => {
         el.focus();
         const sel = window.getSelection();

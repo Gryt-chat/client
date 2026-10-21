@@ -28,6 +28,7 @@ interface ChatEditorBarProps {
   onArrowUpEmpty: () => void;
   onTyping?: () => void;
   onStopTyping?: () => void;
+  onChange?: () => void;
   serverHost?: string;
 }
 
@@ -50,6 +51,7 @@ export function ChatEditorBar({
   onArrowUpEmpty,
   onTyping,
   onStopTyping,
+  onChange,
   serverHost,
 }: ChatEditorBarProps) {
   return (
@@ -118,6 +120,7 @@ export function ChatEditorBar({
         onCancel={editingMessage ? onCancelEditing : undefined}
         onTyping={onTyping}
         onStopTyping={onStopTyping}
+        onChange={onChange}
         isEditing={!!editingMessage}
         memberList={memberList}
         channelList={channelList}
