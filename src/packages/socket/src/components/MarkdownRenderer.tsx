@@ -265,6 +265,8 @@ const components: Components = {
   p: ({ children }) => (
     <span className="md-p" style={{ display: "block", lineHeight: 1.5 }}>{children}</span>
   ),
+  // A block rather than <br>, which takes no margin: the gap is in style.css under `.md-br`.
+  br: () => <span className="md-br" />,
   span: ({ className, children, ...props }) => {
     const mentionId = (props as Record<string, unknown>)["data-mention-id"];
     if (className === "chat-mention" && typeof mentionId === "string") {
