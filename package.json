@@ -220,6 +220,7 @@
   "dependencies": {
     "electron-updater": "^6.8.3",
     "mediabunny": "^1.61.1",
+    "react-motion-lightbox": "0.1.0",
     "semver": "^7.6.3",
     "tar": "^7.5.22",
     "uiohook-napi": "^1.5.4"
