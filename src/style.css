@@ -1379,6 +1379,13 @@ body {
   margin-block: calc(var(--md-unit) * 0.5);
 }
 
+/* A single newline gets a smaller gap than a blank line. Most people separate paragraphs with one Enter,
+   and without it a post of long lines reads as one wall; a blank line still means more. */
+.markdown-message .md-br {
+  display: block;
+  height: calc(var(--md-unit) * 0.35);
+}
+
 /* A heading belongs to the block under it, so it gets more room above than
    below. Without that, nine bold lines and nine sentences read as one wall. */
 .markdown-message :is(h1, h2, h3) {
