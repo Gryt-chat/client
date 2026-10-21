@@ -911,6 +911,7 @@ body {
   --rml-border: rgba(255, 255, 255, 0.2);
   --rml-accent: var(--gryt-accent-9);
   --rml-focus: var(--gryt-accent-9);
+  --rml-frame: var(--gryt-accent-9);
   --rml-padding: calc(var(--titlebar-inset, 0px) + 1rem) clamp(1rem, 4vw, 3rem) 1rem;
 }
 
