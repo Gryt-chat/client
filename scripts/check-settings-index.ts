@@ -9,6 +9,8 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { matchSettings } from "../src/packages/settings/src/hooks/settingsMatch.ts";
+
 const COMPONENTS = "src/packages/settings/src/components";
 const INDEX = "src/packages/settings/src/hooks/settingsSearch.ts";
 const SETTINGS = "src/packages/settings/src/components/settings.tsx";
@@ -61,6 +63,10 @@ const entries = [...indexSource.matchAll(/\{ id: "([a-z0-9-]+)"[^\n]*?\}/g)].map
     destination: field("destination"),
     page: field("page"),
     panel: /panel: true/.test(line),
+    title: field("title") ?? "",
+    section: field("section") ?? "",
+    description: field("description") ?? "",
+    keywords: JSON.parse(line.match(/keywords: (\[[^\]]*\])/)?.[1] ?? "[]") as string[],
   };
 });
 
@@ -129,6 +135,21 @@ assert.deepEqual(
   [],
   "index entries naming a page that does not exist",
 );
+
+/* ── search finds what people type ───────────────────────────────────────── */
+
+const top = (query: string) => matchSettings(entries, query)[0]?.id;
+assert.equal(top("keycloak"), "auth-server", "a word only in keywords");
+assert.equal(top("authentication"), "auth-server", "a word only in keywords");
+assert.equal(top("keycloack"), "auth-server", "a typo");
+assert.equal(top("own keycloak"), "auth-server", "every word has to hit, not the phrase");
+assert.equal(top("noise"), "noise-reduction", "a title hit outranks a description one");
+assert.equal(top("ptt"), "input-mode", "a word only in keywords");
+assert.equal(top("dark mode"), "appearance", "ties keep screen order");
+assert.equal(top("microphne"), "microphone-volume", "a typo in a title");
+assert.equal(top("hotk"), "hotkeys", "a word still being typed");
+assert.deepEqual(matchSettings(entries, "zzzz"), [], "nonsense matches nothing");
+assert.deepEqual(matchSettings(entries, "  "), [], "blank matches nothing");
 
 console.log(
   `settings index: ${controls.length} settings, ${entries.length} entries, ` +

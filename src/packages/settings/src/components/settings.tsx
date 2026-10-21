@@ -235,6 +235,8 @@ export function Settings() {
     showSettings,
     settingsTab,
     setSettingsTab,
+    showAdvanced,
+    setShowAdvanced,
   } = useSettings();
 
   const [query, setQuery] = useState("");
@@ -290,6 +292,7 @@ export function Settings() {
     (entry: SettingsIndexEntry) => {
       // Panels have no anchor of their own — landing on the panel is the result.
       pendingScroll.current = entry.panel ? null : entry.id;
+      if (entry.advanced && !showAdvanced) setShowAdvanced(true);
       setPicked(entry.id);
       setResultsOpen(false);
       setJump((n) => n + 1);
@@ -299,7 +302,7 @@ export function Settings() {
       // The query deliberately survives, so you can click through several
       // candidates rather than retyping the search after every guess.
     },
-    [changeDestination],
+    [changeDestination, showAdvanced, setShowAdvanced],
   );
 
   // Runs after the destination has rendered, since neither the scroll target

@@ -294,7 +294,7 @@ export function AccountSettings() {
         message about certificates. Cyan matches every other advanced setting.
       */}
       {showAdvanced && (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" id="auth-server" data-setting="auth-server">
         <span className="font-medium text-sm" color="cyan">
           Auth server
         </span>
