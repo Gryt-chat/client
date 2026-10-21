@@ -10,7 +10,7 @@ import {
 import { Skeleton } from "@gryt/ui";
 import { memo, useEffect, useMemo, useState } from "react";
 
-import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
+import { getPreviewImageUrl, getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { PiLinkSimpleBold } from "../../../../lib/icons";
@@ -231,11 +231,19 @@ export const LinkPreviewCard = memo(({
 
   const byline = cardByline(data.author, data.publishedAt);
 
-  const showImage = Boolean(data.image) && remoteImagesOk && !imageFailed && layout !== "text" && layout !== "bare";
+  // A server that fetches the picture and icon itself hands out ids for them, and then the setting needn't hold them back.
+  const served = data as LinkPreviewData & { imageId?: string | null; faviconId?: string | null };
+  const pictureSrc = (id: string | null | undefined, direct: string | null) => {
+    if (id) return getPreviewImageUrl(serverHost, id);
+    return remoteImagesOk ? direct : null;
+  };
+  const imageSrc = pictureSrc(served.imageId, data.image);
+  const faviconSrc = pictureSrc(served.faviconId, data.favicon);
+  const showImage = Boolean(imageSrc) && !imageFailed && layout !== "text" && layout !== "bare";
 
-  const image = showImage && data.image ? (
+  const image = showImage && imageSrc ? (
     <img
-      src={data.image}
+      src={imageSrc}
       alt={data.imageAlt || data.title || ""}
       className="link-embed-card-image"
       width={data.imageWidth ?? undefined}
@@ -260,7 +268,7 @@ export const LinkPreviewCard = memo(({
         <div className="link-embed-card-inner">
           <div className="link-embed-card-main">
             <div className="link-embed-card-body">
-              <CardSite url={url} siteName={data.siteName} favicon={remoteImagesOk ? data.favicon : null} />
+              <CardSite url={url} siteName={data.siteName} favicon={faviconSrc} />
 
               {title && <div className="link-embed-card-title">{title}</div>}
 

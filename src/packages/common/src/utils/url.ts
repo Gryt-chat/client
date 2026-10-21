@@ -175,6 +175,12 @@ export function getUploadsFileUrl(
   return `${base}/api/uploads/files/${fileId}${q ? `?${q}` : ""}`;
 }
 
+/** A link preview's picture or icon as the server serves it, signed like an upload so an `<img>` can load it. */
+export function getPreviewImageUrl(host: string, id: string): string {
+  const params = new URLSearchParams(fileAccessParams(host, id, false));
+  return `${getServerHttpBase(host)}/api/link-preview/image/${encodeURIComponent(id)}?${params}`;
+}
+
 /** `url` signed again when it is an upload link, for a URL held longer than its few minutes. */
 export function freshUploadsFileUrl(url: string): string {
   let parsed: URL;
