@@ -15,6 +15,9 @@ assert.deepEqual(report.speaking, [7]);
 const quiet = parseReport("r -1 -120.0 0 l= b= s=");
 assert.ok(quiet && quiet.levels.size === 0 && quiet.speaking.length === 0, "an empty report wasn't empty");
 assert.equal(parseReport("started 1"), null);
+const measured = parseReport("r 0 -23.5 1 l=7:-12.3 b=7:12.5 s=7 t=7:21.4");
+assert.deepEqual(measured && [...measured.rtt], [[7, 21.4]], "the round trips gryt-voice reports didn't parse");
+assert.equal(report.rtt.size, 0, "a report without round trips should have none");
 
 // voice_helper.c reads them positionally, so the order is the contract.
 assert.deepEqual(

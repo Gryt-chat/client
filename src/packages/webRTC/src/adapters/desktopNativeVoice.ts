@@ -20,7 +20,15 @@ export const startDesktopNativeAudio: StartNative = async (offer, effects) => {
     setGains: (gains) => helper.send(`gains ${[...gains].map(([id, gain]) => `${id}=${gain}`).join(" ")}`),
     levels: () => ({ ids: [...last.levels.keys()], db: [...last.levels.values()], mic: last.mic, micSpeaking: last.micSpeaking }),
     // shortcut: gryt-voice doesn't report device delays, so these are one 64-frame buffer each way; report them when the estimate needs it.
-    latency: () => ({ ids: [...last.buffered.keys()], bufferedMs: [...last.buffered.values()], inputMs: 0, outputMs: 0, ioBufferMs: 64 / 48, sampleRate: 48000 }),
+    latency: () => ({
+      ids: [...last.buffered.keys()],
+      bufferedMs: [...last.buffered.values()],
+      rttMs: [...last.buffered.keys()].map((id) => last.rtt.get(id) ?? -1),
+      inputMs: 0,
+      outputMs: 0,
+      ioBufferMs: 64 / 48,
+      sampleRate: 48000,
+    }),
     close: () => {
       offReport();
       offExit();
