@@ -95,7 +95,7 @@ export const ImageLightbox = ({
       toolbar={(item, i) => (
         <>
           {item.kind === "image" && (
-            <button type="button" className="rml-button" aria-label={copied ? "Copied" : "Copy image"} title={copied ? "Copied" : "Copy image"} onClick={() => copy(item.src)}>
+            <button type="button" className="rml-button" aria-label={copied ? "Copied" : "Copy image"} data-tip={copied ? "Copied" : "Copy image"} onClick={() => copy(item.src)}>
               {copied ? <PiCheck size={18} /> : <PiImageFill size={18} />}
             </button>
           )}
@@ -103,7 +103,7 @@ export const ImageLightbox = ({
             type="button"
             className="rml-button"
             aria-label={item.kind === "video" ? "Save video" : "Save image"}
-            title={item.kind === "video" ? "Save video" : "Save image"}
+            data-tip={item.kind === "video" ? "Save video" : "Save image"}
             onClick={() => void triggerDownload(item.src, items[i].name)}
           >
             <PiCloudArrowDownFill size={18} />
