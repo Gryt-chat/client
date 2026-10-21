@@ -18,10 +18,23 @@ import {
   fetchRegistrationAllowed,
   initKeycloak,
   retrySignIn,
+  signedInEmail,
   startLogin,
   startRegister,
 } from "../auth/keycloak";
 import { singletonHook } from "./singletonHook";
+
+const SWITCH_ACCOUNT_KEY = "gryt.switchAccount";
+
+function takeSwitchAccount(): boolean {
+  try {
+    const set = sessionStorage.getItem(SWITCH_ACCOUNT_KEY) === "1";
+    sessionStorage.removeItem(SWITCH_ACCOUNT_KEY);
+    return set;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Left behind by the version that asked people to choose between an account and a
@@ -107,6 +120,8 @@ function useAccountHook(): Account {
         console.log("[Auth:Hook] Init result — authenticated:", authenticated,
           "hasToken:", !!keycloak.token, "→ signedIn:", signedIn);
         setIsSignedIn(signedIn);
+        // Back from the sign-out "Use another account" started in the browser: on to the form.
+        if (!signedIn && takeSwitchAccount()) void startLogin(window.location.href);
       } catch (e) {
         console.error("[Auth:Hook] Keycloak init failed:", e);
         if (!settled) {
@@ -154,10 +169,13 @@ function useAccountHook(): Account {
     setLoginInProgress(false);
   }
 
-  async function login() {
+  // Takes no argument on purpose: it's handed straight to onClick, which would pass the event.
+  const login = () => signIn(false);
+
+  async function signIn(anotherAccount: boolean) {
     setLoginInProgress(true);
     try {
-      await startLogin(window.location.href);
+      await startLogin(window.location.href, anotherAccount);
       if (isElectron()) {
         const { keycloak, authenticated } = await initKeycloak();
         setIsSignedIn(!!(authenticated && keycloak.token));
@@ -202,6 +220,22 @@ function useAccountHook(): Account {
     }
   }
 
+  /** Sign out, then the login form even though the browser is still signed in to Keycloak. */
+  async function loginAnotherAccount() {
+    if (isElectron()) {
+      await logout();
+      await signIn(true);
+      return;
+    }
+    // In the browser, signing out leaves the page; the init above picks it up on the way back.
+    try {
+      sessionStorage.setItem(SWITCH_ACCOUNT_KEY, "1");
+    } catch {
+      // Then it just signs out, as Sign out does.
+    }
+    await logout();
+  }
+
   async function adoptLinkedSession(tokens: LinkedSessionTokens) {
     retryDone.current = true;
     await adoptTokens(tokens);
@@ -212,7 +246,9 @@ function useAccountHook(): Account {
     isSignedIn,
     loginInProgress,
     registrationAllowed,
+    email: isSignedIn ? signedInEmail() : undefined,
     login,
+    loginAnotherAccount,
     register,
     logout,
     cancelLogin,
@@ -225,6 +261,7 @@ const init: Account = {
   loginInProgress: false,
   registrationAllowed: false,
   login: async () => {},
+  loginAnotherAccount: async () => {},
   register: async () => {},
   logout: async () => {},
   cancelLogin: () => {},

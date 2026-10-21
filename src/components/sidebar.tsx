@@ -82,8 +82,16 @@ function iconOpacity(s: { bright: boolean; isUnavailable: boolean; awaitingAppro
   return s.isReconnecting ? undefined : 0.5;
 }
 
+
+/** First and last letter of the name and the whole domain: yours to recognise, little to someone looking on. */
+function maskEmail(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 1) return email;
+  const name = email.slice(0, at);
+  return `${name[0]}•••${name.length > 1 ? name[name.length - 1] : ""}${email.slice(at)}`;
+}
 export function Sidebar({ setShowAddServer }: SidebarProps) {
-  const { isSignedIn, login, logout } = useAccount();
+  const { isSignedIn, email, login, loginAnotherAccount, logout } = useAccount();
   const { nickname, avatarDataUrl, setShowSettings, openSettings } = useSettings();
   const { open: openReport } = useReportForm();
 
@@ -336,9 +344,19 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               <>
                 <Menu.Separator />
                 {isSignedIn ? (
-                  <Menu.Item className="text-gryt-danger" onClick={logout}>
-                    Sign out
-                  </Menu.Item>
+                  <>
+                    {email && (
+                      <div className="px-3 py-1 text-xs text-gryt-muted" title={email}>
+                        Signed in as {maskEmail(email)}
+                      </div>
+                    )}
+                    <Menu.Item onClick={() => void loginAnotherAccount()}>
+                      Use another account
+                    </Menu.Item>
+                    <Menu.Item className="text-gryt-danger" onClick={logout}>
+                      Sign out
+                    </Menu.Item>
+                  </>
                 ) : (
                   <Menu.Item onClick={login}>
                     <div className="flex items-center gap-1">

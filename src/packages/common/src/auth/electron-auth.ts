@@ -325,7 +325,7 @@ export async function handleAuthCallback(url: string): Promise<void> {
  * Opens the system browser for Keycloak login.
  * Returns a promise that resolves with tokens once the deep-link callback arrives.
  */
-export async function electronLogin(): Promise<ElectronTokens> {
+export async function electronLogin(anotherAccount = false): Promise<ElectronTokens> {
   const api = getElectronAPI();
   if (!api) throw new Error("Not running in Electron");
 
@@ -343,6 +343,8 @@ export async function electronLogin(): Promise<ElectronTokens> {
   authUrl.searchParams.set("state", state);
   authUrl.searchParams.set("code_challenge", codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
+  // The system browser stays signed in to Keycloak after the app signs out; this asks for the form anyway.
+  if (anotherAccount) authUrl.searchParams.set("prompt", "login");
 
   return new Promise<ElectronTokens>((resolve, reject) => {
     pendingLogin = { codeVerifier, state, resolve, reject };

@@ -127,6 +127,12 @@ async function doProactiveRefresh(keycloak: Keycloak): Promise<void> {
   }
 }
 
+/** The email of whoever is signed in, from the token, for "signed in as". Undefined when nobody is. */
+export function signedInEmail(): string | undefined {
+  const email = keycloakInstance?.tokenParsed?.email ?? keycloakInstance?.idTokenParsed?.email;
+  return typeof email === "string" ? email : undefined;
+}
+
 export function getKeycloak(): Keycloak {
   if (keycloakInstance) return keycloakInstance;
 
@@ -350,9 +356,10 @@ export async function retrySignIn(): Promise<SignInAttempt> {
   return unreachable ? "unavailable" : "signed-out";
 }
 
-export async function startLogin(redirectUri?: string): Promise<void> {
+/** `anotherAccount` shows the login form even while the browser is still signed in to Keycloak. */
+export async function startLogin(redirectUri?: string, anotherAccount = false): Promise<void> {
   if (isElectron()) {
-    await electronLogin();
+    await electronLogin(anotherAccount);
     // After successful login, re-init keycloak with the new tokens
     resetKeycloakInit();
     await initKeycloak();
@@ -361,7 +368,7 @@ export async function startLogin(redirectUri?: string): Promise<void> {
 
   const { keycloak } = await initKeycloak();
   const target = redirectUri || consumePreLoginUrl() || window.location.href;
-  await keycloak.login({ redirectUri: target });
+  await keycloak.login({ redirectUri: target, ...(anotherAccount ? { prompt: "login" as const } : {}) });
 }
 
 export async function startRegister(redirectUri?: string): Promise<void> {
