@@ -560,7 +560,7 @@ export const VoiceView = ({
 
   /** The SFU's own timeout, so the countdown is its clock rather than a copy of
       its default. Undefined against an older SFU. */
-  const { callAloneTimeoutSeconds, stillHere } = useSFU();
+  const { callAloneTimeoutSeconds, stillHere, getTransportLatency } = useSFU();
 
   const { secondsLeft, stay } = useAloneInCall({
     inACall: Boolean(isCall),
@@ -1065,8 +1065,23 @@ export const VoiceView = ({
     setFocusedStream(null);
   }, [focusedStream, handlePopout]);
 
+  // Read each render: useVoiceLatency's poll re-renders this once a second while the badges are on.
+  const transportLatency = showPeerLatency ? getTransportLatency?.() ?? null : null;
   const getLatencyStats = (clientId: string, isSelf: boolean) => {
     if (!showPeerLatency) return undefined;
+
+    // On the own transport a peer's badge is their voice to you: our capture, a frame, sender to SFU to here, their buffer, our output.
+    const serverUserId = clientsForHost[clientId]?.serverUserId;
+    const buffered = !isSelf && serverUserId ? transportLatency?.bufferedByUser.get(serverUserId) : undefined;
+    if (transportLatency && buffered !== undefined) {
+      const rtt = selfLatency.networkRttMs;
+      return {
+        estimatedOneWayMs: (transportLatency.inputMs ?? 0) + transportLatency.frameMs + (rtt ?? 0) + buffered + (transportLatency.outputMs ?? 0),
+        networkRttMs: rtt,
+        jitterMs: buffered,
+        codec: "Opus, 2.5 ms frames (own transport)",
+      };
+    }
 
     if (isSelf) {
       return {
