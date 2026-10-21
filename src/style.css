@@ -914,11 +914,6 @@ body {
   --rml-padding: calc(var(--titlebar-inset, 0px) + 1rem) clamp(1rem, 4vw, 3rem) 1rem;
 }
 
-/* shortcut: react-motion-lightbox 0.1.0 puts a lone item in the first, zero-width column; drop this once it's fixed there. */
-.gryt-lightbox .rml-stage:not(:has(> .rml-nav)) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 /* Gryt's Tooltip portals out of the dialog and would sit under it, so these draw inside it. */
 .gryt-lightbox [data-tip] {
   position: relative;
