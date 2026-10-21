@@ -1,8 +1,10 @@
 import { useState } from "react";
 
+import { IS_BETA_BUILD } from "@/common";
 import { requestNotificationPermission } from "@/lib/desktopNotification";
 
 import { getUserValue, setUserValue } from "./userStorage";
+import { LOW_LATENCY_GATE, LOW_LATENCY_VOLUME, PRESET_SWITCHES } from "./voicePreset";
 
 export interface AudioSettingsData {
   micID?: string;
@@ -67,6 +69,8 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   customMessageSoundFile: null,
   notificationBadgeEnabled: true,
   desktopNotificationsEnabled: true,
+  // Beta starts on the Low latency preset, so the own transport is heard at its fastest (GRYT-1831).
+  ...(IS_BETA_BUILD ? { ...PRESET_SWITCHES.low_latency, noiseGate: LOW_LATENCY_GATE, micVolume: LOW_LATENCY_VOLUME } : {}),
 };
 
 export function loadAudioFromCache(): AudioSettingsData {
