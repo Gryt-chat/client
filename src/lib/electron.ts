@@ -212,6 +212,15 @@ export interface WatchedProgram {
   name: string;
 }
 
+export interface VoiceHelperAPI {
+  available(): Promise<boolean>;
+  /** The room_joined udp offer, and the nine effect values in voice_helper.c's order. True once the engine runs. */
+  start(start: { addrs: string[]; session: number; key: string; effects: number[] }): Promise<boolean>;
+  send(line: string): void;
+  onReport(callback: (line: string) => void): () => void;
+  onExit(callback: () => void): () => void;
+}
+
 export interface ElectronAPI {
   isElectron: true;
   /** False where the compositor draws and places windows itself. */
@@ -222,6 +231,8 @@ export interface ElectronAPI {
   /** Chromium's zoom, rather than CSS zoom. See setNativeZoom below. */
   setZoomFactor(factor: number): void;
   getAppVersion(): Promise<string>;
+  /** gryt-voice, the native voice engine's process (GRYT-1837). Absent on builds from before it. */
+  voiceHelper?: VoiceHelperAPI;
   onHotkeyDown(callback: (action: HotkeyAction) => void): () => void;
   onHotkeyUp(callback: (action: HotkeyAction) => void): () => void;
   setHotkeys(bindings: HotkeyBindings): Promise<boolean>;

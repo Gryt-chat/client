@@ -3,12 +3,17 @@ import {
   type CaptureQuality,
   opusWasmUrl,
   type ScreenShareFps,
+  setVoicePlatform,
   type VoiceConfig,
+  webPlatform,
 } from "@gryt/voice";
 import { useMemo } from "react";
 
 import { IS_BETA_BUILD } from "@/common";
 import { useSettings } from "@/settings";
+
+import { isMacAppStoreBuild, isMacDesktop } from "../../../../lib/electron";
+import { startDesktopNativeAudio } from "./desktopNativeVoice";
 
 /** The own voice transport (GRYT-1818): on in beta builds on the way to dropping WebRTC audio (GRYT-1831), off in stable.
     `localStorage["gryt.ownAudioTransport"]` = "1" or "0" overrides either way. */
@@ -20,6 +25,19 @@ function ownTransportOn(): boolean {
     return IS_BETA_BUILD;
   }
 }
+/** The phone's native engine on the Mac desktop, through gryt-voice (GRYT-1837): beta only, and not the store
+    build, which can't ship it. `localStorage["gryt.nativeVoice"]` = "1" or "0" overrides. */
+function nativeVoiceOn(): boolean {
+  if (!isMacDesktop() || isMacAppStoreBuild()) return false;
+  try {
+    const set = localStorage.getItem("gryt.nativeVoice");
+    return set === null ? IS_BETA_BUILD : set === "1";
+  } catch {
+    return IS_BETA_BUILD;
+  }
+}
+const nativeAudio = nativeVoiceOn();
+if (nativeAudio) setVoicePlatform({ ...webPlatform, startNativeAudio: startDesktopNativeAudio });
 const loadOpusWasm = (): Promise<ArrayBuffer> => fetch(opusWasmUrl()).then((r) => r.arrayBuffer());
 const audioTransportWasm = ownTransportOn() ? loadOpusWasm : undefined;
 
@@ -65,6 +83,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
         stunHosts,
         eSportsMode: s.eSportsModeEnabled,
         audioTransportWasm,
+        nativeAudio,
       },
     }),
     [

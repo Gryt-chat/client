@@ -6,7 +6,7 @@ import { Arch } from "builder-util";
 import type { AfterPackContext, Configuration, MacConfiguration } from "electron-builder";
 
 import { prunePrebuilds } from "./scripts/prune-prebuilds.ts";
-import { EMBEDDED_RESOURCE_PREFIX, HELPER_RESOURCE_PREFIX, isMasBuild, isSlimBuild, MAS_RUNTIME_SOURCE } from "./scripts/variant.ts";
+import { EMBEDDED_RESOURCE_PREFIX, HELPER_RESOURCE_PREFIX, isMasBuild, isSlimBuild, MAS_RUNTIME_SOURCE, VOICE_RESOURCE_PREFIX } from "./scripts/variant.ts";
 
 /**
  * electron-builder.yml, plus the handful of things a slim build changes.
@@ -81,8 +81,10 @@ if (MAS) {
   );
   if (!SLIM) config.extraResources.push(MAS_RUNTIME);
 
-  // The sandbox can't start anything at login, so the store build leaves the helper out.
-  config.extraResources = config.extraResources.filter((entry) => !String(entry.from).startsWith(HELPER_RESOURCE_PREFIX));
+  // The sandbox can't start anything at login, so the store build leaves the helper out, and gryt-voice with it.
+  config.extraResources = config.extraResources.filter(
+    (entry) => ![HELPER_RESOURCE_PREFIX, VOICE_RESOURCE_PREFIX].some((prefix) => String(entry.from).startsWith(prefix)),
+  );
 
   config.mac = {
     ...config.mac,

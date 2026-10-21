@@ -19,6 +19,8 @@ export const EMBEDDED_RESOURCE_PREFIX = "build/embedded-";
 
 /** Where the beforeBuild hook puts the helper, per arch. */
 export const HELPER_RESOURCE_PREFIX = "build/helper/";
+/** And gryt-voice, the native voice engine's process (GRYT-1837). */
+export const VOICE_RESOURCE_PREFIX = "build/voice/";
 
 /**
  * What the store build ships in place of the archive, and the files it can't start without.
