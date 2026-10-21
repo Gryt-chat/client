@@ -38,6 +38,7 @@ import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
 import { LinkDeviceDialog } from "./components/linkDevice";
 import { MainApp } from "./components/mainApp";
+import { MainIdentity } from "./components/MainIdentity";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
 import { ReportDialog } from "./components/reportDialog";
 import { TermsPrompt } from "./components/termsPrompt";
@@ -161,6 +162,7 @@ export function App() {
             onGoToServer={handleGoToServer}
           />
           <IdentityClaimPrompt />
+          <MainIdentity />
           <VaultUpgradePrompt />
           <GameDetectPrompt />
           <GlobalLightbox />

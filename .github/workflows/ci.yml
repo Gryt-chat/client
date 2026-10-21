@@ -52,6 +52,7 @@ jobs:
       - run: yarn test:hidden-conversations
       - run: yarn test:new-message
       - run: yarn test:voice-preset
+      - run: yarn test:main-identity
       - run: yarn test:voice-helper-lines
       - run: yarn test:desktop-away
       - run: yarn test:server-hover-address
