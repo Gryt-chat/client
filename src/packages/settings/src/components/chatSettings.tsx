@@ -30,7 +30,7 @@ export function ChatSettings() {
 
       <ToggleSetting
         title="Load link embeds automatically"
-        description="Players from YouTube, Spotify, Twitch and the like, pictures and videos linked from other sites, and the pictures on link previews all load from those sites, which can see that you opened them. Off, players and files wait for you to press Load, and previews show text only."
+        description="Players from YouTube, Spotify, Twitch and the like, and pictures and videos linked from other sites, load from those sites, which can see that you opened them. Off, they wait for you to press Load. On an up-to-date server, pictures on link previews come through the server and show either way."
         checked={autoLoadEmbeds}
         onCheckedChange={setAutoLoadEmbeds}
       />
