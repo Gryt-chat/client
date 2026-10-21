@@ -14,7 +14,11 @@ export interface Account {
   loginInProgress: boolean;
   registrationAllowed: boolean;
   register: () => Promise<void>;
+  /** Whoever is signed in, from the token, for "signed in as". */
+  email?: string;
   login: () => Promise<void>;
+  /** Signs out, then shows the login form even while the browser is still signed in to Keycloak. */
+  loginAnotherAccount: () => Promise<void>;
   logout: () => Promise<void>;
   cancelLogin: () => void;
   /** Signs in with the tokens linking a device got (GRYT-1484). */
