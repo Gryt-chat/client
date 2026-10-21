@@ -549,6 +549,7 @@ export const ChatView = memo(({
         m.nickname,
         m.avatarWorn,
       ) ?? null,
+      fallbackAvatarUrl: resolveAvatarSrc(undefined, m.nickname, m.avatarWorn) ?? null,
     }));
   }, [memberList, serverHost]);
 

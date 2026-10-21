@@ -7,6 +7,8 @@ export interface MentionMember {
   /** Unique within the list. For anything but a member it is only a key. */
   serverUserId: string;
   avatarUrl?: string | null;
+  /** Their generated face, for when the upload won't load. */
+  fallbackAvatarUrl?: string | null;
   /** Absent is a member. */
   kind?: "member" | "everyone" | "here" | "role" | "channel";
   roleId?: string;
@@ -186,6 +188,10 @@ export const MentionAutocomplete = ({ query, visible, members, onSelect, onClose
               <img
                 src={member.avatarUrl}
                 alt={member.nickname}
+                onError={(e) => {
+                  const fallback = member.fallbackAvatarUrl;
+                  if (fallback && !e.currentTarget.src.endsWith(fallback)) e.currentTarget.src = fallback;
+                }}
                 style={{ width: "24px", height: "24px", objectFit: "cover" }}
               />
             ) : (
