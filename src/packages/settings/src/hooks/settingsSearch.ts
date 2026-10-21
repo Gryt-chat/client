@@ -4,6 +4,7 @@
  */
 
 import { isElectron, isMacDesktop } from "../../../../lib/electron";
+import { matchSettings } from "./settingsMatch";
 
 export interface SettingsIndexEntry {
   id: string;
@@ -18,6 +19,10 @@ export interface SettingsIndexEntry {
   section: string;
   /** A whole panel rather than an individual control. */
   panel?: boolean;
+  /** Only rendered with advanced settings on, so a hit turns them on. */
+  advanced?: boolean;
+  /** Words people search for that the title and description don't use. */
+  keywords?: string[];
 }
 
 /** Stable anchor id for a setting title, ignoring any ": value" suffix. */
@@ -32,62 +37,63 @@ export function settingAnchorId(title: string): string {
 
 export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "tour", title: "Show me around", description: "Take the welcome tour again: your profile, an account, and adding a server.", page: "about", destination: "about", section: "About", panel: true },
-  { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "about", section: "About", panel: true },
-  { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", page: "profile", destination: "profile", section: "Profile", panel: true },
+  { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "about", section: "About", panel: true, keywords: ["version", "upgrade", "beta", "release"] },
+  { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", page: "profile", destination: "profile", section: "Profile", panel: true, keywords: ["username", "display name", "avatar", "picture", "nickname"] },
   { id: "edit-my-card", title: "Edit my card", description: "The card people see when they hover your name: its colour or gradient, pattern and pattern tuning, built-in styles, Surprise me, card links, bio, pronouns and status line.", page: "card", destination: "profile", section: "Edit my card", panel: true },
   { id: "pronouns", title: "Pronouns", description: "Shown under your name on your card.", page: "card", destination: "profile", section: "Edit my card" },
   { id: "bio", title: "Bio", description: "A line or two about you on your card.", page: "card", destination: "profile", section: "Edit my card" },
   { id: "status-line", title: "Status line", description: "Shown on your card when you aren't playing anything.", page: "card", destination: "profile", section: "Edit my card" },
   { id: "banner", title: "Banner", description: "A picture across the top of your card, on servers that let you upload one.", page: "card", destination: "profile", section: "Edit my card" },
-  { id: "security", title: "Security", description: "Your recovery key and account passkeys.", page: "security", destination: "account", section: "Security", panel: true },
-  { id: "privacy", title: "Privacy", description: "Who can send you messages and who can call you.", page: "privacy", destination: "account", section: "Privacy", panel: true },
+  { id: "auth-server", title: "Auth server", description: "Sign in with your own Keycloak instead of Gryt's, and the identity service that signs for it. An advanced setting.", page: "account", destination: "account", section: "Account", advanced: true, keywords: ["keycloak", "authentication", "login", "sign in", "oidc", "sso", "identity provider", "self-host", "realm", "custom"] },
+  { id: "security", title: "Security", description: "Your recovery key and account passkeys.", page: "security", destination: "account", section: "Security", panel: true, keywords: ["password", "passkey", "2fa", "recovery key", "encryption"] },
+  { id: "privacy", title: "Privacy", description: "Who can send you messages and who can call you.", page: "privacy", destination: "account", section: "Privacy", panel: true, keywords: ["block", "dm", "friends"] },
   { id: "who-can-send-me-messages", title: "Who can send me messages", description: "Anyone on the server, friends, or nobody. One answer for every server, and each server can have its own.", page: "privacy", destination: "account", section: "Privacy" },
   { id: "who-can-call-me", title: "Who can call me", description: "Anyone who can message you, friends, or nobody. Until you add a friend on a server, people you've written to there count.", page: "privacy", destination: "account", section: "Privacy" },
   { id: "message-history-on-this-device", title: "Message history on this device", description: "Where your encrypted DM history is kept, and clearing it when it won't open.", page: "security", destination: "account", section: "Security" },
-  { id: "your-devices", title: "Your devices", description: "Each app or browser you use for encrypted DMs, on each server. Remove one you don't use anymore.", page: "security", destination: "account", section: "Security" },
+  { id: "your-devices", title: "Your devices", description: "Each app or browser you use for encrypted DMs, on each server. Remove one you don't use anymore.", page: "security", destination: "account", section: "Security", keywords: ["sessions", "sign out"] },
   { id: "message-key-warnings", title: "Message key warnings", description: "Warn when a server holds a message key this device didn't publish. Turn it off if your direct messages don't need to be private from the server.", page: "security", destination: "account", section: "Security" },
   { id: "persist-server-access-tokens", title: "Persist server access tokens", description: "Keep server sign-in tokens between app sessions, or clear them when Gryt closes.", page: "security", destination: "account", section: "Security" },
   { id: "server-identities", title: "Server identities", description: "Servers Gryt recognises by their identity key, and any it has blocked for answering with a different one. Unblock a server you rebuilt yourself.", page: "identities", destination: "servers", section: "Servers", panel: true },
   ...(isElectron()
     ? ([
-    { id: "my-servers", title: "My servers", description: "Servers Gryt runs on this machine. Start them, stop them, read their logs, and choose whether they start with the app.", page: "my-servers", destination: "servers", section: "Servers", panel: true }
+    { id: "my-servers", title: "My servers", description: "Servers Gryt runs on this machine. Start them, stop them, read their logs, and choose whether they start with the app.", page: "my-servers", destination: "servers", section: "Servers", panel: true, keywords: ["self-host", "host", "run a server"] }
       ] satisfies SettingsIndexEntry[])
     : []),
-  { id: "microphone-volume", title: "Microphone volume", description: "Your microphone input level (100% = unchanged, 200% = 2x boost). At 100%, with no processing and no gate, your microphone skips processing entirely.", page: "audio", destination: "sound-video", section: "Microphone" },
-  { id: "test-microphone", title: "Test microphone", description: "Hear yourself through your speakers or headphones, to check what the processing is doing.", page: "audio", destination: "sound-video", section: "Microphone" },
-  { id: "noise-reduction", title: "Noise reduction", description: "Removes background noise before your voice is sent. Runs in an AudioWorklet off the main thread, and adds about 20 ms.", page: "audio", destination: "sound-video", section: "Microphone" },
+  { id: "microphone-volume", title: "Microphone volume", description: "Your microphone input level (100% = unchanged, 200% = 2x boost). At 100%, with no processing and no gate, your microphone skips processing entirely.", page: "audio", destination: "sound-video", section: "Microphone", keywords: ["mic", "input", "gain", "quiet", "loud"] },
+  { id: "test-microphone", title: "Test microphone", description: "Hear yourself through your speakers or headphones, to check what the processing is doing.", page: "audio", destination: "sound-video", section: "Microphone", keywords: ["mic", "hear myself", "loopback", "check"] },
+  { id: "noise-reduction", title: "Noise reduction", description: "Removes background noise before your voice is sent. Runs in an AudioWorklet off the main thread, and adds about 20 ms.", page: "audio", destination: "sound-video", section: "Microphone", keywords: ["noise suppression", "background noise", "keyboard", "fan", "denoise"] },
   { id: "auto-gain", title: "Auto gain", description: "Brings your microphone to a target volume. Quiet speech is boosted, loud speech is reduced. No delay of its own.", page: "audio", destination: "sound-video", section: "Microphone" },
   { id: "target-level", title: "Target level", description: "The volume your voice is brought to. Lower is quieter, higher is louder.", page: "audio", destination: "sound-video", section: "Microphone" },
   { id: "compressor", title: "Compressor", description: "Narrows the gap between your quietest and loudest, so your level stays steadier. Runs after auto gain, and adds about 6 ms.", page: "audio", destination: "sound-video", section: "Microphone" },
   { id: "compression-amount", title: "Compression amount", description: "How aggressively to compress. Low = subtle leveling, high = heavy squash.", page: "audio", destination: "sound-video", section: "Microphone" },
-  { id: "output-volume", title: "Output volume", description: "Volume of all incoming audio (100% = unchanged, 200% = 2x boost)", page: "audio", destination: "sound-video", section: "Playback" },
+  { id: "output-volume", title: "Output volume", description: "Volume of all incoming audio (100% = unchanged, 200% = 2x boost)", page: "audio", destination: "sound-video", section: "Playback", keywords: ["speakers", "headphones", "sound", "quiet", "loud"] },
   { id: "voice-preset", title: "Voice preset", description: "Best quality, low latency or eSports: sets noise reduction, auto gain, the compressor, and for low latency the gate and volume, with how much delay each adds.", page: "audio", destination: "sound-video", section: "Microphone" },
-  { id: "input-mode", title: "Input mode", description: "Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below.", page: "audio", destination: "sound-video", section: "Audio" },
-  { id: "afk-timeout", title: "AFK timeout", description: "You are marked AFK after this many minutes of silence, and only while you are connected to voice.", page: "voice", destination: "sound-video", section: "Voice" },
-  { id: "flip-camera", title: "Flip camera", description: "Flips the video everyone else sees. This changes the stream itself, not just your preview.", page: "camera", destination: "sound-video", section: "Camera" },
+  { id: "input-mode", title: "Input mode", description: "Voice activity transmits whenever you speak above the noise gate. Push to talk only transmits while you hold a key, and hides the gate below.", page: "audio", destination: "sound-video", section: "Audio", keywords: ["push to talk", "ptt", "voice activity", "open mic"] },
+  { id: "afk-timeout", title: "AFK timeout", description: "You are marked AFK after this many minutes of silence, and only while you are connected to voice.", page: "voice", destination: "sound-video", section: "Voice", keywords: ["idle", "away"] },
+  { id: "flip-camera", title: "Flip camera", description: "Flips the video everyone else sees. This changes the stream itself, not just your preview.", page: "camera", destination: "sound-video", section: "Camera", keywords: ["webcam", "video"] },
   { id: "center-my-face-automatically", title: "Center my face automatically", description: "Works out where your face is so everyone else's crop of your camera follows you instead of cutting you off. Detection runs on your machine; only two numbers are sent, never video.", page: "camera", destination: "sound-video", section: "Camera" },
-  { id: "mirror-preview", title: "Mirror preview", description: "Mirrors your own preview. Nobody else sees any difference.", page: "camera", destination: "sound-video", section: "Camera" },
-  { id: "appearance", title: "Appearance", description: "Mode, themes and display sizes.", page: "theme", destination: "appearance", section: "Appearance", panel: true },
-  { id: "theme", title: "Theme", description: "Pick one, or open the editor and change it while you use the app. A theme is a couple of dozen hex values, so a link is the whole thing.", page: "theme", destination: "appearance", section: "Theme" },
+  { id: "mirror-preview", title: "Mirror preview", description: "Mirrors your own preview. Nobody else sees any difference.", page: "camera", destination: "sound-video", section: "Camera", keywords: ["webcam", "video"] },
+  { id: "appearance", title: "Appearance", description: "Mode, themes and display sizes.", page: "theme", destination: "appearance", section: "Appearance", panel: true, keywords: ["dark mode", "light mode", "look"] },
+  { id: "theme", title: "Theme", description: "Pick one, or open the editor and change it while you use the app. A theme is a couple of dozen hex values, so a link is the whole thing.", page: "theme", destination: "appearance", section: "Theme", keywords: ["dark mode", "light mode", "colours", "colors"] },
   { id: "the-server-we-run", title: "The server we run", description: "Gryt runs one server itself, and the dialog for adding a server offers it when you have nothing to paste. Turning this off hides that row for good on this device, and turning it back on is what this is for.", page: "adding-servers", destination: "servers", section: "Adding servers" },
   { id: "typefaces-from-google", title: "Typefaces from Google", description: "A theme can name any typeface. Letting Gryt fetch the ones you do not already have means Google sees your address and that you are running Gryt. Off, a theme that names one falls back to a face you have.", page: "theme", destination: "appearance", section: "Theme" },
-  { id: "ui-scale", title: "UI scale", description: "How large Gryt draws everything. Ctrl+Plus and Ctrl+Minus do the same, and Ctrl+0 puts it back to 100%.", page: "display", destination: "appearance", section: "Display" },
-  { id: "chat-font-size", title: "Chat font size", description: "The size messages are set in, with a preview underneath.", page: "display", destination: "appearance", section: "Display" },
+  { id: "ui-scale", title: "UI scale", description: "How large Gryt draws everything. Ctrl+Plus and Ctrl+Minus do the same, and Ctrl+0 puts it back to 100%.", page: "display", destination: "appearance", section: "Display", keywords: ["zoom", "size", "bigger", "smaller"] },
+  { id: "chat-font-size", title: "Chat font size", description: "The size messages are set in, with a preview underneath.", page: "display", destination: "appearance", section: "Display", keywords: ["text size", "zoom", "bigger", "smaller"] },
   { id: "standalone-emoji-size", title: "Standalone emoji size", description: "How big an emoji is drawn when a message is nothing but emoji.", page: "display", destination: "appearance", section: "Display" },
   { id: "message-style", title: "Message style", description: "Cozy with pictures and names, Compact with one line per message, or Bubbles like most messaging apps. Only changes this device.", page: "messages", destination: "appearance", section: "Messages" },
   { id: "your-messages", title: "Your messages", description: "Keep the messages you send on the left with everyone else's, or put them on the right.", page: "messages", destination: "appearance", section: "Messages" },
   { id: "tile-layout", title: "Tile layout", description: "How the voice grid arranges people once it is maximised or fullscreen. Match Google Meet allows tall narrow tiles and more columns; Biggest tiles picks whichever arrangement makes them largest.", page: "voice", destination: "sound-video", section: "Voice" },
   { id: "two-people", title: "Two people", description: "What a channel with exactly two people in it looks like. One large and one small puts the other person in the panel and you in the corner; same size gives you both the same tile, stacked in the sidebar and side by side once there is room.", page: "voice", destination: "sound-video", section: "Voice" },
   { id: "smiley-conversion", title: "Smiley conversion", description: "Turns typed smileys into emoji as you write them.", page: "chat", destination: "chat-notifications", section: "Chat" },
-  { id: "blur-profanity", title: "Blur profanity", description: "Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it.", page: "chat", destination: "chat-notifications", section: "Chat" },
+  { id: "blur-profanity", title: "Blur profanity", description: "Blurs profane words when the server has profanity filtering set to flag. Click a blurred word to reveal it.", page: "chat", destination: "chat-notifications", section: "Chat", keywords: ["swearing", "filter", "nsfw"] },
   { id: "load-link-embeds-automatically", title: "Load link embeds automatically", description: "Players from YouTube, Spotify, Twitch and the like, pictures and videos linked from other sites, and the pictures on link previews all load from those sites, which can see that you opened them. Off, players and files wait for you to press Load, and previews show text only.", page: "chat", destination: "chat-notifications", section: "Chat" },
-  { id: "hotkeys", title: "Hotkeys", description: "Keyboard and mouse-button shortcuts, including your push-to-talk key.", page: "hotkeys", destination: "behaviour", section: "Hotkeys", panel: true },
-  { id: "push-to-talk-key", title: "Push to Talk Key", description: "Hold this key or mouse button to transmit your microphone. Only shown while input mode is push to talk.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
+  { id: "hotkeys", title: "Hotkeys", description: "Keyboard and mouse-button shortcuts, including your push-to-talk key.", page: "hotkeys", destination: "behaviour", section: "Hotkeys", panel: true, keywords: ["keybinds", "shortcuts", "keyboard"] },
+  { id: "push-to-talk-key", title: "Push to Talk Key", description: "Hold this key or mouse button to transmit your microphone. Only shown while input mode is push to talk.", page: "hotkeys", destination: "behaviour", section: "Hotkeys", keywords: ["ptt", "keybind", "shortcut"] },
   { id: "toggle-mute", title: "Toggle mute", description: "Toggle your microphone on or off.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
   { id: "toggle-deafen", title: "Toggle deafen", description: "Mute all incoming audio and your microphone.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
   { id: "disconnect", title: "Disconnect", description: "Disconnect from the current voice channel.", page: "hotkeys", destination: "behaviour", section: "Hotkeys" },
-  { id: "desktop-notifications", title: "Desktop notifications", description: "Show a notification when a message arrives somewhere you are not looking. Never plays its own sound — the message sound does that.", page: "notifications", destination: "chat-notifications", section: "Notifications" },
-  { id: "notification-level", title: "Notification level", description: "Applies to every server. It can only quieten one, never make one louder — a server you have already muted stays muted.", page: "notifications", destination: "chat-notifications", section: "Notifications" },
+  { id: "desktop-notifications", title: "Desktop notifications", description: "Show a notification when a message arrives somewhere you are not looking. Never plays its own sound — the message sound does that.", page: "notifications", destination: "chat-notifications", section: "Notifications", keywords: ["alerts", "sounds", "ping", "mentions"] },
+  { id: "notification-level", title: "Notification level", description: "Applies to every server. It can only quieten one, never make one louder — a server you have already muted stays muted.", page: "notifications", destination: "chat-notifications", section: "Notifications", keywords: ["mentions", "mute"] },
   { id: "per-server", title: "Per server", description: "How loud each server is on its own. Set from the right-click menu too — this is the same setting, in one place.", page: "notifications", destination: "chat-notifications", section: "Notifications" },
   { id: "channels-and-folders-set-differently", title: "Channels and folders set differently", description: "Every channel and folder you've set louder or quieter than its server, with a way to change or reset each.", page: "notifications", destination: "chat-notifications", section: "Notifications" },
   { id: "unread-message-badge", title: "Unread message badge", description: "Show an unread message count on the taskbar icon when the app is not focused.", page: "notifications", destination: "chat-notifications", section: "Notifications" },
@@ -96,13 +102,13 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   ...(isElectron()
     ? ([
       ...(isMacDesktop()
-        ? [{ id: "open-at-login", title: "Open at login", description: "Opens Gryt when you log in to your Mac.", page: "desktop", destination: "behaviour", section: "Desktop" }]
+        ? [{ id: "open-at-login", title: "Open at login", description: "Opens Gryt when you log in to your Mac.", page: "desktop", destination: "behaviour", section: "Desktop", keywords: ["startup", "autostart", "boot"] }]
         : [
-            { id: "start-with-windows", title: "Start with Windows", description: "Launches Gryt when you sign in to Windows.", page: "desktop", destination: "behaviour", section: "Desktop" },
+            { id: "start-with-windows", title: "Start with Windows", description: "Launches Gryt when you sign in to Windows.", page: "desktop", destination: "behaviour", section: "Desktop", keywords: ["startup", "autostart", "boot"] },
             { id: "start-minimized-on-login", title: "Start minimized on login", description: "Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window.", page: "desktop", destination: "behaviour", section: "Desktop" },
           ]),
-      { id: "minimize-to-tray-on-close", title: "Minimize to tray on close", description: "Closing the window hides Gryt in the system tray instead of quitting it.", page: "desktop", destination: "behaviour", section: "Desktop" },
-      { id: "hardware-acceleration", title: "Hardware acceleration", description: "Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt.", page: "desktop", destination: "behaviour", section: "Desktop" }
+      { id: "minimize-to-tray-on-close", title: "Minimize to tray on close", description: "Closing the window hides Gryt in the system tray instead of quitting it.", page: "desktop", destination: "behaviour", section: "Desktop", keywords: ["system tray", "background", "close button"] },
+      { id: "hardware-acceleration", title: "Hardware acceleration", description: "Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt.", page: "desktop", destination: "behaviour", section: "Desktop", keywords: ["gpu", "lag", "performance"] }
       ] satisfies SettingsIndexEntry[])
     : []),
   { id: "esports-mode", title: "eSports mode", description: "Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames).", page: "voice", destination: "sound-video", section: "Voice" },
@@ -123,21 +129,10 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
         { id: "a-message-every", title: "A message every", description: "How often a fake message arrives, in seconds, while it is running.", destination: "developer", section: "Developer" }
       ] satisfies SettingsIndexEntry[])
     : []),
-  { id: "addons", title: "Addons", description: "Extensions that add features to Gryt.", destination: "extensions", section: "Addons", panel: true },
-  { id: "support-gryt", title: "Support Gryt", description: "Ways to support the project.", destination: "support", section: "Support", panel: true }
+  { id: "addons", title: "Addons", description: "Extensions that add features to Gryt.", destination: "extensions", section: "Addons", panel: true, keywords: ["plugins", "extensions"] },
+  { id: "support-gryt", title: "Support Gryt", description: "Ways to support the project.", destination: "support", section: "Support", panel: true, keywords: ["donate", "sponsor"] }
 ];
 
-/**
- * Case-insensitive match across titles, descriptions and section names. Results
- * come back in screen order, so a description match can outrank a title one.
- */
 export function searchSettings(query: string): SettingsIndexEntry[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-
-  return SETTINGS_INDEX.filter((entry) =>
-    entry.title.toLowerCase().includes(q) ||
-    entry.section.toLowerCase().includes(q) ||
-    entry.description.toLowerCase().includes(q),
-  );
+  return matchSettings(SETTINGS_INDEX, query);
 }
