@@ -135,7 +135,7 @@ function GalleryPicture({
   if (meta?.processing) {
     return (
       <div role="status" aria-label="Processing attachment" style={{ ...box, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {local && <img src={local} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", opacity: 0.4 }} />}
+        {local && <img src={local} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4 }} />}
         <Spinner size={14} />
       </div>
     );
@@ -152,11 +152,11 @@ function GalleryPicture({
         type="button"
         aria-label={`Open ${name}`}
         onClick={() => onLightboxOpen(src, name, fileId)}
-        style={{ position: "absolute", inset: 0, display: "block", padding: 0, border: 0, background: "none", cursor: "zoom-in" }}
+        style={{ position: "absolute", inset: 0, display: "block", padding: 0, border: 0, background: "none", cursor: "inherit" }}
       >
-        {/* Contained, not cropped: only the first picture sets the box's shape. */}
+        {/* Cropped to fill, like the lightbox's own gallery; the lightbox opens out of that crop. */}
         <img src={src} alt={name} loading="lazy" draggable={false} onError={local ? undefined : refreshUrl}
-          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       </button>
     </MessageContextMenu>
     </div>

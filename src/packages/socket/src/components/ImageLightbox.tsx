@@ -43,6 +43,16 @@ function thumbnailOf(item: LightboxItem | undefined): Element | null {
   return document.querySelector(`img[src*="${CSS.escape(item.fileId)}"], video[poster*="${CSS.escape(item.fileId)}"]`);
 }
 
+/** The part of the picture a cropped thumbnail shows, so the lightbox opens out of exactly that. */
+function cropOfThumbnail(el: Element | null): [number, number, number, number] | undefined {
+  if (!(el instanceof HTMLImageElement) || !el.naturalWidth || getComputedStyle(el).objectFit !== "cover") return undefined;
+  const { width, height } = el.getBoundingClientRect();
+  const scale = Math.max(width / el.naturalWidth, height / el.naturalHeight);
+  const w = width / (el.naturalWidth * scale);
+  const h = height / (el.naturalHeight * scale);
+  return [(1 - w) / 2, (1 - h) / 2, w, h];
+}
+
 /**
  * Every picture and video in a message, at the one clicked (GRYT-1722), on react-motion-lightbox: swipe or ← →
  * between them, zoom with a double click, the wheel, two fingers or + −. One `src` is a set of one.
@@ -84,6 +94,7 @@ export const ImageLightbox = ({
       onExited={onClose}
       onIndexChange={setIndex}
       origin={(i) => thumbnailOf(items[i])}
+      originCrop={(i) => cropOfThumbnail(thumbnailOf(items[i]))}
       title={() =>
         gallery?.title && (
           <>
