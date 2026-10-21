@@ -10,7 +10,7 @@ const STORAGE_KEY = "gryt_guest_history";
 /** What this device knows about one guest membership. */
 export interface GuestVisit {
   /**
-   * Epoch ms of the last guest key derive for this scope. Null for an older entry,
+   * Epoch ms of the last guest join answered for this scope. Null for an older entry,
    * and for scopes taken in by the backfill or from a backup file.
    */
   lastUsed: number | null;

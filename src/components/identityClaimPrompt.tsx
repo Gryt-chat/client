@@ -68,10 +68,10 @@ export function IdentityClaimPrompt() {
         >
           <Dialog.Title>Were you here as a guest before?</Dialog.Title>
           <Dialog.Description className="mt-2 mb-3">
-            Someone on this device used{" "}
-            <span className="text-gryt-text">{serverName}</span> as a guest
-            before you signed in.
-            {lastUsed !== null && <> The last time was {formatLastUsed(lastUsed)}.</>}
+            This device joined{" "}
+            <span className="text-gryt-text">{serverName}</span> as a guest,
+            without an account
+            {lastUsed !== null ? <>, last on {formatLastUsed(lastUsed)}.</> : "."}
           </Dialog.Description>
           <p className="mb-3 text-sm">
             You can move that guest to your account. Your account then gets the
@@ -79,8 +79,8 @@ export function IdentityClaimPrompt() {
             the guest owns the server, your account will own it instead.
           </p>
           <p className="mb-3 text-sm text-gryt-muted">
-            Only say yes if that was you. On a shared computer, it might be
-            someone else. You can&rsquo;t undo this, and the server will know
+            Only say yes if that guest was you. On a shared computer, it might
+            have been someone else. You can&rsquo;t undo this, and the server will know
             the guest was you.
           </p>
           <p className="mb-4 text-sm text-gryt-muted">
@@ -113,13 +113,13 @@ export function IdentityClaimPrompt() {
 const postponed = new Set<string>();
 
 /**
- * The date, in the reader's locale. The year appears only when it is not this
- * one, so the common case reads "12 August".
+ * The date in English, like the sentence around it, not the system's language. The
+ * year appears only when it is not this one, so the common case reads "12 August".
  */
 function formatLastUsed(epochMs: number): string {
   const date = new Date(epochMs);
   const sameYear = date.getFullYear() === new Date().getFullYear();
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
     ...(sameYear ? {} : { year: "numeric" }),
