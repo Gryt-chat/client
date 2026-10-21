@@ -1070,17 +1070,11 @@ export const VoiceView = ({
   const getLatencyStats = (clientId: string, isSelf: boolean) => {
     if (!showPeerLatency) return undefined;
 
-    // On the own transport a peer's badge is their voice to you: our capture, a frame, sender to SFU to here, their buffer, our output.
+    // On the own transport a peer's badge is measured (GRYT-1836): the round trip to them through the SFU, and their buffer here.
     const serverUserId = clientsForHost[clientId]?.serverUserId;
-    const buffered = !isSelf && serverUserId ? transportLatency?.bufferedByUser.get(serverUserId) : undefined;
-    if (transportLatency && buffered !== undefined) {
-      const rtt = selfLatency.networkRttMs;
-      return {
-        estimatedOneWayMs: (transportLatency.inputMs ?? 0) + transportLatency.frameMs + (rtt ?? 0) + buffered + (transportLatency.outputMs ?? 0),
-        networkRttMs: rtt,
-        jitterMs: buffered,
-        codec: "Opus, 2.5 ms frames (own transport)",
-      };
+    if (transportLatency && !isSelf && serverUserId) {
+      const measuredRttMs = transportLatency.rttByUser.get(serverUserId);
+      return measuredRttMs === undefined ? undefined : { measuredRttMs, bufferedMs: transportLatency.bufferedByUser.get(serverUserId) ?? null };
     }
 
     if (isSelf) {
