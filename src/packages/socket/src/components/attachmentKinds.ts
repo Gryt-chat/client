@@ -1,6 +1,6 @@
 import type { AttachmentMeta } from "./chatUtils";
 
-/** Whether an attachment draws in the picture grid: an image the server didn't refuse. */
+/** Whether an attachment draws in the picture gallery: an image the server didn't refuse. */
 export function isGridImage(meta: AttachmentMeta | undefined): boolean {
   return !!meta && !meta.refused && (meta.mime || "").startsWith("image/");
 }
