@@ -3,6 +3,7 @@
  * a second kind of identity to one copy would have left the other answering old.
  */
 
+import { rememberGuestScope } from "./guest-history";
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
 import { mayClaim } from "./identity-claims";
 import type { IdentitySource } from "./identity-keys";
@@ -86,6 +87,8 @@ export async function answerChallenge(
 
   const source: IdentitySource = { kind: "local", host };
   rememberIdentitySource(host, source);
+  // The one place a guest visit is recorded: joining as a guest, on a server that takes guests.
+  rememberGuestScope(identityScopeFor(host));
 
   const { sub, certificate } = await getLocalIdentity(host);
   const assertion = await signAssertion(

@@ -271,13 +271,9 @@ async function loadOrGenerateKeyPair(
         }
       : await crypto.subtle.generateKey(ALGO, false, ["sign", "verify"]);
 
-  // A derived key is not written down: it is reproducible from the seed and the
-  // scope. The account key is random, so it is still stored.
-  if (source.kind === "local") {
-    rememberGuestScope(identityScopeFor(source.host));
-  } else {
-    await idbPut(db, storageKey, stored);
-  }
+  // A derived key is reproducible from the seed, so only the random account key is stored.
+  // Deriving one isn't a guest visit: device linking and comparison codes derive them too.
+  if (source.kind !== "local") await idbPut(db, storageKey, stored);
   db.close();
 
   cachedKeyPairs.set(storageKey, stored);
