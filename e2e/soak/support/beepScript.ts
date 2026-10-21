@@ -3,6 +3,8 @@ export interface BeepConfig {
   /** This client's microphone becomes the beeper. The others listen. */
   send: boolean;
   periodMs: number;
+  /** A listener's microphone becomes what it hears, so the beeper times a round trip on its own clock. */
+  echo: boolean;
 }
 
 type Loose = Record<string, unknown>;
@@ -116,7 +118,8 @@ export function beepScript(config: BeepConfig): void {
       tap(track);
       return replaceTrack.call(this, track);
     };
-    return;
+    // With echo the beeper listens too: what comes back is the round trip.
+    if (!config.echo) return;
   }
 
   const AUDIO_IN = [
@@ -125,8 +128,32 @@ export function beepScript(config: BeepConfig): void {
     "removedSamplesForAcceleration", "totalSamplesReceived",
   ];
 
-  const listen = (track: MediaStreamTrack, pc: RTCPeerConnection) =>
-    onsets(track, (heardAt, peak) => {
+  // GRYT_SOAK_ECHO=1: two machines have two clocks, so the listener sends back what it hears and the beeper times that.
+  let echo: ((track: MediaStreamTrack) => void) | null = null;
+  if (config.echo && !config.send) {
+    const ctx = new AudioContext({ sampleRate: 48000 });
+    const out = ctx.createMediaStreamDestination();
+    const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async (constraints?: MediaStreamConstraints) => {
+      const stream = await original(constraints);
+      if (!constraints?.audio) return stream;
+      for (const track of stream.getAudioTracks()) {
+        stream.removeTrack(track);
+        track.stop();
+      }
+      stream.addTrack(out.stream.getAudioTracks()[0].clone());
+      return stream;
+    };
+    echo = (track) => {
+      ctx.resume().catch(() => undefined);
+      ctx.createMediaStreamSource(new MediaStream([track])).connect(out);
+    };
+    onsets(out.stream.getAudioTracks()[0], (at, peak) => emit("beep.echoed", { echoedAt: at, peak }));
+  }
+
+  const listen = (track: MediaStreamTrack, pc: RTCPeerConnection) => {
+    echo?.(track);
+    return onsets(track, (heardAt, peak) => {
       pc.getStats(track).then(
         (report) => {
           let stats: Loose | null = null;
@@ -140,6 +167,7 @@ export function beepScript(config: BeepConfig): void {
         () => emit("beep.heard", { heardAt, track: track.id, peak, stats: null }),
       );
     });
+  };
 
   const Peer = w.RTCPeerConnection as typeof RTCPeerConnection;
   class BeepPeer extends Peer {
@@ -151,4 +179,19 @@ export function beepScript(config: BeepConfig): void {
     }
   }
   Object.defineProperty(w, "RTCPeerConnection", { value: BeepPeer, configurable: true, writable: true });
+
+  // The own voice transport (GRYT-1818) plays from a worklet, not a WebRTC track. Tapped through a track so it pays the same hop.
+  const Worklet = w.AudioWorkletNode as typeof AudioWorkletNode;
+  class BeepWorklet extends Worklet {
+    constructor(context: BaseAudioContext, name: string, options?: AudioWorkletNodeOptions) {
+      super(context, name, options);
+      if (name !== "gryt-transport-receive" || !(context instanceof AudioContext)) return;
+      const out = context.createMediaStreamDestination();
+      this.connect(out);
+      const [track] = out.stream.getAudioTracks();
+      echo?.(track);
+      onsets(track, (heardAt, peak) => emit("beep.heard", { heardAt, track: track.id, peak, stats: null, transport: true }));
+    }
+  }
+  Object.defineProperty(w, "AudioWorkletNode", { value: BeepWorklet, configurable: true, writable: true });
 }

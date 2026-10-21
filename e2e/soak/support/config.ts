@@ -57,7 +57,10 @@ export function readConfig(): SoakConfig {
   }
   if (env.GRYT_SOAK_LOCAL_SERVER) {
     const localInvite = env.GRYT_SOAK_LOCAL_INVITE || null;
-    groups.push(group("local", env.GRYT_SOAK_LOCAL_SERVER, localInvite, env.GRYT_SOAK_LOCAL_SFU || null, count(env.GRYT_SOAK_LOCAL_CLIENTS, 2)));
+    const local = group("local", env.GRYT_SOAK_LOCAL_SERVER, localInvite, env.GRYT_SOAK_LOCAL_SFU || null, count(env.GRYT_SOAK_LOCAL_CLIENTS, 2));
+    // GRYT_SOAK_PUBLIC_ONLY=1: a server on this LAN, but every call goes the public way (clients.ts drops private candidates).
+    local.hideLocal = env.GRYT_SOAK_PUBLIC_ONLY === "1";
+    groups.push(local);
   }
   if (groups.length === 0) {
     throw new Error("Nothing to soak. Set GRYT_TEST_SERVER_URL, GRYT_SOAK_DIRECT_SERVER or GRYT_SOAK_LOCAL_SERVER; e2e/README.md has the rest.");
