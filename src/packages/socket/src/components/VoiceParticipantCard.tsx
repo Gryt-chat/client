@@ -40,6 +40,9 @@ interface LatencyDisplayStats {
   jitterMs?: number | null;
   codec?: string | null;
   candidateType?: string | null;
+  /** On the own transport (GRYT-1836): the measured round trip to them, and how much of theirs is buffered here. */
+  measuredRttMs?: number;
+  bufferedMs?: number | null;
 }
 
 /** Well past a slow negotiation, where offer, answer, ICE and the first RTP on a
@@ -293,6 +296,17 @@ function LatencyBadge({
   stats: LatencyDisplayStats | undefined;
   isSelf: boolean;
 }) {
+  if (stats?.measuredRttMs !== undefined) {
+    const buffered = stats.bufferedMs == null ? "" : ` · ${Math.round(stats.bufferedMs)} ms of theirs buffered here`;
+    return (
+      <Tooltip title={`Round trip through the SFU, measured${buffered}`}>
+        <span className="text-xs" style={{ color: latencyColor(stats.measuredRttMs / 2), fontVariantNumeric: "tabular-nums", cursor: "default" }}>
+          {Math.round(stats.measuredRttMs)}ms
+        </span>
+      </Tooltip>
+    );
+  }
+
   const oneWay = stats?.estimatedOneWayMs;
   if (oneWay == null) return null;
 
