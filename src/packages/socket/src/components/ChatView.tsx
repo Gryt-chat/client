@@ -8,7 +8,7 @@ import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
 import { PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
-import { draftKey, returnDraft, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
+import { draftKey, returnDraft, type ReturnedDraft, saveDraftToDisk, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatScroll } from "../hooks/useChatScroll";
@@ -462,10 +462,17 @@ export const ChatView = memo(({
   // A send that failed, or was called off, comes back to the box it was typed in.
   const channelDraftKey = serverHost && conversationKey ? draftKey(serverHost, conversationKey) : "";
   const channelDraft = useReturnedDraft(channelDraftKey);
+  // Read as it changes: by the time a switch unmounts the view, the editor's ref is gone.
+  const latestDraft = useRef<ReturnedDraft | null>(null);
   useEffect(() => {
     if (!channelDraft || !editorRef.current) return;
+    const editor = editorRef.current;
     const draft = takeReturnedDraft(channelDraftKey);
-    if (draft) editorRef.current.restore(draft);
+    if (!draft) return;
+    const files = [...editor.getFiles(), ...draft.files];
+    editor.restore(draft);
+    // Noted whole: the files reach the editor's state a render later, and a switch before then lost them.
+    latestDraft.current = { text: editor.getMarkdown().trim(), files };
   }, [channelDraft, channelDraftKey]);
 
   const openThreadId = threads.open?.thread.thread_id;
@@ -486,12 +493,41 @@ export const ChatView = memo(({
       const files = editor?.getFiles() ?? [];
       if (key && (text || files.length > 0)) returnDraft(key, { text, files });
     };
+    // The channel's own box is stashed by the effect below, which also runs on unmount.
     stash(threadDraftKey, threadEditorRef.current);
-    stash(channelDraftKey, editorRef.current);
   };
   /* A layout effect, not a passive one: React has already detached the editor's
      ref by the time a passive cleanup for a deleted tree runs. */
   useLayoutEffect(() => () => stashDraftsRef.current(), []);
+
+  /* Each channel and DM keeps its own unsent message (GRYT-1841). Leaving one puts what's
+     in the box aside for it; arriving takes that channel's back through the effect above. */
+  const keepsOnDisk = conversationKind !== "dm";
+  const editingRef = useRef(editingMessage);
+  editingRef.current = editingMessage;
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const noteDraft = useCallback(() => {
+    const editor = editorRef.current;
+    // An edit in progress is somebody else's text, not a draft.
+    if (!editor || editingRef.current) return;
+    const draft = { text: editor.getMarkdown().trim(), files: editor.getFiles() };
+    latestDraft.current = draft;
+    if (!keepsOnDisk || !channelDraftKey) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => void saveDraftToDisk(channelDraftKey, draft), 500);
+  }, [keepsOnDisk, channelDraftKey]);
+  useLayoutEffect(() => {
+    latestDraft.current = null;
+    // A box kept across the switch still holds the last channel's words.
+    editorRef.current?.clear();
+    return () => {
+      clearTimeout(saveTimer.current);
+      const draft = latestDraft.current;
+      if (!channelDraftKey || !draft) return;
+      if (keepsOnDisk) void saveDraftToDisk(channelDraftKey, draft);
+      returnDraft(channelDraftKey, draft);
+    };
+  }, [channelDraftKey, keepsOnDisk]);
 
   /* Escape and the × both come through here. A half-written reply waits for
      this thread instead of going with the panel (GRYT-1387). */
@@ -1121,6 +1157,7 @@ export const ChatView = memo(({
             onArrowUpEmpty={handleArrowUpEmpty}
             onTyping={emitTyping}
             onStopTyping={emitStopTyping}
+            onChange={noteDraft}
             serverHost={serverHost}
           />
           </>
