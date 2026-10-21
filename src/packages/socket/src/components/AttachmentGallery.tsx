@@ -102,9 +102,9 @@ export function AttachmentGallery({
 }
 
 function Slide({ x, at, width, current, children }: { x: MotionValue<number>; at: number; width: number; current: boolean; children: ReactNode }) {
-  const { place } = useTrackPlace(x, at);
+  const { left } = useTrackPlace(x, at);
   return (
-    <motion.div aria-hidden={!current || undefined} inert={!current} style={{ position: "absolute", top: 0, bottom: 0, left: 0, width, x: place }}>
+    <motion.div aria-hidden={!current || undefined} inert={!current} style={{ position: "absolute", top: 0, bottom: 0, left: 0, width, x: left }}>
       {children}
     </motion.div>
   );
