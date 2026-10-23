@@ -12,7 +12,14 @@ export * from "./src/hooks/whatsNewRequest";
 export * from "./src/mls/linkedDevices";
 export * from "./src/mls/ownDevices";
 export { clearRemovedEverywhere } from "./src/mls/removedHere";
-export { type OwnDevicesAnswer, ownMlsDevices, removeOwnMlsDevice, useMlsSource } from "./src/mls/serverMls";
+export {
+  adoptThisDevicesKey,
+  type OwnDevicesAnswer,
+  ownMlsDevices,
+  removeOwnMlsDevice,
+  useHostsAwaitingApproval,
+  useMlsSource,
+} from "./src/mls/serverMls";
 
 // Utils
 export * from "./src/utils/joinServerOnce";

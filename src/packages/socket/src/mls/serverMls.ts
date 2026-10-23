@@ -261,11 +261,35 @@ export function serverMlsReady(host: string): void {
   void refresh(host);
 }
 
+/* Servers where this device has its own key and never registered (GRYT-1874): it waits to be
+   approved from another device, and the app asks once rather than in every DM. */
+let awaitingApproval: ReadonlySet<string> = new Set();
+const approvalListeners = new Set<() => void>();
+function setAwaitingApproval(host: string, waiting: boolean): void {
+  if (awaitingApproval.has(host) === waiting) return;
+  const next = new Set(awaitingApproval);
+  if (waiting) next.add(host);
+  else next.delete(host);
+  awaitingApproval = next;
+  for (const listener of approvalListeners) listener();
+}
+
+export function useHostsAwaitingApproval(): ReadonlySet<string> {
+  return useSyncExternalStore(
+    (listener) => {
+      approvalListeners.add(listener);
+      return () => approvalListeners.delete(listener);
+    },
+    () => awaitingApproval,
+  );
+}
+
 /** Whether your account's published key here is another device's, from the member list. */
 export function serverMlsOwnKey(host: string, rewritten: boolean): void {
   const state = hosts.get(host);
   if (!state || state.otherIdentity === rewritten) return;
   state.otherIdentity = rewritten;
+  if (!rewritten) setAwaitingApproval(host, false);
   void refresh(host);
 }
 
@@ -366,6 +390,7 @@ async function refresh(host: string): Promise<void> {
       const registered = (await session.ownDeviceId()) !== null;
       state.local = otherIdentitySource(session, registered);
       setSource(host, state.local);
+      setAwaitingApproval(host, !registered);
       if (!registered) return;
     } else {
       if (state.local !== session) {
