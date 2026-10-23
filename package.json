@@ -218,7 +218,16 @@
     "test:polls": "node --disable-warning=ExperimentalWarning scripts/check-polls.ts"
   },
   "dependencies": {
+    "@lexical/code": "0.52.0",
+    "@lexical/link": "0.52.0",
+    "@lexical/list": "0.52.0",
+    "@lexical/markdown": "0.52.0",
+    "@lexical/react": "0.52.0",
+    "@lexical/rich-text": "0.52.0",
+    "@lexical/selection": "0.52.0",
+    "@lexical/utils": "0.52.0",
     "electron-updater": "^6.8.3",
+    "lexical": "0.52.0",
     "mediabunny": "^1.61.1",
     "react-motion-lightbox": "0.7.0",
     "semver": "^7.6.3",

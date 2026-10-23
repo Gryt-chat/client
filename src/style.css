@@ -661,6 +661,73 @@ body {
   gap: 0;
 }
 
+/* The Lexical composer, while it's tried behind gryt.lexicalComposer. */
+.chat-editor-lexical-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-editor-lexical-field .chat-editor-textarea {
+  min-height: calc(1.5em + 20px);
+  max-height: 66vh;
+}
+
+.chat-editor-lexical-placeholder {
+  position: absolute;
+  top: 10px;
+  left: 18px;
+  color: var(--gryt-neutral-10);
+  pointer-events: none;
+}
+
+.chat-editor-lexical .lx-p {
+  margin: 0;
+}
+
+.chat-editor-lexical .lx-bold { font-weight: 700; }
+.chat-editor-lexical .lx-italic { font-style: italic; }
+.chat-editor-lexical .lx-strike { text-decoration: line-through; }
+
+.chat-editor-lexical .lx-code {
+  font-family: var(--code-font-family, monospace);
+  font-size: 0.85em;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--gryt-neutral-4);
+}
+
+.chat-editor-lexical .lx-h1 { margin: 0; font-size: 1.5em; font-weight: 700; }
+.chat-editor-lexical .lx-h2 { margin: 0; font-size: 1.25em; font-weight: 700; }
+.chat-editor-lexical .lx-h3 { margin: 0; font-size: 1.1em; font-weight: 700; }
+
+.chat-editor-lexical .lx-quote {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--gryt-neutral-7);
+  color: var(--gryt-neutral-11);
+}
+
+.chat-editor-lexical .lx-ul,
+.chat-editor-lexical .lx-ol {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.chat-editor-lexical .lx-ul { list-style: disc; }
+.chat-editor-lexical .lx-ol { list-style: decimal; }
+
+.chat-editor-lexical .lx-codeblock {
+  display: block;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: var(--gryt-radius-sm);
+  background: var(--gryt-neutral-1);
+  font-family: var(--code-font-family, monospace);
+  font-size: 0.85em;
+  white-space: pre;
+}
+
 .chat-editor-format-anchor {
   position: absolute;
   z-index: 20;

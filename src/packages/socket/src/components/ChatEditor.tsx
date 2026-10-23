@@ -10,13 +10,14 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
-import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFilePlusFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiLinkSimpleBold, PiListBulletsBold, PiPlusBold, PiQuotesBold, PiSmileyWinkFill, PiTextBBold, PiTextHOneBold, PiTextHThreeBold, PiTextHTwoBold, PiTextItalicBold, PiTextStrikethroughBold, PiX } from "../../../../lib/icons";
+import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFilePlusFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPlusBold, PiSmileyWinkFill, PiX } from "../../../../lib/icons";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
 import { channelHref } from "../../../lib/mentionTokens";
 import { parseEditSegments } from "../utils/chatEditorMentions";
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
+import { FORMAT_GROUPS, MASS_MENTION } from "./composerButtons";
 import {
   activeComposerFormats,
   applyComposerFormat,
@@ -39,31 +40,7 @@ const MESSAGE_MAX_LENGTH = 4000;
 /** Show the counter this far from the cap, not before. */
 const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
 
-const MASS_MENTION = /(^|\s)@(everyone|here)\b/;
 
-type FormatButton = { format: ComposerFormat; label: string; Icon: typeof PiCode };
-
-/** In groups, with a gap between, so text styles, code and links, headings and blocks read apart. */
-const FORMAT_GROUPS: FormatButton[][] = [
-  [
-    { format: "bold", label: "Bold (Ctrl+B)", Icon: PiTextBBold },
-    { format: "italic", label: "Italic (Ctrl+I)", Icon: PiTextItalicBold },
-    { format: "strike", label: "Strikethrough (Ctrl+Shift+X)", Icon: PiTextStrikethroughBold },
-  ],
-  [
-    { format: "code", label: "Code", Icon: PiCode },
-    { format: "link", label: "Link", Icon: PiLinkSimpleBold },
-  ],
-  [
-    { format: "h1", label: "Heading 1", Icon: PiTextHOneBold },
-    { format: "h2", label: "Heading 2", Icon: PiTextHTwoBold },
-    { format: "h3", label: "Heading 3", Icon: PiTextHThreeBold },
-  ],
-  [
-    { format: "list", label: "List", Icon: PiListBulletsBold },
-    { format: "quote", label: "Quote", Icon: PiQuotesBold },
-  ],
-];
 
 const SHORTCUTS: Record<string, ComposerFormat | undefined> = { b: "bold", i: "italic", "shift+x": "strike" };
 

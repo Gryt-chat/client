@@ -5,6 +5,7 @@ import { PiX } from "../../../../lib/icons";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import type { ChatMessage } from "./chatUtils";
 import { getReplyPreview } from "./chatViewHelpers";
+import { LexicalChatEditor } from "./LexicalChatEditor";
 import type { MentionMember } from "./MentionAutocomplete";
 import { ReplyPreviewText } from "./ReplyPreviewText";
 
@@ -32,6 +33,15 @@ interface ChatEditorBarProps {
   serverHost?: string;
   confirmMassMention?: (text: string, send: () => void) => void;
 }
+
+/** The Lexical composer, while it's being tried. Read once: switching needs a reload. */
+const LEXICAL = (() => {
+  try {
+    return localStorage.getItem("gryt.lexicalComposer") === "1";
+  } catch {
+    return false;
+  }
+})();
 
 export function ChatEditorBar({
   replyingTo,
@@ -109,6 +119,16 @@ export function ChatEditorBar({
         </div>
       )}
 
+      {LEXICAL ? (
+        <LexicalChatEditor
+          ref={editorRef}
+          placeholder={placeholder}
+          disabled={disabled}
+          onSend={onSend}
+          onChange={onChange}
+          confirmMassMention={confirmMassMention}
+        />
+      ) : (
       <ChatEditor
         ref={editorRef}
         placeholder={placeholder}
@@ -129,6 +149,7 @@ export function ChatEditorBar({
         serverHost={serverHost}
         confirmMassMention={confirmMassMention}
       />
+      )}
     </>
   );
 }
