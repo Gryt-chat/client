@@ -1071,6 +1071,46 @@ body {
   opacity: 0.85;
 }
 
+/* ── A message's pictures: react-motion-lightbox's Gallery, its arrows like Gryt's ghost icon buttons ── */
+.rml-gallery.gryt-gallery {
+  --rml-gap: 4px;
+  --rml-button-size: 32px;
+  --rml-caption-size: 12px;
+  --rml-focus: var(--gryt-accent-9);
+  color: var(--gryt-neutral-10);
+}
+
+/* Clipped for layout too: the clip-path alone leaves the pictures off to the side scrollable. */
+.gryt-gallery .rml-gallery-box {
+  overflow: hidden;
+}
+
+.gryt-gallery .rml-gallery-foot {
+  align-items: center;
+  padding-right: 28px;
+}
+
+.gryt-gallery .rml-gallery-nav .rml-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.gryt-gallery .rml-button {
+  border: 0;
+  color: var(--gryt-muted);
+  transition: scale 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.gryt-gallery .rml-button:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: var(--gryt-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gryt-gallery .rml-button:hover {
+    scale: 1.06;
+  }
+}
+
 /* ── Image lightbox: react-motion-lightbox, in Gryt's colours ── */
 
 /* Darker than a dialog's dim, so the chat drops away behind the picture; clear of the window's own titlebar. */
