@@ -1,5 +1,6 @@
 import { PiCode, PiLinkSimpleBold, PiListBulletsBold, PiQuotesBold, PiTextBBold, PiTextHOneBold, PiTextHThreeBold, PiTextHTwoBold, PiTextItalicBold, PiTextStrikethroughBold } from "../../../../lib/icons";
-import type { ComposerFormat } from "./composerFormat";
+
+export type ComposerFormat = "bold" | "italic" | "strike" | "code" | "link" | "h1" | "h2" | "h3" | "list" | "quote";
 
 export const MASS_MENTION = /(^|\s)@(everyone|here)\b/;
 

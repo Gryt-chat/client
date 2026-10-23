@@ -47,8 +47,8 @@ export function parseEditSegments(text: string, channelName: EditorChannelName):
   return segments;
 }
 
-/** Mirrors ChatEditor's `serializeContentEditable`, so a round trip can be
-    checked against `parseEditSegments`' output with no real DOM. */
+/** What the composer's mention nodes send, so a round trip can be checked
+    against `parseEditSegments`' output with no real DOM. */
 export function reserializeEditSegments(segments: EditorSegment[]): string {
   let result = "";
   for (const segment of segments) {

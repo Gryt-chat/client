@@ -1,10 +1,41 @@
 import { Menu } from "@gryt/ui";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { CodeNode } from "@lexical/code";
+import { AutoLinkNode, LinkNode } from "@lexical/link";
+import { ListItemNode, ListNode } from "@lexical/list";
+import { $convertFromMarkdownString, $convertToMarkdownString } from "@lexical/markdown";
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
+import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
+import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
+import { ListPlugin } from "@lexical/react/LexicalListPlugin";
+import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
+import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import { mergeRegister } from "@lexical/utils";
+import {
+  $createTextNode,
+  $getRoot,
+  $getSelection,
+  $isRangeSelection,
+  $isTextNode,
+  COMMAND_PRIORITY_HIGH,
+  DROP_COMMAND,
+  FORMAT_TEXT_COMMAND,
+  INSERT_PARAGRAPH_COMMAND,
+  KEY_DOWN_COMMAND,
+  KEY_ENTER_COMMAND,
+  type LexicalEditor,
+  type LexicalNode,
+  PASTE_COMMAND,
+} from "lexical";
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -14,18 +45,11 @@ import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiF
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
-import { channelHref } from "../../../lib/mentionTokens";
-import { parseEditSegments } from "../utils/chatEditorMentions";
+import { type EditorPill } from "../utils/chatEditorMentions";
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
-import { FORMAT_GROUPS, MASS_MENTION } from "./composerButtons";
-import {
-  activeComposerFormats,
-  applyComposerFormat,
-  type ComposerFormat,
-  selectComposerLinkText,
-  selectedLink,
-  setComposerLinkUrl,
-} from "./composerFormat";
+import { MASS_MENTION } from "./composerButtons";
+import { ComposerFormatBar } from "./ComposerFormatBar";
+import { $createEmojiNode, $createMentionNode, $isMentionNode, composerTransformers, EmojiNode, MentionNode } from "./composerLexical";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
 import { EmojiPicker } from "./EmojiPicker";
 import { emojiQueryAt } from "./emojiQuery";
@@ -40,10 +64,6 @@ const MESSAGE_MAX_LENGTH = 4000;
 /** Show the counter this far from the cap, not before. */
 const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
 
-
-
-const SHORTCUTS: Record<string, ComposerFormat | undefined> = { b: "bold", i: "italic", "shift+x": "strike" };
-
 /** A paste that cannot fit in one message becomes an ordinary text attachment. */
 const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
 
@@ -51,7 +71,21 @@ const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
 const LONG_PASTE_NO_FILES =
   `That's too long to paste. Messages can be up to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters, and you can't attach files here.`;
 
-/** Where the drop line goes on a staged file: before it, or after the last one. */
+const THEME = {
+  text: { bold: "lx-bold", italic: "lx-italic", strikethrough: "lx-strike", code: "lx-code" },
+  heading: { h1: "lx-h1", h2: "lx-h2", h3: "lx-h3" },
+  quote: "lx-quote",
+  list: { ul: "lx-ul", ol: "lx-ol", listitem: "lx-li" },
+  link: "gryt-link",
+  code: "lx-codeblock",
+  paragraph: "lx-p",
+};
+
+const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, CodeNode, MentionNode, EmojiNode];
+
+const QUERY = { "@": /(^|[\s])@([a-zA-Z0-9_ ]*)$/, "#": /(^|[\s])#([a-zA-Z0-9_-]*)$/ } as const;
+
+/** Where to draw the drop line on a staged file: before it, or after the last one. */
 function dropMarker(dropAt: number | null, i: number, count: number): "before" | "after" | undefined {
   if (dropAt === i) return "before";
   return dropAt === i + 1 && i === count - 1 ? "after" : undefined;
@@ -120,38 +154,6 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function serializeContentEditable(el: HTMLElement): string {
-  let result = "";
-  for (const node of el.childNodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      result += node.textContent || "";
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const elem = node as HTMLElement;
-      if (elem.tagName === "IMG" && elem.dataset.emojiName) {
-        // Another server's emoji goes as its image; its name only resolves on its own server.
-        result += elem.dataset.emojiSrc ? `![:${elem.dataset.emojiName}:](${elem.dataset.emojiSrc})` : `:${elem.dataset.emojiName}:`;
-      } else if (elem.dataset.roleId) {
-        result += `[${elem.dataset.mentionName || elem.textContent || ""}](role:${elem.dataset.roleId})`;
-      } else if (elem.dataset.channelId) {
-        // Never the name: a reader who can't see the channel must not get it.
-        result += `[#channel](${channelHref(elem.dataset.channelId, elem.dataset.channelHost || null)})`;
-      } else if (elem.dataset.mentionId) {
-        const id = elem.dataset.mentionId;
-        const name = elem.dataset.mentionName || elem.textContent || "";
-        result += `[${name}](mention:${id})`;
-      } else if (elem.tagName === "BR") {
-        result += "\n";
-      } else if (elem.tagName === "DIV" || elem.tagName === "P") {
-        if (result.length > 0 && !result.endsWith("\n")) result += "\n";
-        result += serializeContentEditable(elem);
-      } else {
-        result += serializeContentEditable(elem);
-      }
-    }
-  }
-  return result;
-}
-
 /** Up to two thirds of the window while typing, so the messages above still show; one line otherwise. */
 function autoResize(el: HTMLElement, open = document.activeElement === el) {
   const before = el.style.height;
@@ -168,138 +170,37 @@ function autoResize(el: HTMLElement, open = document.activeElement === el) {
   el.toggleAttribute("data-collapsed", !open && full > oneLine);
 }
 
-function getEmojiQueryAtCursor(): string | null {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
-
-  const range = sel.getRangeAt(0);
-  const node = range.startContainer;
-  if (node.nodeType !== Node.TEXT_NODE) return null;
-
-  return emojiQueryAt(node.textContent || "", range.startOffset)?.name ?? null;
+/** The pill a pick turns into. @everyone and @here stay text, as the old box sent them. */
+function pillFor(member: MentionMember): EditorPill {
+  if (member.kind === "channel" && member.channelId) return { dataset: { channelId: member.channelId }, text: `#${member.nickname}` };
+  if (member.kind === "role" && member.roleId) return { dataset: { roleId: member.roleId, mentionName: `@${member.nickname}` }, text: `@${member.nickname}` };
+  // Shown, never sent: the stored label stays the name, from `mentionName`.
+  return {
+    dataset: { mentionId: member.serverUserId, mentionName: `@${member.nickname}` },
+    text: member.tag ? `@${member.nickname} ${member.tag}` : `@${member.nickname}`,
+  };
 }
 
-const QUERY = { "@": /(^|[\s])@([a-zA-Z0-9_ ]*)$/, "#": /(^|[\s])#([a-zA-Z0-9_-]*)$/ } as const;
-
-function getQueryAtCursor(trigger: "@" | "#"): string | null {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return null;
-
-  const range = sel.getRangeAt(0);
-  const node = range.startContainer;
-  if (node.nodeType !== Node.TEXT_NODE) return null;
-
-  const text = node.textContent || "";
-  const offset = range.startOffset;
-  const before = text.slice(0, offset);
-
-  const match = before.match(QUERY[trigger]);
-  if (!match) return null;
-
-  const afterCursor = text.slice(offset);
-  if (afterCursor.length > 0 && /^[a-zA-Z0-9_]/.test(afterCursor)) return null;
-
-  return match[2];
+/** The text before and after the caret, when it sits in plain text. */
+function $caretText(): { node: LexicalNode; before: string; after: string; offset: number } | null {
+  const sel = $getSelection();
+  if (!$isRangeSelection(sel) || !sel.isCollapsed()) return null;
+  const node = sel.anchor.getNode();
+  if (!$isTextNode(node) || $isMentionNode(node)) return null;
+  const text = node.getTextContent();
+  return { node, before: text.slice(0, sel.anchor.offset), after: text.slice(sel.anchor.offset), offset: sel.anchor.offset };
 }
 
-/** The pill a pick turns into, or plain text for @everyone and @here. */
-function mentionNode(member: MentionMember): Node {
-  if (member.kind === "everyone" || member.kind === "here") return document.createTextNode(`@${member.kind}`);
-  const pill = document.createElement("span");
-  pill.className = "chat-editor-mention";
-  if (member.kind === "channel" && member.channelId) {
-    pill.dataset.channelId = member.channelId;
-    pill.textContent = `#${member.nickname}`;
-  } else if (member.kind === "role" && member.roleId) {
-    pill.dataset.roleId = member.roleId;
-    pill.dataset.mentionName = `@${member.nickname}`;
-    pill.textContent = `@${member.nickname}`;
-  } else {
-    pill.dataset.mentionId = member.serverUserId;
-    pill.dataset.mentionName = `@${member.nickname}`;
-    // Shown, never sent: the stored label stays the name, from `mentionName`.
-    pill.textContent = member.tag ? `@${member.nickname} ${member.tag}` : `@${member.nickname}`;
-  }
-  pill.contentEditable = "false";
-  pill.draggable = false;
-  return pill;
-}
-
-function replaceQueryAtCursor(trigger: "@" | "#", member: MentionMember): void {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return;
-
-  const range = sel.getRangeAt(0);
-  const node = range.startContainer;
-  if (node.nodeType !== Node.TEXT_NODE) return;
-
-  const text = node.textContent || "";
-  const offset = range.startOffset;
-  const before = text.slice(0, offset);
-
-  const match = before.match(QUERY[trigger]);
-  if (!match) return;
-
-  const atStart = offset - match[0].length + match[1].length;
-
-  const replaceRange = document.createRange();
-  replaceRange.setStart(node, atStart);
-  replaceRange.setEnd(node, offset);
-  replaceRange.deleteContents();
-
-  const trailing = document.createTextNode(" ");
-  replaceRange.insertNode(trailing);
-  replaceRange.insertNode(mentionNode(member));
-
-  sel.removeAllRanges();
-  const newRange = document.createRange();
-  newRange.setStartAfter(trailing);
-  newRange.collapse(true);
-  sel.addRange(newRange);
-}
-
-function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
-  const sel = window.getSelection();
-  if (!sel || sel.rangeCount === 0) return;
-
-  const range = sel.getRangeAt(0);
-  const node = range.startContainer;
-  if (node.nodeType !== Node.TEXT_NODE) return;
-
-  const offset = range.startOffset;
-  const query = emojiQueryAt(node.textContent || "", offset);
-  if (!query) return;
-
-  const replaceRange = document.createRange();
-  replaceRange.setStart(node, query.start);
-  replaceRange.setEnd(node, offset);
-  replaceRange.deleteContents();
-
-  if (entry.emoji) {
-    const textNode = document.createTextNode(entry.emoji + " ");
-    replaceRange.insertNode(textNode);
-    sel.removeAllRanges();
-    const newRange = document.createRange();
-    newRange.setStartAfter(textNode);
-    newRange.collapse(true);
-    sel.addRange(newRange);
-  } else if (entry.url) {
-    const img = document.createElement("img");
-    img.src = entry.url;
-    img.alt = `:${entry.name}:`;
-    img.dataset.emojiName = entry.name;
-    img.className = "inline-emoji";
-    img.draggable = false;
-    img.contentEditable = "false";
-    const space = document.createTextNode(" ");
-    replaceRange.insertNode(space);
-    replaceRange.insertNode(img);
-    sel.removeAllRanges();
-    const newRange = document.createRange();
-    newRange.setStartAfter(space);
-    newRange.collapse(true);
-    sel.addRange(newRange);
-  }
+/** Replaces the typed query ending at the caret with `nodes`. */
+function $replaceQuery(start: (before: string) => number | null, nodes: LexicalNode[]) {
+  const at = $caretText();
+  const sel = $getSelection();
+  if (!at || !$isRangeSelection(sel)) return;
+  const from = start(at.before);
+  if (from === null) return;
+  sel.anchor.set(at.node.getKey(), from, "text");
+  sel.focus.set(at.node.getKey(), at.offset, "text");
+  sel.insertNodes(nodes);
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
@@ -321,7 +222,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const pendingFilesRef = useRef<PendingFile[]>([]);
     pendingFilesRef.current = pendingFiles;
 
-    const editorRef = useRef<HTMLDivElement>(null);
+    const editorRef = useRef<LexicalEditor | null>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const onSendRef = useRef(onSend);
     onSendRef.current = onSend;
@@ -338,81 +240,32 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const channelListRef = useRef(channelList);
     channelListRef.current = channelList;
 
+    const transformers = useMemo(
+      () => composerTransformers((id) => channelListRef.current?.find((c) => c.channelId === id)?.nickname ?? null),
+      [],
+    );
+
     const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
-    const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-    const wrapperRef = useRef<HTMLDivElement>(null);
-    const [selectionBar, setSelectionBar] = useState<{
-      left: number;
-      top: number;
-      active: Set<ComposerFormat>;
-      link: { urlStart: number; urlEnd: number; url: string } | null;
-    } | null>(null);
-    // While its field has focus the selection is in the field, which would otherwise close the bar.
-    const editingLinkRef = useRef(false);
-    // Where the bar last was, so it can fade out there rather than jump.
-    const lastBarAt = useRef({ left: 0, top: 0 });
-    const reduceMotion = useReducedMotion();
-    if (selectionBar) lastBarAt.current = { left: selectionBar.left, top: selectionBar.top };
-
-    useEffect(() => {
-      const onSelectionChange = () => {
-        const el = editorRef.current;
-        const wrap = wrapperRef.current;
-        const sel = window.getSelection();
-        if (!el || !wrap || !sel || sel.isCollapsed || !el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) {
-          if (!editingLinkRef.current) setSelectionBar(null);
-          return;
-        }
-        const r = sel.getRangeAt(0).getBoundingClientRect();
-        const w = wrap.getBoundingClientRect();
-        const centre = r.left - w.left + r.width / 2;
-        setSelectionBar({
-          left: Math.max(150, Math.min(w.width - 150, centre)),
-          top: r.top - w.top,
-          active: activeComposerFormats(el),
-          link: selectedLink(el),
-        });
-      };
-      document.addEventListener("selectionchange", onSelectionChange);
-      return () => document.removeEventListener("selectionchange", onSelectionChange);
-    }, []);
-
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-    const [showMentionAutocomplete, setShowMentionAutocomplete] = useState(false);
     const [channelQuery, setChannelQuery] = useState<string | null>(null);
-
-    const updateAutocompleteQueries = useCallback(() => {
-      const cq = getQueryAtCursor("#");
-      setChannelQuery(cq);
-      if (cq !== null) {
-        setShowMentionAutocomplete(false);
-        setShowAutocomplete(false);
-        return;
-      }
-      const mq = getQueryAtCursor("@");
-      if (mq !== null) {
-        setMentionQuery(mq);
-        setShowMentionAutocomplete(true);
-        setEmojiQuery(null);
-        setShowAutocomplete(false);
-        return;
-      }
-      setMentionQuery(null);
-      setShowMentionAutocomplete(false);
-
-      const eq = getEmojiQueryAtCursor();
-      setEmojiQuery(eq);
-      setShowAutocomplete(eq !== null);
-    }, []);
-
+    const showAutocomplete = emojiQuery !== null;
+    const showMentionAutocomplete = mentionQuery !== null;
     const [length, setLength] = useState(0);
 
-    const handleSend = useCallback(() => {
-      const el = editorRef.current;
-      if (!el) return;
+    const getText = useCallback(() => {
+      let md = "";
+      editorRef.current?.getEditorState().read(() => { md = $convertToMarkdownString(transformers, undefined, true); });
+      return md;
+    }, [transformers]);
 
-      const text = serializeContentEditable(el).trim();
+    const clearText = useCallback(() => {
+      editorRef.current?.update(() => { $getRoot().clear(); });
+      setLength(0);
+    }, []);
+
+    const handleSend = useCallback(() => {
+      const text = getText().trim();
       const files = pendingFilesRef.current.map((p) => p.file);
 
       if (!text && files.length === 0) return;
@@ -423,20 +276,17 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       // Until this device has agreed to the terms, the draft stays in the box while it asks.
       const send = () => termsGate.postAfterAgreeing(() => {
         onSendRef.current(text, files);
-        el.textContent = "";
-        autoResize(el);
+        clearText();
         pendingFilesRef.current.forEach((p) => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
         setPendingFiles([]);
-        setShowAutocomplete(false);
         setEmojiQuery(null);
-        setShowMentionAutocomplete(false);
         setMentionQuery(null);
         setChannelQuery(null);
         onStopTypingRef.current?.();
       });
       if (confirmMassRef.current && MASS_MENTION.test(text)) confirmMassRef.current(text, send);
       else send();
-    }, []);
+    }, [getText, clearText]);
 
     const addFiles = useCallback((files: FileList | File[]) => {
       // Covers paste and drag-and-drop as well as the clip, which is why it is
@@ -458,21 +308,12 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     }, [maxFileSize, allowFiles]);
 
     const handleKeyDown = useCallback(
-      (e: React.KeyboardEvent<HTMLDivElement>) => {
+      (e: KeyboardEvent) => {
         // A suggestion list that used the key prevented it first. An empty one lets it through.
-        if (e.nativeEvent.defaultPrevented) return;
+        if (e.defaultPrevented) return;
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
-          return;
-        }
-        const shortcut = (e.ctrlKey || e.metaKey) && !e.altKey
-          ? SHORTCUTS[`${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`]
-          : undefined;
-        if (shortcut && editorRef.current) {
-          // The browser's own Ctrl+B adds <b>, which the message never carries.
-          e.preventDefault();
-          applyComposerFormat(editorRef.current, shortcut);
           return;
         }
         if (e.key === "Escape" && isEditing && onCancel) {
@@ -483,225 +324,220 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           return;
         }
         if (e.key === "ArrowUp" && !isEditing && onArrowUpEmpty) {
-          const el = editorRef.current;
-          const text = el ? serializeContentEditable(el).trim() : "";
-          if (!text && pendingFilesRef.current.length === 0) {
+          if (!getText().trim() && pendingFilesRef.current.length === 0) {
             e.preventDefault();
             onArrowUpEmpty();
           }
         }
       },
-      [handleSend, isEditing, onCancel, onArrowUpEmpty]
+      [handleSend, isEditing, onCancel, onArrowUpEmpty, getText]
     );
+    const handleKeyDownRef = useRef(handleKeyDown);
+    handleKeyDownRef.current = handleKeyDown;
 
-    const handlePaste = useCallback(
-      (e: React.ClipboardEvent<HTMLDivElement>) => {
-        const items = e.clipboardData?.items;
-        if (!items) return;
+    const handlePaste = useCallback((e: ClipboardEvent): boolean => {
+      const items = e.clipboardData?.items;
+      if (!items) return false;
 
-        const filesToAdd: File[] = [];
-        for (const item of items) {
-          if (item.kind === "file") {
-            const file = item.getAsFile();
-            if (file) filesToAdd.push(file);
-          }
+      const filesToAdd: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) filesToAdd.push(file);
         }
-        if (filesToAdd.length > 0) {
-          e.preventDefault();
-          addFiles(filesToAdd);
-          return;
-        }
-
-        e.preventDefault();
-        const text = e.clipboardData.getData("text/plain");
-        if (!text) return;
-
-        // Oversized text is unsendable and can freeze contentEditable.
-        // Keep it out of the DOM and attach the exact clipboard contents instead.
-        if (text.length > MESSAGE_MAX_LENGTH) {
-          if (isEditing) {
-            toast.error(
-              `Edited messages are limited to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters.`,
-            );
-            return;
-          }
-          // The file below would be refused, and the paste gone with it.
-          if (allowFiles === false) {
-            toast.error(LONG_PASTE_NO_FILES);
-            return;
-          }
-
-          addFiles([
-            new File([text], LARGE_PASTE_FILE_NAME, {
-              type: "text/plain;charset=utf-8",
-            }),
-          ]);
-          return;
-        }
-
-        document.execCommand("insertText", false, text);
-      },
-      [addFiles, isEditing, allowFiles]
-    );
-
-    const handleDrop = useCallback(
-      (e: React.DragEvent<HTMLDivElement>) => {
-        const files = e.dataTransfer?.files;
-        if (!files || files.length === 0) return;
-        e.preventDefault();
-        e.stopPropagation();
-        addFiles(files);
-      },
-      [addFiles]
-    );
-
-    const handleInput = useCallback(() => {
-      if (editorRef.current) autoResize(editorRef.current);
-      updateAutocompleteQueries();
-      const body = editorRef.current ? serializeContentEditable(editorRef.current).trim() : "";
-      setLength(body.length);
-      onChangeRef.current?.();
-      if (body.length > 0) {
-        onTypingRef.current?.();
-      } else {
-        onStopTypingRef.current?.();
       }
-    }, [updateAutocompleteQueries]);
+      e.preventDefault();
+      if (filesToAdd.length > 0) {
+        addFiles(filesToAdd);
+        return true;
+      }
+
+      const text = e.clipboardData?.getData("text/plain");
+      if (!text) return true;
+
+      // Oversized text is unsendable and slows the editor down.
+      // Keep it out of the box and attach the exact clipboard contents instead.
+      if (text.length > MESSAGE_MAX_LENGTH) {
+        if (isEditing) {
+          toast.error(`Edited messages are limited to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters.`);
+          return true;
+        }
+        // The file below would be refused, and the paste gone with it.
+        if (allowFiles === false) {
+          toast.error(LONG_PASTE_NO_FILES);
+          return true;
+        }
+        addFiles([new File([text], LARGE_PASTE_FILE_NAME, { type: "text/plain;charset=utf-8" })]);
+        return true;
+      }
+
+      // Plain text, as before: a web page's formatting doesn't come along.
+      editorRef.current?.update(() => {
+        const sel = $getSelection();
+        if ($isRangeSelection(sel)) sel.insertRawText(text);
+      });
+      return true;
+    }, [addFiles, isEditing, allowFiles]);
+    const handlePasteRef = useRef(handlePaste);
+    handlePasteRef.current = handlePaste;
+    const addFilesRef = useRef(addFiles);
+    addFilesRef.current = addFiles;
+
+    /** What the caret is typing: a channel, a mention or an emoji shortcode. */
+    const updateQueries = useCallback(() => {
+      editorRef.current?.getEditorState().read(() => {
+        const at = $caretText();
+        const word = at && !/^[a-zA-Z0-9_]/.test(at.after);
+        const cq = word ? at.before.match(QUERY["#"])?.[2] ?? null : null;
+        const mq = word && cq === null ? at.before.match(QUERY["@"])?.[2] ?? null : null;
+        const eq = at && cq === null && mq === null ? emojiQueryAt(at.before + at.after, at.offset)?.name ?? null : null;
+        setChannelQuery(cq);
+        setMentionQuery(mq);
+        setEmojiQuery(eq);
+      });
+    }, []);
+
+    // Commands and listeners, once the editor exists. EditorRefPlugin sets it in an effect that runs before this one.
+    useEffect(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      const strike = (e: KeyboardEvent) => (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "x";
+      return mergeRegister(
+        editor.registerCommand(KEY_DOWN_COMMAND, (e) => {
+          if (strike(e)) {
+            e.preventDefault();
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough");
+            return true;
+          }
+          handleKeyDownRef.current(e);
+          return e.defaultPrevented;
+        }, COMMAND_PRIORITY_HIGH),
+        // A new paragraph, not a <br>: `# ` and `- ` only become blocks at the start of one.
+        editor.registerCommand(KEY_ENTER_COMMAND, (e) => {
+          if (!e?.shiftKey) return false;
+          e.preventDefault();
+          editor.dispatchCommand(INSERT_PARAGRAPH_COMMAND, undefined);
+          return true;
+        }, COMMAND_PRIORITY_HIGH),
+        editor.registerCommand(PASTE_COMMAND, (e) => (e instanceof ClipboardEvent ? handlePasteRef.current(e) : false), COMMAND_PRIORITY_HIGH),
+        editor.registerCommand(DROP_COMMAND, (e) => {
+          const files = e.dataTransfer?.files;
+          if (!files || files.length === 0) return false;
+          e.preventDefault();
+          e.stopPropagation();
+          addFilesRef.current(files);
+          return true;
+        }, COMMAND_PRIORITY_HIGH),
+        editor.registerUpdateListener(({ dirtyElements, dirtyLeaves }) => {
+          updateQueries();
+          if (dirtyElements.size === 0 && dirtyLeaves.size === 0) return;
+          const root = editor.getRootElement();
+          if (root) autoResize(root);
+          const body = getText().trim();
+          setLength(body.length);
+          onChangeRef.current?.();
+          if (body.length > 0) onTypingRef.current?.();
+          else onStopTypingRef.current?.();
+        }),
+      );
+    }, [getText, updateQueries]);
+
+    useEffect(() => { editorRef.current?.setEditable(!disabled); }, [disabled]);
+
+    // Nodes can only be made inside an update, hence the factory.
+    const insertAtCaret = useCallback((make: () => LexicalNode[]) => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.focus();
+      editor.update(() => {
+        let sel = $getSelection();
+        if (!$isRangeSelection(sel)) {
+          $getRoot().selectEnd();
+          sel = $getSelection();
+        }
+        if ($isRangeSelection(sel)) sel.insertNodes(make());
+      });
+    }, []);
 
     const handleEmojiSelect = useCallback((entry: EmojiEntry) => {
-      replaceEmojiQueryAtCursor(entry);
+      const { emoji, url, name } = entry;
+      if (!emoji && !url) return;
+      editorRef.current?.update(() => {
+        const nodes = emoji ? [$createTextNode(`${emoji} `)] : [$createEmojiNode(name, url ?? "", false), $createTextNode(" ")];
+        $replaceQuery((before) => emojiQueryAt(before, before.length)?.start ?? null, nodes);
+      });
       recordRecentEmoji(entry.name, entry.isCustom, serverHost);
-      setShowAutocomplete(false);
       setEmojiQuery(null);
-      if (editorRef.current) autoResize(editorRef.current);
     }, [serverHost]);
 
-    const handleAutocompleteClose = useCallback(() => {
-      setShowAutocomplete(false);
-      setEmojiQuery(null);
+    const handleMentionSelect = useCallback((member: MentionMember) => {
+      editorRef.current?.update(() => {
+        const lead = (before: string) => {
+          const m = before.match(QUERY["@"]);
+          return m ? before.length - m[0].length + m[1].length : null;
+        };
+        const mass = member.kind === "everyone" || member.kind === "here";
+        $replaceQuery(lead, mass ? [$createTextNode(`@${member.kind} `)] : [$createMentionNode(pillFor(member)), $createTextNode(" ")]);
+      });
+      setMentionQuery(null);
     }, []);
 
     const handleChannelSelect = useCallback((channel: MentionMember) => {
-      replaceQueryAtCursor("#", channel);
+      editorRef.current?.update(() => {
+        const lead = (before: string) => {
+          const m = before.match(QUERY["#"]);
+          return m ? before.length - m[0].length + m[1].length : null;
+        };
+        $replaceQuery(lead, [$createMentionNode(pillFor(channel)), $createTextNode(" ")]);
+      });
       setChannelQuery(null);
-      if (editorRef.current) autoResize(editorRef.current);
-    }, []);
-
-    const handleMentionSelect = useCallback((member: MentionMember) => {
-      replaceQueryAtCursor("@", member);
-      setShowMentionAutocomplete(false);
-      setMentionQuery(null);
-      if (editorRef.current) autoResize(editorRef.current);
-    }, []);
-
-    const handleMentionAutocompleteClose = useCallback(() => {
-      setShowMentionAutocomplete(false);
-      setMentionQuery(null);
     }, []);
 
     const handlePickerEmojiSelect = useCallback((src: string) => {
-      const el = editorRef.current;
-      if (!el) return;
-
-      el.focus();
-      const sel = window.getSelection();
-
       const other = /^!\[:([a-zA-Z0-9_+-]+):\]\((https?:\/\/[^)\s]+)\)$/.exec(src);
       if (other) {
-        const img = document.createElement("img");
-        img.src = other[2];
-        img.alt = `:${other[1]}:`;
-        img.dataset.emojiName = other[1];
-        img.dataset.emojiSrc = other[2];
-        img.className = "inline-emoji";
-        img.draggable = false;
-        img.contentEditable = "false";
-        el.appendChild(img);
+        insertAtCaret(() => [$createEmojiNode(other[1], other[2], true), $createTextNode(" ")]);
       } else if (src.startsWith(":") && src.endsWith(":")) {
         const name = src.slice(1, -1);
         const custom = getCustomEmojis().find((e) => e.name === name);
         if (custom?.url) {
-          const img = document.createElement("img");
-          img.src = custom.url;
-          img.alt = src;
-          img.dataset.emojiName = name;
-          img.className = "inline-emoji";
-          img.draggable = false;
-          img.contentEditable = "false";
-          el.appendChild(img);
+          const url = custom.url;
+          insertAtCaret(() => [$createEmojiNode(name, url, false), $createTextNode(" ")]);
           recordRecentEmoji(name, true, serverHost);
         }
       } else {
-        el.appendChild(document.createTextNode(src));
+        insertAtCaret(() => [$createTextNode(`${src} `)]);
       }
-
-      const trailing = document.createTextNode(" ");
-      el.appendChild(trailing);
-
-      if (sel) {
-        sel.removeAllRanges();
-        const range = document.createRange();
-        range.setStartAfter(trailing);
-        range.collapse(true);
-        sel.addRange(range);
-      }
-
-      autoResize(el);
       setEmojiPickerOpen(false);
-    }, [serverHost]);
+    }, [serverHost, insertAtCaret]);
 
     const setContent = useCallback((text: string) => {
-      const el = editorRef.current;
-      if (!el) return;
-      el.textContent = "";
-      const channelName = (id: string) =>
-        channelListRef.current?.find((c) => c.channelId === id)?.nickname ?? null;
-      for (const segment of parseEditSegments(text, channelName)) {
-        if ("text" in segment) {
-          if (segment.text) el.appendChild(document.createTextNode(segment.text));
-          continue;
-        }
-        const pill = document.createElement("span");
-        pill.className = "chat-editor-mention";
-        for (const [key, value] of Object.entries(segment.pill.dataset)) pill.dataset[key] = value;
-        pill.textContent = segment.pill.text;
-        pill.contentEditable = "false";
-        pill.draggable = false;
-        el.appendChild(pill);
-      }
-      autoResize(el);
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.update(() => {
+        $convertFromMarkdownString(text, transformers, undefined, true);
+        $getRoot().selectEnd();
+      });
       setLength(text.trim().length);
       onChangeRef.current?.();
-      requestAnimationFrame(() => {
-        el.focus();
-        const sel = window.getSelection();
-        if (sel) {
-          sel.selectAllChildren(el);
-          sel.collapseToEnd();
-        }
-      });
-    }, []);
+      editor.focus();
+    }, [transformers]);
 
     useImperativeHandle(ref, () => ({
       clear: () => {
-        if (editorRef.current) {
-          editorRef.current.textContent = "";
-          autoResize(editorRef.current);
-        }
+        clearText();
         pendingFiles.forEach((p) => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
         setPendingFiles([]);
       },
       focus: () => editorRef.current?.focus(),
-      getMarkdown: () => editorRef.current ? serializeContentEditable(editorRef.current) : "",
+      getMarkdown: getText,
       getFiles: () => pendingFiles.map((p) => p.file),
       addFiles,
       setContent,
       restore: ({ text, files }) => {
-        const el = editorRef.current;
-        if (!el) return;
         // Whatever was typed since the send stays, and the files join it.
-        if (text && !serializeContentEditable(el).trim()) setContent(text);
-        else el.focus();
+        if (text && !getText().trim()) setContent(text);
+        else editorRef.current?.focus();
         if (files.length > 0) addFiles(files);
       },
     }));
@@ -717,32 +553,16 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     useEffect(() => {
       const onMentionUser = (e: Event) => {
         const { serverUserId: id, nickname: name } = (e as CustomEvent<{ serverUserId: string; nickname: string }>).detail;
-        const el = editorRef.current;
-        if (!el || !id) return;
-
-        el.focus();
-
-        const mention = document.createElement("span");
-        mention.className = "chat-editor-mention";
-        mention.dataset.mentionId = id;
-        mention.dataset.mentionName = `@${name}`;
-        mention.textContent = `@${name}`;
-        mention.contentEditable = "false";
-        mention.draggable = false;
-
-        const trailing = document.createTextNode(" ");
-        el.appendChild(mention);
-        el.appendChild(trailing);
-
-        const sel = window.getSelection();
-        if (sel) {
-          sel.removeAllRanges();
-          const range = document.createRange();
-          range.setStartAfter(trailing);
-          range.collapse(true);
-          sel.addRange(range);
-        }
-        autoResize(el);
+        const editor = editorRef.current;
+        if (!editor || !id) return;
+        editor.focus();
+        editor.update(() => {
+          $getRoot().selectEnd();
+          const sel = $getSelection();
+          if ($isRangeSelection(sel)) {
+            sel.insertNodes([$createMentionNode({ dataset: { mentionId: id, mentionName: `@${name}` }, text: `@${name}` }), $createTextNode(" ")]);
+          }
+        });
       };
       window.addEventListener("mention_user", onMentionUser);
       return () => window.removeEventListener("mention_user", onMentionUser);
@@ -754,6 +574,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       };
     }, []);
 
+    const hint = placeholder || "Type a message...";
     const canSend = length > 0 || pendingFiles.length > 0;
     return (
       <div className={`chat-editor-shell ${disabled ? "chat-editor-disabled" : ""}`}>
@@ -843,7 +664,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           query={emojiQuery || ""}
           visible={showAutocomplete}
           onSelect={handleEmojiSelect}
-          onClose={handleAutocompleteClose}
+          onClose={() => setEmojiQuery(null)}
           serverHost={serverHost}
         />
         <MentionAutocomplete
@@ -851,7 +672,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           visible={showMentionAutocomplete}
           members={memberList || []}
           onSelect={handleMentionSelect}
-          onClose={handleMentionAutocompleteClose}
+          onClose={() => setMentionQuery(null)}
         />
         <MentionAutocomplete
           query={channelQuery || ""}
@@ -861,150 +682,93 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           onClose={() => setChannelQuery(null)}
           title="Channels"
         />
-        <div className="chat-editor-format-anchor" style={lastBarAt.current}>
-          <AnimatePresence>
-            {selectionBar && !disabled && (
-              <motion.div
-                key="bar"
-                className="chat-editor-format-bar"
-                role="toolbar"
-                aria-label="Format the selection"
-                initial={{ opacity: 0, y: 6, scale: 0.94 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 6, scale: 0.94 }}
-                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 34 }}
-              >
-                <AnimatePresence>
-                  {selectionBar.link && (
-                    <motion.div
-                      key="link"
-                      className="chat-editor-format-bar chat-editor-format-sub"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 8 }}
-                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 34 }}
-                    >
-                      <input
-                        className="chat-editor-link-input"
-                        type="url"
-                        aria-label="Link address"
-                        placeholder="Paste or type a link"
-                        value={selectionBar.link.url}
-                        onFocus={() => { editingLinkRef.current = true; }}
-                        onBlur={() => { editingLinkRef.current = false; }}
-                        onChange={(e) => {
-                          const el = editorRef.current;
-                          const link = selectionBar.link;
-                          if (!el || !link) return;
-                          const url = e.target.value;
-                          const urlEnd = setComposerLinkUrl(el, link.urlStart, link.urlEnd, url);
-                          setSelectionBar((bar) => bar && { ...bar, link: { ...link, urlEnd, url } });
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key !== "Enter" && e.key !== "Escape") return;
-                          e.preventDefault();
-                          editingLinkRef.current = false;
-                          if (editorRef.current && selectionBar.link) selectComposerLinkText(editorRef.current, selectionBar.link.urlStart);
-                        }}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                {FORMAT_GROUPS.map((group, g) => (
-                  <div key={g} className="chat-editor-format-group">
-                    {group.map(({ format, label, Icon }) => (
-                      <button
-                        key={format}
-                        type="button"
-                        className="chat-editor-format-btn"
-                        aria-label={label}
-                        aria-pressed={selectionBar.active.has(format)}
-                        title={label}
-                        // Keeps the selection in the box: a click would move focus and drop it.
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => { if (editorRef.current) applyComposerFormat(editorRef.current, format); }}
-                      >
-                        <Icon size={16} />
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        <div className="chat-editor-input-row">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            style={{ display: "none" }}
-            onChange={(e) => {
-              if (e.target.files) addFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
-          <div
-            ref={editorRef}
-            className="chat-editor-textarea"
-            contentEditable={!disabled}
-            role="textbox"
-            aria-placeholder={placeholder || "Type a message..."}
-            data-placeholder={placeholder || "Type a message..."}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            onDrop={handleDrop}
-            onInput={handleInput}
-            onClick={updateAutocompleteQueries}
-            onFocus={(e) => autoResize(e.currentTarget, true)}
-            onBlur={(e) => {
-              // Into the link field is still writing this message.
-              if (!wrapperRef.current?.contains(e.relatedTarget as Node | null)) autoResize(e.currentTarget, false);
-            }}
-          />
-          {length >= COUNTER_VISIBLE_FROM && (
-            <span
-              className="chat-editor-counter"
-              data-over={length > MESSAGE_MAX_LENGTH ? "true" : undefined}
-              /* Polite: it updates on every keystroke near the cap, and an
-                 assertive live region would interrupt the typing it counts. */
-              aria-live="polite"
-            >
-              {(MESSAGE_MAX_LENGTH - length).toLocaleString("en")}
-            </span>
-          )}
-          <div style={{ position: "relative" }}>
-            <button
-              className="chat-editor-emoji-btn"
-              type="button"
-              aria-label="Insert emoji"
-              disabled={disabled}
-              onClick={() => setEmojiPickerOpen((v) => !v)}
-            >
-              <PiSmileyWinkFill size={20} />
-            </button>
-            {emojiPickerOpen && (
-              <EmojiPicker
-                onSelect={handlePickerEmojiSelect}
-                onClose={() => setEmojiPickerOpen(false)}
-                serverHost={serverHost}
-                withOtherServers
+        <LexicalComposer
+          initialConfig={{
+            namespace: "gryt-composer",
+            nodes: NODES,
+            theme: THEME,
+            editable: !disabled,
+            onError: (e) => { throw e; },
+          }}
+        >
+          <EditorRefPlugin editorRef={editorRef} />
+          <ComposerFormatBar wrapRef={wrapperRef} disabled={disabled} />
+          <div className="chat-editor-input-row">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => {
+                if (e.target.files) addFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <div className="chat-editor-lexical-field">
+              <RichTextPlugin
+                contentEditable={
+                  <ContentEditable
+                    className="chat-editor-textarea chat-editor-lexical"
+                    aria-placeholder={hint}
+                    placeholder={<div className="chat-editor-lexical-placeholder">{hint}</div>}
+                    onFocus={(e) => autoResize(e.currentTarget, true)}
+                    onBlur={(e) => {
+                      // Into the link field is still writing this message.
+                      if (!wrapperRef.current?.contains(e.relatedTarget as Node | null)) autoResize(e.currentTarget, false);
+                    }}
+                  />
+                }
+                ErrorBoundary={LexicalErrorBoundary}
               />
+            </div>
+            {length >= COUNTER_VISIBLE_FROM && (
+              <span
+                className="chat-editor-counter"
+                data-over={length > MESSAGE_MAX_LENGTH ? "true" : undefined}
+                /* Polite: it updates on every keystroke near the cap, and an
+                   assertive live region would interrupt the typing it counts. */
+                aria-live="polite"
+              >
+                {(MESSAGE_MAX_LENGTH - length).toLocaleString("en")}
+              </span>
+            )}
+            <div style={{ position: "relative" }}>
+              <button
+                className="chat-editor-emoji-btn"
+                type="button"
+                aria-label="Insert emoji"
+                disabled={disabled}
+                onClick={() => setEmojiPickerOpen((v) => !v)}
+              >
+                <PiSmileyWinkFill size={20} />
+              </button>
+              {emojiPickerOpen && (
+                <EmojiPicker
+                  onSelect={handlePickerEmojiSelect}
+                  onClose={() => setEmojiPickerOpen(false)}
+                  serverHost={serverHost}
+                  withOtherServers
+                />
+              )}
+            </div>
+            {/* Round, and only once there is something to send. Enter still sends. */}
+            {canSend && (
+              <button
+                className="chat-editor-send-btn"
+                type="button"
+                aria-label="Send message"
+                disabled={disabled}
+                onClick={handleSend}
+              >
+                <PiArrowUpBold size={18} />
+              </button>
             )}
           </div>
-          {/* Round, and only once there is something to send. Enter still sends. */}
-          {canSend && (
-            <button
-              className="chat-editor-send-btn"
-              type="button"
-              aria-label="Send message"
-              disabled={disabled}
-              onClick={handleSend}
-            >
-              <PiArrowUpBold size={18} />
-            </button>
-          )}
-        </div>
+          <HistoryPlugin />
+          <ListPlugin />
+          <LinkPlugin />
+          <MarkdownShortcutPlugin transformers={transformers} />
+        </LexicalComposer>
       </div>
       </div>
     );
