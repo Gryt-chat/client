@@ -91,6 +91,8 @@ export interface MlsView {
   reportsTaken: boolean;
   /** This device's history won't open. Says why, with a retry and the way out. */
   archiveFailed: boolean;
+  /** This device isn't in the DM's group yet: asks again to be added. */
+  askToBeAdded?: (() => void) | null;
 }
 
 /** Where the composer would be, for somebody who may read a channel and not post. */
@@ -1128,7 +1130,17 @@ export const ChatView = memo(({
               style={{ color: "var(--gryt-neutral-11)" }}
             >
               <PiInfoFill aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
-              <span>{mls.notice}</span>
+              <span>
+                {mls.notice}
+                {mls.askToBeAdded && (
+                  <>
+                    {" "}
+                    <button type="button" className="gryt-link" onClick={mls.askToBeAdded}>
+                      Ask again
+                    </button>
+                  </>
+                )}
+              </span>
             </div>
           )}
 

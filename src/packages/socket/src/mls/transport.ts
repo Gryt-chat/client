@@ -125,5 +125,6 @@ export function socketMlsTransport(options: TransportOptions): MlsTransport {
     },
 
     ackWelcomes: (req) => request("mls:welcome:ack", req),
+    requestAdd: (req) => request("mls:add:request", req),
   };
 }

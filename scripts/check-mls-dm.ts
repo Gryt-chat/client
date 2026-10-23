@@ -132,6 +132,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   assert.equal(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, app), "1 message couldn't be decrypted on this device.");
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, app) ?? "", /3 messages/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "removed" }, app) ?? "", /taken out/);
+  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "not_added" }, app) ?? "", /isn't in this conversation yet.*Ola/);
   assert.equal(mlsNotice({ kind: "mls" }, none, { ...app, lostHistory: true }), "Older messages were cleared from this device.");
   assert.match(mlsNotice({ kind: "mls" }, none, { ...app, home: "browser" }) ?? "", /this browser/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, { ...app, home: "browser" }), null);
@@ -140,6 +141,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
 test("a failed send names what somebody can do something about", () => {
   assert.match(sendFailure({ code: "peer_unverified" }, "app"), /their card/);
   assert.match(sendFailure({ code: "waiting_for_welcome" }, "browser"), /This browser/);
+  assert.match(sendFailure({ code: "waiting_for_welcome" }, "app"), /asked to be added/);
   assert.equal(sendFailure(new Error("socket"), "app"), "Not sent.");
 });
 
