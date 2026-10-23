@@ -70,12 +70,11 @@ export function MessagePasswordSetup({
 
   return (
     <div className="flex flex-col gap-3">
-      <Alert severity="warning">
-        This password is the only way to open your messages on a new device. Gryt
-        can&rsquo;t reset it, can&rsquo;t recover it, and can&rsquo;t read your
-        messages without it. If you lose it and have no other device signed in and
-        no recovery key, every message you&rsquo;ve already received stays locked
-        for good.
+      <Alert severity="info">
+        This password lets a new device of yours use your encryption key. Your
+        messages stay on the devices you already use, and the people you talk to
+        keep their copy too. Gryt can&rsquo;t see or reset it, so a password
+        manager is the best place for it.
       </Alert>
 
       {children}
@@ -127,8 +126,8 @@ export function MessagePasswordSetup({
         <div className="flex flex-col gap-2">
           <span className="font-medium text-sm">Recovery key</span>
           <span className="text-xs text-gryt-muted">
-            If you lose the password, this opens your messages on its own. You only
-            see it once, here.
+            If you lose the password, this does the same job. You only see it once,
+            here.
           </span>
           <code className="text-sm" style={mono} data-testid="message-recovery-key">
             {shownKey}
@@ -145,8 +144,8 @@ export function MessagePasswordSetup({
       ) : (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-gryt-muted">
-            No recovery key. If you lose the password and every signed-in device,
-            your messages are gone.
+            No recovery key. If you lose the password and every device you&rsquo;re
+            signed in on, you start again with a new key.
           </span>
           <Button size="small" tone="ghost" onClick={() => setSkipRecovery(false)}>
             Add one after all
