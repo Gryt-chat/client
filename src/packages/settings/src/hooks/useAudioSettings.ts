@@ -18,6 +18,8 @@ export interface AudioSettingsData {
   autoGainTargetDb: number;
   compressorEnabled: boolean;
   compressorAmount: number;
+  /** The new voice connection's bitrate, 96–192 (GRYT-1823). */
+  voiceBitrateKbps: number;
   eSportsModeEnabled: boolean;
   inputMode: "voice_activity" | "push_to_talk";
   pushToTalkKey: string;
@@ -52,6 +54,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   autoGainTargetDb: -20,
   compressorEnabled: true,
   compressorAmount: 50,
+  voiceBitrateKbps: 192,
   eSportsModeEnabled: false,
   inputMode: "voice_activity",
   pushToTalkKey: "",
@@ -87,6 +90,7 @@ export function loadAudioFromCache(): AudioSettingsData {
     autoGainTargetDb: getUserValue("autoGainTargetDb", AUDIO_DEFAULTS.autoGainTargetDb),
     compressorEnabled: getUserValue("compressorEnabled", AUDIO_DEFAULTS.compressorEnabled),
     compressorAmount: getUserValue("compressorAmount", AUDIO_DEFAULTS.compressorAmount),
+    voiceBitrateKbps: getUserValue("voiceBitrateKbps", AUDIO_DEFAULTS.voiceBitrateKbps),
     eSportsModeEnabled: getUserValue("eSportsModeEnabled", AUDIO_DEFAULTS.eSportsModeEnabled),
     inputMode: getUserValue("inputMode", AUDIO_DEFAULTS.inputMode),
     pushToTalkKey: getUserValue("pushToTalkKey", AUDIO_DEFAULTS.pushToTalkKey),
@@ -120,6 +124,7 @@ export function useAudioSettings() {
   const [autoGainTargetDb, setAutoGainTargetDb] = useState(AUDIO_DEFAULTS.autoGainTargetDb);
   const [compressorEnabled, setCompressorEnabled] = useState(AUDIO_DEFAULTS.compressorEnabled);
   const [compressorAmount, setCompressorAmount] = useState(AUDIO_DEFAULTS.compressorAmount);
+  const [voiceBitrateKbps, setVoiceBitrateKbps] = useState(AUDIO_DEFAULTS.voiceBitrateKbps);
 
   const [micID, setMicID] = useState<string | undefined>(AUDIO_DEFAULTS.micID);
   const [outputDeviceID, setOutputDeviceID] = useState(AUDIO_DEFAULTS.outputDeviceID);
@@ -161,6 +166,7 @@ export function useAudioSettings() {
     setAutoGainTargetDb(d.autoGainTargetDb);
     setCompressorEnabled(d.compressorEnabled);
     setCompressorAmount(d.compressorAmount);
+    setVoiceBitrateKbps(d.voiceBitrateKbps);
     setESportsModeEnabled(d.eSportsModeEnabled);
     setInputMode(d.inputMode);
     setPushToTalkKey(d.pushToTalkKey);
@@ -233,6 +239,11 @@ export function useAudioSettings() {
   function updateCompressorEnabled(enabled: boolean) {
     setCompressorEnabled(enabled);
     setUserValue("compressorEnabled", enabled);
+  }
+
+  function updateVoiceBitrateKbps(value: number) {
+    setVoiceBitrateKbps(value);
+    setUserValue("voiceBitrateKbps", value);
   }
 
   function updateCompressorAmount(value: number) {
@@ -419,6 +430,8 @@ export function useAudioSettings() {
     setCompressorEnabled: updateCompressorEnabled,
     compressorAmount,
     setCompressorAmount: updateCompressorAmount,
+    voiceBitrateKbps,
+    setVoiceBitrateKbps: updateVoiceBitrateKbps,
     isMuted,
     setIsMuted,
     isDeafened,

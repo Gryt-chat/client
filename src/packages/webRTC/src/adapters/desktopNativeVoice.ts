@@ -16,6 +16,7 @@ export const startDesktopNativeAudio: StartNative = async (offer, effects) => {
     setSending: (on) => helper.send(`sending ${on ? 1 : 0}`),
     setOutputGain: (gain) => helper.send(`output ${gain}`),
     setEffects: (e) => helper.send(`effects ${effectValues(e).join(" ")}`),
+    setBitrate: (bitrate) => helper.send(`bitrate ${Math.round(bitrate)}`),
     speaking: () => last.speaking,
     setGains: (gains) => helper.send(`gains ${[...gains].map(([id, gain]) => `${id}=${gain}`).join(" ")}`),
     levels: () => ({ ids: [...last.levels.keys()], db: [...last.levels.values()], mic: last.mic, micSpeaking: last.micSpeaking }),

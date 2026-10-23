@@ -5,7 +5,7 @@ import { useSettings } from "@/settings";
 import { newVoiceOn, setNewVoice } from "@/webRTC/src/adapters/voiceConfig";
 
 import { LatencyPanel } from "./latencyPanel";
-import { SettingsContainer, ToggleSetting } from "./settingsComponents";
+import { SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
 export function AdvancedSettings() {
   const {
@@ -17,6 +17,8 @@ export function AdvancedSettings() {
     setShowVideoDebugOverlay,
     showPeerLatency,
     setShowPeerLatency,
+    voiceBitrateKbps,
+    setVoiceBitrateKbps,
   } = useSettings();
   const [newVoice, setNewVoiceState] = useState(newVoiceOn);
 
@@ -63,6 +65,18 @@ export function AdvancedSettings() {
         }}
         statusText={newVoice !== newVoiceOn ? "Restart Gryt to switch." : undefined}
       />
+
+      {newVoice && (
+        <SliderSetting
+          title={`Voice quality: ${voiceBitrateKbps} kbps`}
+          description="How much data your voice uses on the new connection. At 192 it sounds the same as your microphone. Turn it down on phone data or weak Wi-Fi; 96 is the lowest that still sounds good."
+          value={voiceBitrateKbps}
+          onChange={setVoiceBitrateKbps}
+          min={96}
+          max={192}
+          step={16}
+        />
+      )}
 
       <Divider />
 
