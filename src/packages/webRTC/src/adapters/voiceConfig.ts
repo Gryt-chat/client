@@ -7,7 +7,7 @@ import {
   type VoiceConfig,
   webPlatform,
 } from "@gryt/voice";
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { IS_BETA_BUILD } from "@/common";
 import { useSettings } from "@/settings";
@@ -36,22 +36,39 @@ function nativeVoiceOn(): boolean {
     return IS_BETA_BUILD;
   }
 }
-const nativeAudio = nativeVoiceOn();
+let newVoice = ownTransportOn();
+let nativeAudio = nativeVoiceOn();
+const listeners = new Set<() => void>();
 
-/** Read once at load, so a change takes effect when Gryt restarts. */
-export const newVoiceOn = ownTransportOn();
+function applyPlatform(): void {
+  setVoicePlatform(nativeAudio ? { ...webPlatform, startNativeAudio: startDesktopNativeAudio } : webPlatform);
+}
+applyPlatform();
+
+/** Live: the engine reads it at join, and useVoiceLifecycle rejoins a call in progress when it flips. */
+export function useNewVoice(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => newVoice,
+  );
+}
 
 export function setNewVoice(on: boolean): void {
   try {
     localStorage.setItem("gryt.ownAudioTransport", on ? "1" : "0");
     localStorage.setItem("gryt.nativeVoice", on ? "1" : "0");
   } catch {
-    // Storage blocked: the build's default stays.
+    // Storage blocked: the switch still holds until Gryt closes.
   }
+  newVoice = on;
+  nativeAudio = on && nativeVoiceOn();
+  applyPlatform();
+  for (const listener of listeners) listener();
 }
-if (nativeAudio) setVoicePlatform({ ...webPlatform, startNativeAudio: startDesktopNativeAudio });
 const loadOpusWasm = (): Promise<ArrayBuffer> => fetch(opusWasmUrl()).then((r) => r.arrayBuffer());
-const audioTransportWasm = ownTransportOn() ? loadOpusWasm : undefined;
 
 /**
  * The client's settings, in the shape the engine asks for — **the one place that
@@ -59,6 +76,7 @@ const audioTransportWasm = ownTransportOn() ? loadOpusWasm : undefined;
  */
 export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
   const s = useSettings();
+  const on = useNewVoice();
 
   return useMemo(
     () => ({
@@ -95,8 +113,8 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
       connection: {
         stunHosts,
         eSportsMode: s.eSportsModeEnabled,
-        audioTransportWasm,
-        nativeAudio,
+        audioTransportWasm: on ? loadOpusWasm : undefined,
+        nativeAudio: on && nativeAudio,
       },
     }),
     [
@@ -106,7 +124,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
       s.compressorEnabled, s.compressorAmount, s.voiceBitrateKbps, s.cameraID, s.cameraQuality,
       s.cameraFps, s.cameraFlipped, s.screenShareQuality, s.screenShareFps,
       s.screenShareCodec, s.screenShareGamingMode, s.eSportsModeEnabled,
-      stunHosts,
+      stunHosts, on,
     ],
   );
 }

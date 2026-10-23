@@ -7,6 +7,7 @@ import { useServerManagement, useSockets } from "@/socket";
 import { setDrawnVideoReporter } from "@/socket/src/lib/drawnVideoSize";
 
 import { useVoiceSounds } from "./useVoiceSounds";
+import { useNewVoice } from "./voiceConfig";
 
 /**
  * The parts of a voice call that are the app's business rather than the engine's:
@@ -21,7 +22,9 @@ export function useVoiceLifecycle() {
     disconnect,
     videoStreams,
     reportVideoDemand,
+    rejoin,
   } = useSFU();
+  const newVoice = useNewVoice();
   const { servers, currentlyViewingServer } = useServerManagement();
   const { serverDetailsList } = useSockets();
   const { playConnect } = useVoiceSounds();
@@ -30,6 +33,15 @@ export function useVoiceLifecycle() {
   useEffect(() => {
     setDrawnVideoReporter(reportVideoDemand ?? null, Object.keys(videoStreams));
   }, [reportVideoDemand, videoStreams]);
+
+  // The voice connection is only chosen at join, so flipping it mid-call rejoins the call.
+  const lastNewVoice = useRef(newVoice);
+  useEffect(() => {
+    if (lastNewVoice.current === newVoice) return;
+    lastNewVoice.current = newVoice;
+    if (connectionState === SFUConnectionState.CONNECTED) void rejoin?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a flip of the switch rejoins
+  }, [newVoice]);
 
   // The connect sound. The engine used to play it partway through the flow; it
   // now plays when the call is actually up.

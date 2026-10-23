@@ -1,8 +1,7 @@
 import { Divider, Switch } from "@gryt/ui";
-import { useState } from "react";
 
 import { useSettings } from "@/settings";
-import { newVoiceOn, setNewVoice } from "@/webRTC/src/adapters/voiceConfig";
+import { setNewVoice, useNewVoice } from "@/webRTC/src/adapters/voiceConfig";
 
 import { LatencyPanel } from "./latencyPanel";
 import { SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
@@ -20,7 +19,7 @@ export function AdvancedSettings() {
     voiceBitrateKbps,
     setVoiceBitrateKbps,
   } = useSettings();
-  const [newVoice, setNewVoiceState] = useState(newVoiceOn);
+  const newVoice = useNewVoice();
 
   return (
     <SettingsContainer>
@@ -57,13 +56,9 @@ export function AdvancedSettings() {
 
       <ToggleSetting
         title="Experimental voice connection"
-        description="Your voice goes over Gryt's own connection instead of WebRTC, and on a Mac it runs on the phone's voice engine, except in the App Store version. It isn't finished yet. A server that doesn't support it uses WebRTC as before."
+        description="Your voice goes over Gryt's own connection instead of WebRTC, and on a Mac it runs on the phone's voice engine, except in the App Store version. It isn't finished yet. A server that doesn't support it uses WebRTC as before. Switching it during a call rejoins the call, with a short drop."
         checked={newVoice}
-        onCheckedChange={(on) => {
-          setNewVoiceState(on);
-          setNewVoice(on);
-        }}
-        statusText={newVoice !== newVoiceOn ? "Restart Gryt to switch." : undefined}
+        onCheckedChange={setNewVoice}
       />
 
       {newVoice && (
