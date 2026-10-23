@@ -1,8 +1,9 @@
 import { Menu } from "@gryt/ui";
 import { CodeNode } from "@lexical/code";
-import { AutoLinkNode, LinkNode } from "@lexical/link";
+import { autoLinkEmailMatcher, AutoLinkNode, autoLinkUrlMatcher, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { $convertFromMarkdownString, $convertToMarkdownString } from "@lexical/markdown";
+import { AutoLinkPlugin } from "@lexical/react/LexicalAutoLinkPlugin";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
@@ -80,6 +81,8 @@ const THEME = {
   code: "lx-codeblock",
   paragraph: "lx-p",
 };
+
+const AUTOLINK_MATCHERS = [autoLinkUrlMatcher, autoLinkEmailMatcher];
 
 const NODES = [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, CodeNode, MentionNode, EmojiNode];
 
@@ -767,6 +770,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           <HistoryPlugin />
           <ListPlugin />
           <LinkPlugin />
+          {/* The same matches as the message view's remark-gfm: http(s), www. and email, not a bare `gryt.chat`. */}
+          <AutoLinkPlugin matchers={AUTOLINK_MATCHERS} />
           <MarkdownShortcutPlugin transformers={transformers} />
         </LexicalComposer>
       </div>
