@@ -37,6 +37,18 @@ function nativeVoiceOn(): boolean {
   }
 }
 const nativeAudio = nativeVoiceOn();
+
+/** Read once at load, so a change takes effect when Gryt restarts. */
+export const newVoiceOn = ownTransportOn();
+
+export function setNewVoice(on: boolean): void {
+  try {
+    localStorage.setItem("gryt.ownAudioTransport", on ? "1" : "0");
+    localStorage.setItem("gryt.nativeVoice", on ? "1" : "0");
+  } catch {
+    // Storage blocked: the build's default stays.
+  }
+}
 if (nativeAudio) setVoicePlatform({ ...webPlatform, startNativeAudio: startDesktopNativeAudio });
 const loadOpusWasm = (): Promise<ArrayBuffer> => fetch(opusWasmUrl()).then((r) => r.arrayBuffer());
 const audioTransportWasm = ownTransportOn() ? loadOpusWasm : undefined;
