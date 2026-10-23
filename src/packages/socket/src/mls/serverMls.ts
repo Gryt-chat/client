@@ -20,6 +20,7 @@ import {
 } from "@/common";
 
 import { showLinkedDeviceToast } from "../components/linkedDeviceToast";
+import { publishDmKey } from "../utils/dmKeys";
 import { readMlsCapability, readMlsReports } from "./capability";
 import { thisDeviceCertificateName } from "./deviceName";
 import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
@@ -66,6 +67,8 @@ interface HostState {
   retiring: Promise<void>;
   /** The server removed this device, and nobody has signed in since (GRYT-1555). */
   removed: boolean;
+  /** Your account's key here isn't this device's (GRYT-1868). It links instead of registering. */
+  otherIdentity: boolean;
 }
 
 const hosts = new Map<string, HostState>();
@@ -225,6 +228,7 @@ export function attachServerMls(socket: Socket, host: string): void {
     sessionKey: null,
     retiring: previous ? retire(previous) : Promise.resolve(),
     removed: false,
+    otherIdentity: false,
   };
   hosts.set(host, state);
 
@@ -255,6 +259,23 @@ export function serverMlsReady(host: string): void {
   if (!state || state.ready) return;
   state.ready = true;
   void refresh(host);
+}
+
+/** Whether your account's published key here is another device's, from the member list. */
+export function serverMlsOwnKey(host: string, rewritten: boolean): void {
+  const state = hosts.get(host);
+  if (!state || state.otherIdentity === rewritten) return;
+  state.otherIdentity = rewritten;
+  void refresh(host);
+}
+
+/** "Use this device's key instead": your account takes this device's key here, and contacts see it change. */
+export async function adoptThisDevicesKey(host: string): Promise<boolean> {
+  const state = hosts.get(host);
+  if (!state || !(await publishDmKey(state.socket, host, { replace: true }))) return false;
+  state.otherIdentity = false;
+  void refresh(host);
+  return true;
 }
 
 /** The member list's person keys are pinned. A Welcome from somebody unpinned is thrown away. */
@@ -338,11 +359,23 @@ async function refresh(host: string): Promise<void> {
     const accessToken = getServerAccessToken(host);
     if (!session?.capability || !accessToken) return;
     state.socket.emit("dm:list", { accessToken });
-    await publishPersonKey(state.socket, accessToken, await personKeyBindingFor(host));
-    // Never holds up the start: a device left behind is tried again on the next connect.
-    await retireOldDevices(session).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
     await Promise.race([state.pinned.promise, new Promise((r) => setTimeout(r, MEMBERS_WAIT_MS))]);
     if (state.session !== session) return;
+    if (state.otherIdentity) {
+      // Registered before this rule: it keeps the DMs it's in. Never registered: it waits to be linked.
+      const registered = (await session.ownDeviceId()) !== null;
+      state.local = otherIdentitySource(session, registered);
+      setSource(host, state.local);
+      if (!registered) return;
+    } else {
+      if (state.local !== session) {
+        state.local = session;
+        setSource(host, session);
+      }
+      await publishPersonKey(state.socket, accessToken, await personKeyBindingFor(host));
+    }
+    // Never holds up the start: a device left behind is tried again on the next connect.
+    await retireOldDevices(session).catch((e: unknown) => console.warn("[MLS] Retiring old devices failed:", e));
     await session.start();
     const deviceId = await session.ownDeviceId();
     if (deviceId && state.session === session) announceDevice(host, deviceId);
@@ -365,6 +398,29 @@ async function stillRemovedHere(scope: string, archive: LocalArchive): Promise<b
   }
   await archive.wipeServer(scope);
   return true;
+}
+
+/** A device with its own key: says so on every DM, and sends nothing new on MLS unless it was already in. */
+function otherIdentitySource(base: MlsSession, registered: boolean): MlsSource {
+  const refused: DmSealingMode = { kind: "refused", reason: "no_own_device" };
+  return {
+    storeScope: base.storeScope,
+    modeFor: registered
+      ? (conversationId, peer) => base.modeFor(conversationId, peer)
+      : async (conversationId, peer) => {
+          const mode = await base.modeFor(conversationId, peer).catch(() => refused);
+          return mode.kind === "sealed-v1" ? mode : refused;
+        },
+    send: registered
+      ? (conversationId, peer, content) => base.send(conversationId, peer, content)
+      : () => Promise.reject(Object.assign(new Error("This device has its own key here. Link it first."), { code: "other_identity" })),
+    problems: (conversationId) => {
+      const problems = base.problems(conversationId);
+      return problems.lost ? problems : { ...problems, lost: "other_identity" };
+    },
+    waiting: () => base.waiting(),
+    onChange: (listener) => base.onChange(listener),
+  };
 }
 
 /** DMs on a server that removed this device: version 1 to a peer without MLS, and nothing else. */

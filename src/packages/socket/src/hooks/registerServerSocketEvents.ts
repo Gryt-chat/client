@@ -53,7 +53,7 @@ import {
 } from "../lib/callMembers";
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
-import { attachServerMls, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
+import { attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
@@ -783,6 +783,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       )
       .then((states) => {
         setMemberKeyStates((old) => ({ ...old, [host]: states }));
+        const mine = states[myServerUserIdByHost.get(host) ?? ""];
+        serverMlsOwnKey(host, !!(mine?.ownKeyRewritten || mine?.ownPersonKeyRewritten));
         serverMlsPinned(host);
 
         /* Held back before it is shown, since our own publish races the first
