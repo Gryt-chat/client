@@ -1,4 +1,5 @@
 import { Menu } from "@gryt/ui";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   forwardRef,
   useCallback,
@@ -9,13 +10,21 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
-import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFilePlusFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPlusBold, PiSmileyWinkFill, PiX } from "../../../../lib/icons";
+import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFilePlusFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiLinkSimpleBold, PiListBulletsBold, PiPlusBold, PiQuotesBold, PiSmileyWinkFill, PiTextBBold, PiTextHOneBold, PiTextHThreeBold, PiTextHTwoBold, PiTextItalicBold, PiTextStrikethroughBold, PiX } from "../../../../lib/icons";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
 import { channelHref } from "../../../lib/mentionTokens";
 import { parseEditSegments } from "../utils/chatEditorMentions";
 import { type EmojiEntry, getCustomEmojis, recordRecentEmoji } from "../utils/emojiData";
+import {
+  activeComposerFormats,
+  applyComposerFormat,
+  type ComposerFormat,
+  selectComposerLinkText,
+  selectedLink,
+  setComposerLinkUrl,
+} from "./composerFormat";
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
 import { EmojiPicker } from "./EmojiPicker";
 import { emojiQueryAt } from "./emojiQuery";
@@ -29,6 +38,34 @@ const MESSAGE_MAX_LENGTH = 4000;
 
 /** Show the counter this far from the cap, not before. */
 const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
+
+const MASS_MENTION = /(^|\s)@(everyone|here)\b/;
+
+type FormatButton = { format: ComposerFormat; label: string; Icon: typeof PiCode };
+
+/** In groups, with a gap between, so text styles, code and links, headings and blocks read apart. */
+const FORMAT_GROUPS: FormatButton[][] = [
+  [
+    { format: "bold", label: "Bold (Ctrl+B)", Icon: PiTextBBold },
+    { format: "italic", label: "Italic (Ctrl+I)", Icon: PiTextItalicBold },
+    { format: "strike", label: "Strikethrough (Ctrl+Shift+X)", Icon: PiTextStrikethroughBold },
+  ],
+  [
+    { format: "code", label: "Code", Icon: PiCode },
+    { format: "link", label: "Link", Icon: PiLinkSimpleBold },
+  ],
+  [
+    { format: "h1", label: "Heading 1", Icon: PiTextHOneBold },
+    { format: "h2", label: "Heading 2", Icon: PiTextHTwoBold },
+    { format: "h3", label: "Heading 3", Icon: PiTextHThreeBold },
+  ],
+  [
+    { format: "list", label: "List", Icon: PiListBulletsBold },
+    { format: "quote", label: "Quote", Icon: PiQuotesBold },
+  ],
+];
+
+const SHORTCUTS: Record<string, ComposerFormat | undefined> = { b: "bold", i: "italic", "shift+x": "strike" };
 
 /** A paste that cannot fit in one message becomes an ordinary text attachment. */
 const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
@@ -85,6 +122,8 @@ interface ChatEditorProps {
   /** Channels a `#` offers. Only ones this member can see. */
   channelList?: MentionMember[];
   serverHost?: string;
+  /** Asked before a message with @everyone or @here goes out; it calls `send` to go ahead. */
+  confirmMassMention?: (text: string, send: () => void) => void;
 }
 
 function getFileIcon(mime: string) {
@@ -136,9 +175,20 @@ function serializeContentEditable(el: HTMLElement): string {
   return result;
 }
 
-function autoResize(el: HTMLElement) {
+/** Up to two thirds of the window while typing, so the messages above still show; one line otherwise. */
+function autoResize(el: HTMLElement, open = document.activeElement === el) {
+  const before = el.style.height;
   el.style.height = "auto";
-  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  const full = el.scrollHeight;
+  const style = getComputedStyle(el);
+  const oneLine = parseFloat(style.lineHeight) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+  const target = open ? Math.min(full, window.innerHeight * 0.66) : Math.min(full, oneLine);
+  // Back to where it was first, so the height animates rather than jumps.
+  el.style.height = before;
+  void el.offsetHeight;
+  el.style.height = `${target}px`;
+  if (!open) el.scrollTop = 0;
+  el.toggleAttribute("data-collapsed", !open && full > oneLine);
 }
 
 function getEmojiQueryAtCursor(): string | null {
@@ -276,7 +326,7 @@ function replaceEmojiQueryAtCursor(entry: EmojiEntry): void {
 }
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
-  ({ placeholder, unencrypted, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, onChange, isEditing, memberList, channelList, serverHost }, ref) => {
+  ({ placeholder, unencrypted, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, onChange, isEditing, memberList, channelList, serverHost, confirmMassMention }, ref) => {
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [dragFrom, setDragFrom] = useState<number | null>(null);
     const [dropAt, setDropAt] = useState<number | null>(null);
@@ -298,6 +348,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const onSendRef = useRef(onSend);
     onSendRef.current = onSend;
+    const confirmMassRef = useRef(confirmMassMention);
+    confirmMassRef.current = confirmMassMention;
     const onTypingRef = useRef(onTyping);
     onTypingRef.current = onTyping;
     const onChangeRef = useRef(onChange);
@@ -312,6 +364,42 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
     const [showAutocomplete, setShowAutocomplete] = useState(false);
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const [selectionBar, setSelectionBar] = useState<{
+      left: number;
+      top: number;
+      active: Set<ComposerFormat>;
+      link: { urlStart: number; urlEnd: number; url: string } | null;
+    } | null>(null);
+    // While its field has focus the selection is in the field, which would otherwise close the bar.
+    const editingLinkRef = useRef(false);
+    // Where the bar last was, so it can fade out there rather than jump.
+    const lastBarAt = useRef({ left: 0, top: 0 });
+    const reduceMotion = useReducedMotion();
+    if (selectionBar) lastBarAt.current = { left: selectionBar.left, top: selectionBar.top };
+
+    useEffect(() => {
+      const onSelectionChange = () => {
+        const el = editorRef.current;
+        const wrap = wrapperRef.current;
+        const sel = window.getSelection();
+        if (!el || !wrap || !sel || sel.isCollapsed || !el.contains(sel.anchorNode) || !el.contains(sel.focusNode)) {
+          if (!editingLinkRef.current) setSelectionBar(null);
+          return;
+        }
+        const r = sel.getRangeAt(0).getBoundingClientRect();
+        const w = wrap.getBoundingClientRect();
+        const centre = r.left - w.left + r.width / 2;
+        setSelectionBar({
+          left: Math.max(150, Math.min(w.width - 150, centre)),
+          top: r.top - w.top,
+          active: activeComposerFormats(el),
+          link: selectedLink(el),
+        });
+      };
+      document.addEventListener("selectionchange", onSelectionChange);
+      return () => document.removeEventListener("selectionchange", onSelectionChange);
+    }, []);
 
     const [mentionQuery, setMentionQuery] = useState<string | null>(null);
     const [showMentionAutocomplete, setShowMentionAutocomplete] = useState(false);
@@ -356,7 +444,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       if (text.length > MESSAGE_MAX_LENGTH) return;
 
       // Until this device has agreed to the terms, the draft stays in the box while it asks.
-      termsGate.postAfterAgreeing(() => {
+      const send = () => termsGate.postAfterAgreeing(() => {
         onSendRef.current(text, files);
         el.textContent = "";
         autoResize(el);
@@ -369,6 +457,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         setChannelQuery(null);
         onStopTypingRef.current?.();
       });
+      if (confirmMassRef.current && MASS_MENTION.test(text)) confirmMassRef.current(text, send);
+      else send();
     }, []);
 
     const addFiles = useCallback((files: FileList | File[]) => {
@@ -397,6 +487,15 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           handleSend();
+          return;
+        }
+        const shortcut = (e.ctrlKey || e.metaKey) && !e.altKey
+          ? SHORTCUTS[`${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`]
+          : undefined;
+        if (shortcut && editorRef.current) {
+          // The browser's own Ctrl+B adds <b>, which the message never carries.
+          e.preventDefault();
+          applyComposerFormat(editorRef.current, shortcut);
           return;
         }
         if (e.key === "Escape" && isEditing && onCancel) {
@@ -709,7 +808,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             </Menu.Portal>
           </Menu.Root>
         )}
-      <div className="chat-editor-wrapper" data-unencrypted={unencrypted ? "" : undefined} style={{ position: "relative" }}>
+      <div ref={wrapperRef} className="chat-editor-wrapper" data-unencrypted={unencrypted ? "" : undefined} style={{ position: "relative" }}>
         {pendingFiles.length > 0 && (
           <div className="chat-editor-file-preview-bar">
             {/* Drag a file left or right to change the order it's sent in (GRYT-1722 draft). */}
@@ -785,6 +884,78 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           onClose={() => setChannelQuery(null)}
           title="Channels"
         />
+        <div className="chat-editor-format-anchor" style={lastBarAt.current}>
+          <AnimatePresence>
+            {selectionBar && !disabled && (
+              <motion.div
+                key="bar"
+                className="chat-editor-format-bar"
+                role="toolbar"
+                aria-label="Format the selection"
+                initial={{ opacity: 0, y: 6, scale: 0.94 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.94 }}
+                transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 34 }}
+              >
+                <AnimatePresence>
+                  {selectionBar.link && (
+                    <motion.div
+                      key="link"
+                      className="chat-editor-format-bar chat-editor-format-sub"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 520, damping: 34 }}
+                    >
+                      <input
+                        className="chat-editor-link-input"
+                        type="url"
+                        aria-label="Link address"
+                        placeholder="Paste or type a link"
+                        value={selectionBar.link.url}
+                        onFocus={() => { editingLinkRef.current = true; }}
+                        onBlur={() => { editingLinkRef.current = false; }}
+                        onChange={(e) => {
+                          const el = editorRef.current;
+                          const link = selectionBar.link;
+                          if (!el || !link) return;
+                          const url = e.target.value;
+                          const urlEnd = setComposerLinkUrl(el, link.urlStart, link.urlEnd, url);
+                          setSelectionBar((bar) => bar && { ...bar, link: { ...link, urlEnd, url } });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" && e.key !== "Escape") return;
+                          e.preventDefault();
+                          editingLinkRef.current = false;
+                          if (editorRef.current && selectionBar.link) selectComposerLinkText(editorRef.current, selectionBar.link.urlStart);
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {FORMAT_GROUPS.map((group, g) => (
+                  <div key={g} className="chat-editor-format-group">
+                    {group.map(({ format, label, Icon }) => (
+                      <button
+                        key={format}
+                        type="button"
+                        className="chat-editor-format-btn"
+                        aria-label={label}
+                        aria-pressed={selectionBar.active.has(format)}
+                        title={label}
+                        // Keeps the selection in the box: a click would move focus and drop it.
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { if (editorRef.current) applyComposerFormat(editorRef.current, format); }}
+                      >
+                        <Icon size={16} />
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <div className="chat-editor-input-row">
           <input
             ref={fileInputRef}
@@ -808,6 +979,11 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             onDrop={handleDrop}
             onInput={handleInput}
             onClick={updateAutocompleteQueries}
+            onFocus={(e) => autoResize(e.currentTarget, true)}
+            onBlur={(e) => {
+              // Into the link field is still writing this message.
+              if (!wrapperRef.current?.contains(e.relatedTarget as Node | null)) autoResize(e.currentTarget, false);
+            }}
           />
           {length >= COUNTER_VISIBLE_FROM && (
             <span

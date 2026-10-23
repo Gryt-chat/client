@@ -30,6 +30,7 @@ interface ChatEditorBarProps {
   onStopTyping?: () => void;
   onChange?: () => void;
   serverHost?: string;
+  confirmMassMention?: (text: string, send: () => void) => void;
 }
 
 export function ChatEditorBar({
@@ -53,6 +54,7 @@ export function ChatEditorBar({
   onStopTyping,
   onChange,
   serverHost,
+  confirmMassMention,
 }: ChatEditorBarProps) {
   return (
     <>
@@ -125,6 +127,7 @@ export function ChatEditorBar({
         memberList={memberList}
         channelList={channelList}
         serverHost={serverHost}
+        confirmMassMention={confirmMassMention}
       />
     </>
   );

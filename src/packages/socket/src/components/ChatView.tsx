@@ -639,6 +639,21 @@ export const ChatView = memo(({
     }
     return [...mentionMembers, ...extras];
   }, [conversationKind, knows, mayMentionEveryone, mentionMembers, roles]);
+  const [massSend, setMassSend] = useState<{ here: boolean; send: () => void } | null>(null);
+  const massReach = useMemo(() => {
+    const others = Object.values(memberList ?? {}).filter((m) => m.serverUserId !== currentUserId);
+    return { all: others.length, online: others.filter((m) => m.status !== "offline").length };
+  }, [memberList, currentUserId]);
+  const confirmMassMention = useMemo(
+    () => (mayMentionEveryone
+      ? (text: string, send: () => void) => {
+        const here = !/(^|\s)@everyone\b/.test(text);
+        if ((here ? massReach.online : massReach.all) === 0) send();
+        else setMassSend({ here, send });
+      }
+      : undefined),
+    [mayMentionEveryone, massReach],
+  );
   const composerChannels = useMemo<MentionMember[]>(
     () =>
       (serverDetailsList[serverHost ?? ""]?.channels ?? []).map((c) => ({
@@ -1160,6 +1175,7 @@ export const ChatView = memo(({
             onStopTyping={emitStopTyping}
             onChange={noteDraft}
             serverHost={serverHost}
+            confirmMassMention={confirmMassMention}
           />
           </>
           )}
@@ -1207,6 +1223,17 @@ export const ChatView = memo(({
         description={deleteDescription}
         confirmLabel="Delete"
         onConfirm={confirmDelete}
+      />
+      <ConfirmDialog
+        open={!!massSend}
+        onOpenChange={(open) => { if (!open) setMassSend(null); }}
+        title={`Notify up to ${massSend?.here ? massReach.online : massReach.all} people?`}
+        description={massSend?.here
+          ? "@here pings everyone who's online and can read this channel. Each of them gets a notification."
+          : `@everyone pings everyone who can read this channel, and ${massReach.online} of them are online right now. Each of them gets a notification.`}
+        confirmLabel="Send and notify"
+        confirmTone="primary"
+        onConfirm={() => { massSend?.send(); setMassSend(null); }}
       />
     </MentionViewerContext.Provider>
   );
