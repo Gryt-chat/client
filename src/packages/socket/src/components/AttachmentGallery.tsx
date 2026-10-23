@@ -21,6 +21,24 @@ export interface GridImage {
   meta: AttachmentMeta | undefined;
 }
 
+/**
+ * Two places either side of the current picture, so the peek at the edge already has the picture after
+ * the next one while a move is still gliding. With two pictures that means copies of each.
+ */
+function slotsAround(index: number, ids: string[]): { i: number; offset: number; key: string }[] {
+  const n = ids.length;
+  const seen = new Set<number>();
+  // Current and next first: they keep the picture's own key, so the one sliding into place stays mounted.
+  return [0, 1, -1, 2, -2]
+    .map((offset) => {
+      const i = (((index + offset) % n) + n) % n;
+      const key = seen.has(i) ? `${ids[i]}:${offset}` : ids[i];
+      seen.add(i);
+      return { i, offset, key };
+    })
+    .sort((a, b) => a.offset - b.offset);
+}
+
 /** Two or more pictures, one at a time on the lightbox's own track: drag, flick or the arrows (GRYT-1839). */
 export function AttachmentGallery({
   images,
@@ -51,7 +69,7 @@ export function AttachmentGallery({
   const slide = width - PEEK;
   const step = slide + GAP;
   const track = useTrack(n, 0, () => [step, step]);
-  const { index, prev, next, x, go } = track;
+  const { index, x, go } = track;
   // A drag ends in a click, and that one shouldn't open the lightbox.
   const dragged = useRef(false);
 
@@ -78,9 +96,8 @@ export function AttachmentGallery({
         onClickCapture={(e) => dragged.current && e.stopPropagation()}
       >
         {width > 0 &&
-          // Keyed by picture, so the one sliding into place stays the same element.
-          [...(prev !== next ? [{ i: prev, at: -step }] : []), { i: index, at: 0 }, { i: next, at: step }].map(({ i, at }) => (
-            <Slide key={images[i].fileId} x={x} at={at} width={slide} current={at === 0}>
+          slotsAround(index, images.map((img) => img.fileId)).map(({ i, offset, key }) => (
+            <Slide key={key} x={x} at={offset * step} width={slide} current={offset === 0}>
               <GalleryPicture image={images[i]} serverHost={serverHost} messageActions={messageActions} onLightboxOpen={onLightboxOpen} />
             </Slide>
           ))}
