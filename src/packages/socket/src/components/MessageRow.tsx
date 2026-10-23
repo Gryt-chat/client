@@ -1,6 +1,6 @@
 import { Avatar, Popover, Tooltip } from "@gryt/ui";
-import { AnimatePresence, motion } from "motion/react";
-import { type CSSProperties, forwardRef, memo, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { AnimatePresence, motion, useIsPresent } from "motion/react";
+import { type CSSProperties, forwardRef, memo, type ReactNode, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { type MessageStyle, useTheme } from "@/common";
 
@@ -756,14 +756,7 @@ function MessageContent({
       {unencrypted && <UnencryptedDot side={alignRight ? "left" : "right"} />}
       <AnimatePresence>
         {showToolbar && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 4 }}
-            transition={{ type: "spring", stiffness: 500, damping: 25 }}
-            ref={barRef}
-            style={{ position: "absolute", zIndex: 10, ...barStyle }}
-          >
+          <HoverBar ref={barRef} style={barStyle}>
             {/* onOpenEmojiPicker follows quickReactions rather than a
                 permission of its own: that list is undefined for somebody who
                 may not react, so the button goes with it. */}
@@ -774,7 +767,7 @@ function MessageContent({
               onReply={() => onReply(m)}
               onMore={onMore}
             />
-          </motion.div>
+          </HoverBar>
         )}
       </AnimatePresence>
       {m.reply_to_message_id && (
@@ -1084,6 +1077,26 @@ function ReactionBadges({
   );
 }
 
+/** Fading out, it lets the pointer through: hovering where it was mustn't open its message again. */
+const HoverBar = forwardRef<HTMLDivElement, { style: CSSProperties; children: ReactNode }>(({ style, children }, ref) => {
+  const present = useIsPresent();
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: 4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: 4 }}
+      transition={{ type: "spring", stiffness: 500, damping: 25 }}
+      ref={ref}
+      // inert, not pointer-events: the buttons set their own, which would still take the hit.
+      inert={!present}
+      style={{ position: "absolute", zIndex: 10, ...style }}
+    >
+      {children}
+    </motion.div>
+  );
+});
+HoverBar.displayName = "HoverBar";
+
 /** Always just above the highlighted part's far end, in every style, so it sits by the message
     it's for. A short message on the left takes it at its start instead (GRYT-1722). */
 function hoverBarPlacement(
@@ -1092,9 +1105,9 @@ function hoverBarPlacement(
   barWidth: number,
 ): CSSProperties {
   const short = !alignRight && !!row && row.getBoundingClientRect().width < barWidth;
-  // Inside the message's own top corner. Above it, the bar covered the message before and kept itself open there.
-  const inside: CSSProperties = { top: 4 };
-  return short ? { ...inside, left: 4 } : { ...inside, right: 4 };
+  // The 4px above the message is the bar's own padding, so the pointer never crosses a gap to reach it.
+  const lift: CSSProperties = { bottom: "100%", paddingBottom: 4 };
+  return short ? { ...lift, left: 0 } : { ...lift, right: 0 };
 }
 
 /**
