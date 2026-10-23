@@ -13,7 +13,7 @@ import {
   type TextFormatType,
 } from "lexical";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type ComposerFormat, FORMAT_GROUPS } from "./composerButtons";
 
@@ -30,13 +30,31 @@ export function ComposerFormatBar({ disabled }: { disabled?: boolean }) {
   const [bar, setBar] = useState<Bar | null>(null);
   // Set on mousedown, before the box loses focus and the selection with it.
   const editingLink = useRef(false);
+  // A link just added from the bar. Left without an address, it comes off again.
+  const addingLink = useRef(false);
+  const newLink = useRef<string | null>(null);
+
+  const dropIfEmpty = useCallback((key: string | null) => {
+    if (!key) return;
+    newLink.current = null;
+    editor.update(() => {
+      const node = $getNodeByKey(key);
+      if (!$isLinkNode(node) || !["", "https://"].includes(node.getURL().trim())) return;
+      for (const child of node.getChildren()) node.insertBefore(child);
+      node.remove();
+    });
+  }, [editor]);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => editor.registerUpdateListener(({ editorState }) => {
     editorState.read(() => {
       const sel = $getSelection();
       if (!$isRangeSelection(sel) || sel.isCollapsed()) {
-        if (!editingLink.current) setBar(null);
+        if (!editingLink.current) {
+          setBar(null);
+          const left = newLink.current;
+          if (left) queueMicrotask(() => dropIfEmpty(left));
+        }
         return;
       }
       const active = new Set<ComposerFormat>();
@@ -47,19 +65,28 @@ export function ComposerFormatBar({ disabled }: { disabled?: boolean }) {
       if ($isListNode(block)) active.add("list");
       const link = $findMatchingParent(sel.anchor.getNode(), $isLinkNode);
       if (link) active.add("link");
+      if (link && addingLink.current) {
+        addingLink.current = false;
+        newLink.current = link.getKey();
+      }
+      const moved = newLink.current && newLink.current !== link?.getKey() && !editingLink.current ? newLink.current : null;
+      if (moved) queueMicrotask(() => dropIfEmpty(moved));
       setBar({
         active,
         link: link ? { key: link.getKey(), url: link.getURL() } : null,
       });
     });
-  }), [editor]);
+  }), [editor, dropIfEmpty]);
 
   const apply = (format: ComposerFormat) => {
     const on = bar?.active.has(format) ?? false;
     const text = TEXT_FORMATS[format];
     if (text) editor.dispatchCommand(FORMAT_TEXT_COMMAND, text);
     else if (format === "list") editor.dispatchCommand(on ? REMOVE_LIST_COMMAND : INSERT_UNORDERED_LIST_COMMAND, undefined);
-    else if (format === "link") editor.dispatchCommand(TOGGLE_LINK_COMMAND, on ? null : "https://");
+    else if (format === "link") {
+      addingLink.current = !on;
+      editor.dispatchCommand(TOGGLE_LINK_COMMAND, on ? null : "https://");
+    }
     else {
       editor.update(() => {
         const sel = $getSelection();
@@ -113,7 +140,11 @@ export function ComposerFormatBar({ disabled }: { disabled?: boolean }) {
                     placeholder="Paste or type a link"
                     value={bar.link.url}
                     onMouseDown={() => { editingLink.current = true; }}
-                    onBlur={() => { editingLink.current = false; }}
+                    onBlur={(e) => {
+                      editingLink.current = false;
+                      // Out of the composer altogether, not back into the text.
+                      if (!editor.getRootElement()?.contains(e.relatedTarget as Node | null)) dropIfEmpty(newLink.current);
+                    }}
                     onChange={(e) => setUrl(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key !== "Enter" && e.key !== "Escape") return;
