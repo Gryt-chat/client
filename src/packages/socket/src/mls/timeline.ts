@@ -158,6 +158,9 @@ export function mlsNotice(
   if (mode?.kind === "mls" && peerKeyChanged) {
     return `Can't send. ${peerName}'s key changed. Check it's really them on their card first.`;
   }
+  if (problems.lost === "not_added") {
+    return `${Here} isn't in this conversation yet, so new messages won't show here. It's asked to be added. That happens next time ${peerName} or another of your devices is online.`;
+  }
   if (problems.lost === "removed") return `${Here} was taken out of this conversation, so new messages won't show here.`;
   if (problems.lost) return `${Here} lost track of this conversation's encryption, so new messages won't show here.`;
   if (problems.undecryptable > 0) {
@@ -174,7 +177,7 @@ export function sendFailure(e: unknown, home: "browser" | "app"): string {
   const code = (e as { code?: string })?.code;
   if (code === "peer_unverified") return "Not sent. Their key couldn't be checked. Look at their card to see why.";
   if (code === "waiting_for_welcome") {
-    return `Not sent. ${home === "browser" ? "This browser" : "This device"} hasn't been added to the conversation yet.`;
+    return `Not sent. ${home === "browser" ? "This browser" : "This device"} isn't in this conversation yet. It's asked to be added, so try again in a bit.`;
   }
   return "Not sent.";
 }

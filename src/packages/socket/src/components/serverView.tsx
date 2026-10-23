@@ -411,7 +411,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend,
-    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed,
+    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsAskToBeAdded,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -428,8 +428,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       react: reactMlsMessage,
       reportsTaken: mlsReportsTaken,
       archiveFailed,
+      askToBeAdded: mlsAskToBeAdded,
     }),
-    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed],
+    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsAskToBeAdded],
   );
 
   /** The server already withholds new messages, so this covers what was drawn

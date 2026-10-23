@@ -41,7 +41,7 @@ export interface ConversationProblems {
   undecryptable: number;
   /** This device is out of the group and can't read new messages until it's back. `device_removed`
       means out of every group on this server, since the server removed the device (GRYT-1555). */
-  lost: "removed" | "out_of_sync" | "gap" | "device_removed" | null;
+  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "device_removed" | null;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
@@ -105,6 +105,8 @@ export interface MlsSession {
   addOwnDevice(deviceId: string, options?: MlsAddOwnDeviceOptions): Promise<MlsOwnDeviceAdd[]>;
   /** Where each group's log stands now, which is what a pairing's history snapshot covers. */
   groupPositions(): Promise<MlsGroupPosition[]>;
+  /** This device isn't in that DM's group: asks the other members' apps to add it. */
+  requestAdd(conversationId: string): Promise<void>;
   /** Something a DM screen shows may have moved: a mode, a problem, a join. */
   onChange(listener: (conversationId: string | null) => void): () => void;
   /** Stops taking work. Resolves once what was running is done, so the next session can't overlap it. */
@@ -288,6 +290,8 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       changed(null);
       if (push?.serverUserId === self) options.onOwnDevicesChanged?.();
     });
+  const onAddRequested = (push: { conversationId: string; serverUserId: string; deviceId: string }) =>
+    safely("A request to add a device", () => driver.handleAddRequest(push));
   const onOpened = (conversation: { conversation_id: string; members: { server_user_id: string }[] }) => {
     if (!conversation?.conversation_id) return;
     recency = [conversation.conversation_id, ...recency.filter((id) => id !== conversation.conversation_id)];
@@ -301,6 +305,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
   socket.on("mls:message", onEntry);
   socket.on("mls:welcome", onWelcome);
   socket.on("mls:devices:changed", onDevices);
+  socket.on("mls:add:requested", onAddRequested);
   socket.on("dm:opened", onOpened);
   socket.on("dm:list", onListed);
 
@@ -355,6 +360,10 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
       return track(driver.groupPositions());
     },
+    requestAdd(conversationId) {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      return track(driver.requestAdd(conversationId));
+    },
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -367,6 +376,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       socket.off("mls:message", onEntry);
       socket.off("mls:welcome", onWelcome);
       socket.off("mls:devices:changed", onDevices);
+      socket.off("mls:add:requested", onAddRequested);
       socket.off("dm:opened", onOpened);
       socket.off("dm:list", onListed);
       await Promise.allSettled([...inFlight]);

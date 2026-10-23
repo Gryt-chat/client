@@ -41,7 +41,8 @@ import {
  */
 
 /** What a DM view needs, whether the driver is in this tab or another one. */
-export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "waiting" | "onChange">;
+export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "waiting" | "onChange"> &
+  Partial<Pick<MlsSession, "requestAdd">>;
 
 /** How long to wait for the member list's pins before starting anyway. */
 const MEMBERS_WAIT_MS = 5000;

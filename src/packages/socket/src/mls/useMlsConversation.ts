@@ -46,6 +46,8 @@ export interface MlsConversation {
   remove: (messageId: string) => void;
   /** Adds this person's reaction, or takes it off if it's already there. */
   react: (messageId: string, emoji: string) => void;
+  /** Asks again to be added, while this device isn't in the group. */
+  askToBeAdded: (() => void) | null;
 }
 
 /** One DM on MLS: its mode, its archived messages and its sends (design, sections 5 and 6). */
@@ -326,6 +328,11 @@ export function useMlsConversation({
     home: archiveFacts.home,
     archiveFailed: !!conversationId && !!peer && archiveNow.status.kind === "failed",
     send,
+    askToBeAdded: useMemo(() => {
+      const requestAdd = source?.requestAdd;
+      if (!active || !requestAdd || !conversationId || problems.lost !== "not_added") return null;
+      return () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e));
+    }, [active, source, conversationId, problems.lost]),
     edit: useCallback(
       (id: string, text: string) => {
         const body = text.trim();

@@ -101,6 +101,8 @@ interface UseChatReturn {
   mlsReportsTaken: boolean;
   /** This device's history won't open, and that's what's holding the composer. */
   archiveFailed: boolean;
+  /** This device isn't in the DM's group yet: asks the other apps to add it again. */
+  mlsAskToBeAdded: (() => void) | null;
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -859,5 +861,6 @@ export function useChat({
     reactMlsMessage: mls.react,
     mlsReportsTaken,
     archiveFailed: composer.archiveProblem,
+    mlsAskToBeAdded: dmPeer ? mls.askToBeAdded : null,
   };
 }
