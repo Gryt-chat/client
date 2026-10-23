@@ -13,7 +13,7 @@ import {
   type TextFormatType,
 } from "lexical";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { type ComposerFormat, FORMAT_GROUPS } from "./composerButtons";
 
@@ -21,29 +21,24 @@ const TEXT_FORMATS: Partial<Record<ComposerFormat, TextFormatType>> = { bold: "b
 
 const spring = { type: "spring", stiffness: 520, damping: 34 } as const;
 
-type Bar = { left: number; top: number; active: Set<ComposerFormat>; link: { key: string; url: string } | null };
+type Bar = { active: Set<ComposerFormat>; link: { key: string; url: string } | null };
 
-/** Floats over selected text. Every button toggles, and the selection stays so styles stack. */
-export function ComposerFormatBar({ wrapRef, disabled }: { wrapRef: RefObject<HTMLDivElement | null>; disabled?: boolean }) {
+/** Shows while text is selected, always at the box's top left so it never jumps around. Every button
+    toggles, and the selection stays so styles stack. */
+export function ComposerFormatBar({ disabled }: { disabled?: boolean }) {
   const [editor] = useLexicalComposerContext();
   const [bar, setBar] = useState<Bar | null>(null);
   // Set on mousedown, before the box loses focus and the selection with it.
   const editingLink = useRef(false);
-  const lastAt = useRef({ left: 0, top: 0 });
   const reduceMotion = useReducedMotion();
-  if (bar) lastAt.current = { left: bar.left, top: bar.top };
 
   useEffect(() => editor.registerUpdateListener(({ editorState }) => {
     editorState.read(() => {
       const sel = $getSelection();
-      const dom = window.getSelection();
-      const wrap = wrapRef.current;
-      if (!$isRangeSelection(sel) || sel.isCollapsed() || !dom || dom.rangeCount === 0 || !wrap) {
+      if (!$isRangeSelection(sel) || sel.isCollapsed()) {
         if (!editingLink.current) setBar(null);
         return;
       }
-      const r = dom.getRangeAt(0).getBoundingClientRect();
-      const w = wrap.getBoundingClientRect();
       const active = new Set<ComposerFormat>();
       for (const [f, t] of Object.entries(TEXT_FORMATS) as [ComposerFormat, TextFormatType][]) if (sel.hasFormat(t)) active.add(f);
       const block = sel.anchor.getNode().getTopLevelElement();
@@ -53,13 +48,11 @@ export function ComposerFormatBar({ wrapRef, disabled }: { wrapRef: RefObject<HT
       const link = $findMatchingParent(sel.anchor.getNode(), $isLinkNode);
       if (link) active.add("link");
       setBar({
-        left: Math.max(170, Math.min(w.width - 170, r.left - w.left + r.width / 2)),
-        top: r.top - w.top,
         active,
         link: link ? { key: link.getKey(), url: link.getURL() } : null,
       });
     });
-  }), [editor, wrapRef]);
+  }), [editor]);
 
   const apply = (format: ComposerFormat) => {
     const on = bar?.active.has(format) ?? false;
@@ -90,7 +83,7 @@ export function ComposerFormatBar({ wrapRef, disabled }: { wrapRef: RefObject<HT
   };
 
   return (
-    <div className="chat-editor-format-anchor" style={lastAt.current}>
+    <div className="chat-editor-format-anchor">
       <AnimatePresence>
         {bar && !disabled && (
           <motion.div

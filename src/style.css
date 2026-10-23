@@ -451,7 +451,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .chat-editor-textarea,
-  .chat-editor-format-anchor,
   .chat-editor-format-btn {
     transition: none;
   }
@@ -728,20 +727,21 @@ body {
   white-space: pre;
 }
 
+/* Pinned to the box's top left, so selecting different text never moves it. */
 .chat-editor-format-anchor {
   position: absolute;
   z-index: 20;
+  top: 0;
+  left: 0;
   width: 0;
   height: 0;
-  transition: left 0.12s ease, top 0.12s ease;
 }
 
 .chat-editor-format-bar {
   position: absolute;
   bottom: 8px;
   left: 0;
-  translate: -50% 0;
-  transform-origin: bottom center;
+  transform-origin: bottom left;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -755,7 +755,7 @@ body {
 /* Stacked above the main bar, which stays put underneath. */
 .chat-editor-format-sub {
   bottom: calc(100% + 6px);
-  left: 50%;
+  left: 0;
   padding: 4px 6px;
 }
 

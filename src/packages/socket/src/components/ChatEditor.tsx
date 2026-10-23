@@ -692,7 +692,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           }}
         >
           <EditorRefPlugin editorRef={editorRef} />
-          <ComposerFormatBar wrapRef={wrapperRef} disabled={disabled} />
+          <ComposerFormatBar disabled={disabled} />
           <div className="chat-editor-input-row">
             <input
               ref={fileInputRef}
