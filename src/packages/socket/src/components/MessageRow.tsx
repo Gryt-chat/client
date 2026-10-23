@@ -1092,9 +1092,9 @@ function hoverBarPlacement(
   barWidth: number,
 ): CSSProperties {
   const short = !alignRight && !!row && row.getBoundingClientRect().width < barWidth;
-  // The 4px above the message is the bar's own padding, so the pointer never crosses a gap to reach it.
-  const lift: CSSProperties = { bottom: "100%", paddingBottom: 4 };
-  return short ? { ...lift, left: 0 } : { ...lift, right: 0 };
+  // Inside the message's own top corner. Above it, the bar covered the message before and kept itself open there.
+  const inside: CSSProperties = { top: 4 };
+  return short ? { ...inside, left: 4 } : { ...inside, right: 4 };
 }
 
 /**
