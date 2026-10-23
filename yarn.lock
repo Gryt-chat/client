@@ -551,18 +551,18 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
-"@gryt/core@0.17.1":
-  version "0.17.1"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.17.1.tgz#6a98d2841eaeec44aa4f63d2d91adb5bba1bcb71"
-  integrity sha512-oSPbyYB5HbN3aMMnD8P6AwO9elnwrjxziozyw/kClsPJZzhSm2pbWaefuzX0x8AT54awRxmPpEb7eiCyfImvkQ==
+"@gryt/core@0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.18.0.tgz#ba648de178a3028097985533c05cd952f2620167"
+  integrity sha512-12ZD2zxwwx0MVHZq12/6kx08OkWUqO4/1ZUkKhB3cV8YTVSl1AMZcwx9AA5uVKiqThgH5f/bApYXim5M4vXHMQ==
   dependencies:
-    "@gryt/crypto" "0.9.0"
+    "@gryt/crypto" "0.10.0"
     "@noble/hashes" "^2.3.0"
 
-"@gryt/crypto@0.9.0":
-  version "0.9.0"
-  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.9.0.tgz#78db8ab960e1491e346b9e6678e989864be23e8d"
-  integrity sha512-F3jBlnvQdG3sJkcI8dvuFFNBWrz49/0jvmNGjFdMLwFMflBKQWLfrlw9M5VKsjU/svN334PYpuIPzyZBz2YpEw==
+"@gryt/crypto@0.10.0":
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.10.0.tgz#95fb629bf986669dad00445bb949be77c69b191a"
+  integrity sha512-e34aYOyoIcrLtf3KNbIZ68DXN+4PrmwY/vj6uozBez7piFkq7qQl9OivlHp1KQV7BljL0mkSXvC9G58Vn3Mn6w==
   dependencies:
     "@noble/ciphers" "^2"
     "@noble/curves" "^2.3.0"
