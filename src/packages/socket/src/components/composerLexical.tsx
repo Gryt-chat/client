@@ -1,3 +1,4 @@
+import { $isAutoLinkNode, AutoLinkNode } from "@lexical/link";
 import {
   BOLD_ITALIC_STAR,
   BOLD_STAR,
@@ -177,12 +178,20 @@ const EMOJI_EXPORT: TextMatchTransformer = {
   type: "text-match",
 };
 
+/** A URL typed into the box goes out as typed, the way chat linked it before, not as `[url](url)`. */
+const AUTOLINK_EXPORT: TextMatchTransformer = {
+  dependencies: [AutoLinkNode],
+  export: (node) => ($isAutoLinkNode(node) ? node.getTextContent() : null),
+  regExp: /(?!)/,
+  type: "text-match",
+};
+
 /** What the box reads and writes, mentions ahead of LINK so a mention link doesn't import as a plain link.
     No highlight: chat doesn't render `==x==`. */
 export function composerTransformers(channelName: EditorChannelName): Transformer[] {
   return [
     HEADING, QUOTE, CODE, UNORDERED_LIST, ORDERED_LIST,
     BOLD_ITALIC_STAR, BOLD_STAR, ITALIC_STAR, STRIKETHROUGH, INLINE_CODE,
-    mentionTransformer(channelName), EMOJI_EXPORT, LINK,
+    mentionTransformer(channelName), EMOJI_EXPORT, AUTOLINK_EXPORT, LINK,
   ];
 }
