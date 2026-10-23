@@ -2,7 +2,7 @@
 
 /** The commands the renderer may send after start: one line, a known word, nothing that could start another line. */
 export function allowedVoiceCommand(line: unknown): line is string {
-  return typeof line === "string" && line.length < 2048 && !/[\r\n]/.test(line) && /^(stop|sending|output|effects|gains)( |$)/.test(line);
+  return typeof line === "string" && line.length < 2048 && !/[\r\n]/.test(line) && /^(stop|sending|output|effects|gains|bitrate)( |$)/.test(line);
 }
 
 export interface VoiceStart {

@@ -46,6 +46,8 @@ export interface Settings {
   setCompressorEnabled: (value: boolean) => void;
   compressorAmount: number;
   setCompressorAmount: (value: number) => void;
+  voiceBitrateKbps: number;
+  setVoiceBitrateKbps: (value: number) => void;
 
   connectSoundEnabled: boolean;
   setConnectSoundEnabled: (value: boolean) => void;
@@ -282,6 +284,8 @@ export const settingsInit: Settings = {
   setCompressorEnabled: noop,
   compressorAmount: AUDIO_DEFAULTS.compressorAmount,
   setCompressorAmount: noop,
+  voiceBitrateKbps: AUDIO_DEFAULTS.voiceBitrateKbps,
+  setVoiceBitrateKbps: noop,
   isMuted: false,
   setIsMuted: noop,
   isDeafened: false,

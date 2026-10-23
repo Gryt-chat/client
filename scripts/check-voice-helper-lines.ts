@@ -32,7 +32,7 @@ assert.equal(startLine({ ...offer, addrs: ["1.2.3.4:1\nstop"] }), null, "a newli
 assert.equal(startLine({ ...offer, effects: [1, 2] }), null);
 assert.equal(startLine({ ...offer, effects: [...offer.effects.slice(1), Number.NaN] }), null);
 
-assert.ok(allowedVoiceCommand("sending 1") && allowedVoiceCommand("stop") && allowedVoiceCommand("gains 7=0.5"));
+assert.ok(allowedVoiceCommand("sending 1") && allowedVoiceCommand("stop") && allowedVoiceCommand("gains 7=0.5") && allowedVoiceCommand("bitrate 96000"));
 assert.ok(!allowedVoiceCommand("start 1 key 64 1.2.3.4:1"), "start goes through its own handler");
 assert.ok(!allowedVoiceCommand("sending 1\nquit"), "a newline smuggled a second command");
 assert.ok(!allowedVoiceCommand("quit") && !allowedVoiceCommand(42));

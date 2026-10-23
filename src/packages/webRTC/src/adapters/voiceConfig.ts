@@ -78,6 +78,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
         autoGain: { enabled: s.autoGainEnabled, targetDb: s.autoGainTargetDb },
         compressorEnabled: s.compressorEnabled,
         compressorAmount: s.compressorAmount,
+        bitrateKbps: s.voiceBitrateKbps,
       },
       camera: {
         deviceId: s.cameraID,
@@ -102,7 +103,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
       s.micID, s.isMuted, s.isServerMuted, s.isDeafened, s.isServerDeafened,
       s.inputMode, s.micVolume, s.outputVolume, s.loopbackEnabled, s.rnnoiseEnabled,
       s.noiseGate, s.noiseGateRelease, s.autoGainEnabled, s.autoGainTargetDb,
-      s.compressorEnabled, s.compressorAmount, s.cameraID, s.cameraQuality,
+      s.compressorEnabled, s.compressorAmount, s.voiceBitrateKbps, s.cameraID, s.cameraQuality,
       s.cameraFps, s.cameraFlipped, s.screenShareQuality, s.screenShareFps,
       s.screenShareCodec, s.screenShareGamingMode, s.eSportsModeEnabled,
       stunHosts,
