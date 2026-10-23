@@ -158,6 +158,9 @@ export function mlsNotice(
   if (mode?.kind === "mls" && peerKeyChanged) {
     return `Can't send. ${peerName}'s key changed. Check it's really them on their card first.`;
   }
+  if (problems.lost === "too_many_devices") {
+    return `${Here} can't use encrypted DMs here because your account has the most devices allowed. Remove an old one in Settings, under Devices.`;
+  }
   if (problems.lost === "other_identity") {
     return `${Here} has a different encryption key from your other devices, so people who know your key can't reach you here. Link it from a device you already use.`;
   }
