@@ -41,7 +41,7 @@ export interface ConversationProblems {
   undecryptable: number;
   /** This device is out of the group and can't read new messages until it's back. `device_removed`
       means out of every group on this server, since the server removed the device (GRYT-1555). */
-  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "device_removed" | null;
+  lost: "removed" | "out_of_sync" | "gap" | "not_added" | "other_identity" | "device_removed" | null;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };

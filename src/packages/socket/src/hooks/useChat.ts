@@ -16,7 +16,9 @@ import { fakeDmsOn, fakeHistory } from "../dev/fakeDms";
 import { heldRoleIds } from "../lib/permissions";
 import { useMlsReportsTaken } from "../mls/serverMls";
 import { dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
-import { useMlsConversation } from "../mls/useMlsConversation";
+import { type MlsAction, useMlsConversation } from "../mls/useMlsConversation";
+
+const NO_ACTIONS: MlsAction[] = [];
 import { mergeSenders } from "../utils/mergeSender";
 import { isOnScreen, warnUnreadOnScreen } from "../utils/onScreenConversation";
 import { openSealedAttachment } from "../utils/sealedAttachments";
@@ -101,8 +103,8 @@ interface UseChatReturn {
   mlsReportsTaken: boolean;
   /** This device's history won't open, and that's what's holding the composer. */
   archiveFailed: boolean;
-  /** This device isn't in the DM's group yet: asks the other apps to add it again. */
-  mlsAskToBeAdded: (() => void) | null;
+  /** Buttons for the line above the composer. */
+  mlsActions: MlsAction[];
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -861,6 +863,6 @@ export function useChat({
     reactMlsMessage: mls.react,
     mlsReportsTaken,
     archiveFailed: composer.archiveProblem,
-    mlsAskToBeAdded: dmPeer ? mls.askToBeAdded : null,
+    mlsActions: dmPeer ? mls.actions : NO_ACTIONS,
   };
 }

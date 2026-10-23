@@ -7,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiInfoFill, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, type ReturnedDraft, saveDraftToDisk, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -20,6 +20,7 @@ import { useSockets } from "../hooks/useSockets";
 import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { encryptedSince, noteEncrypted, useMarksHidden } from "../lib/unencryptedMarks";
+import type { MlsAction } from "../mls/useMlsConversation";
 import { fetchCustomEmojis, getCustomEmojis, onCustomEmojisChange, setCustomEmojis } from "../utils/emojiData";
 import { SEARCH_SHORTCUT } from "../utils/messageSearch";
 import type { NewPoll } from "../utils/polls";
@@ -42,6 +43,7 @@ import type { MentionMember } from "./MentionAutocomplete";
 import { MentionViewerContext } from "./mentionViewerContext";
 import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
+import { MlsNoticeLine } from "./MlsNoticeLine";
 import { PinsButton } from "./PinsButton";
 import { PollDialog } from "./PollDialog";
 import { ThreadPanel } from "./ThreadPanel";
@@ -91,8 +93,8 @@ export interface MlsView {
   reportsTaken: boolean;
   /** This device's history won't open. Says why, with a retry and the way out. */
   archiveFailed: boolean;
-  /** This device isn't in the DM's group yet: asks again to be added. */
-  askToBeAdded?: (() => void) | null;
+  /** Buttons for the notice line: ask again to be added, link this device. */
+  actions?: MlsAction[];
 }
 
 /** Where the composer would be, for somebody who may read a channel and not post. */
@@ -1123,26 +1125,7 @@ export const ChatView = memo(({
               when somebody comes back to a box that stopped taking input. */}
           {mls?.archiveFailed && <LocalHistoryProblem compact />}
 
-          {mls?.notice && !mls.archiveFailed && (
-            <div
-              aria-live="polite"
-              className="mb-1.5 flex items-start gap-1.5 px-1 text-xs leading-snug"
-              style={{ color: "var(--gryt-neutral-11)" }}
-            >
-              <PiInfoFill aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
-              <span>
-                {mls.notice}
-                {mls.askToBeAdded && (
-                  <>
-                    {" "}
-                    <button type="button" className="gryt-link" onClick={mls.askToBeAdded}>
-                      Ask again
-                    </button>
-                  </>
-                )}
-              </span>
-            </div>
-          )}
+          {mls?.notice && !mls.archiveFailed && <MlsNoticeLine notice={mls.notice} actions={mls.actions ?? []} />}
 
           {muteLine && (
             <div

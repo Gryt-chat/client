@@ -12,12 +12,13 @@ import {
   useLocalArchive,
 } from "@/common";
 
+import { useLinkDevice } from "../../../../lib/pairing/useLinkDevice";
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
 import { draftKey, returnDraft } from "../hooks/returnedDrafts";
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import { getMediaDimensions } from "../utils/imageUtils";
 import { openSealedAttachment } from "../utils/sealedAttachments";
-import { useMlsSource } from "./serverMls";
+import { adoptThisDevicesKey, useMlsSource } from "./serverMls";
 import type { ConversationProblems } from "./session";
 import { archivedRow, newMessage, sendFailure, withOpenedFiles } from "./timeline";
 
@@ -26,6 +27,13 @@ const PAGE = 50;
 const RELOAD_DEBOUNCE_MS = 150;
 const MODE_RETRY_MS = 5000;
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
+
+/** A button on the line above the composer. `confirm` asks first. */
+export interface MlsAction {
+  label: string;
+  run: () => void;
+  confirm?: { title: string; description: string; confirmLabel: string };
+}
 
 export interface MlsConversation {
   /** Null while it's being worked out, and for anything that isn't a one-to-one DM. */
@@ -46,8 +54,8 @@ export interface MlsConversation {
   remove: (messageId: string) => void;
   /** Adds this person's reaction, or takes it off if it's already there. */
   react: (messageId: string, emoji: string) => void;
-  /** Asks again to be added, while this device isn't in the group. */
-  askToBeAdded: (() => void) | null;
+  /** What the line above the composer offers: ask again to be added, or link this device. */
+  actions: MlsAction[];
 }
 
 /** One DM on MLS: its mode, its archived messages and its sends (design, sections 5 and 6). */
@@ -66,6 +74,7 @@ export function useMlsConversation({
   nameFor: (id: string) => string | undefined;
 }): MlsConversation {
   const source = useMlsSource(host);
+  const { open: openLinkDevice } = useLinkDevice();
   const archiveNow = useLocalArchive();
   const archiveOpen = archiveNow.status.kind === "open";
   const archiveEpoch = archiveNow.epoch;
@@ -328,11 +337,31 @@ export function useMlsConversation({
     home: archiveFacts.home,
     archiveFailed: !!conversationId && !!peer && archiveNow.status.kind === "failed",
     send,
-    askToBeAdded: useMemo(() => {
+    actions: useMemo((): MlsAction[] => {
+      if (!active || !conversationId) return [];
       const requestAdd = source?.requestAdd;
-      if (!active || !requestAdd || !conversationId || problems.lost !== "not_added") return null;
-      return () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e));
-    }, [active, source, conversationId, problems.lost]),
+      if (problems.lost === "not_added" && requestAdd) {
+        return [{ label: "Ask again", run: () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e)) }];
+      }
+      if (problems.lost !== "other_identity") return [];
+      return [
+        { label: "Link this device", run: openLinkDevice },
+        {
+          label: "Use this device's key instead",
+          run: () => {
+            void adoptThisDevicesKey(host).then((ok) => {
+              if (!ok) toast.error("Couldn't switch your key to this device's.");
+            });
+          },
+          confirm: {
+            title: "Use this device's key for your account?",
+            description:
+              "Everyone you message here will see that your key changed. Your other devices stop working for encrypted DMs here until you link them to this one. Only do this if you can't link this device.",
+            confirmLabel: "Use this key",
+          },
+        },
+      ];
+    }, [active, source, conversationId, problems.lost, host, openLinkDevice]),
     edit: useCallback(
       (id: string, text: string) => {
         const body = text.trim();
