@@ -68,7 +68,7 @@ export function ApproveThisDevice() {
                   disabled={busy}
                   onChange={(e) => setWords(e.target.value)}
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button size="small" disabled={busy || !words.trim()} onClick={() => void restore()}>
                     Use these words
                   </Button>
@@ -84,7 +84,7 @@ export function ApproveThisDevice() {
                   Only do this if you can&rsquo;t reach any of your other devices. Everyone you message will be asked to
                   check it&rsquo;s really you, and messages on your other devices won&rsquo;t come over.
                 </Alert>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button size="small" tone="danger" disabled={busy} onClick={() => void startFresh()}>
                     Start fresh
                   </Button>
