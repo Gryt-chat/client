@@ -38,6 +38,7 @@ import {
   CloudArrowDown,
   CloudArrowUp,
   Code,
+  CodeBlock,
   Copy,
   CopySimple,
   CornersIn,
@@ -82,6 +83,7 @@ import {
   Link,
   LinkSimple,
   List,
+  ListBullets,
   ListChecks,
   LockOpen,
   LockSimple,
@@ -108,6 +110,7 @@ import {
   PushPin,
   PushPinSlash,
   PuzzlePiece,
+  Quotes,
   Robot,
   ScanSmiley,
   Screencast,
@@ -126,6 +129,12 @@ import {
   SpeakerSlash,
   SquaresFour,
   Stop,
+  TextB,
+  TextHOne,
+  TextHThree,
+  TextHTwo,
+  TextItalic,
+  TextStrikethrough,
   TrashSimple,
   UploadSimple,
   User,
@@ -319,3 +328,12 @@ export const PiSmileyWinkBold: Icon = weighted(SmileyWink, "bold", "PiSmileyWink
 export const PiSmileyWinkFill: Icon = weighted(SmileyWink, "fill", "PiSmileyWinkFill");
 export const PiTrashSimpleBold: Icon = weighted(TrashSimple, "bold", "PiTrashSimpleBold");
 export const PiTrashSimpleFill: Icon = weighted(TrashSimple, "fill", "PiTrashSimpleFill");
+export const PiCodeBlockBold: Icon = weighted(CodeBlock, "bold", "PiCodeBlockBold");
+export const PiListBulletsBold: Icon = weighted(ListBullets, "bold", "PiListBulletsBold");
+export const PiQuotesBold: Icon = weighted(Quotes, "bold", "PiQuotesBold");
+export const PiTextBBold: Icon = weighted(TextB, "bold", "PiTextBBold");
+export const PiTextItalicBold: Icon = weighted(TextItalic, "bold", "PiTextItalicBold");
+export const PiTextStrikethroughBold: Icon = weighted(TextStrikethrough, "bold", "PiTextStrikethroughBold");
+export const PiTextHOneBold: Icon = weighted(TextHOne, "bold", "PiTextHOneBold");
+export const PiTextHTwoBold: Icon = weighted(TextHTwo, "bold", "PiTextHTwoBold");
+export const PiTextHThreeBold: Icon = weighted(TextHThree, "bold", "PiTextHThreeBold");

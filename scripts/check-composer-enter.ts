@@ -68,8 +68,8 @@ function keyHandler(file: string) {
   return stripTypeScriptTypes(`async () => ${body}`).slice("async () => ".length);
 }
 
-/* The lists listen on document in the capture phase. That is what puts them ahead of the
-   editor's onKeyDown, which React runs from the root, so the order below is the browser's. */
+/* The lists listen on document in the capture phase. That puts them ahead of Lexical's own
+   keydown listener on the editor, so the order below is the browser's. */
 for (const file of ["EmojiAutocomplete.tsx", "MentionAutocomplete.tsx"]) {
   assert.match(
     read(file),
@@ -77,11 +77,10 @@ for (const file of ["EmojiAutocomplete.tsx", "MentionAutocomplete.tsx"]) {
     `${file} no longer listens in the capture phase, so the editor sees Enter before the list`,
   );
 }
-assert.match(read("ChatEditor.tsx"), /onKeyDown=\{handleKeyDown\}/, "the editor's key handler is not on the editor");
+assert.match(read("ChatEditor.tsx"), /KEY_DOWN_COMMAND[\s\S]{0,400}handleKeyDownRef\.current\(e\)/, "the editor's key handler is not on the editor");
 
 const LIST_ARGS = ["e", "visible", "results", "selectedIndex", "onSelect", "onClose", "setSelectedIndex", "keyboardNavRef"];
-const EDITOR_ARGS = ["e", "handleSend", "isEditing", "onCancel", "onArrowUpEmpty", "editorRef",
-  "serializeContentEditable", "pendingFilesRef", "showAutocomplete", "showMentionAutocomplete"];
+const EDITOR_ARGS = ["e", "handleSend", "isEditing", "onCancel", "onArrowUpEmpty", "getText", "pendingFilesRef"];
 const emojiList = new Function(...LIST_ARGS, keyHandler("EmojiAutocomplete.tsx"));
 const mentionList = new Function(...LIST_ARGS, keyHandler("MentionAutocomplete.tsx"));
 const editor = new Function(...EDITOR_ARGS, keyHandler("ChatEditor.tsx"));
@@ -113,10 +112,9 @@ function press(key: string, { shiftKey = false, emoji = null, mention = null, is
   }
   if (!e.stopped) {
     editor(e, () => happened.push("sent"), isEditing, () => happened.push("edit cancelled"),
-      () => happened.push("last message recalled"), { current: {} }, () => text, { current: [] },
-      emoji !== null, mention !== null);
+      () => happened.push("last message recalled"), () => text, { current: [] });
   }
-  // contentEditable's own Enter, when nothing prevented it.
+  // The editor's own Enter, when nothing prevented it.
   if (key === "Enter" && !e.defaultPrevented) happened.push("new line");
   return happened;
 }
@@ -158,8 +156,11 @@ assert.deepEqual(press("ArrowUp", { text: "", emoji: ["smile"] }), [], "arrow up
 
 // Opening the list and replacing its query both go through emojiQueryAt, which is checked above.
 const chatEditor = read("ChatEditor.tsx");
-for (const helper of ["getEmojiQueryAtCursor", "replaceEmojiQueryAtCursor"]) {
-  assert.match(block(chatEditor, `function ${helper}(`, helper), /emojiQueryAt\(/,
+for (const [helper, opener] of [
+  ["updateQueries", "const updateQueries = useCallback(() => {"],
+  ["handleEmojiSelect", "const handleEmojiSelect = useCallback((entry: EmojiEntry) => {"],
+]) {
+  assert.match(block(chatEditor, opener, helper), /emojiQueryAt\(/,
     `${helper} no longer uses emojiQueryAt, so it can open on ports and times again`);
 }
 

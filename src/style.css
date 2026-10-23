@@ -426,8 +426,9 @@ body {
 .chat-editor-textarea {
   padding: 10px 6px 10px 18px;
   min-height: 21px;
-  max-height: 200px;
+  max-height: 66vh;
   overflow-y: auto;
+  transition: height 0.18s ease;
   outline: none;
   border: none;
   background: transparent;
@@ -440,6 +441,19 @@ body {
   box-sizing: border-box;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Folded to one line while you're elsewhere; the fade says there's more. */
+.chat-editor-textarea[data-collapsed] {
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-editor-textarea,
+  .chat-editor-format-btn {
+    transition: none;
+  }
 }
 
 .chat-editor-textarea:empty::before {
@@ -644,6 +658,162 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 0;
+}
+
+/* The Lexical composer, while it's tried behind gryt.lexicalComposer. */
+.chat-editor-lexical-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-editor-lexical-field .chat-editor-textarea {
+  min-height: calc(1.5em + 20px);
+  max-height: 66vh;
+}
+
+.chat-editor-lexical-placeholder {
+  position: absolute;
+  top: 10px;
+  left: 18px;
+  color: var(--gryt-neutral-10);
+  pointer-events: none;
+}
+
+.chat-editor-lexical .lx-p {
+  margin: 0;
+}
+
+.chat-editor-lexical .lx-bold { font-weight: 700; }
+.chat-editor-lexical .lx-italic { font-style: italic; }
+.chat-editor-lexical .lx-strike { text-decoration: line-through; }
+
+.chat-editor-lexical .lx-code {
+  font-family: var(--code-font-family, monospace);
+  font-size: 0.85em;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--gryt-neutral-4);
+}
+
+.chat-editor-lexical .lx-h1 { margin: 0; font-size: 1.5em; font-weight: 700; }
+.chat-editor-lexical .lx-h2 { margin: 0; font-size: 1.25em; font-weight: 700; }
+.chat-editor-lexical .lx-h3 { margin: 0; font-size: 1.1em; font-weight: 700; }
+
+.chat-editor-lexical .lx-quote {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--gryt-neutral-7);
+  color: var(--gryt-neutral-11);
+}
+
+.chat-editor-lexical .lx-ul,
+.chat-editor-lexical .lx-ol {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.chat-editor-lexical .lx-ul { list-style: disc; }
+.chat-editor-lexical .lx-ol { list-style: decimal; }
+
+.chat-editor-lexical .lx-codeblock {
+  display: block;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: var(--gryt-radius-sm);
+  background: var(--gryt-neutral-1);
+  font-family: var(--code-font-family, monospace);
+  font-size: 0.85em;
+  white-space: pre;
+}
+
+/* Pinned to the box's top left, so selecting different text never moves it. */
+.chat-editor-format-anchor {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+.chat-editor-format-bar {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  transform-origin: bottom left;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--gryt-neutral-4);
+  border: 1px solid var(--gryt-neutral-7);
+  border-radius: var(--gryt-radius-control);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+/* Stacked above the main bar, which stays put underneath. */
+.chat-editor-format-sub {
+  bottom: calc(100% + 6px);
+  left: 0;
+  padding: 4px 6px;
+}
+
+.chat-editor-format-group {
+  display: flex;
+  gap: 2px;
+}
+
+.chat-editor-format-group + .chat-editor-format-group {
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--gryt-neutral-6);
+}
+
+.chat-editor-link-input {
+  width: 260px;
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--gryt-radius-control);
+  background: var(--gryt-neutral-2);
+  color: var(--gryt-neutral-12);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.chat-editor-link-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--gryt-accent-8);
+}
+
+.chat-editor-format-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--gryt-radius-control);
+  background: transparent;
+  color: var(--gryt-neutral-11);
+  cursor: pointer;
+}
+
+.chat-editor-format-btn {
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.chat-editor-format-btn[aria-pressed="true"],
+.chat-editor-format-btn[aria-expanded="true"] {
+  background: var(--gryt-accent-a4);
+  color: var(--gryt-accent-11);
+}
+
+.chat-editor-format-btn:hover,
+.chat-editor-format-btn:focus-visible {
+  background: var(--gryt-neutral-6);
+  color: var(--gryt-neutral-12);
 }
 
 .chat-editor-attach-btn {
