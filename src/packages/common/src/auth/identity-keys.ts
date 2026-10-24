@@ -207,12 +207,40 @@ async function readSeed(stored: StoredSeed | undefined): Promise<Uint8Array | nu
  */
 async function getOrCreateSeed(db: IDBDatabase): Promise<Uint8Array> {
   const existing = await readSeed(await idbGet<StoredSeed>(db, SEED_KEY));
-  if (existing) return existing;
+  if (existing) {
+    await uploadSyncedSeedOnce(existing);
+    return existing;
+  }
+
+  // A new Mac signed into your Apple ID: the iPhone's key, so it's the same you (GRYT-1881).
+  const synced = await syncedSeed();
+  if (synced) {
+    await writeSeed(db, synced);
+    console.log("[Identity] Took the identity seed from iCloud Keychain");
+    return synced;
+  }
 
   const seed = generateSeed();
   await writeSeed(db, seed);
+  await getElectronAPI()?.writeSyncedSeed?.(toHex(seed)).catch(() => false);
   console.log("[Identity] Generated new local identity seed");
   return seed;
+}
+
+const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+
+async function syncedSeed(): Promise<Uint8Array | null> {
+  const hex = await getElectronAPI()?.readSyncedSeed?.().catch(() => null);
+  if (!hex || !/^[0-9a-f]{64}$/.test(hex)) return null;
+  return Uint8Array.from(hex.match(/../g) ?? [], (h) => parseInt(h, 16));
+}
+
+/* The phone's rule: this computer's own copy wins, and goes up only if iCloud has none. */
+let syncedSeedChecked = false;
+async function uploadSyncedSeedOnce(seed: Uint8Array): Promise<void> {
+  if (syncedSeedChecked) return;
+  syncedSeedChecked = true;
+  if (!(await syncedSeed())) await getElectronAPI()?.writeSyncedSeed?.(toHex(seed)).catch(() => false);
 }
 
 /** Checked once a session; the answer cannot change while the app is running. */

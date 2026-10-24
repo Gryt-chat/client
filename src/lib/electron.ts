@@ -369,6 +369,9 @@ export interface ElectronAPI {
    */
   secretsAvailable(): Promise<boolean>;
   sealSecret(plain: string): Promise<string>;
+  /** The seed in iCloud Keychain as hex, shared with the iPhone app. Absent on builds from before it. */
+  readSyncedSeed?(): Promise<string | null>;
+  writeSyncedSeed?(hex: string): Promise<boolean>;
   unsealSecret(sealed: string): Promise<string>;
   loadGlobalStore(): Promise<Record<string, unknown>>;
   setGlobalData(key: string, value: unknown): void;
