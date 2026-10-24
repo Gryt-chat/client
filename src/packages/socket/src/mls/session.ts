@@ -6,6 +6,7 @@ import {
   type MlsDecryptedMessage,
   type MlsDeviceRecord,
   type MlsDmContent,
+  type MlsDmDiagnostics,
   type MlsDmDriver,
   type MlsGroupPosition,
   type MlsLogEntry,
@@ -95,6 +96,7 @@ export interface MlsSession {
   problems(conversationId: string): ConversationProblems;
   /** Your devices on this server, named from their certificates where a group shows them. */
   ownDevices(): Promise<MlsOwnDevice[]>;
+  diagnose(conversationId: string): Promise<MlsDmDiagnostics>;
   /** Sends are held until the server is back, for a "Waiting for the server" label. */
   waiting(): boolean;
   /** One of your own devices, off the server. Peers drop it from each DM on their next pass. */
@@ -351,6 +353,10 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     ownDevices() {
       if (disposed) return Promise.reject(new Error("This connection has closed."));
       return track(driver.ownDevices());
+    },
+    diagnose(conversationId) {
+      if (disposed) return Promise.reject(new Error("This connection has closed."));
+      return track(driver.diagnose(conversationId));
     },
     waiting: () => waiting,
     removeOwnDevice(deviceId) {

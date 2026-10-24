@@ -1,4 +1,4 @@
-import type { DmSealingMode, MlsDmContent, MlsOwnDevice, MlsServerCapability } from "@gryt/core";
+import type { DmSealingMode, MlsDmContent, MlsDmDiagnostics, MlsOwnDevice, MlsServerCapability } from "@gryt/core";
 import { useSyncExternalStore } from "react";
 import type { Socket } from "socket.io-client";
 
@@ -540,12 +540,21 @@ export async function removeOwnMlsDevice(host: string, deviceId: string): Promis
   await askRelay({ host, op: "remove", deviceId });
 }
 
+const diagnoseHere = (host: string, conversationId: string) =>
+  hosts.get(host)?.session?.diagnose(conversationId) ?? Promise.resolve(null);
+
+/** One DM as the tab running its driver sees it, for support (GRYT-1864). Null when no tab has it. */
+export async function mlsDmDiagnostics(host: string, conversationId: string): Promise<MlsDmDiagnostics | null> {
+  if (!askOtherTab()) return diagnoseHere(host, conversationId);
+  return (await askRelay({ host, op: "diagnose", conversationId })).diagnostics ?? null;
+}
+
 // ── Other tabs ask the one holding the lock ─────────────────────────────
 
 type RelayRequest = {
   id: string;
   host: string;
-  op: "mode" | "send" | "devices" | "remove";
+  op: "mode" | "send" | "devices" | "remove" | "diagnose";
   conversationId?: string;
   peer?: string;
   content?: MlsDmContent;
@@ -556,6 +565,7 @@ type RelayReply = {
   mode?: DmSealingMode;
   problems?: ConversationProblems;
   devices?: OwnDevicesAnswer;
+  diagnostics?: MlsDmDiagnostics | null;
   error?: { code?: string; message: string };
 };
 type RelayChanged = { changed: string; conversationId: string | null };
@@ -574,6 +584,9 @@ function listenForRelay(): void {
       answer({ error: { code: (e as { code?: string })?.code, message: e instanceof Error ? e.message : String(e) } });
     if (req.op === "devices") return void ownDevicesHere(req.host).then((devices) => answer({ devices }), fail);
     if (req.op === "remove") return void removeHere(req.host, req.deviceId ?? "").then(() => answer({}), fail);
+    if (req.op === "diagnose") {
+      return void diagnoseHere(req.host, req.conversationId ?? "").then((diagnostics) => answer({ diagnostics }), fail);
+    }
     const source = hosts.get(req.host)?.local;
     if (!source) return answer({ error: { message: "This server isn't connected in the other tab." } });
     const conversationId = req.conversationId ?? "";
