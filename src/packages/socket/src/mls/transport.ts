@@ -127,6 +127,7 @@ export function socketMlsTransport(options: TransportOptions): MlsTransport {
     ackWelcomes: (req) => request("mls:welcome:ack", req),
     requestAdd: (req) => request("mls:add:request", req),
     putGroupInfo: (req) => request("mls:groupinfo:put", req),
+    replaceGroup: (req) => request("mls:group:replace", req),
     async getGroupInfo(req) {
       const r = await request<{ epoch: number; groupInfo: Wire }>("mls:groupinfo:get", req);
       if (!r.ok) return r;
