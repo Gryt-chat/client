@@ -7,6 +7,7 @@ import { setAnnouncedPlugins } from "@/addons";
 import {
   addMention,
   addThreadMention,
+  getAccountProfile,
   getServerAccessToken,
   getServerRefreshToken,
   getStoredWorn,
@@ -32,7 +33,6 @@ import {
   type MemberKeyState,
   ownDmPublicKey,
   ownPersonPublicKey,
-  readSealedVault,
 } from "@/common";
 import { rememberChannelNames } from "@/lib/channelDirectory";
 import { claimOutcomeToast, guestIsGone, takeClaimOutcome } from "@/lib/identityClaimOutcome";
@@ -167,7 +167,7 @@ function forgetDmKeyWarningDismissed(host: string): void {
 /** What this device can do about a mismatch, asked of the account. */
 async function dmKeyFix(): Promise<DmKeyFix> {
   try {
-    return (await readSealedVault()) ? "unlock" : "set-up";
+    return (await getAccountProfile()).sub ? "set-up" : "none";
   } catch {
     // Not signed in, or the account would not answer. Neither button would
     // work, so neither is offered.
