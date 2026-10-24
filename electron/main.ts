@@ -1,4 +1,4 @@
-import { execFile, spawn } from "child_process";
+import { execFile, execFileSync, spawn } from "child_process";
 import {
   app,
   autoUpdater as nativeAutoUpdater,
@@ -33,6 +33,7 @@ import {
   writeFileSync,
 } from "fs";
 import { createServer, type Server } from "http";
+import { hostname } from "os";
 import { dirname, extname, join, resolve } from "path";
 import semver from "semver";
 import { fileURLToPath } from "url";
@@ -2131,6 +2132,20 @@ const TITLEBAR_OVERLAY_HEIGHT = 36;
 // do nothing. XDG_CURRENT_DESKTOP is a colon-separated list by spec. GRYT-1060.
 const NO_WINDOW_CHROME_FLAG = "--gryt-no-window-chrome";
 
+/* What the device certificate names this install after (GRYT-1873): "Sivert's MacBook Pro". */
+const COMPUTER_NAME_FLAG = "--gryt-computer-name=";
+function computerName(): string {
+  if (process.platform === "darwin") {
+    try {
+      const name = execFileSync("scutil", ["--get", "ComputerName"], { encoding: "utf8", timeout: 1000 }).trim();
+      if (name) return name;
+    } catch {
+      // Falls back to the hostname below.
+    }
+  }
+  return hostname().replace(/\.local$/, "");
+}
+
 const TILING_DESKTOPS = new Set([
   "hyprland",
   "sway",
@@ -2187,9 +2202,10 @@ function createMainWindow(): BrowserWindow {
       ),
       // Read off argv in preload rather than fetched over IPC: the titlebar has
       // to know before its first paint, or it renders and then vanishes.
-      additionalArguments: drawsWindowButtons()
-        ? []
-        : [NO_WINDOW_CHROME_FLAG],
+      additionalArguments: [
+        ...(drawsWindowButtons() ? [] : [NO_WINDOW_CHROME_FLAG]),
+        `${COMPUTER_NAME_FLAG}${computerName()}`,
+      ],
       contextIsolation: true,
       nodeIntegration: false,
       // The idle default only; a call turns it off. See setRendererThrottling.
