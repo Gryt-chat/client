@@ -1,9 +1,7 @@
 /**
- * Where the sealed seed lives between devices: an attribute on the Keycloak
- * account. **Nothing here holds an administrator credential.**
+ * The old password-locked copy of the key on the Keycloak account, now only found and cleared
+ * (GRYT-1882). **Nothing here holds an administrator credential.**
  */
-
-import { type SealedVault, VAULT_TYPE } from "./identity-vault.ts";
 
 /** Must match the attribute name in `packages/auth/bootstrap/gryt-user-profile.json`. */
 export const VAULT_ATTRIBUTE = "grytMessageVault";
@@ -17,43 +15,17 @@ export interface AccountRepresentation {
   [field: string]: unknown;
 }
 
-/**
- * Put the sealed blob into an account representation, keeping the rest. **The
- * Account API update replaces rather than patches**, so the caller reads first.
- */
-export function withSealedVault(
-  account: AccountRepresentation,
-  vault: SealedVault | null,
-): AccountRepresentation {
-  const attributes = { ...(account.attributes ?? {}) };
-
-  if (vault === null) {
-    // An empty array rather than deleting the key: Keycloak treats an absent
-    // attribute as "leave it alone" on some paths.
-    attributes[VAULT_ATTRIBUTE] = [];
-  } else {
-    attributes[VAULT_ATTRIBUTE] = [JSON.stringify(vault)];
-  }
-
-  return { ...account, attributes };
-}
-
-/** Pull the sealed blob out of a representation, if there is one worth having. */
-export function sealedVaultFrom(account: AccountRepresentation): SealedVault | null {
+/** Whether the account still holds a copy, in any version. */
+export function hasVault(account: AccountRepresentation): boolean {
   const raw = account.attributes?.[VAULT_ATTRIBUTE]?.[0];
-  if (typeof raw !== "string" || raw.length === 0) return null;
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    // Something is in the attribute and it is not ours. Treated as absent rather
-    // than thrown, and the next save overwrites it.
-    return null;
-  }
-
-  // Ours even at a version this build cannot open. Read as absent, it would be offered
-  // as "no password yet" and overwritten; kept, opening it says Gryt is out of date.
-  return (parsed as { type?: unknown } | null)?.type === VAULT_TYPE ? (parsed as SealedVault) : null;
+  return typeof raw === "string" && raw.length > 0;
 }
 
+/**
+ * The account with the copy cleared and everything else kept. **The Account API update
+ * replaces rather than patches**, so the caller reads first.
+ */
+export function withoutVault(account: AccountRepresentation): AccountRepresentation {
+  // An empty array rather than deleting the key: Keycloak treats an absent attribute as "leave it alone".
+  return { ...account, attributes: { ...(account.attributes ?? {}), [VAULT_ATTRIBUTE]: [] } };
+}
