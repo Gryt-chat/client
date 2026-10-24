@@ -10,6 +10,7 @@ import {
   type DmKeyPair,
   type MlsDevice,
   signDmKeyBinding,
+  signKeyHandover,
   signPersonKeyBinding,
 } from "@gryt/crypto";
 
@@ -402,6 +403,14 @@ export async function dmKeyBindingFor(host: string): Promise<string | null> {
     identityPrivateKey: identity.privateKey,
     identityPublicJwk,
   });
+}
+
+/** This device's key handing `host` over to `newBinding` (GRYT-1886). Signed like `dmKeyBindingFor`. */
+export async function keyHandoverFor(host: string, newBinding: string): Promise<string> {
+  const { seed, scope } = await readSeedFor(host);
+  const identity = await deriveLocalKeyPair(seed, scope);
+  const identityPublicJwk = await crypto.subtle.exportKey("jwk", identity.publicKey);
+  return signKeyHandover({ newBinding, scope, identityPrivateKey: identity.privateKey, identityPublicJwk });
 }
 
 async function readSeedFor(host: string): Promise<{ seed: Uint8Array; scope: IdentityScope }> {

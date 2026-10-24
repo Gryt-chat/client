@@ -571,6 +571,18 @@
     fflate "0.8.3"
     ts-mls "npm:@gryt/ts-mls@1.6.4-gryt.1"
 
+"@gryt/crypto@0.13.0":
+  version "0.13.0"
+  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.13.0.tgz#f4369127ad1f8afe25b1a89f79eedd5a84c939d1"
+  integrity sha512-U/G9bg8LK1Jf3K21w3oU6q8d2DBju6NfHXcKTMYHJ01BRFSy+dpREflJvlpfQEOx5sq9QjlC+6cGOdfHpPV57Q==
+  dependencies:
+    "@noble/ciphers" "^2"
+    "@noble/curves" "^2.3.0"
+    "@noble/hashes" "^2.3.0"
+    "@scure/bip39" "^2.3.0"
+    fflate "0.8.3"
+    ts-mls "npm:@gryt/ts-mls@1.6.4-gryt.1"
+
 "@gryt/owl@^0.7.0":
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.7.0.tgz#730a4f9fc3b355dd3629e1bce1d8af71e765ff75"

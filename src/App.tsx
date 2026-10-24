@@ -35,6 +35,7 @@ import { CallStatsRecorder } from "./components/callStatsRecorder";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GameDetectPrompt } from "./components/gameDetectPrompt";
 import { GlobalLightbox } from "./components/GlobalLightbox";
+import { HandoverRequestDialog } from "./components/handoverRequestDialog";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { LeaveServer } from "./components/leaveServer";
 import { LinkDeviceDialog } from "./components/linkDevice";
@@ -148,6 +149,7 @@ export function App() {
           <Welcome />
           <LinkDeviceDialog />
           <ApproveThisDevice />
+          <HandoverRequestDialog />
           <ApproveDeviceDialog />
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
           <LeaveServer />

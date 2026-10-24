@@ -4,7 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 import { restoreIdentityFromWords } from "@/common";
-import { adoptThisDevicesKey, clearRemovedEverywhere, useHostsAwaitingApproval } from "@/socket";
+import { adoptThisDevicesKey, clearRemovedEverywhere, ownHandover, useHostsAwaitingApproval } from "@/socket";
 
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 
@@ -14,6 +14,8 @@ import { useLinkDevice } from "../lib/pairing/useLinkDevice";
  */
 export function ApproveThisDevice() {
   const hosts = useHostsAwaitingApproval();
+  const own = ownHandover.use();
+  const handover = [...hosts].map((h) => own[h]).find(Boolean);
   const { open: openLinkDevice, isOpen: linking } = useLinkDevice();
   const [later, setLater] = useState(false);
   const [panel, setPanel] = useState<"words" | "fresh" | null>(null);
@@ -53,7 +55,19 @@ export function ApproveThisDevice() {
               Your account already has an encryption key on another device. Approve this one from there, and your
               encrypted messages work here too.
             </p>
-            <Button onClick={openLinkDevice} disabled={busy}>
+            {handover && !handover.denied && (
+              <div className="flex flex-col gap-1 rounded-md border border-gryt-border p-3">
+                <span className="font-semibold">Your other device has a request from this one</span>
+                <span>
+                  Open Gryt there and check it shows <span className="font-mono font-semibold">{handover.code}</span>,
+                  then approve. This server then uses the same key as your other servers.
+                </span>
+              </div>
+            )}
+            {handover?.denied && (
+              <Alert severity="warning">Your other device said no, so nothing changed. If that was a mistake, approve from another device below.</Alert>
+            )}
+            <Button onClick={openLinkDevice} disabled={busy} tone={handover && !handover.denied ? "neutral" : undefined}>
               Approve from another device
             </Button>
 

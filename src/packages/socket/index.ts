@@ -9,11 +9,14 @@ export * from "./src/hooks/useSockets";
 export * from "./src/hooks/whatsNewRequest";
 
 // MLS
+export { type HandoverRequest, handoverRequests, ownHandover } from "./src/mls/keyHandover";
 export * from "./src/mls/linkedDevices";
 export * from "./src/mls/ownDevices";
 export { clearRemovedEverywhere } from "./src/mls/removedHere";
 export {
   adoptThisDevicesKey,
+  approveHandover,
+  denyHandover,
   type OwnDevicesAnswer,
   ownMlsDevices,
   removeOwnMlsDevice,
