@@ -49,7 +49,6 @@
     "test:message-vault": "node scripts/check-message-vault.ts",
     "test:message-vault-upgrade": "node scripts/check-message-vault-upgrade.ts",
     "test:message-vault-reseal": "node scripts/check-message-vault-reseal.ts",
-    "test:vault-upgrade-prompt": "node scripts/check-vault-upgrade-prompt.ts",
     "test:account-words": "node scripts/check-account-words.ts",
     "test:message-key": "node scripts/check-message-key.ts",
     "test:message-key-offer": "node scripts/check-message-key-offer.ts",
