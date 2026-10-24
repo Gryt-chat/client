@@ -1,22 +1,17 @@
 /**
- * Reading and writing the sealed seed on the Keycloak account. The merge lives in
+ * Reading and clearing the old copy on the Keycloak account. The logic lives in
  * `message-vault` and is tested there; this is only the request around it.
  */
 
 import { getAccountRepresentation, putAccountRepresentation } from "./account-api.ts";
-import type { SealedVault } from "./identity-vault.ts";
-import { type AccountRepresentation,sealedVaultFrom, withSealedVault } from "./message-vault.ts";
+import { type AccountRepresentation, hasVault, withoutVault } from "./message-vault.ts";
 
-/** The sealed seed on this account, or null if it has never been set. */
-export async function readSealedVault(): Promise<SealedVault | null> {
-  return sealedVaultFrom((await getAccountRepresentation()) as AccountRepresentation);
+export async function hasAccountVault(): Promise<boolean> {
+  return hasVault((await getAccountRepresentation()) as AccountRepresentation);
 }
 
-/**
- * Store the sealed seed, or clear it with `null`. Read-modify-write, and the read
- * is not cached: two devices can be signed in.
- */
-export async function writeSealedVault(vault: SealedVault | null): Promise<void> {
+/** Read-modify-write, and the read is not cached: two devices can be signed in. */
+export async function clearAccountVault(): Promise<void> {
   const account = (await getAccountRepresentation()) as AccountRepresentation;
-  await putAccountRepresentation(withSealedVault(account, vault) as Record<string, unknown>);
+  await putAccountRepresentation(withoutVault(account) as Record<string, unknown>);
 }

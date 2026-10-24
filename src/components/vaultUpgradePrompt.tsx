@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { getAccountProfile, hasMessageKeyHere, readSealedVault, useAccount, writeSealedVault } from "@/common";
+import { clearAccountVault, getAccountProfile, hasAccountVault, hasMessageKeyHere, useAccount } from "@/common";
 
 /**
  * Takes the old password-locked copy of the message key off the account (GRYT-1882). Only where
@@ -13,8 +13,8 @@ export function VaultUpgradePrompt() {
     if (!isSignedIn) return;
     void (async () => {
       const sub = (await getAccountProfile()).sub;
-      if (!sub || !hasMessageKeyHere(sub) || !(await readSealedVault())) return;
-      await writeSealedVault(null);
+      if (!sub || !hasMessageKeyHere(sub) || !(await hasAccountVault())) return;
+      await clearAccountVault();
     })().catch((e: Error) => console.warn("[MessageKey] Couldn't remove the old copy from the account:", e));
   }, [isSignedIn]);
 
