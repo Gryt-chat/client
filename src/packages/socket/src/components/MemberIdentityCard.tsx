@@ -1,4 +1,4 @@
-import { base64Url } from "@gryt/crypto";
+import { base64Url, type PeerPin } from "@gryt/crypto";
 import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
 import { cloneElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -9,6 +9,7 @@ import {
   getOwnServerUserId,
   getUploadsFileUrl,
   identityScopeFor,
+  localPeerPinStore,
   markPeerCompared,
   ownComparisonSide,
   pinPeerKey,
@@ -152,9 +153,41 @@ export function MemberIdentityCard({
     ? { thumbprint: keyState.decision.verified.identityThumbprint, dmPublicKey: base64Url(keyState.decision.verified.dmPublicKey) }
     : null;
   const newCode = ownKeys && newKeys ? comparisonCode(ownKeys, newKeys) : null;
+  const [trustedPin, setTrustedPin] = useState<PeerPin | null>(null);
+  const [notThem, setNotThem] = useState(false);
+  const notThemKey = serverHost && newKeys
+    ? `gryt_key_not_them:${identityScopeFor(serverHost)} ${member.serverUserId} ${newKeys.thumbprint}`
+    : null;
+  useEffect(() => {
+    if (!notThemKey) return setNotThem(false);
+    try {
+      setNotThem(localStorage.getItem(notThemKey) === "1");
+    } catch {
+      setNotThem(false);
+    }
+  }, [notThemKey]);
+  const answerNotThem = (value: boolean) => {
+    if (!notThemKey) return;
+    try {
+      if (value) localStorage.setItem(notThemKey, "1");
+      else localStorage.removeItem(notThemKey);
+    } catch {
+      // Only remembered for this view then. Messages stay paused either way.
+    }
+    setNotThem(value);
+  };
+  /* Undo puts the pin from before "trust it" back, so the new key reads as changed again. */
+  const undoTrust = () => {
+    if (!serverHost || !trustedPin) return;
+    const key = `${identityScopeFor(serverHost)} ${member.serverUserId}`;
+    localPeerPinStore.write({ ...localPeerPinStore.read(), [key]: trustedPin });
+    setTrustedPin(null);
+    sockets[serverHost]?.emit("members:fetch");
+  };
   const trustNewKey = () => {
     if (!serverHost || keyState?.decision.kind !== "changed" || !newKeys) return;
     const scope = identityScopeFor(serverHost);
+    setTrustedPin(keyState.decision.pin);
     pinPeerKey(scope, member.serverUserId, keyState.decision.verified);
     // Compared, since that is what the button says happened.
     markPeerCompared(scope, member.serverUserId, newKeys);
@@ -473,15 +506,34 @@ export function MemberIdentityCard({
               That happens when somebody restores their identity on another device. It is also what a server
               substituting a key looks like. Ask them somewhere other than here before treating messages as private.
             </span>
-            {newCode && (
+            {newCode && !notThem && (
               <>
                 <span className="gmc-note">Ask them to read you the code on their side, somewhere other than Gryt.</span>
                 <code className="gmc-code" style={{ textAlign: "center", letterSpacing: ".06em" }}>{newCode}</code>
                 <button type="button" className="gmc-btn" data-gryt="trust-new-key" onClick={trustNewKey}>
                   The codes match, trust it
                 </button>
+                <button type="button" className="gmc-btn" data-gryt="not-them" onClick={() => answerNotThem(true)}>
+                  It&rsquo;s not them
+                </button>
               </>
             )}
+            {notThem && (
+              <span className="gmc-note">
+                You said this isn&rsquo;t them. Messages to them stay paused.{" "}
+                <button type="button" className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline" onClick={() => answerNotThem(false)}>
+                  Check again
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+        {keyState?.decision.kind !== "changed" && trustedPin && (
+          <div className="gmc-note" style={{ marginTop: 10 }}>
+            You trusted their new key.{" "}
+            <button type="button" className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline" data-gryt="undo-trust" onClick={undoTrust}>
+              Undo
+            </button>
           </div>
         )}
         {(code || (!identityIsTheQuestion && fingerprint)) && (
