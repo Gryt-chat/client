@@ -378,6 +378,13 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   </span>
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} />
+                {m.shared_by && (
+                  <Tooltip title={`From ${m.shared_by}\u2019s copy of this conversation`}>
+                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
+                      shared by {m.shared_by}
+                    </span>
+                  </Tooltip>
+                )}
                 {meta.isFirstEdited && m.edited_at && (
                   <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>

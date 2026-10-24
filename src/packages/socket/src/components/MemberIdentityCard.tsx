@@ -11,6 +11,7 @@ import {
   identityScopeFor,
   localPeerPinStore,
   markPeerCompared,
+  openLocalArchive,
   ownComparisonSide,
   pinPeerKey,
   resolveAvatarSrc,
@@ -20,12 +21,15 @@ import { useSettings } from "@/settings";
 
 import { openLightbox } from "../../../../lib/lightboxStore";
 import { nameTags } from "../../../lib/nameTags";
+import { useDirectory } from "../hooks/dmDirectory";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { encodeCardStyle } from "../lib/memberCard/cardStyle";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { formatJoined, makeRankOf, TIER_LABEL } from "../lib/memberFacts";
+import { useMlsSource } from "../mls/serverMls";
+import { shareHistory } from "../mls/shareHistory";
 import { friendButtonSteps, type FriendStep } from "../utils/friendButtonSteps";
 import { describeChange, describePin } from "../utils/memberKeyWording";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -154,6 +158,26 @@ export function MemberIdentityCard({
     : null;
   const newCode = ownKeys && newKeys ? comparisonCode(ownKeys, newKeys) : null;
   const [trustedPin, setTrustedPin] = useState<PeerPin | null>(null);
+  const directory = useDirectory();
+  const mlsSource = useMlsSource(serverHost);
+  const dmWithThem = directory.find(
+    (e) => e.host === serverHost && e.conversation.kind === "dm" && e.conversation.members[0]?.server_user_id === member.serverUserId,
+  );
+  const [sharing, setSharing] = useState<"idle" | "sending" | "sent">("idle");
+  /* GRYT-1875: offered only right after "trust it", so only once somebody checked it's them. */
+  const sendOurCopy = async () => {
+    if (!dmWithThem || !mlsSource) return;
+    setSharing("sending");
+    try {
+      const archive = (await openLocalArchive()).messages;
+      const sent = await shareHistory(mlsSource, archive, dmWithThem.conversation.conversation_id, member.serverUserId);
+      toast.success(`Sent ${member.nickname} your copy: ${sent} message${sent === 1 ? "" : "s"}`);
+      setSharing("sent");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn\u2019t send your copy");
+      setSharing("idle");
+    }
+  };
   const [notThem, setNotThem] = useState(false);
   const notThemKey = serverHost && newKeys
     ? `gryt_key_not_them:${identityScopeFor(serverHost)} ${member.serverUserId} ${newKeys.thumbprint}`
@@ -529,11 +553,27 @@ export function MemberIdentityCard({
           </div>
         )}
         {keyState?.decision.kind !== "changed" && trustedPin && (
-          <div className="gmc-note" style={{ marginTop: 10 }}>
-            You trusted their new key.{" "}
-            <button type="button" className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline" data-gryt="undo-trust" onClick={undoTrust}>
-              Undo
-            </button>
+          <div className="gmc-note" style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            <span>
+              You trusted their new key.{" "}
+              <button type="button" className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline" data-gryt="undo-trust" onClick={undoTrust}>
+                Undo
+              </button>
+            </span>
+            {dmWithThem && mlsSource && sharing !== "sent" && (
+              <span>
+                A new key usually means their old messages are gone.{" "}
+                <button
+                  type="button"
+                  className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
+                  data-gryt="send-our-copy"
+                  disabled={sharing === "sending"}
+                  onClick={() => void sendOurCopy()}
+                >
+                  {sharing === "sending" ? "Sending\u2026" : "Send them your copy of your conversation"}
+                </button>
+              </span>
+            )}
           </div>
         )}
         {(code || (!identityIsTheQuestion && fingerprint)) && (

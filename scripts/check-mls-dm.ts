@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 
-import type { MlsReply, MlsServerCapability } from "@gryt/core";
+import type { MlsDmContent, MlsReply, MlsServerCapability } from "@gryt/core";
 
 import type { ArchivedMessage } from "@/common";
 
@@ -164,6 +164,48 @@ const stored = (db: ReturnType<typeof memoryArchive>, id: string) => {
   assert.ok(m, `nothing is stored under ${id}`);
   return m;
 };
+
+test("history from the other person fills gaps, marked as theirs, and never overwrites (GRYT-1875)", async () => {
+  const db = memoryArchive();
+  await applyMlsContent(db, { ...base, senderId: "kari", content: { type: "message", id: "mine", text: "min versjon" } });
+  await applyMlsContent(db, {
+    ...base,
+    senderId: "sable",
+    content: {
+      type: "history",
+      id: "h1",
+      entries: [
+        { id: "old", senderId: "kari", sentAt: 10, text: "gammel", replyTo: "older" },
+        { id: "mine", senderId: "kari", sentAt: 20, text: "endret av dem" },
+      ],
+    },
+  });
+  const old = stored(db, "old");
+  assert.equal(old.sharedBy, "sable");
+  assert.equal(old.senderId, "kari");
+  assert.equal(old.replyTo, "older");
+  assert.equal(stored(db, "mine").text, "min versjon", "a message already here stays as it was");
+  assert.equal(stored(db, "mine").sharedBy, undefined);
+  assert.equal(archivedRow(old, (id) => ({ sable: "Sable" })[id]).shared_by, "Sable");
+});
+
+test("sending your copy pages the whole DM and leaves server copies out (GRYT-1875)", async () => {
+  const { shareHistory } = await import("../src/packages/socket/src/mls/shareHistory.ts");
+  const all: ArchivedMessage[] = Array.from({ length: 1200 }, (_, i) => ({
+    scope: "s", conversationId: "dm_1", messageId: `m${i}`, sentAt: i, senderId: i % 2 ? "kari" : "sable", text: `t${i}`, attachments: {},
+    ...(i === 5 ? { copy: true as const } : {}),
+  }));
+  const archive = {
+    page: async (_s: string, _c: string, { before, limit = 50 }: { before?: { sentAt: number }; limit?: number } = {}) => {
+      const older = all.filter((m) => !before || m.sentAt < before.sentAt);
+      return older.slice(Math.max(0, older.length - limit));
+    },
+  };
+  const sent: MlsDmContent[] = [];
+  const source = { storeScope: "s", send: async (_c: string, _p: string, content: MlsDmContent) => void sent.push(content) };
+  assert.equal(await shareHistory(source, archive as never, "dm_1", "sable"), 1199);
+  assert.ok(sent.every((c) => c.type === "history"));
+});
 
 test("a sender's message is stored, edited and deleted", async () => {
   const db = memoryArchive();
