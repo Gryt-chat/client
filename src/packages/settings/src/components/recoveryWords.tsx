@@ -4,10 +4,19 @@ import toast from "react-hot-toast";
 
 import { getIdentityWords } from "@/common";
 
+import { QrCode } from "../../../../components/linkDevice";
 import { PiCopySimple, PiEyeFill, PiWarningFill } from "../../../../lib/icons";
-import { HIDDEN, nextWordsView, type WordsAction, type WordsView } from "./recoveryWordsStep";
+import { saveBlob } from "../../../socket/src/utils/downloadFile";
+import {
+  HIDDEN,
+  nextWordsView,
+  RECOVERY_KEY_FILE_NAME,
+  recoveryKeyFileText,
+  type WordsAction,
+  type WordsView,
+} from "./recoveryWordsStep";
 
-/** The 24 words on screen with a copy button. The guest section and the account one share it. */
+/** The 24 words on screen, to copy, save as a file or scan. The guest section and the account one share it. */
 export function RecoveryWordsPanel({
   words,
   note,
@@ -20,6 +29,7 @@ export function RecoveryWordsPanel({
   onHide(): void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [qr, setQr] = useState(false);
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-gryt-border p-4">
@@ -27,7 +37,19 @@ export function RecoveryWordsPanel({
       <code className="select-all break-words rounded-md bg-gryt-surface-raised p-3 font-mono text-sm leading-relaxed text-gryt-text">
         {words}
       </code>
+      {qr && (
+        <div className="flex flex-col items-center gap-2">
+          <QrCode text={words} label="Your 24 words as a code to scan" />
+          <span className="text-xs text-gryt-muted">Scan this from the Gryt app on your new device.</span>
+        </div>
+      )}
       <div className="flex gap-2 flex-wrap">
+        <Button tone="neutral" size="small" onClick={() => saveBlob(new Blob([recoveryKeyFileText(words)], { type: "text/plain" }), RECOVERY_KEY_FILE_NAME)}>
+          Save as file
+        </Button>
+        <Button tone="neutral" size="small" aria-pressed={qr} onClick={() => setQr((v) => !v)}>
+          {qr ? "Hide code" : "Show as code"}
+        </Button>
         <Button
           tone="neutral"
           size="small"
