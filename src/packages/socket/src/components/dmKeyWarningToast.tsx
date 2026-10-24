@@ -8,8 +8,6 @@ import toast from "react-hot-toast";
 
 /** What this device can actually do about the mismatch. */
 export type DmKeyFix =
-  /** The account has a sealed copy; this device can take it. */
-  | "unlock"
   /** Signed in with no sealed copy: the fix is approving this device from one that has the key. */
   | "set-up"
   /** A guest, or the account could not be read. Nothing to offer, so the
@@ -53,9 +51,6 @@ export function setDmKeyWarningsOff(off: boolean): void {
 }
 
 const BODY: Record<DmKeyFix, (servers: readonly string[]) => string> = {
-  unlock: (servers) =>
-    `${serversHave(servers)} a message key this device didn't publish. Your account has a saved copy, ` +
-    `so unlock it here and both devices use the same key.`,
   "set-up": (servers) =>
     `${serversHave(servers)} a message key this device didn't publish. Each device makes its own key, ` +
     `so signing in somewhere new does this. Approve this device from one you already use, and they share one.`,
@@ -65,7 +60,6 @@ const BODY: Record<DmKeyFix, (servers: readonly string[]) => string> = {
 };
 
 const ACTION: Record<DmKeyFix, string | null> = {
-  unlock: "Unlock it here",
   "set-up": null,
   none: null,
 };

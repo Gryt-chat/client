@@ -67,7 +67,6 @@ jobs:
       - run: yarn test:message-vault
       - run: yarn test:message-vault-upgrade
       - run: yarn test:message-vault-reseal
-      - run: yarn test:vault-upgrade-prompt
       - run: yarn test:account-words
       - run: yarn test:message-key
       - run: yarn test:message-key-offer
