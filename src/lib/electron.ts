@@ -225,6 +225,8 @@ export interface ElectronAPI {
   isElectron: true;
   /** False where the compositor draws and places windows itself. */
   drawsWindowChrome: boolean;
+  /** The computer's own name, for the device certificate. Absent on builds from before it existed. */
+  computerName?: string;
   /** The Mac App Store build. Absent on builds from before it existed. */
   macAppStore?: boolean;
   windowsStore?: boolean;

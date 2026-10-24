@@ -14,6 +14,7 @@ import {
   writeSealedVault,
 } from "@/common";
 
+import { useLinkDevice } from "../../../../lib/pairing/useLinkDevice";
 import { generateSeed, seedToWords } from "../../../common/src/auth/identity-seed";
 import { phraseMatches } from "../../../socket/src/lib/confirmPhrase";
 import { AccountWordsReveal } from "./recoveryWords";
@@ -60,6 +61,7 @@ export function MessageKeySection() {
   const [resetWords, setResetWords] = useState(false);
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
+  const { open: openLinkDevice } = useLinkDevice();
 
   useEffect(() => {
     let cancelled = false;
@@ -188,6 +190,18 @@ export function MessageKeySection() {
             </span>
           </div>
           <AccountWordsReveal keyIsHere={keyIsHere} />
+        </div>
+      )}
+
+      {keyIsHere && !open && (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-gryt-muted">
+            Set this device up from your 24 words? Your messages come over when you link it to
+            a device you already use.
+          </span>
+          <Button size="small" tone="neutral" style={{ alignSelf: "flex-start" }} onClick={openLinkDevice}>
+            Bring my messages from another device
+          </Button>
         </div>
       )}
 

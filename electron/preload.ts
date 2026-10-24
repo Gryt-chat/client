@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // False where the compositor manages windows itself, so the app draws no
   // titlebar either. Set by main from --gryt-no-window-chrome. GRYT-1062.
   drawsWindowChrome: !process.argv.includes("--gryt-no-window-chrome"),
+  computerName: process.argv.find((a) => a.startsWith("--gryt-computer-name="))?.slice("--gryt-computer-name=".length) || undefined,
 
   // The Mac App Store build: sandboxed, and updated by the store rather than by Gryt.
   macAppStore: process.mas === true,
