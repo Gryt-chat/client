@@ -49,7 +49,6 @@
     "test:message-vault": "node scripts/check-message-vault.ts",
     "test:message-vault-upgrade": "node scripts/check-message-vault-upgrade.ts",
     "test:message-vault-reseal": "node scripts/check-message-vault-reseal.ts",
-    "test:vault-upgrade-prompt": "node scripts/check-vault-upgrade-prompt.ts",
     "test:account-words": "node scripts/check-account-words.ts",
     "test:message-key": "node scripts/check-message-key.ts",
     "test:message-key-offer": "node scripts/check-message-key-offer.ts",
@@ -240,8 +239,8 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@gryt/core": "0.18.2",
-    "@gryt/crypto": "0.11.1",
+    "@gryt/core": "0.19.0",
+    "@gryt/crypto": "0.12.0",
     "@gryt/owl": "^0.7.0",
     "@gryt/ui": "^0.45.1",
     "@gryt/voice": "0.8.13",
@@ -304,6 +303,6 @@
     "dmg-license": "1.0.11"
   },
   "resolutions": {
-    "@gryt/core/@gryt/crypto": "0.11.1"
+    "@gryt/core/@gryt/crypto": "0.12.0"
   }
 }

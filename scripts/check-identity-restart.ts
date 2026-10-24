@@ -1,5 +1,5 @@
-// Changing the identity invalidates every session and derived key, so both
-// paths that do it have to offer the restart rather than mention it. GRYT-1068.
+// Changing the identity invalidates every session and derived key, so the
+// path that does it has to offer the restart rather than mention it. GRYT-1068.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -13,13 +13,13 @@ const section = readFileSync(
   "utf8",
 );
 
-// Both identity changes: adopting the account's key, and resetting to a new one.
+// Resetting to a new key. Adopting the account's copy went with the message password (GRYT-1882).
 const calls = [...section.matchAll(/showAdoptedToast\(/g)];
 
 assert.equal(
   calls.length,
-  3,
-  `expected the helper and both call sites, found ${calls.length} mentions`,
+  2,
+  `expected the helper and its call site, found ${calls.length} mentions`,
 );
 
 assert.match(
@@ -51,4 +51,4 @@ assert.match(
   "restoreIdentityFromWords no longer drops sessions; if that changed on purpose, this toast may no longer be needed",
 );
 
-console.log("identity restart: ok, both paths offer it");
+console.log("identity restart: ok, a reset offers it");

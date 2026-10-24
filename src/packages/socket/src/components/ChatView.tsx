@@ -41,7 +41,6 @@ import { readableRoleColor } from "./memberGroups";
 import type { MemberInfo } from "./MemberSidebar";
 import type { MentionMember } from "./MentionAutocomplete";
 import { MentionViewerContext } from "./mentionViewerContext";
-import { MessageKeyPrompt } from "./MessageKeyPrompt";
 import { MessageRow } from "./MessageRow";
 import { MlsNoticeLine } from "./MlsNoticeLine";
 import { PinsButton } from "./PinsButton";
@@ -977,7 +976,6 @@ export const ChatView = memo(({
               scrolls with a long conversation instead of sitting over it. */}
           {/* Not when it's unencrypted: the header, the box and the dots say that now (board 5). */}
           {conversationKind === "dm" && sealing?.kind !== "plaintext" && <DirectMessagePrivacyNotice decision={sealing} peerInClear={peerInClear} />}
-          {conversationKind === "dm" && <MessageKeyPrompt />}
 
           {isVoiceChannelTextChat && !canViewVoiceChannelText && (
             <div className="flex items-center justify-center" style={{ padding: "24px", textAlign: "center" }}>
