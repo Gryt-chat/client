@@ -9,22 +9,18 @@ import {
   hasMessageKeyHere,
   readSealedVault,
   rememberMessageKeyHere,
-  resealCurrentIdentity,
-  resetMessageIdentity,
-  sealCurrentIdentity,
+  restoreIdentityFromWords,
   type SealedVault,
-  vaultHasRecoverySlot,
-  vaultNeedsUpgrade,
   writeSealedVault,
 } from "@/common";
 
+import { generateSeed, seedToWords } from "../../../common/src/auth/identity-seed";
 import { phraseMatches } from "../../../socket/src/lib/confirmPhrase";
-import { type MessagePasswordChoice, MessagePasswordSetup } from "./messagePasswordSetup";
 import { AccountWordsReveal } from "./recoveryWords";
 
 /**
- * The message password, for signed-in accounts. A second device used to publish
- * its key over the first's, which then warned about the server (GRYT-783).
+ * The message key, for signed-in accounts. The password-locked copy on the account is
+ * only read and removed here now; nothing makes a new one (GRYT-1871).
  */
 
 /**
@@ -58,7 +54,7 @@ function showAdoptedToast(lead: string): void {
 
 export function MessageKeySection() {
   const [vault, setVault] = useState<SealedVault | null | undefined>(undefined);
-  const [open, setOpen] = useState<"set" | "use" | "forgot" | "reset" | null>(null);
+  const [open, setOpen] = useState<"use" | "reset" | null>(null);
   const [keyIsHere, setKeyIsHere] = useState(false);
   const [confirmReset, setConfirmReset] = useState("");
   const [resetWords, setResetWords] = useState(false);
@@ -72,8 +68,7 @@ export function MessageKeySection() {
       .catch(() => {});
     readSealedVault()
       .then((v) => { if (!cancelled) setVault(v); })
-      // Not surfaced. Failing to read this says nothing the person can act on,
-      // and the section still offers to set one.
+      // Not surfaced: failing to read this says nothing the person can act on.
       .catch(() => { if (!cancelled) setVault(null); });
     return () => { cancelled = true; };
   }, []);
@@ -85,55 +80,20 @@ export function MessageKeySection() {
     setResetWords(false);
   }, []);
 
-  const save = useCallback(async ({ password, recoveryKey }: MessagePasswordChoice) => {
+  const removeCopy = useCallback(async () => {
     setBusy(true);
     try {
-      const sealed = await sealCurrentIdentity(password, recoveryKey);
-      await writeSealedVault(sealed);
-      // This device sealed it, so it plainly has the key. Without this the DM
-      // prompt would offer to fetch a copy of what it just sent.
-      const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
-      if (sub) rememberMessageKeyHere(sub);
-      setKeyIsHere(true);
-      setVault(sealed);
-      close();
-      toast.success("Message password set.");
+      await writeSealedVault(null);
+      setVault(null);
+      toast.success("Removed. Your key is only on your devices now.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save the message password.");
+      toast.error(e instanceof Error ? e.message : "Couldn\u2019t remove it.");
     } finally {
       setBusy(false);
     }
-  }, [close]);
+  }, []);
 
-  /** A new password from this device's own key, for "Change it" and "Forgotten it?". */
-  const reseal = useCallback(async ({ password, recoveryKey }: MessagePasswordChoice) => {
-    if (!vault) return;
-    setBusy(true);
-    try {
-      const outcome = await resealCurrentIdentity(vault, password, recoveryKey);
-      setVault(await readSealedVault().catch(() => vault));
-      if (outcome === "changed") {
-        toast.error("Another device changed your message password in the meantime, so nothing was saved here.");
-      } else if (outcome === "restored") {
-        toast.error("Couldn\u2019t save the new password. Your old one still works.");
-      } else {
-        const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
-        if (sub) rememberMessageKeyHere(sub);
-        setKeyIsHere(true);
-        close();
-        toast.success("New message password set.");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save the message password.");
-    } finally {
-      setBusy(false);
-    }
-  }, [vault, close]);
-
-  /**
-   * Take on the identity the account already has. Without it a sealed copy is
-   * stored and never used, and the promise would be about nothing.
-   */
+  /** Take on the key the account's old copy holds, for a device that doesn't have it. */
   const use = useCallback(async () => {
     if (!vault) return;
     if (!secret) return toast.error("Enter your message password or recovery key.");
@@ -154,19 +114,20 @@ export function MessageKeySection() {
     }
   }, [vault, secret, close]);
 
-  const reset = useCallback(async ({ password, recoveryKey }: MessagePasswordChoice) => {
+  /** A new key. The old copy on the account holds the old key, so it goes too. */
+  const reset = useCallback(async () => {
     if (!phraseMatches(confirmReset, RESET_PHRASE)) {
       return toast.error(`Type "${RESET_PHRASE}" to confirm.`);
     }
 
     setBusy(true);
     try {
-      const sealed = await resetMessageIdentity(password, recoveryKey);
-      await writeSealedVault(sealed);
+      await restoreIdentityFromWords(seedToWords(generateSeed()));
+      if (vault) await writeSealedVault(null);
       const sub = await getAccountProfile().then((p) => p.sub).catch(() => null);
       if (sub) rememberMessageKeyHere(sub);
       setKeyIsHere(true);
-      setVault(sealed);
+      setVault(null);
       close();
       showAdoptedToast("New message key set. Older conversations stay unreadable.");
     } catch (e) {
@@ -174,47 +135,48 @@ export function MessageKeySection() {
     } finally {
       setBusy(false);
     }
-  }, [confirmReset, close]);
+  }, [confirmReset, vault, close]);
 
   const guests = guestIdentitiesAtRisk();
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-sm">Message password</span>
+        <span className="font-medium text-sm">Your message key</span>
         <span className="text-xs text-gryt-muted">
-          Your messages are encrypted with a key that lives on this device. Set a
-          message password and Gryt keeps a sealed copy of that key on your
-          account, so signing in somewhere else brings your conversations with
-          you. We cannot open it &mdash; only this password does.
+          Your messages are encrypted with a key that lives on your devices. A new
+          device gets it when you approve it from one you already use, or from your
+          24 words.
         </span>
       </div>
 
-      {vault && !open && (
+      {vault && keyIsHere && !open && (
+        <Alert severity="warning">
+          <div className="flex flex-col gap-2">
+            <span>
+              Your account still has a copy of this key, locked with your old message
+              password. Anyone who got hold of the server&rsquo;s database could keep
+              guessing that password, so Gryt doesn&rsquo;t keep these anymore. Save your
+              24 words below, then remove it.
+            </span>
+            <div>
+              <Button size="small" onClick={() => void removeCopy()} disabled={busy}>
+                {busy ? "Removing\u2026" : "Remove it from my account"}
+              </Button>
+            </div>
+          </div>
+        </Alert>
+      )}
+
+      {vault && !keyIsHere && !open && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-gryt-muted">
-            A sealed copy is saved to your account.
+            Your account has an old copy of your key, locked with your message password.
           </span>
           <Button size="small" onClick={() => setOpen("use")}>
             Use it on this device
           </Button>
-          <Button tone="neutral" size="small" onClick={() => setOpen("set")}>
-            Change it
-          </Button>
-          <Button tone="ghost" size="small" onClick={() => setOpen(keyIsHere ? "forgot" : "reset")}>
-            Forgotten it?
-          </Button>
         </div>
-      )}
-
-      {/* Decision 5's third moment: a device that already holds the key never
-          unlocks, so nothing else would ever move its old bundle forward. */}
-      {vault && !open && vaultNeedsUpgrade(vault) && (
-        <Alert severity="warning">
-          Your sealed copy uses an older lock that&rsquo;s much quicker to crack.
-          Change the password to move it to the new one. You can add a recovery
-          key at the same time.
-        </Alert>
       )}
 
       {keyIsHere && !open && (
@@ -229,45 +191,11 @@ export function MessageKeySection() {
         </div>
       )}
 
-      {vault === null && !open && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-gryt-muted">
-            Not set. Sign in somewhere else and that device makes its own
-            message key, which stops the people you talk to from encrypting to
-            you until you set a password here and use it there.
-          </span>
-          <Button size="small" onClick={() => setOpen("set")}>
-            Set a message password
+      {!open && vault !== undefined && (
+        <div>
+          <Button tone="ghost" size="small" onClick={() => setOpen("reset")}>
+            Start again with a new key
           </Button>
-        </div>
-      )}
-
-      {/* Decision 3: a device that holds the key needs no old password, so this
-          comes before the reset, which loses every conversation. */}
-      {open === "forgot" && vault && (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="font-medium text-sm">Set a new password</span>
-            <span className="text-xs text-gryt-muted">
-              This device still has your message key, so you don&rsquo;t need
-              the old password. You can still read your conversations here and
-              on your other devices.
-            </span>
-          </div>
-
-          <MessagePasswordSetup
-            submitLabel="Set new password"
-            busy={busy}
-            replacesRecoveryKey={vaultHasRecoverySlot(vault)}
-            onSubmit={(choice) => void reseal(choice)}
-            onCancel={close}
-          />
-
-          <div>
-            <Button tone="ghost" size="small" onClick={() => setOpen("reset")} disabled={busy}>
-              Start again with a new key instead
-            </Button>
-          </div>
         </div>
       )}
 
@@ -281,11 +209,8 @@ export function MessageKeySection() {
                 Nobody can undo it, including us. That is the same property that
                 stops us reading your messages in the first place.
               </span>
-              {/* Three cases, and the third is the one that matters. A count
-                  of zero used to print nothing at all, so somebody whose
-                  history could not be read — or who set this device up from a
-                  24-word phrase, which carries no history — was told nothing
-                  about the guest servers they were about to lose. */}
+              {/* Three cases, and the third is the one that matters: no record of guest
+                  servers doesn't mean there are none. */}
               {guests.certain ? (
                 <span>
                   <strong>
@@ -315,19 +240,19 @@ export function MessageKeySection() {
 
           {resetWords && <AccountWordsReveal keyIsHere={keyIsHere} startAt="confirming" />}
 
-          <MessagePasswordSetup
-            submitLabel="Start again"
-            tone="danger"
-            busy={busy}
-            onSubmit={(choice) => void reset(choice)}
-            onCancel={close}
-          >
-            <TextField
-              label={`Type \u201c${RESET_PHRASE}\u201d to confirm`}
-              value={confirmReset}
-              onChange={(e) => setConfirmReset(e.target.value)}
-            />
-          </MessagePasswordSetup>
+          <TextField
+            label={`Type \u201c${RESET_PHRASE}\u201d to confirm`}
+            value={confirmReset}
+            onChange={(e) => setConfirmReset(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button size="small" tone="danger" onClick={() => void reset()} disabled={busy}>
+              Start again
+            </Button>
+            <Button tone="neutral" size="small" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
 
@@ -356,16 +281,6 @@ export function MessageKeySection() {
             </Button>
           </div>
         </div>
-      )}
-
-      {open === "set" && (
-        <MessagePasswordSetup
-          submitLabel="Save"
-          busy={busy}
-          replacesRecoveryKey={!!vault && vaultHasRecoverySlot(vault)}
-          onSubmit={(choice) => void (vault ? reseal(choice) : save(choice))}
-          onCancel={close}
-        />
       )}
     </div>
   );

@@ -8,21 +8,15 @@ import {
   hasMessageKeyHere,
   readSealedVault,
   rememberMessageKeyHere,
-  sealCurrentIdentity,
   type SealedVault,
   shouldOfferMessageKey,
-  writeSealedVault,
 } from "@/common";
 
 import { PiKey } from "../../../../lib/icons";
-import {
-  type MessagePasswordChoice,
-  MessagePasswordSetup,
-} from "../../../settings/src/components/messagePasswordSetup";
 
 /**
- * The message key, above a direct message. Either taking the account's copy, or
- * making one on an account that has none (GRYT-783, GRYT-1130).
+ * The message key, above a direct message: taking the account's old password-locked copy.
+ * Making one is gone (GRYT-1871), so the "protect" offer shows nothing.
  */
 export function MessageKeyPrompt() {
   const [grytUserId, setGrytUserId] = useState<string | null>(null);
@@ -68,23 +62,14 @@ export function MessageKeyPrompt() {
     };
   }, []);
 
-  const unlock = useCallback(async (choice?: MessagePasswordChoice) => {
-    if (!grytUserId) return;
-    if (vault && !secret) return toast.error("Enter your message password or recovery key.");
+  const unlock = useCallback(async () => {
+    if (!grytUserId || !vault) return;
+    if (!secret) return toast.error("Enter your message password or recovery key.");
 
     setBusy(true);
     try {
-      if (vault) {
-        await adoptSealedIdentity(vault, secret);
-        toast.success("This device has your message key now. Reload to read older conversations.");
-      } else if (choice) {
-        const sealed = await sealCurrentIdentity(choice.password, choice.recoveryKey);
-        await writeSealedVault(sealed);
-        setVault(sealed);
-        toast.success("Saved. Use this password on your other devices.");
-      } else {
-        return;
-      }
+      await adoptSealedIdentity(vault, secret);
+      toast.success("This device has your message key now. Reload to read older conversations.");
       rememberMessageKeyHere(grytUserId);
       setKeyIsHere(true);
       setOpen(false);
@@ -101,7 +86,7 @@ export function MessageKeyPrompt() {
     vaultExists: vault === undefined ? null : vault !== null,
     keyIsHere,
   });
-  if (!offer || dismissed) return null;
+  if (offer !== "adopt" || dismissed) return null;
 
   return (
     <div
@@ -117,26 +102,16 @@ export function MessageKeyPrompt() {
       <div className="flex items-start gap-2">
         <PiKey aria-hidden="true" size={14} style={{ color: "var(--gryt-accent)", flexShrink: 0, marginTop: "2px" }} />
         <p className="m-0 text-xs" style={{ color: "var(--gryt-neutral-11)", lineHeight: 1.5 }}>
-          {offer === "adopt" ? (
-            <>
-              Your account has a message key this device doesn&rsquo;t hold, so
-              conversations from your other devices won&rsquo;t open here. Enter
-              your message password to bring them across.
-            </>
-          ) : (
-            <>
-              This account has no message password. Sign in somewhere else and
-              that device makes its own key, which stops the people you talk to
-              from encrypting to you until you set one and use it there.
-            </>
-          )}
+          Your account has a message key this device doesn&rsquo;t hold, so
+          conversations from your other devices won&rsquo;t open here. Enter
+          your message password to bring them across.
         </p>
       </div>
 
       {!open && (
         <div className="flex gap-2">
           <Button size="xsmall" onClick={() => setOpen(true)}>
-            {offer === "adopt" ? "Enter it" : "Set a password"}
+            Enter it
           </Button>
           {/* For the session only. Not persisted: it is still true tomorrow,
               and quietly agreeing never to mention it again is how somebody
@@ -146,15 +121,7 @@ export function MessageKeyPrompt() {
           </Button>
         </div>
       )}
-      {open && offer === "protect" && (
-        <MessagePasswordSetup
-          submitLabel="Save"
-          busy={busy}
-          onSubmit={(choice) => void unlock(choice)}
-          onCancel={() => setOpen(false)}
-        />
-      )}
-      {open && offer !== "protect" && (
+      {open && (
         <div className="flex items-end gap-2 flex-wrap">
           <TextField
             type="password"

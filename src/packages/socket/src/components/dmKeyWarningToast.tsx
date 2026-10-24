@@ -10,8 +10,7 @@ import toast from "react-hot-toast";
 export type DmKeyFix =
   /** The account has a sealed copy; this device can take it. */
   | "unlock"
-  /** Signed in with no sealed copy, so there is nothing for a second device
-      to take. Setting a message password is what creates one. */
+  /** Signed in with no sealed copy: the fix is approving this device from one that has the key. */
   | "set-up"
   /** A guest, or the account could not be read. Nothing to offer, so the
       warning is only a warning. */
@@ -59,7 +58,7 @@ const BODY: Record<DmKeyFix, (servers: readonly string[]) => string> = {
     `so unlock it here and both devices use the same key.`,
   "set-up": (servers) =>
     `${serversHave(servers)} a message key this device didn't publish. Each device makes its own key, ` +
-    `so signing in somewhere new does this. A message password lets them share one.`,
+    `so signing in somewhere new does this. Approve this device from one you already use, and they share one.`,
   none: (servers) =>
     `${serversHave(servers)} a message key this device didn't publish. If you haven't signed in on ` +
     `another device, treat direct messages there as readable by the server.`,
@@ -67,7 +66,7 @@ const BODY: Record<DmKeyFix, (servers: readonly string[]) => string> = {
 
 const ACTION: Record<DmKeyFix, string | null> = {
   unlock: "Unlock it here",
-  "set-up": "Set a message password",
+  "set-up": null,
   none: null,
 };
 
