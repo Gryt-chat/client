@@ -80,7 +80,7 @@ assert.ok(flag, "main.ts no longer defines NO_WINDOW_CHROME_FLAG");
 
 assert.match(
   main,
-  /additionalArguments: drawsWindowButtons\(\)\s*\n?\s*\?\s*\[\]\s*\n?\s*:\s*\[NO_WINDOW_CHROME_FLAG\]/,
+  /additionalArguments: \[\s*\.\.\.\(drawsWindowButtons\(\) \? \[\] : \[NO_WINDOW_CHROME_FLAG\]\)/,
   "additionalArguments is not gated on drawsWindowButtons(), so the renderer is told the wrong thing",
 );
 
