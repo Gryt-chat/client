@@ -899,6 +899,8 @@ export async function restoreIdentityFromWords(phrase: string): Promise<void> {
 
   cachedKeyPairs.clear();
   discardServerSessions();
+  // Restored on purpose: this is the account's key now, so iCloud follows, as on the phone.
+  await getElectronAPI()?.writeSyncedSeed?.(toHex(seed)).catch(() => false);
 }
 
 /**
@@ -925,6 +927,7 @@ export async function installPairedIdentity(
   cachedKeyPairs.clear();
   discardServerSessions();
   rememberGuestScopes(keys.map((e) => e.scope));
+  await getElectronAPI()?.writeSyncedSeed?.(toHex(seed)).catch(() => false);
 }
 
 /**
