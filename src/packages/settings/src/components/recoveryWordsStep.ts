@@ -28,3 +28,20 @@ export async function nextWordsView(
   if (view.step !== "confirming") return view;
   return { step: "shown", words: await readWords() };
 }
+
+export const RECOVERY_KEY_FILE_NAME = "Gryt recovery key.txt";
+
+/** What "Save as file" writes: the words, then how to use them. */
+export function recoveryKeyFileText(words: string): string {
+  return [
+    "Gryt recovery key",
+    "",
+    words.trim(),
+    "",
+    "These 24 words are your encryption key. On a new device, sign in to Gryt and choose",
+    "\"I have my 24 words\", or scan the QR code from Settings on a device that has your key.",
+    "",
+    "Keep this file private. Anyone with these words can read your encrypted messages and act as you.",
+    "",
+  ].join("\n");
+}

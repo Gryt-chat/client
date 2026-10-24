@@ -6,7 +6,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { HIDDEN, nextWordsView, type WordsView } from "../src/packages/settings/src/components/recoveryWordsStep.ts";
+import {
+  HIDDEN,
+  nextWordsView,
+  RECOVERY_KEY_FILE_NAME,
+  recoveryKeyFileText,
+  type WordsView,
+} from "../src/packages/settings/src/components/recoveryWordsStep.ts";
 
 const WORDS = "abandon amount liar amount expire adjust cage candy arch gather drum bullet";
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -49,6 +55,15 @@ function context(keyIsHere: boolean) {
     }
   }
   assert.equal(ctx.reads, 0);
+}
+
+// ── the saved file ──────────────────────────────────────────────────────────
+{
+  const text = recoveryKeyFileText(`  ${WORDS}\n`);
+  assert.equal(text.split("\n")[2], WORDS, "the words on a line of their own, trimmed");
+  assert.match(text, /I have my 24 words/, "says what to choose on a new device");
+  assert.match(text, /Keep this file private/);
+  assert.equal(RECOVERY_KEY_FILE_NAME, "Gryt recovery key.txt");
 }
 
 // ── where it is drawn ───────────────────────────────────────────────────────
