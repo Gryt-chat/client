@@ -33,6 +33,7 @@ import {
   writeFileSync,
 } from "fs";
 import { createServer, type Server } from "http";
+import { createRequire } from "module";
 import { hostname } from "os";
 import { dirname, extname, join, resolve } from "path";
 import semver from "semver";
@@ -2132,6 +2133,22 @@ const TITLEBAR_OVERLAY_HEIGHT = 36;
 // do nothing. XDG_CURRENT_DESKTOP is a colon-separated list by spec. GRYT-1060.
 const NO_WINDOW_CHROME_FLAG = "--gryt-no-window-chrome";
 
+let syncedSeed: { read(): string | null; write(hex: string): boolean } | null | undefined;
+function syncedSeedAddon() {
+  if (syncedSeed !== undefined) return syncedSeed;
+  syncedSeed = null;
+  if (process.platform !== "darwin") return null;
+  const file = app.isPackaged
+    ? join(process.resourcesPath, "native", "gryt_keychain.node")
+    : join(app.getAppPath(), "build", "native", "gryt_keychain.node");
+  try {
+    syncedSeed = createRequire(import.meta.url)(file);
+  } catch (e) {
+    console.warn("[Identity] No iCloud Keychain addon:", e);
+  }
+  return syncedSeed;
+}
+
 /* What the device certificate names this install after (GRYT-1873): "Sivert's MacBook Pro". */
 const COMPUTER_NAME_FLAG = "--gryt-computer-name=";
 function computerName(): string {
@@ -3538,6 +3555,13 @@ if (!gotSingleInstanceLock) {
       );
 
       // ── Secrets at rest ────────────────────────────────────────────
+
+      // The seed in iCloud Keychain, shared with the iPhone app (GRYT-1881). Only a build signed with
+      // the keychain group can reach it; anything else reads null and writes nothing.
+      ipcMain.handle("synced-seed:read", () => syncedSeedAddon()?.read() ?? null);
+      ipcMain.handle("synced-seed:write", (_event, hex: unknown) =>
+        typeof hex === "string" && /^[0-9a-f]{64}$/.test(hex) ? (syncedSeedAddon()?.write(hex) ?? false) : false,
+      );
 
       ipcMain.handle(
         "secret:available",

@@ -535,6 +535,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("secret:unseal", sealed);
   },
 
+  readSyncedSeed(): Promise<string | null> {
+    return ipcRenderer.invoke("synced-seed:read");
+  },
+
+  writeSyncedSeed(hex: string): Promise<boolean> {
+    return ipcRenderer.invoke("synced-seed:write", hex);
+  },
+
   // ── Global file store (backs localStorage) ─────────────────────
   loadGlobalStore(): Promise<Record<string, unknown>> {
     return ipcRenderer.invoke("global-store:load");

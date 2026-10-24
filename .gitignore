@@ -30,6 +30,7 @@ build/*
 # build/icon-sizes/, the intermediate PNGs the .ico is assembled from.
 !build/icon-macos.png
 !build/entitlements.mac.plist
+!build/entitlements.mac.keychain.plist
 !build/entitlements.mas.plist
 !build/entitlements.mas.inherit.plist
 !build/installer.nsh

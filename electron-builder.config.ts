@@ -105,6 +105,16 @@ if (MAS) {
   }
 }
 
+// iCloud Keychain, shared with the iPhone app (GRYT-1881). Needs a Developer ID profile allowing the
+// keychain group: without one macOS kills the app at launch, so no profile means no entitlement.
+if (!MAS && process.env.GRYT_MAC_PROVISIONING_PROFILE) {
+  config.mac = {
+    ...config.mac,
+    provisioningProfile: process.env.GRYT_MAC_PROVISIONING_PROFILE,
+    entitlements: "build/entitlements.mac.keychain.plist",
+  };
+}
+
 // Native prebuilds for platforms this package cannot run on. A hook rather than
 // a `files` exclude because app-builder-lib takes only `!` patterns for
 // node_modules -- see scripts/prune-prebuilds.ts.
