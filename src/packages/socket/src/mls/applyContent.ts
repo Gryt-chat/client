@@ -25,6 +25,21 @@ export async function applyMlsContent(
     at: number;
   },
 ): Promise<void> {
+  if (content.type === "history") {
+    // Their record, kept as theirs: it never replaces a message this device already has.
+    const fresh: ArchivedMessage[] = [];
+    for (const e of content.entries) {
+      if (await messages.get(scope, conversationId, e.id)) continue;
+      const record: ArchivedMessage = {
+        scope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId: e.senderId,
+        text: e.text, attachments: e.attachments ?? {}, sharedBy: senderId,
+      };
+      if (e.replyTo) record.replyTo = e.replyTo;
+      fresh.push(record);
+    }
+    if (fresh.length) await messages.put(fresh);
+    return;
+  }
   const existing = await messages.get(scope, conversationId, content.id);
   if (content.type === "reaction") {
     // A reaction to something this device never had has nothing to go on.

@@ -22,9 +22,14 @@ export interface ArchivedMessage {
   reactions?: { src: string; amount: number; users: string[] }[];
   /** A message the server holds too, kept so search and previews reach it. Never an MLS row. */
   copy?: true;
+  /** Came from the other person's copy of the DM, sent once they'd checked it's you (GRYT-1875). */
+  sharedBy?: string;
 }
 
-type MessageBody = Pick<ArchivedMessage, "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "copy">;
+type MessageBody = Pick<
+  ArchivedMessage,
+  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "copy" | "sharedBy"
+>;
 
 /** Ids and time stay readable for the indexes; the server already knows all four. */
 interface StoredMessage {
@@ -211,6 +216,7 @@ export class MessageArchive {
     if (m.replyTo !== undefined) body.replyTo = m.replyTo;
     if (m.reactions?.length) body.reactions = m.reactions;
     if (m.copy) body.copy = true;
+    if (m.sharedBy !== undefined) body.sharedBy = m.sharedBy;
 
     if (!this.key) {
       row.plain = body;

@@ -97,6 +97,8 @@ export type ChatMessage = {
   sealedState?: "opening" | "open" | "locked" | "broken";
   /** Sent over MLS and read from this device's archive. Edits and deletes go that way too. */
   mls?: boolean;
+  /** Who sent this from their copy of the DM (GRYT-1875). */
+  shared_by?: string;
   /** Why a failed send failed, when there's more to say than that it did. */
   failure?: string;
   /** The line the server writes for apps from before MLS. This app hides it (GRYT-1517). */
