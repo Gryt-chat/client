@@ -154,7 +154,6 @@ export function mlsNotice(
   if (mode?.kind === "refused") {
     if (mode.reason === "peer_left_mls") return `Can't send. ${peerName}'s app stopped using end-to-end encryption here.`;
     if (mode.reason === "server_dropped_mls") return "Can't send. This server stopped supporting end-to-end encryption.";
-    return `Can't send yet. ${Here} isn't set up for end-to-end encryption here.`;
   }
   if (mode?.kind === "mls" && peerKeyChanged) {
     return `Can't send. ${peerName}'s key changed. Check it's really them on their card first.`;
@@ -170,6 +169,8 @@ export function mlsNotice(
   }
   if (problems.lost === "removed") return `${Here} was taken out of this conversation, so new messages won't show here.`;
   if (problems.lost) return `${Here} lost track of this conversation's encryption, so new messages won't show here.`;
+  // After the reasons above: each of those says what to do, and this line doesn't.
+  if (mode?.kind === "refused") return `Can't send yet. ${Here} isn't set up for end-to-end encryption here.`;
   if (problems.undecryptable > 0) {
     const n = problems.undecryptable;
     return `${n} ${n === 1 ? "message" : "messages"} couldn't be decrypted on ${here}.`;

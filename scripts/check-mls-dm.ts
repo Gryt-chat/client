@@ -135,6 +135,10 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "not_added" }, app) ?? "", /isn't in this conversation yet.*Ola/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /different encryption key.*Link it/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*Settings/);
+  const refused = { kind: "refused", reason: "no_own_device" } as const;
+  assert.match(mlsNotice(refused, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*Settings/);
+  assert.match(mlsNotice(refused, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /Link it/);
+  assert.match(mlsNotice(refused, none, app) ?? "", /isn't set up/);
   assert.equal(mlsNotice({ kind: "mls" }, none, { ...app, lostHistory: true }), "Older messages were cleared from this device.");
   assert.match(mlsNotice({ kind: "mls" }, none, { ...app, home: "browser" }) ?? "", /this browser/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, { ...app, home: "browser" }), null);
