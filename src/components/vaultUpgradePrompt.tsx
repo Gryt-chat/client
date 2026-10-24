@@ -1,4 +1,4 @@
-import { Button, Dialog, TextField } from "@gryt/ui";
+import { Button, Dialog } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -6,39 +6,19 @@ import {
   getAccountProfile,
   hasMessageKeyHere,
   readSealedVault,
-  resealCurrentIdentity,
   type SealedVault,
-  upgradeAccountVault,
   useAccount,
-  vaultHasRecoverySlot,
+  writeSealedVault,
 } from "@/common";
 
-import {
-  type MessagePasswordChoice,
-  MessagePasswordSetup,
-} from "../packages/settings/src/components/messagePasswordSetup";
 import { AccountWordsReveal } from "../packages/settings/src/components/recoveryWords";
-import {
-  chooseNewPassword,
-  dismissUpgradePrompt,
-  shouldPromptUpgrade,
-  type UpgradeCalls,
-  upgradeWithPassword,
-} from "./vaultUpgradeState";
+import { dismissRemovalPrompt, shouldPromptRemoval } from "./vaultUpgradeState";
 
-const TOAST_ID = "vault-upgrade";
-
-const calls: UpgradeCalls = {
-  upgrade: upgradeAccountVault,
-  reseal: resealCurrentIdentity,
-  read: readSealedVault,
-};
-
-type Step = "password" | "short" | "forgot";
+const TOAST_ID = "vault-removal";
 
 /**
- * Asks once, after updating, to move an old message backup to the new lock. A toast
- * rather than a dialog, so it never stands between somebody and the app (GRYT-1498).
+ * Asks once to save the 24 words and take the password-locked copy off the account
+ * (GRYT-1871). A toast rather than a dialog, so it never stands between somebody and the app.
  */
 export function VaultUpgradePrompt() {
   const { isSignedIn } = useAccount();
@@ -47,8 +27,6 @@ export function VaultUpgradePrompt() {
   const [vault, setVault] = useState<SealedVault | null | undefined>(undefined);
   const [answered, setAnswered] = useState(false);
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>("password");
-  const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -71,23 +49,36 @@ export function VaultUpgradePrompt() {
 
   /** Any way out counts as the answer, and it is kept on this device. */
   const finish = useCallback(() => {
-    if (grytUserId) dismissUpgradePrompt(grytUserId);
+    if (grytUserId) dismissRemovalPrompt(grytUserId);
     toast.dismiss(TOAST_ID);
     setAnswered(true);
     setOpen(false);
-    setSecret("");
   }, [grytUserId]);
 
-  const asking = !answered && shouldPromptUpgrade({ grytUserId, keyIsHere, vault });
+  const remove = useCallback(async () => {
+    setBusy(true);
+    try {
+      await writeSealedVault(null);
+      setVault(null);
+      toast.success("Removed. Your key is only on your devices now.");
+      finish();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn’t remove it. Try again in Settings, under Security.");
+    } finally {
+      setBusy(false);
+    }
+  }, [finish]);
+
+  const asking = !answered && shouldPromptRemoval({ grytUserId, keyIsHere, vault });
 
   useEffect(() => {
     if (!asking || open) return;
     toast(
       () => (
         <div className="flex flex-col gap-2" style={{ minWidth: 0 }}>
-          <span className="text-sm font-medium">Your message backup can use stronger protection</span>
+          <span className="text-sm font-medium">Save your 24 words</span>
           <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.5 }}>
-            Enter your message password once to upgrade it.
+            Gryt doesn&rsquo;t keep a password-locked copy of your key on your account anymore.
           </span>
           <div className="flex gap-2 justify-end">
             <Button tone="ghost" size="xsmall" onClick={finish}>
@@ -97,11 +88,10 @@ export function VaultUpgradePrompt() {
               size="xsmall"
               onClick={() => {
                 toast.dismiss(TOAST_ID);
-                setStep("password");
                 setOpen(true);
               }}
             >
-              Upgrade
+              Save them
             </Button>
           </div>
         </div>
@@ -110,55 +100,6 @@ export function VaultUpgradePrompt() {
     );
   }, [asking, open, finish]);
 
-  useEffect(() => () => toast.dismiss(TOAST_ID), []);
-
-  const upgrade = useCallback(async () => {
-    if (!vault) return;
-    if (!secret) return void toast.error("Enter your message password.");
-    setBusy(true);
-    try {
-      const next = await upgradeWithPassword(vault, secret, calls);
-      if (next.kind === "short") {
-        setVault(next.vault);
-        setSecret("");
-        setStep("short");
-      } else if (next.kind === "done") {
-        toast.success("Done. Your message backup uses the new lock now.");
-        finish();
-      } else if (next.kind === "changed") {
-        toast.error("Another device changed your message password in the meantime, so nothing was saved here.");
-        finish();
-      } else {
-        toast.error("Couldn’t save the upgrade. Your backup still opens with the same password.");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn’t open your message backup.");
-    } finally {
-      setBusy(false);
-    }
-  }, [vault, secret, finish]);
-
-  const choose = useCallback(async (choice: MessagePasswordChoice) => {
-    if (!vault) return;
-    setBusy(true);
-    try {
-      const outcome = await chooseNewPassword(vault, choice, calls);
-      if (outcome === "resealed") {
-        toast.success("New message password set.");
-        finish();
-      } else if (outcome === "changed") {
-        toast.error("Another device changed your message password in the meantime, so nothing was saved here.");
-        finish();
-      } else {
-        toast.error("Couldn’t save the new password. Your old one still works.");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn’t save the message password.");
-    } finally {
-      setBusy(false);
-    }
-  }, [vault, finish]);
-
   if (!open || !vault) return null;
 
   return (
@@ -166,80 +107,27 @@ export function VaultUpgradePrompt() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[36rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto">
-          <Dialog.Title>Your message backup can use stronger protection</Dialog.Title>
-
-          {step === "password" && (
-            <div className="flex flex-col gap-3">
-              <Dialog.Description className="mt-2">
-                Your account keeps a locked copy of your message key. It&rsquo;s
-                how your messages reach a new device. That copy still uses an
-                older lock that&rsquo;s much quicker to crack. Enter your message
-                password and Gryt locks it again with the new one. Your password
-                stays the same.
-              </Dialog.Description>
-              <TextField
-                type="password"
-                label="Message password"
-                autoComplete="current-password"
-                value={secret}
-                disabled={busy}
-                onChange={(e) => setSecret(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void upgrade(); }}
-              />
-              <div className="flex gap-2 flex-wrap">
-                <Button size="small" onClick={() => void upgrade()} disabled={busy}>
-                  {busy ? "Upgrading…" : "Upgrade"}
-                </Button>
-                <Button tone="neutral" size="small" onClick={finish} disabled={busy}>
-                  Not now
-                </Button>
-                <Button tone="ghost" size="small" onClick={() => setStep("forgot")} disabled={busy}>
-                  Forgotten it?
-                </Button>
-              </div>
-              <div className="flex flex-col gap-2 border-t border-gryt-border pt-3">
-                <AccountWordsReveal keyIsHere label="Show my 24 words to save them" />
-              </div>
-              <span className="text-xs text-gryt-muted">
-                Skip it for now and you&rsquo;ll find it in Settings, under Security.
-              </span>
+          <Dialog.Title>Save your 24 words</Dialog.Title>
+          <div className="flex flex-col gap-3">
+            <Dialog.Description className="mt-2">
+              Your account still has a copy of your message key, locked with your message
+              password. Anyone who got hold of the server&rsquo;s database could keep guessing
+              that password, so Gryt is removing these copies. Save your 24 words somewhere
+              safe first. With them you can always get your key back.
+            </Dialog.Description>
+            <AccountWordsReveal keyIsHere label="Show my 24 words" />
+            <div className="flex gap-2 flex-wrap">
+              <Button size="small" onClick={() => void remove()} disabled={busy}>
+                {busy ? "Removing…" : "I’ve saved them, remove the copy"}
+              </Button>
+              <Button tone="neutral" size="small" onClick={finish} disabled={busy}>
+                Not now
+              </Button>
             </div>
-          )}
-
-          {step === "short" && (
-            <div className="flex flex-col gap-3">
-              <Dialog.Description className="mt-2">
-                Done. Your backup uses the new lock now. But your password is
-                under 12 characters, and short ones are the quickest to guess.
-                You can choose a longer one here. This device has your message
-                key, so you don&rsquo;t need the old one.
-              </Dialog.Description>
-              <MessagePasswordSetup
-                submitLabel="Set new password"
-                busy={busy}
-                replacesRecoveryKey={vaultHasRecoverySlot(vault)}
-                onSubmit={(choice) => void choose(choice)}
-                onCancel={finish}
-              />
-            </div>
-          )}
-
-          {step === "forgot" && (
-            <div className="flex flex-col gap-3">
-              <Dialog.Description className="mt-2">
-                This device still has your message key, so you don&rsquo;t need
-                the old password. Choose a new one and your backup moves to the
-                new lock at the same time.
-              </Dialog.Description>
-              <MessagePasswordSetup
-                submitLabel="Set new password"
-                busy={busy}
-                replacesRecoveryKey={vaultHasRecoverySlot(vault)}
-                onSubmit={(choice) => void choose(choice)}
-                onCancel={() => setStep("password")}
-              />
-            </div>
-          )}
+            <span className="text-xs text-gryt-muted">
+              Skip it for now and you&rsquo;ll find it in Settings, under Security.
+            </span>
+          </div>
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

@@ -114,9 +114,8 @@ export function AccountWordsReveal({
         onHide={() => void act("hide")}
         note={
           <>
-            Save these in a password manager. If you lose every device and forget
-            your message password, they&rsquo;re the only way to get your
-            messages back.
+            Save these in a password manager, or as a file. If you lose every
+            device, they&rsquo;re the only way to get your messages back.
           </>
         }
       />
