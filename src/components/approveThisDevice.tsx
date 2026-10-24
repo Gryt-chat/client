@@ -4,7 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 
 import { restoreIdentityFromWords } from "@/common";
-import { adoptThisDevicesKey, clearRemovedEverywhere, ownHandover, useHostsAwaitingApproval } from "@/socket";
+import { clearRemovedEverywhere, ownHandover, requestKeyReset, useHostsAwaitingApproval } from "@/socket";
 
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 
@@ -38,10 +38,13 @@ export function ApproveThisDevice() {
 
   const startFresh = async () => {
     setBusy(true);
-    const results = await Promise.all([...hosts].map((host) => adoptThisDevicesKey(host)));
+    const results = await Promise.all([...hosts].map((host) => requestKeyReset(host)));
     setBusy(false);
-    if (results.every(Boolean)) toast.success("This device has a new key. People you message will be asked to check it's you.");
-    else toast.error("Some servers didn't take the new key. Try again in a moment.");
+    const at = results.find((r) => r !== null);
+    if (results.every((r) => r !== null) && at) {
+      toast.success(`Your key resets on ${new Date(at).toLocaleDateString()}, unless one of your devices stops it.`, { duration: 8000 });
+      setLater(true);
+    } else toast.error("Some servers didn't take the request. Try again in a moment.");
   };
 
   return (
@@ -95,12 +98,13 @@ export function ApproveThisDevice() {
             {panel === "fresh" && (
               <div className="flex flex-col gap-2">
                 <Alert severity="warning">
-                  Only do this if you can&rsquo;t reach any of your other devices. Everyone you message will be asked to
-                  check it&rsquo;s really you, and messages on your other devices won&rsquo;t come over.
+                  Only if you&rsquo;ve lost every device and your 24 words. This device&rsquo;s key takes over in 30
+                  days. Your devices can stop it until then, so a thief with your password can&rsquo;t do this quietly.
+                  Old messages won&rsquo;t come over, and people you message will be asked to check it&rsquo;s you.
                 </Alert>
                 <div className="flex flex-wrap gap-2">
                   <Button size="small" tone="danger" disabled={busy} onClick={() => void startFresh()}>
-                    Start fresh
+                    Reset my key
                   </Button>
                   <Button size="small" tone="neutral" onClick={() => setPanel(null)}>
                     Cancel
@@ -114,7 +118,7 @@ export function ApproveThisDevice() {
                   I have my 24 words
                 </Button>
                 <Button size="small" tone="ghost" onClick={() => setPanel("fresh")}>
-                  Start fresh with a new key
+                  Lost everything?
                 </Button>
               </div>
             )}

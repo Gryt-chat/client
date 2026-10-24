@@ -49,3 +49,6 @@ export const handoverRequests = store<readonly HandoverRequest[]>([]);
 
 /** Per server, what this device's own request is doing: the code it shows, or that it was turned down. */
 export const ownHandover = store<Readonly<Record<string, { code: string; denied: boolean }>>>({});
+
+/** Per server, a pending key reset: when it takes over, and whether this device holds the key it replaces. */
+export const keyResets = store<Readonly<Record<string, { at: number; holdsCurrentKey: boolean }>>>({});
