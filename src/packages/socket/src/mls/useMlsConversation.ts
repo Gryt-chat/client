@@ -27,6 +27,9 @@ const PAGE = 50;
 /** Coalesces a catch-up's hundreds of archive writes into a few redraws. */
 const RELOAD_DEBOUNCE_MS = 150;
 const MODE_RETRY_MS = 5000;
+/** Each wait ends on a change in the chat, or after a minute; half an hour of tries in all. */
+const WAIT_FOR_WELCOME_MS = 60_000;
+const WAIT_FOR_WELCOME_TRIES = 30;
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
 
 /** A button on the line above the composer. `confirm` asks first. */
@@ -286,7 +289,27 @@ export function useMlsConversation({
           keys: Object.fromEntries(uploaded.flatMap((u) => (u.meta ? [[u.fileId, u.meta]] : []))),
         });
         if (!content) throw Object.assign(new Error("A file wasn't encrypted."), { code: "file_not_sealed" });
-        await source.send(conversationId, peer, content);
+        // Not in this chat yet: the message waits and goes once this device is added, rather than failing.
+        for (let tries = 0; ; tries++) {
+          try {
+            await source.send(conversationId, peer, content);
+            return;
+          } catch (e) {
+            if ((e as { code?: string })?.code !== "waiting_for_welcome" || tries >= WAIT_FOR_WELCOME_TRIES) throw e;
+            setDrafts((current) =>
+              current.map((m) => (m.nonce === nonce ? { ...m, waiting: true, waitingNote: "Sends by itself once this device is added to the chat" } : m)),
+            );
+            await new Promise<void>((resolve) => {
+              const done = () => {
+                off();
+                clearTimeout(timer);
+                resolve();
+              };
+              const off = source.onChange((id) => { if (id === conversationId || id === null) done(); });
+              const timer = setTimeout(done, WAIT_FOR_WELCOME_MS);
+            });
+          }
+        }
       })().catch((e: unknown) => {
         console.warn("[MLS] Send failed:", e);
         const code = (e as { code?: string })?.code;
