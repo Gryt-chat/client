@@ -6,7 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiChatsTeardropFill, PiFadersHorizontalFill, PiFlaskFill, PiGiftFill, PiHardDrivesFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
+import { PiChatsTeardropFill, PiDevicesFill, PiFadersHorizontalFill, PiFlaskFill, PiGiftFill, PiHardDrivesFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
 import { SettingsPicker } from "../../../socket/src/components/SettingsPicker";
 import { useRoomForSettingsRail } from "../../../socket/src/hooks/useNarrowWindow";
 import { USER_SETTINGS_CHROME } from "../../../socket/src/lib/narrowLayout";
@@ -37,6 +37,7 @@ import { ThemeSettings } from "./theme/appearanceSettings";
 import { DisplaySettings } from "./theme/displaySettings";
 import { MessageStyleSettings } from "./theme/messageStyleSettings";
 import { VoiceSettings } from "./voiceSettings";
+import { YourDevicesSettings } from "./yourDevicesSettings";
 
 /** Settings are grouped by the thing somebody is trying to configure. */
 
@@ -77,6 +78,13 @@ const DESTINATIONS: SettingsDestination[] = [
       { value: "profile", label: "Profile", content: <ProfileSettings /> },
       { value: "card", label: "Edit my card", content: <CardSettings /> },
     ],
+  },
+  {
+    value: "devices",
+    section: "You",
+    label: "Your devices",
+    icon: PiDevicesFill,
+    pages: [{ value: "devices", label: "Your devices", content: <YourDevicesSettings /> }],
   },
   {
     value: "account",

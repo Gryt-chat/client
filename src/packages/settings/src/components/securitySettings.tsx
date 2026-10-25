@@ -16,13 +16,10 @@ import {
 } from "@/common";
 
 import { PiCheck, PiFingerprintFill, PiPencilSimpleFill, PiPlus, PiTrashSimpleFill, PiX } from "../../../../lib/icons";
-import { useApproveDevice } from "../../../../lib/pairing/useApproveDevice";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { dmKeyWarningsOff, setDmKeyWarningsOff } from "../../../socket/src/components/dmKeyWarningToast";
 import { LocalHistoryProblem } from "../../../socket/src/components/LocalHistoryProblem";
 import { LocalIdentitySection } from "./localIdentitySection";
-import { MessageKeySection } from "./messageKeySection";
-import { OwnDevicesSection } from "./ownDevicesSection";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 const PASSKEY_TYPE = "webauthn-passwordless";
@@ -185,7 +182,6 @@ function LocalHistorySection() {
 export function SecuritySettings() {
   const [keyWarnings, setKeyWarnings] = useState(() => !dmKeyWarningsOff());
   const { isSignedIn } = useAccount();
-  const { open: openApproveDevice } = useApproveDevice();
   const [credentials, setCredentials] = useState<KeycloakCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -273,33 +269,13 @@ export function SecuritySettings() {
         Security
       </h2>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-sm">Link a new device</span>
-          <span className="text-xs">
-            Set up a phone, browser or computer with your identity and servers, and your account if
-            you&rsquo;re signed in. The new device shows a code. Type it here.
-          </span>
-        </div>
-        <Button size="small" style={{ alignSelf: "flex-start" }} onClick={openApproveDevice}>
-          Link a device
-        </Button>
-      </div>
-
       {!isSignedIn && <LocalIdentitySection />}
 
       {!isSignedIn ? null : (
         <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1">
-            <span className="font-medium text-sm">Account identity</span>
-            <span className="text-xs text-gryt-muted">
-              Signing in on another device brings your account and your servers
-              with you. Your messages are a separate key, and they need the
-              message password below.
-            </span>
-          </div>
-
-          <MessageKeySection />
+          <span className="text-xs text-gryt-muted">
+            Your devices and your 24 words are under Your devices.
+          </span>
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -370,8 +346,6 @@ export function SecuritySettings() {
       )}
 
       <LocalHistorySection />
-
-      <OwnDevicesSection />
 
       <SettingGroup
         title="Message key warnings"
