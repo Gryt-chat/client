@@ -223,9 +223,35 @@ async function getOrCreateSeed(db: IDBDatabase): Promise<Uint8Array> {
 
   const seed = generateSeed();
   await writeSeed(db, seed);
+  setWordsUnsaved(true);
   await getElectronAPI()?.writeSyncedSeed?.(toHex(seed)).catch(() => false);
   console.log("[Identity] Generated new local identity seed");
   return seed;
+}
+
+const WORDS_UNSAVED = "gryt_words_unsaved";
+
+/* Set when this device made a brand-new key, cleared once you've saved the words or got the key elsewhere. */
+function setWordsUnsaved(unsaved: boolean): void {
+  try {
+    if (unsaved) localStorage.setItem(WORDS_UNSAVED, "1");
+    else localStorage.removeItem(WORDS_UNSAVED);
+  } catch {
+    // No storage: the reminder just doesn't show, and the words stay in Your devices.
+  }
+}
+
+/** True on the device that made your key, until you say the 24 words are saved. */
+export function wordsNeedSaving(): boolean {
+  try {
+    return localStorage.getItem(WORDS_UNSAVED) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markWordsSaved(): void {
+  setWordsUnsaved(false);
 }
 
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -908,6 +934,7 @@ export async function restoreIdentityFromWords(phrase: string): Promise<void> {
 
   cachedKeyPairs.clear();
   discardServerSessions();
+  setWordsUnsaved(false);
   // Restored on purpose: this is the account's key now, so iCloud follows, as on the phone.
   await getElectronAPI()?.writeSyncedSeed?.(toHex(seed)).catch(() => false);
 }
@@ -936,6 +963,7 @@ export async function installPairedIdentity(
   cachedKeyPairs.clear();
   discardServerSessions();
   rememberGuestScopes(keys.map((e) => e.scope));
+  setWordsUnsaved(false);
   await getElectronAPI()?.writeSyncedSeed?.(toHex(seed)).catch(() => false);
 }
 

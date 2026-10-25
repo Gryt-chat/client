@@ -39,7 +39,7 @@ export function recoveryKeyFileText(words: string): string {
     words.trim(),
     "",
     "These 24 words are your encryption key. On a new device, sign in to Gryt and choose",
-    "\"I have my 24 words\", or scan the QR code from Settings on a device that has your key.",
+    "\"My phone isn't here\" and type them in, or scan the QR code from Your devices on a device that has your key.",
     "",
     "Keep this file private. Anyone with these words can read your encrypted messages and act as you.",
     "",

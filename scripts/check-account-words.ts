@@ -61,7 +61,7 @@ function context(keyIsHere: boolean) {
 {
   const text = recoveryKeyFileText(`  ${WORDS}\n`);
   assert.equal(text.split("\n")[2], WORDS, "the words on a line of their own, trimmed");
-  assert.match(text, /I have my 24 words/, "says what to choose on a new device");
+  assert.match(text, /My phone isn't here/, "says what to choose on a new device");
   assert.match(text, /Keep this file private/);
   assert.equal(RECOVERY_KEY_FILE_NAME, "Gryt recovery key.txt");
 }

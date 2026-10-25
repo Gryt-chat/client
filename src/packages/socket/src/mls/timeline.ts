@@ -143,7 +143,8 @@ export function mlsNotice(
     peerName,
     signedIn = false,
     peerKeyChanged = false,
-  }: { lostHistory: boolean; home: "browser" | "app"; peerName: string; signedIn?: boolean; peerKeyChanged?: boolean },
+    peerKeyResetAt = null,
+  }: { lostHistory: boolean; home: "browser" | "app"; peerName: string; signedIn?: boolean; peerKeyChanged?: boolean; peerKeyResetAt?: number | null },
 ): string | null {
   const here = home === "browser" ? "this browser" : "this device";
   const Here = home === "browser" ? "This browser" : "This device";
@@ -154,6 +155,10 @@ export function mlsNotice(
   if (mode?.kind === "refused") {
     if (mode.reason === "peer_left_mls") return `Can't send. ${peerName}'s app stopped using end-to-end encryption here.`;
     if (mode.reason === "server_dropped_mls") return "Can't send. This server stopped supporting end-to-end encryption.";
+  }
+  if (peerKeyResetAt && peerKeyResetAt > Date.now()) {
+    const on = new Date(peerKeyResetAt).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+    return `${peerName}'s key is being reset, and a new one takes over on ${on}. If you didn't expect this, check with ${peerName} another way.`;
   }
   if (mode?.kind === "mls" && peerKeyChanged) {
     return `${peerName} has a new key, usually from a new phone or computer. Before you reply, open their card and compare the pictures with them, in person or on a call.`;

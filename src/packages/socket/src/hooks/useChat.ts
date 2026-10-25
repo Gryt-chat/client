@@ -785,7 +785,8 @@ export function useChat({
      encrypted, which it is, and the composer line says why it can't send. */
   const onMlsPath = !!dmPeer && (mlsMode === "mls" || mlsMode === "refused");
   /* Until somebody checks it, their new devices can't be added, so nothing reads as encrypted. */
-  const { memberKeyStates } = useSockets();
+  const { memberKeyStates, memberLists } = useSockets();
+  const peerKeyResetAt = dmPeer ? memberLists[serverHost]?.find((m) => m.serverUserId === dmPeer)?.keyResetAt ?? null : null;
   const peerKey = dmPeer ? memberKeyStates[serverHost]?.[dmPeer] : undefined;
   const peerKeyChanged = peerKey?.decision.kind === "changed" || peerKey?.personKey.kind === "changed";
   const shownSealing = useMemo<SealDecision>(
@@ -856,6 +857,7 @@ export function useChat({
           peerName: dmPeerName ?? "The other person",
           signedIn: isSignedIn,
           peerKeyChanged,
+          peerKeyResetAt,
         })
       : null,
     composerHeld: composer.held,
