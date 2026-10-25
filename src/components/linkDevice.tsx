@@ -76,10 +76,11 @@ function Body({ state, replaces, history }: { state: NewDeviceState | null; repl
       return (
         <div className="flex flex-col items-center gap-4">
           <Dialog.Description className="m-0 self-stretch">
-            On a device where you already use Gryt, open Settings and choose Link a device. Scan this
-            there, or type the code.
+            Point your phone&rsquo;s camera at this. Gryt opens there and asks &ldquo;Is this your
+            computer?&rdquo;. Check the pictures match, tap Approve, and you&rsquo;re done.
           </Dialog.Description>
-          <QrCode text={state.qr} />
+          <QrCode text={`gryt://link?p=${encodeURIComponent(state.qr)}`} />
+          <span className="text-sm text-gryt-muted">Or on your other device, open Link a device and type</span>
           <code className="font-mono text-2xl tracking-[0.2em] text-gryt-text select-all" aria-label="Code to type">
             {state.code}
           </code>
@@ -161,7 +162,11 @@ function Body({ state, replaces, history }: { state: NewDeviceState | null; repl
 /** Link this device to one already signed in (GRYT-1484), from the new device's side. */
 export function LinkDeviceDialog() {
   const { isOpen, state, replaces, history, close } = useLinkDevice();
-  const title = state?.phase === "comparing" ? "Check the emoji" : "Link this device";
+  const titles: Partial<Record<NonNullable<typeof state>["phase"], string>> = {
+    showing: "Approve this computer from your phone",
+    comparing: "Check the pictures match",
+  };
+  const title = (state && titles[state.phase]) ?? "Link this device";
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) close(); }}>
