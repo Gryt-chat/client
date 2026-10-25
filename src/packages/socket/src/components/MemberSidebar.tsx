@@ -72,6 +72,8 @@ export interface MemberInfo {
    * joined with. Verified and pinned client-side; the server never reads it.
    */
   dmKeyBinding?: string | null;
+  /** When a pending key reset takes over (GRYT-1886), or null. */
+  keyResetAt?: number | null;
   /** Their MLS person key, signed by the same identity. Checked the same way. */
   personKeyBinding?: string | null;
   /**
