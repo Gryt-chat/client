@@ -31,7 +31,7 @@ export function FriendRequestDialog() {
             <span className="text-gryt-muted">On {serverName}</span>
             {member ? <MemberIdentityCard member={member} serverHost={current?.host} inline /> : null}
             {state === "incoming" || state === null ? (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button className="flex-1" onClick={() => answer("accept")}>Accept</Button>
                 <Button className="flex-1" tone="neutral" onClick={() => answer("decline")}>Decline</Button>
               </div>
