@@ -52,11 +52,11 @@ export function ApproveThisDevice() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto">
-          <Dialog.Title>Approve this device</Dialog.Title>
+          <Dialog.Title>Approve this device from your phone</Dialog.Title>
           <div className="mt-3 flex flex-col gap-3 text-sm">
             <p>
-              Your account already has an encryption key on another device. Approve this one from there, and your
-              encrypted messages work here too.
+              You&rsquo;re signed in. To open your private messages here too, approve it once from a device you
+              already use. Servers and channels work right away; only DMs wait for this.
             </p>
             {handover && !handover.denied && (
               <div className="flex flex-col gap-1 rounded-md border border-gryt-border p-3">
@@ -71,7 +71,7 @@ export function ApproveThisDevice() {
               <Alert severity="warning">Your other device said no, so nothing changed. If that was a mistake, approve from another device below.</Alert>
             )}
             <Button onClick={openLinkDevice} disabled={busy} tone={handover && !handover.denied ? "neutral" : undefined}>
-              Approve from another device
+              Show the code to scan
             </Button>
 
             {panel === "words" && (
@@ -115,7 +115,7 @@ export function ApproveThisDevice() {
             {panel === null && (
               <div className="flex flex-wrap gap-2">
                 <Button size="small" tone="neutral" onClick={() => setPanel("words")}>
-                  I have my 24 words
+                  My phone isn&rsquo;t here
                 </Button>
                 <Button size="small" tone="ghost" onClick={() => setPanel("fresh")}>
                   Lost everything?

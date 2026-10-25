@@ -303,6 +303,8 @@ export function useHostsAwaitingApproval(): ReadonlySet<string> {
 export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding: string | null = null, resetAt: number | null = null): void {
   const state = hosts.get(host);
   if (!state) return;
+  // Holding the account's key here now: requests made while this device was away come next.
+  if (!rewritten && keyMatches.get(host) !== true) state.socket.emit("dm:key:handover:pending", {});
   keyMatches.set(host, !rewritten);
   if (accountBinding) accountBindings.set(host, accountBinding);
   noteKeyReset(host, resetAt, !rewritten);
