@@ -156,7 +156,7 @@ export function mlsNotice(
     if (mode.reason === "server_dropped_mls") return "Can't send. This server stopped supporting end-to-end encryption.";
   }
   if (mode?.kind === "mls" && peerKeyChanged) {
-    return `Can't send. ${peerName}'s key changed. Check it's really them on their card first.`;
+    return `${peerName} has a new key, usually from a new phone or computer. Before you reply, open their card and compare the pictures with them, in person or on a call.`;
   }
   if (problems.lost === "too_many_devices") {
     return `${Here} can't use encrypted DMs here because your account has the most devices allowed. Remove an old one in Settings, under Devices.`;
@@ -165,7 +165,7 @@ export function mlsNotice(
     return `${Here} has a different encryption key from your other devices, so people who know your key can't reach you here. Link it from a device you already use.`;
   }
   if (problems.lost === "not_added") {
-    return `${Here} isn't in this conversation yet, so new messages won't show here. It's asked to be added. That happens next time ${peerName} or another of your devices is online.`;
+    return `${Here} is new to your chat with ${peerName}. ${peerName}'s app or another of your devices adds it by itself the next time one of them is open. Until then, what you write here waits and goes out on its own.`;
   }
   if (problems.lost === "removed") return `${Here} was taken out of this conversation, so new messages won't show here.`;
   if (problems.lost) return `${Here} lost track of this conversation's encryption, so new messages won't show here.`;
@@ -186,7 +186,7 @@ export function sendFailure(e: unknown, home: "browser" | "app"): string {
   if (code === "peer_unverified") return "Not sent. Their key couldn't be checked. Look at their card to see why.";
   if (code === "other_identity") return `Not sent. ${home === "browser" ? "This browser" : "This device"} needs to be linked to your account's key first.`;
   if (code === "waiting_for_welcome") {
-    return `Not sent. ${home === "browser" ? "This browser" : "This device"} isn't in this conversation yet. It's asked to be added, so try again in a bit.`;
+    return `Not sent. ${home === "browser" ? "This browser" : "This device"} still isn't in this chat. Send it again once the other person or another of your devices has been online.`;
   }
   return "Not sent.";
 }

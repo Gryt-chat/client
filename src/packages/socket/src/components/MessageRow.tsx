@@ -916,7 +916,7 @@ function MessageContent({
         )}
         {m.pending && m.waiting && (
           <span className="text-xs" style={{ color: "var(--gryt-neutral-9)", marginTop: "2px" }}>
-            Waiting for the server
+            {m.waitingNote ?? "Waiting for the server"}
           </span>
         )}
       </motion.div>

@@ -25,6 +25,7 @@ import {
   ServerSettingsModal,
   useServerManagement,
 } from "@/socket";
+import { FriendRequestDialog } from "@/socket/src/components/FriendRequestDialog";
 import type { InviteJoinRequest } from "@/socket/src/components/InviteAcceptModal";
 import { useVoiceSounds } from "@/webRTC";
 
@@ -152,6 +153,7 @@ export function App() {
           <ApproveThisDevice />
           <HandoverRequestDialog />
           <KeyResetDialog />
+          <FriendRequestDialog />
           <ApproveDeviceDialog />
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
           <LeaveServer />

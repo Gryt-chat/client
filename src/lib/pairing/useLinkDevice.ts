@@ -158,7 +158,8 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     setReplaces(count);
     setIsOpen(true);
     setState(null);
-    if (count === 0) start();
+    // Only guest identities are lost by linking. Servers joined with your account come along.
+    if (listGuestScopes().length === 0) start();
   }, [start]);
 
   const close = useCallback(() => {

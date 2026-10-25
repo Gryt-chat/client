@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
+import { showFriendRequestToast } from "../components/friendRequestToast";
 import { parseFriendList } from "../utils/friendList";
 import {
   firstNoticeOf,
@@ -37,7 +38,7 @@ export function useFriendsSync({
     const onIncoming = (payload: { serverUserId?: unknown; nickname?: unknown }) => {
       if (typeof payload?.serverUserId !== "string" || !firstNoticeOf(host, payload.serverUserId)) return;
       const name = typeof payload.nickname === "string" && payload.nickname ? payload.nickname : "Somebody";
-      toast(`${name} sent you a friend request on ${serverName}.`, { id: `friend:${host}:${payload.serverUserId}` });
+      showFriendRequestToast(host, payload.serverUserId, name, serverName);
     };
     const onError = (payload: { message?: unknown }) => {
       if (typeof payload?.message === "string") toast.error(payload.message, { id: "friend:error" });

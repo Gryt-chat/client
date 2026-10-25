@@ -68,6 +68,8 @@ export type ChatMessage = {
   pending?: boolean;
   /** Pending, and held until the server is back and knows who this is. */
   waiting?: boolean;
+  /** What a waiting message is waiting for, when it isn't the server. */
+  waitingNote?: string;
   failed?: boolean;
   nonce?: string;
   sender_nickname?: string;

@@ -61,7 +61,7 @@ test.describe("linking a device", () => {
     await fresh.page.reload();
     await fresh.page.getByRole("button", { name: "Link with another device" }).click();
 
-    const dialog = fresh.page.getByRole("dialog", { name: "Link this device" });
+    const dialog = fresh.page.getByRole("dialog", { name: "Approve this computer from your phone" });
     await expect(dialog.getByRole("img", { name: "Code to scan from your other device" })).toBeVisible();
     if (process.env.SHOTS) await dialog.screenshot({ path: `${process.env.SHOTS}/showing.png` });
     const code = (await dialog.getByLabel("Code to type").textContent()) ?? "";
@@ -77,7 +77,7 @@ test.describe("linking a device", () => {
     });
     approver.claim({ code });
 
-    const compare = fresh.page.getByRole("dialog", { name: "Check the emoji" });
+    const compare = fresh.page.getByRole("dialog", { name: "Check the pictures match" });
     await expect(compare).toBeVisible();
     await expect.poll(() => approver.state.phase).toBe("confirming");
     if (process.env.SHOTS) await compare.screenshot({ path: `${process.env.SHOTS}/comparing.png` });

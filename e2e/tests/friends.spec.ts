@@ -79,7 +79,7 @@ test("a request, accepted: friends on both sides, and a friend's ring rings", as
   const bob = await newMember();
 
   await addFriend(alice, bob);
-  await expect(bob.page.getByText(`${alice.name} sent you a friend request`)).toBeVisible();
+  await expect(bob.page.getByText(`${alice.name} wants to be friends`)).toBeVisible();
 
   // The waiting count on the Friends button, then Accept in the list.
   await bob.page.getByRole("button", { name: "Direct messages" }).click();
