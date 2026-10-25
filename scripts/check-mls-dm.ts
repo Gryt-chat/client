@@ -494,7 +494,7 @@ test("the device list puts this device first and names the ones no group shows",
   assert.equal(ownDeviceAdded(listed[1]), null, "a server that sends no date shows none");
   assert.equal(
     removeOwnDeviceWarning(listed[0], "Gryt Community"),
-    "“Desktop” won't get new encrypted DMs on Gryt Community anymore. The next time it connects, it deletes the encrypted DMs it has from there.",
+    "“Desktop” won't get new encrypted DMs on Gryt Community anymore. The next time it connects, it deletes the encrypted DMs it has from there. To use it again, sign in and approve it like a new device.",
   );
   assert.match(removeOwnDeviceWarning(listed[1], "Gryt Community"), /^That device won't/);
 });

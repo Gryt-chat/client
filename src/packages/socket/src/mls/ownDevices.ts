@@ -22,7 +22,7 @@ export function ownDeviceAdded(device: MlsOwnDevice): string | null {
    that server's history when it hears so (GRYT-1555). */
 export function removeOwnDeviceWarning(device: Pick<MlsOwnDevice, "name">, serverName: string): string {
   const which = device.name ? `“${device.name}”` : "That device";
-  return `${which} won't get new encrypted DMs on ${serverName} anymore. The next time it connects, it deletes the encrypted DMs it has from there.`;
+  return `${which} won't get new encrypted DMs on ${serverName} anymore. The next time it connects, it deletes the encrypted DMs it has from there. To use it again, sign in and approve it like a new device.`;
 }
 
 /** What a removed device says, wherever it would have shown DMs from that server. */

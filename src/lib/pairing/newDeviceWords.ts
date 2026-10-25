@@ -3,10 +3,10 @@ import type { HistoryProgress, PairingEndReason } from "@gryt/core";
 /* What the new device says, kept out of the dialog so the check script can read it. */
 
 const ENDED: Partial<Record<PairingEndReason, string>> = {
-  cancelled_by_other: "It was cancelled on the other device.",
-  mismatch: "You said the emoji didn't match, so nothing was linked. Someone may have been in the middle of the connection.",
-  timed_out: "The other device didn't approve in time.",
-  expired: "The code ran out before anyone used it.",
+  cancelled_by_other: "Your other device said no, so nothing was shared. If that was a mistake, try again.",
+  mismatch: "The pictures didn't match, so nothing was shared. That's the safe answer if anything looked off. Try again for four new ones.",
+  timed_out: "Your other device didn't answer in time. It might be off, out of battery or offline. Try again when it's on.",
+  expired: "The code ran out before it was used, so an old one can't be approved by accident. Try again for a new one.",
   tampered: "A message from the other device didn't check out, so nothing was linked.",
   wrong_account: "You got signed in as a different account from the one on your other device. Nothing was kept.",
   sign_in_failed: "Signing in didn't finish, so nothing was kept on this device.",

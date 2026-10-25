@@ -56,8 +56,7 @@ test.describe("approving a linked device", () => {
     await old.page.locator('[data-tour="profile"]').click();
     await old.page.getByRole("menuitem", { name: "Settings" }).click();
     const settings = old.page.getByRole("dialog", { name: "Settings", exact: true });
-    await settings.getByRole("button", { name: "Account & security" }).click();
-    await settings.getByRole("button", { name: "Security", exact: true }).click();
+    await settings.getByRole("button", { name: "Your devices" }).first().click();
     await settings.getByRole("button", { name: "Link a device" }).click();
 
     const dialog = old.page.getByRole("dialog", { name: "Link a new device" });
