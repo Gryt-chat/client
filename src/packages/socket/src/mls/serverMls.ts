@@ -4,11 +4,13 @@ import type { Socket } from "socket.io-client";
 
 import {
   claimMlsWorker,
+  dmKeyBindingFor,
   getLocalArchiveSnapshot,
   getOwnServerUserId,
   getServerAccessToken,
   getValidIdentityToken,
   identityScopeFor,
+  keyHandoverFor,
   type LocalArchive,
   localPeerPinStore,
   type MlsWorkerClaim,
@@ -23,6 +25,7 @@ import { showLinkedDeviceToast } from "../components/linkedDeviceToast";
 import { publishDmKey } from "../utils/dmKeys";
 import { readMlsCapability, readMlsReports } from "./capability";
 import { thisDeviceCertificateName } from "./deviceName";
+import { handoverCode, type HandoverRequest, handoverRequests, keyResets, ownHandover } from "./keyHandover";
 import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
 import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
@@ -243,6 +246,18 @@ export function attachServerMls(socket: Socket, host: string): void {
     state.ready = false;
     state.pinned = deferred();
   });
+  socket.on("dm:key:handover:asked", (asked: { binding?: string; deviceName?: string; askerId?: string }) => {
+    const accountBinding = accountBindings.get(host);
+    if (typeof asked?.binding !== "string" || typeof asked.askerId !== "string" || !accountBinding || keyMatches.get(host) !== true) return;
+    const { binding, askerId } = asked;
+    void handoverCode(host, accountBinding, binding).then((code) =>
+      handoverRequests.set([...handoverRequests.get(), { host, binding, askerId, code, deviceName: asked.deviceName || "A new device" }]),
+    ).catch(() => {});
+  });
+  socket.on("dm:key:handover:denied", () => {
+    const mine = ownHandover.get()[host];
+    if (mine) ownHandover.set({ ...ownHandover.get(), [host]: { ...mine, denied: true } });
+  });
 
   claim ??= claimMlsWorker({
     onAcquire: () => {
@@ -285,9 +300,15 @@ export function useHostsAwaitingApproval(): ReadonlySet<string> {
 }
 
 /** Whether your account's published key here is another device's, from the member list. */
-export function serverMlsOwnKey(host: string, rewritten: boolean): void {
+export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding: string | null = null, resetAt: number | null = null): void {
   const state = hosts.get(host);
-  if (!state || state.otherIdentity === rewritten) return;
+  if (!state) return;
+  keyMatches.set(host, !rewritten);
+  if (accountBinding) accountBindings.set(host, accountBinding);
+  noteKeyReset(host, resetAt, !rewritten);
+  // A server that agrees with this key can come in after the one waiting for approval.
+  if (!rewritten) for (const waiting of awaitingApproval) void askHandoverOnce(waiting, hosts.get(waiting) ?? state);
+  if (state.otherIdentity === rewritten) return;
   state.otherIdentity = rewritten;
   if (!rewritten) setAwaitingApproval(host, false);
   void refresh(host);
@@ -300,6 +321,79 @@ export async function adoptThisDevicesKey(host: string): Promise<boolean> {
   state.otherIdentity = false;
   void refresh(host);
   return true;
+}
+
+/* Per server: whether the account's key there is this device's, and what that key is. */
+const keyMatches = new Map<string, boolean>();
+const accountBindings = new Map<string, string>();
+const askedHandover = new Set<string>();
+
+/**
+ * Asked only when this key is already the account's on another server: then this server should
+ * follow the others. A brand-new device links instead, and takes the account's key.
+ */
+async function askHandoverOnce(host: string, state: HostState): Promise<void> {
+  const matchesElsewhere = [...keyMatches].some(([other, ok]) => other !== host && ok);
+  const accountBinding = accountBindings.get(host);
+  if (!matchesElsewhere || !accountBinding || askedHandover.has(host)) return;
+  const binding = await dmKeyBindingFor(host);
+  if (!binding) return;
+  askedHandover.add(host);
+  const code = await handoverCode(host, accountBinding, binding).catch(() => "");
+  ownHandover.set({ ...ownHandover.get(), [host]: { code, denied: false } });
+  state.socket.emit("dm:key:handover:ask", { binding, deviceName: thisDeviceCertificateName() });
+}
+
+/** "Yes, that's my device": this device's key signs the server over to the one that asked. */
+export async function approveHandover(request: HandoverRequest): Promise<boolean> {
+  const state = hosts.get(request.host);
+  if (!state) return false;
+  const handover = await keyHandoverFor(request.host, request.binding);
+  const ok = await new Promise<boolean>((resolve) =>
+    state.socket.emit("dm:key:publish", { binding: request.binding, replace: true, handover }, (reply: { ok?: boolean }) => resolve(reply?.ok === true)),
+  );
+  if (ok) handoverRequests.set(handoverRequests.get().filter((r) => r !== request));
+  return ok;
+}
+
+export function denyHandover(request: HandoverRequest): void {
+  hosts.get(request.host)?.socket.emit("dm:key:handover:deny", { askerId: request.askerId });
+  handoverRequests.set(handoverRequests.get().filter((r) => r !== request));
+}
+
+/**
+ * A pending reset (GRYT-1886). The device holding the current key is asked "was this you?"; the
+ * one that asked takes over by itself once the 30 days are up.
+ */
+function noteKeyReset(host: string, at: number | null, holdsCurrentKey: boolean): void {
+  const current = keyResets.get();
+  if (at === null) {
+    if (current[host]) keyResets.set(Object.fromEntries(Object.entries(current).filter(([h]) => h !== host)));
+    return;
+  }
+  if (current[host]?.at !== at) keyResets.set({ ...current, [host]: { at, holdsCurrentKey } });
+  if (!holdsCurrentKey && at <= Date.now()) void adoptThisDevicesKey(host);
+}
+
+/** No device and no words: this device's key takes over here in 30 days, unless one of yours stops it. */
+export async function requestKeyReset(host: string): Promise<number | null> {
+  const state = hosts.get(host);
+  const binding = await dmKeyBindingFor(host);
+  if (!state || !binding) return null;
+  return new Promise((resolve) =>
+    state.socket.emit("dm:key:reset:request", { binding }, (reply: { ok?: boolean; at?: number }) => resolve(reply?.ok ? reply.at ?? null : null)),
+  );
+}
+
+/** "That wasn't me": proven by this device's key handing over to itself. */
+export async function cancelKeyReset(host: string): Promise<boolean> {
+  const state = hosts.get(host);
+  const current = accountBindings.get(host);
+  if (!state || !current) return false;
+  const proof = await keyHandoverFor(host, current);
+  return new Promise((resolve) =>
+    state.socket.emit("dm:key:reset:cancel", { proof }, (reply: { ok?: boolean }) => resolve(reply?.ok === true)),
+  );
 }
 
 /** The member list's person keys are pinned. A Welcome from somebody unpinned is thrown away. */
@@ -391,7 +485,10 @@ async function refresh(host: string): Promise<void> {
       state.local = otherIdentitySource(session, registered);
       setSource(host, state.local);
       setAwaitingApproval(host, !registered);
-      if (!registered) return;
+      if (!registered) {
+        void askHandoverOnce(host, state);
+        return;
+      }
     } else {
       if (state.local !== session) {
         state.local = session;
