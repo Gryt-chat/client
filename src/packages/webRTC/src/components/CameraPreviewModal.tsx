@@ -386,7 +386,7 @@ export function CameraPreviewModal({
                 checked={faceFramingEnabled}
                 onCheckedChange={(v) => setFaceFramingEnabled(v === true)}
               />
-              Center my face automatically
+              Keep my face centered
             </label>
           </div>
 

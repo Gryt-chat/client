@@ -7,11 +7,13 @@ import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { useSockets } from "./useSockets";
 
-/**
- * Republished this often, unchanged. Framing only moves when someone asks, so
- * anyone joining after the last re-centre would see a centred crop.
- */
+/** Republished this often, unchanged, or anyone joining after the last move would see a centred crop. */
 const REPUBLISH_MS = 15000;
+
+/** A check costs about 3 ms of main thread (measured 2026-10-26), so this is about how soon a move feels noticed. */
+const FOLLOW_MS = 5000;
+/** Below this the crop stays put, so breathing and small shifts don't make the tile drift. */
+const FOLLOW_DEADZONE = 0.06;
 
 type FramingMap = Record<string, Framing>;
 
@@ -82,12 +84,27 @@ function useVideoFramingHook() {
     return () => offs.forEach((off) => off());
   }, [sockets]);
 
-  // The one automatic run: when the camera comes on. After that it is manual,
-  // because your framing does not change unless you move.
+  // Once when the camera comes on, then a check every few seconds that only moves the crop on a real move.
   useEffect(() => {
     if (!faceFramingEnabled || !cameraEnabled || !cameraStream) return;
     void recentre();
-  }, [faceFramingEnabled, cameraEnabled, cameraStream, recentre]);
+    let busy = false;
+    const follow = window.setInterval(async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const found = await detectFraming(cameraStream);
+        const now = framingRef.current;
+        if (found && Math.hypot(found.x - now.x, found.y - now.y) >= FOLLOW_DEADZONE) {
+          setLocalFraming(found);
+          publish(found);
+        }
+      } finally {
+        busy = false;
+      }
+    }, FOLLOW_MS);
+    return () => window.clearInterval(follow);
+  }, [faceFramingEnabled, cameraEnabled, cameraStream, recentre, publish]);
 
   // Back to centre when the camera goes off, so a stale crop is not left on a
   // tile that is now an avatar.
