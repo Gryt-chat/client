@@ -19,6 +19,9 @@ export const electronVoiceHost: VoiceHost = {
       onNativeAudioData: (cb) => api.onNativeAudioData(cb),
       onNativeAudioStopped: (cb) => api.onNativeAudioStopped(cb),
       onNativeAudioDiagnostic: (cb) => api.onNativeAudioDiagnostic(cb),
+      setNativeAudioPerSource: (on) => api.setNativeAudioPerSource(on),
+      onNativeAudioSourceData: (cb) => api.onNativeAudioSourceData(cb),
+      setAudioCaptureApplications: (ids) => api.setAudioCaptureApplications(ids),
     };
   },
 
