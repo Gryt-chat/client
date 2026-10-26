@@ -108,6 +108,7 @@ export const MemberSidebarPanel = ({
           }}
         >
           <MemberSidebar
+            width={sidebarWidthPx}
             members={members}
             currentConnectionId={currentConnectionId}
             currentServerUserId={currentServerUserId}

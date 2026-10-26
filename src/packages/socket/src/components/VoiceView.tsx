@@ -1265,7 +1265,7 @@ export const VoiceView = ({
         // would fight the browser for it.
         width: isFullscreen ? "100%" : openWidth,
         paddingRight:
-          isFullscreen || !showVoiceView || voiceWidth === "0px" ? 0 : 8,
+          isFullscreen || !showVoiceView || voiceWidth === "0px" ? 0 : 16,
       }}
       style={{
         overflow: "hidden",

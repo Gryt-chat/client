@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
 
-const SIDEBAR_WIDTH_PX = 240;
+const SIDEBAR_WIDTH_PX = 200;
 const SIDEBAR_HOVER_PX = 8;
 const SIDEBAR_CLOSE_DELAY = 1000;
 // Only says "this server has a call" now; the grip sets the drawn width (lib/voiceGrip.ts).
@@ -192,8 +192,8 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
     ? Math.max(0, voiceContainerWidth - MIN_CHAT_WIDTH)
     : 0;
 
-  // Stops are the panel's visible width; the view's 8px right padding is the gap to the chat.
-  const chosenWidth = (voiceSize === "full" ? VOICE_PRESET_1 : voiceSize) + 8;
+  // Stops are the panel's visible width; the view's 16px right padding is the gap to the chat.
+  const chosenWidth = (voiceSize === "full" ? VOICE_PRESET_1 : voiceSize) + 16;
   const shownVoiceWidth = voiceMaxWidth > 0 ? Math.min(chosenWidth, voiceMaxWidth) : chosenWidth;
 
   const setVoiceStop = useCallback((stop: VoiceStop) => {

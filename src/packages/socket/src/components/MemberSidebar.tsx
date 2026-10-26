@@ -114,6 +114,8 @@ export interface AdminActions {
 }
 
 interface MemberSidebarProps {
+  /** The desktop panel passes its own; the phone's sheet keeps 240. */
+  width?: number;
   members: MemberInfo[];
   currentConnectionId?: string;
   currentServerUserId?: string;
@@ -319,6 +321,7 @@ export const MemberSidebar = ({
   onToggleBlock,
   isBlocked,
   onReport,
+  width = 240,
 }: MemberSidebarProps) => {
   const { roles } = useServerPermissions(serverHost);
   const { resolvedAppearance } = useTheme();
@@ -369,7 +372,7 @@ export const MemberSidebar = ({
   const nameTagMap = useMemo(() => nameTags(members), [members]);
 
   return (
-    <div role="complementary" aria-label="Members" style={{ width: "240px",
+    <div role="complementary" aria-label="Members" style={{ width,
         background: "var(--gryt-neutral-3)",
         borderRadius: "var(--gryt-radius-lg)",
         height: "100%",
