@@ -33,6 +33,7 @@ import { hideConversation } from "../hooks/hiddenConversations";
 import { useOpenThread } from "../hooks/openThreadMemory";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
+import { useCallBubbles } from "../hooks/useCallBubbles";
 import { callClock, useCallClock } from "../hooks/useCallClock";
 import { useCalls } from "../hooks/useCalls";
 import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSettings";
@@ -160,7 +161,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     [directory],
   );
   const { connect, currentServerConnected, currentChannelConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
-  const { serverDetailsList, clients, memberLists, serverProfiles } = useSockets();
+  const { serverDetailsList, clients, memberLists, serverProfiles, sockets } = useSockets();
   const { login } = useAccount();
   /** Servers this app hosts, for Manage server. Empty in a browser. */
   const { servers: hostedServers } = useEmbeddedServer();
@@ -240,6 +241,14 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
      Deciding by "is a DM selected" put Carlo in a server and a channel in the space. */
   const visibleChannelId = dmSpace || chatPaneHidden ? null : selectedChannelId;
   const visibleDmId = !dmSpace || chatPaneHidden ? null : selectedDmId;
+
+  // With the call out of sight, its messages peek from the channel list and count as "n new" (GRYT-1911).
+  const callPeek = useCallBubbles(isConnected && currentServerConnected ? sockets[currentServerConnected] : null, currentChannelId);
+  const readingCall = showVoiceView || visibleChannelId === currentChannelId;
+  const [seenCallTotal, setSeenCallTotal] = useState(0);
+  useEffect(() => {
+    if (readingCall || callPeek.total < seenCallTotal) setSeenCallTotal(callPeek.total);
+  }, [readingCall, callPeek.total, seenCallTotal]);
 
   /* What the chat loads, by the same rule. The shared fallback was selectedDmId,
      then the channel, so whichever was set last leaked into the other view. */
@@ -1481,6 +1490,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               </div>
             ) : (
             <ServerSidebar
+              callPeek={readingCall ? undefined : { bubbles: callPeek.bubbles, newCount: callPeek.total - seenCallTotal }}
               sidebarOpen={leftSidebarOpen}
               sidebarWidthPx={channelIcons ? CHANNEL_ICON_LIST_WIDTH : SIDEBAR_WIDTH_PX}
               iconsOnly={channelIcons}

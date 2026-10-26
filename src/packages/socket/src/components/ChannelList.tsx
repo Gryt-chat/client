@@ -25,6 +25,7 @@ import { channelHref } from "@/lib/mentionTokens";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiChatTeardropTextFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import type { CallBubble } from "../hooks/useCallBubbles";
 import { cameraStreamFor } from "../lib/cameraStream";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
@@ -50,13 +51,23 @@ import { UnreadIndicator } from "./UnreadIndicator";
 type Role = string;
 
 /** How far a row inside a folder is inset. Matches the caret's own width. */
+export interface CallPeek {
+  bubbles: Record<string, CallBubble[]>;
+  newCount: number;
+}
+
+function newestPeek(peek: CallPeek | undefined, serverUserId: string): string | undefined {
+  const list = peek?.bubbles[serverUserId];
+  return list?.[list.length - 1]?.text;
+}
+
 const INDENT_PX = 14;
 
 /** The call you're in: the voice row and its people on one accent-tinted card. */
 const CALL_CARD_FILL = "var(--gryt-accent-3)";
 const CALL_CARD_STYLE = { outline: "1px solid var(--gryt-accent-6)", borderRadius: 20 } as const;
 /** The call you're viewing, its chat or the call itself: the whole card goes solid accent. */
-const VIEWED_CARD_STYLE = { outline: "1px solid var(--gryt-accent)", borderRadius: 20, background: "var(--gryt-accent)", color: "var(--gryt-on-accent)" } as const;
+const VIEWED_CARD_STYLE = { outline: "1px solid var(--gryt-accent)", borderRadius: 20, background: "var(--gryt-accent)", color: "var(--color-gryt-on-accent)" } as const;
 
 const exitVariants = {
   gone: (instant: boolean) => (instant ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -8 }),
@@ -138,6 +149,7 @@ export const ChannelList = ({
   streamSources,
   videoStreams,
   iconsOnly = false,
+  callPeek,
   canManage,
   onEditItem,
   onDeleteItem,
@@ -170,6 +182,8 @@ export const ChannelList = ({
   videoStreams?: Record<string, MediaStream>;
   /** Square icons with the name on hover; the CSS in style.css does most of it (GRYT-1899). */
   iconsOnly?: boolean;
+  /** Set while the call is hidden: its newest messages by person, and how many came in. */
+  callPeek?: CallPeek;
   canManage?: boolean;
   onEditItem?: (item: SidebarItem) => void;
   onDeleteItem?: (item: SidebarItem) => void;
@@ -472,7 +486,17 @@ export const ChannelList = ({
               the name. `marginLeft: auto` rather than a spacer, because the
               per-channel indicators above already claim `auto` when they are
               there and two of them would fight. */}
-          <span className="gryt-channel-unread"><UnreadIndicator unread={unread} mentions={mentions} /></span>
+          {inThisCall && !!callPeek?.newCount && (
+            <span
+              className="gryt-hide-in-icons ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold"
+              style={{ background: "var(--gryt-accent)", color: "var(--color-gryt-on-accent)" }}
+            >
+              {callPeek.newCount} new
+            </span>
+          )}
+          {!(inThisCall && callPeek?.newCount && !iconsOnly) && (
+            <span className="gryt-channel-unread"><UnreadIndicator unread={unread} mentions={mentions} /></span>
+          )}
         </Button>
         </MaybeNameTip>
 
@@ -535,6 +559,7 @@ export const ChannelList = ({
                           screenShareEnabled={clients[id].screenShareEnabled}
                           cameraEnabled={clients[id].cameraEnabled}
                           liveCamera={liveCameraFor(id)}
+                          peek={inThisCall && clients[id].serverUserId ? newestPeek(callPeek, clients[id].serverUserId) : undefined}
                           canDisconnect={!!onDisconnectUser}
                           onDisconnectFromVoice={onDisconnectUser && clients[id].serverUserId ? () => onDisconnectUser(clients[id].serverUserId ?? "") : undefined}
                           role={currentUserRole}

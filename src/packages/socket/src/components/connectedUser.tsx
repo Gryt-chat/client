@@ -1,7 +1,8 @@
 import { Avatar, PreviewCard, Skeleton, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { motion } from "motion/react";
-import { type CSSProperties, type RefObject, useCallback, useEffect, useRef } from "react";
+import { type CSSProperties, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useSettings } from "@/settings";
 
@@ -52,6 +53,7 @@ export function ConnectedUser({
   targetRoles,
   serverHost,
   liveCamera,
+  peek,
 }: {
   isSpeaking: boolean;
   /** Dominant colour of the avatar, so the ring matches the voice tile's. */
@@ -86,6 +88,8 @@ export function ConnectedUser({
   serverHost?: string;
   /** Their camera, drawn in place of the dot while the voice view is hidden (GRYT-1893). */
   liveCamera?: MediaStream | null;
+  /** Their newest call message, peeking out of the row while the call is hidden (GRYT-1911). */
+  peek?: string;
 }) {
   const hue = tileHue(nickname, avatarColor, { nickname, worn: avatarWorn });
   const rowRef = useRef<HTMLDivElement>(null);
@@ -178,8 +182,31 @@ export function ConnectedUser({
           )}
         </div>
       </div>
+      {peek && <RowPeek text={peek} row={rowRef} />}
     </motion.div>
     </UserContextMenu>
+  );
+}
+
+/** Fixed and portalled: the card and the list both clip, and the board has it reach past them. */
+function RowPeek({ text, row }: { text: string; row: RefObject<HTMLDivElement | null> }) {
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const r = row.current?.getBoundingClientRect();
+    if (r) setAt({ left: r.left + Math.min(96, r.width - 8), top: r.top + 2 });
+  }, [row, text]);
+  if (!at) return null;
+  return createPortal(
+    <motion.div
+      key={text}
+      initial={{ opacity: 0, x: -6 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="pointer-events-none fixed max-w-[260px] truncate px-2.5 py-[5px] text-xs font-semibold"
+      style={{ ...at, zIndex: 40, background: "#f4f3ff", color: "#16151f", borderRadius: "12px 12px 12px 4px", boxShadow: "0 8px 20px rgba(0,0,0,.45)" }}
+    >
+      {text}
+    </motion.div>,
+    document.body,
   );
 }
 
