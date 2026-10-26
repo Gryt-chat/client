@@ -7,12 +7,15 @@ export type VoiceStop = "hidden" | "full" | "preset2" | number;
 export const VOICE_PRESET_1 = 352;
 export const VOICE_MIN_WIDTH = 200;
 const MIN_CHAT_WIDTH = 200;
+/** The chat a preset leaves must still read (the Narrow board's 820 step): under this the call is full or hidden. */
+const MIN_CHAT_BESIDE_PRESET = 360;
 const SNAP_PX = 8;
 const GOLDEN = 0.618;
 
 /** The presets for a middle area `room` px wide, or none when the call and the chat can't share it. */
 export function voicePresets(room: number): [number, number] | null {
   const preset2 = Math.round(room * GOLDEN);
+  if (room - VOICE_PRESET_1 - 16 < MIN_CHAT_BESIDE_PRESET) return null;
   if (preset2 > room - MIN_CHAT_WIDTH || preset2 < VOICE_PRESET_1 + SNAP_PX) return null;
   return [VOICE_PRESET_1, preset2];
 }

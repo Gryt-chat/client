@@ -276,6 +276,7 @@ export const VoiceView = ({
   onToggleChat,
   onPopOut,
   inPopout = false,
+  onShowChat,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -306,6 +307,8 @@ export const VoiceView = ({
   onPopOut?: () => void;
   /** Drawn inside that window, which brings its own controls. */
   inPopout?: boolean;
+  /** Swaps the full call for its channel's text chat, where the two can't share the middle. */
+  onShowChat?: () => void;
 }) => {
   const {
     showPeerLatency,
@@ -1313,9 +1316,16 @@ export const VoiceView = ({
         ) : !inPopout && (
           <div className="flex h-10 shrink-0 items-baseline gap-2.5 overflow-hidden whitespace-nowrap px-2 pt-2">
             <span className="truncate text-[17px] font-extrabold">{channelName}</span>
-            <span className="text-[13px] text-gryt-muted">
+            <span className="flex-1 text-[13px] text-gryt-muted">
               {visibleClients.length} {visibleClients.length === 1 ? "person" : "people"}
             </span>
+            {onShowChat && (
+              <Tooltip title={`${channelName}'s text chat`}>
+                <IconButton tone="neutral" size="xsmall" aria-label={`${channelName}'s text chat`} onClick={onShowChat} className="self-center">
+                  <PiChatTeardropTextFill size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
           </div>
         )}
         {secondsLeft === null ? null : (

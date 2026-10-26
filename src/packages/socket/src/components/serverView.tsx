@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 
 import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, NotificationLevelMenu, resolveAvatarSrc, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
-import { useIsCompact, useIsMobile } from "@/mobile";
+import { useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
@@ -53,7 +53,7 @@ import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
-import { VOICE_PRESET_1 } from "../lib/voiceGrip";
+import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
@@ -111,6 +111,11 @@ function connectionLine(status: string | undefined, unreachable: boolean, name: 
   return unreachable ? { long: `Can’t reach ${name}`, short: "Can’t reach it" } : null;
 }
 
+function gripStop(s: { showVoiceView: boolean; isMaximized: boolean; voiceSize: VoiceStop }): VoiceStop {
+  if (!s.showVoiceView) return "hidden";
+  return s.isMaximized ? "full" : s.voiceSize;
+}
+
 function voiceWidthFor(s: { chatTakenOver: boolean; voiceWidth: string; isMaximized: boolean; shownVoiceWidth: number }): string {
   if (s.chatTakenOver) return "100%";
   if (s.voiceWidth === "0px") return "0px";
@@ -134,7 +139,6 @@ function callerTitle(conversation: Parameters<typeof conversationTitle>[0] | und
  */
 export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const isMobile = useIsMobile();
-  const isCompact = useIsCompact();
   const isTiny = useIsTinyWindow();
   const channelIcons = useChannelIcons();
   const {
@@ -181,7 +185,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const peerLatency = usePeerLatency(currentConnection, heldHostClients);
 
   const {
-    voiceFocused, setVoiceFocused, isMaximized, voiceSize, setVoiceStop, voiceContainerWidth,
+    voiceFocused, setVoiceFocused, isMaximized, forcedFull, voiceSize, setVoiceStop, voiceContainerWidth,
     voiceContainerRef, attachVoiceContainer, voiceMaxWidth, shownVoiceWidth,
   } = useVoiceLayout({ setShowVoiceView });
   const [voiceResizing, setVoiceResizing] = useState(false);
@@ -204,6 +208,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     callWindow.close();
     setCallWindow(null);
   }, [isConnected, callWindow]);
+  // Hidden for its chat because the window was too narrow, the call comes back when it widens.
+  const hiddenForChat = useRef(false);
+  useEffect(() => {
+    if (showVoiceView || !isConnected) hiddenForChat.current = false;
+    else if (!forcedFull && hiddenForChat.current) {
+      hiddenForChat.current = false;
+      setShowVoiceView(true);
+    }
+  }, [showVoiceView, isConnected, forcedFull, setShowVoiceView]);
   // The rail's camera or share, pressed while off, opens the view at preset 1 for the bar's button to act in.
   useAnyCallButtonPress(() => setVoiceStop(VOICE_PRESET_1));
 
@@ -337,7 +350,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   const serverClients = currentlyViewingServer ? heldHostClients : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
-    showVoiceView, setShowVoiceView, isCompact, roomForVoice, isConnected,
+    showVoiceView, setShowVoiceView, roomForVoice, isConnected,
     currentChannelId, serverClients,
   });
 
@@ -1495,7 +1508,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               showVoiceView={showVoiceView}
               isConnecting={isConnecting}
               currentConnectionId={selfClientId}
-              selectedChannelId={visibleChannelId}
+              // The call filling the middle is what you're viewing, so its card is the selected one.
+              selectedChannelId={chatPaneHidden && isVoiceOnThisServer ? currentChannelId : visibleChannelId}
               onChannelClick={handleChannelClickAndCloseDm}
               clientsSpeaking={voiceClientsSpeaking}
               canManage={canManage}
@@ -1517,7 +1531,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             )}
             <div className="flex grow" ref={attachVoiceContainer} style={{ position: "relative", minWidth: 0 }}>
               {inCallWindow(<VoiceView
-                showVoiceView={callWindow ? true : showVoiceView && (!isCompact || voiceFocused)}
+                showVoiceView={callWindow ? true : showVoiceView}
                 /* Focusing a stream makes it the big one inside the panel and
                    leaves the app where it was. Hiding the chat is its own press. */
                 voiceWidth={callWindow ? "100%" : voiceWidthFor({ chatTakenOver, voiceWidth, isMaximized, shownVoiceWidth })}
@@ -1548,12 +1562,17 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 onToggleChat={toggleFocusedChat}
                 onPopOut={popOut}
                 inPopout={!!callWindow}
+                onShowChat={forcedFull && isVoiceOnThisServer && serverDetails?.channels?.find((c) => c.id === currentChannelId)?.textInVoice ? () => {
+                  setSelectedChannelId(currentChannelId);
+                  hiddenForChat.current = true;
+                  setVoiceStop("hidden");
+                } : undefined}
               />)}
-              {voiceWidth !== "0px" && !isCompact && !chatTakenOver && !callWindow && (
+              {voiceWidth !== "0px" && !chatTakenOver && !callWindow && (
                 <VoiceGrip
                   containerRef={voiceContainerRef}
                   room={voiceContainerWidth}
-                  stop={showVoiceView ? voiceSize : "hidden"}
+                  stop={gripStop({ showVoiceView, isMaximized, voiceSize })}
                   onStop={(stop) => {
                     mediaAutoShownRef.current = false;
                     setVoiceStop(stop);

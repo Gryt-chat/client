@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { VOICE_PRESET_1, type VoiceStop, voiceStopWidth } from "../lib/voiceGrip";
+import { VOICE_PRESET_1, voicePresets, type VoiceStop, voiceStopWidth } from "../lib/voiceGrip";
 
 const SIDEBAR_WIDTH_PX = 200;
 const SIDEBAR_HOVER_PX = 8;
@@ -12,7 +12,6 @@ const MIN_CHAT_WIDTH = 200;
 interface UseMediaAutoShowParams {
   showVoiceView: boolean;
   setShowVoiceView: (v: boolean) => void;
-  isCompact: boolean;
   /** Whether the window can hold the panel beside a channel list and a chat. */
   roomForVoice: boolean;
   isConnected: boolean;
@@ -21,14 +20,11 @@ interface UseMediaAutoShowParams {
 }
 
 function useMediaAutoShow({
-  showVoiceView, setShowVoiceView, isCompact, roomForVoice, isConnected,
+  showVoiceView, setShowVoiceView, roomForVoice, isConnected,
   currentChannelId, serverClients,
 }: UseMediaAutoShowParams) {
-  /*
-   * The panel gets out of the way when the window cannot hold it: `isCompact` is
-   * 1024 and the row needs 1136, so between the two the chat went under.
-   */
-  const tooNarrow = isCompact || !roomForVoice;
+  // Below the compact width the call still shows, full (GRYT-1899); only a window too small for it hides it.
+  const tooNarrow = !roomForVoice;
   const compactAutoHiddenRef = useRef(false);
   useEffect(() => {
     if (tooNarrow && showVoiceView) {
@@ -168,7 +164,6 @@ interface UseVoiceLayoutParams {
 function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
   const [voiceFocused, setVoiceFocused] = useState(false);
   const [voiceSize, setVoiceSize] = useState<Exclude<VoiceStop, "hidden">>(VOICE_PRESET_1);
-  const isMaximized = voiceSize === "full";
 
   // A callback ref: the middle area mounts after the first render, so an effect on a plain ref never observed it.
   const voiceContainerRef = useRef<HTMLDivElement | null>(null);
@@ -188,6 +183,10 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
     return () => ro.disconnect();
   }, [voiceContainer]);
 
+  // Too narrow for a preset, the call is full; the chosen preset waits for a wider window.
+  const forcedFull = voiceContainerWidth > 0 && !voicePresets(voiceContainerWidth);
+  const isMaximized = voiceSize === "full" || forcedFull;
+
   const voiceMaxWidth = voiceContainerWidth > 0
     ? Math.max(0, voiceContainerWidth - MIN_CHAT_WIDTH)
     : 0;
@@ -201,13 +200,13 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
       setShowVoiceView(false);
       return;
     }
-    setVoiceSize(stop);
+    if (!(stop === "full" && forcedFull)) setVoiceSize(stop);
     setShowVoiceView(true);
-  }, [setShowVoiceView]);
+  }, [setShowVoiceView, forcedFull]);
 
   return {
     voiceFocused, setVoiceFocused,
-    isMaximized, voiceSize, setVoiceStop, voiceContainerWidth,
+    isMaximized, forcedFull, voiceSize, setVoiceStop, voiceContainerWidth,
     voiceContainerRef, attachVoiceContainer, voiceMaxWidth, shownVoiceWidth,
   };
 }
