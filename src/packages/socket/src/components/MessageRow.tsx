@@ -12,7 +12,7 @@ import { getFrequentReactions } from "../utils/recentReactions";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { sealedPlaceholder } from "../utils/sealedText";
 import { drawsMessageText, isUnknownKind, unknownKindNotice } from "../utils/webhookCards";
-import { AttachmentGallery } from "./AttachmentGallery";
+import { AttachmentGrid } from "./AttachmentGrid";
 import { isFileCard, isGridImage } from "./attachmentKinds";
 import { BotTag } from "./BotTag";
 import { MessageHoverToolbar } from "./ChatMessage";
@@ -851,7 +851,7 @@ function MessageContent({
           <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
         )}
         {m.attachments && m.attachments.length > 0 && serverHost && (() => {
-          /* Two or more pictures go in a gallery, and plain files two to a row (GRYT-1722 draft).
+          /* Two or more pictures go in a grid, and plain files two to a row (GRYT-1722 draft).
              Media keeps its own player. The order is the order they were sent in. */
           const all = m.attachments.map((fileId, i) => ({ fileId, meta: m.enriched_attachments?.[i] }));
           const images = all.filter((a) => isGridImage(a.meta));
@@ -872,7 +872,7 @@ function MessageContent({
           );
           return (
             <div className="flex gap-2 flex-col" style={{ marginTop: "4px" }}>
-              {grid && <AttachmentGallery images={images} serverHost={serverHost} messageActions={messageActions} onLightboxOpen={onLightboxOpen} />}
+              {grid && <AttachmentGrid images={images} serverHost={serverHost} messageActions={messageActions} onLightboxOpen={onLightboxOpen} />}
               {rest.map(one)}
               {files.length >= 2 && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, width: 420, maxWidth: "100%" }}>
