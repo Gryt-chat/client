@@ -116,7 +116,7 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
     : []),
   { id: "esports-mode", title: "eSports mode", description: "Lowest possible latency. Disables all audio processing, enables push-to-talk, caps bitrate at 128kbps (studio quality), and optimizes Opus packetization (10ms frames).", page: "voice", destination: "sound-video", section: "Voice" },
   { id: "warn-me-when-my-microphone-goes-silent", title: "Warn me when my microphone goes silent", description: "Says so if your microphone stops sending anything at all while you are in a voice channel. Some headsets mute their own noise floor between sentences, which looks the same from here.", page: "audio", destination: "sound-video", section: "Microphone" },
-  { id: "experimental-screen-share", title: "Experimental screen share", description: "Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware.", page: "screen", destination: "sound-video", section: "Screen share" },
+  { id: "experimental-screen-share", title: "Experimental screen share", description: "Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware.", page: "screen", destination: "sound-video", section: "Screen share", keywords: ["quality", "frame rate", "fps", "gaming mode", "codec", "bitrate", "svc"] },
   // Dev builds only, the same way the Developer destination is. Without the gate
   // a release would offer results for a panel that is not in the bundle.
   ...(import.meta.env.DEV
