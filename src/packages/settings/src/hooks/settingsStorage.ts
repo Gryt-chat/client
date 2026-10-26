@@ -2,10 +2,10 @@ import type { RichActivity } from "../../../../lib/richActivity";
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
 /**
- * How the voice grid chooses its rows and columns. "meet" reproduces Google Meet
- * as measured; "large" picks the biggest tiles. Both look right, so it is a setting.
+ * How the voice grid places tiles. "bento" fills the view, shares and cameras first;
+ * "meet" reproduces Google Meet as measured; "large" picks the biggest equal tiles.
  */
-export type VoiceTileLayout = "meet" | "large";
+export type VoiceTileLayout = "bento" | "meet" | "large";
 
 /**
  * What two people in a channel look like. "hero" fills the panel with one camera;
@@ -408,7 +408,7 @@ export const settingsInit: Settings = {
   setCameraMirrored: noop,
   faceFramingEnabled: true,
   setFaceFramingEnabled: noop,
-  voiceTileLayout: "meet",
+  voiceTileLayout: "bento",
   setVoiceTileLayout: noop,
   voiceTwoPersonLayout: "hero",
   setVoiceTwoPersonLayout: noop,

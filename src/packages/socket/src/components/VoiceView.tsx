@@ -35,6 +35,7 @@ import { PiArrowLineLeftFill, PiArrowLineRightFill, PiCameraSlashFill,PiChatTear
 import { useAloneInCall } from "../hooks/useAloneInCall";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
+import { type BentoItem, computeBentoLayout } from "../lib/bentoLayout";
 import { cameraStreamFor, hasLiveVideoTrack } from "../lib/cameraStream";
 import {
   computeGridLayout,
@@ -802,6 +803,7 @@ export const VoiceView = ({
   /** The default, since it gives the person you are talking to more pixels.
       "equal" falls through to the ordinary grid. */
   const isHeroPip =
+    voiceTileLayout !== "bento" &&
     voiceTwoPersonLayout === "hero" &&
     !isFocused &&
     screenItems.length === 0 &&
@@ -838,6 +840,7 @@ export const VoiceView = ({
   ]);
 
   const shareLayout =
+    voiceTileLayout !== "bento" &&
     screenItems.length > 0 && usableWidth > 0 && availableHeight > 0
       ? computeShareLayout(usableWidth, availableHeight, shareAspect)
       : null;
@@ -927,6 +930,47 @@ export const VoiceView = ({
     }
     return out;
   }, [gridRows, laidOutItems]);
+
+  /** Shares and people placed together. A share you don't watch has no picture yet, so it
+      takes a camera-sized tile: room for its Watch button, no more. */
+  const bentoRects = useMemo(() => {
+    if (voiceTileLayout !== "bento") return null;
+
+    const items: BentoItem[] = screenItems.map((id) => {
+      const client = clientsForHost[id.slice(7)];
+      const shareId = client?.screenShareVideoStreamID;
+      const watched = id.slice(7) === currentConnectionId || (!!shareId && watchedShares.has(shareId));
+      return { id, kind: watched ? "share" : "cam" };
+    });
+
+    for (const id of laidOutItems) {
+      const client = clientsForHost[id];
+      const stream = id === currentConnectionId
+        ? localCameraStream
+        : cameraStreamFor(client?.cameraStreamID, fallbackCameraStreamIdByClientId[id], videoStreams);
+      if (!client?.cameraEnabled || !hasLiveVideoTrack(stream)) {
+        items.push({ id, kind: "avatar" });
+        continue;
+      }
+      const settings = stream?.getVideoTracks()[0]?.getSettings();
+      const ratio = settings?.width && settings?.height ? settings.width / settings.height : undefined;
+      items.push({ id, kind: "cam", ratio });
+    }
+
+    return computeBentoLayout(items, usableWidth, availableHeight, GRID_GAP);
+  }, [
+    voiceTileLayout,
+    screenItems,
+    laidOutItems,
+    clientsForHost,
+    currentConnectionId,
+    watchedShares,
+    localCameraStream,
+    fallbackCameraStreamIdByClientId,
+    videoStreams,
+    usableWidth,
+    availableHeight,
+  ]);
 
   useEffect(() => {
     if (!focusedStream) return;
@@ -1400,7 +1444,19 @@ export const VoiceView = ({
                     )}
                   </AnimatePresence>
                 )}
-                {currentServerConnected === serverHost && !isFocused && (
+                {currentServerConnected === serverHost && !isFocused && bentoRects && (
+                  <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+                    <AnimatePresence>
+                      {bentoRects.map((r) => {
+                        const box: CSSProperties = { position: "absolute", left: r.x, top: r.y, width: r.width, height: r.height };
+                        return r.id === OVERFLOW_ITEM_ID
+                          ? <div key={r.id} style={box}>{renderOverflowTile(r)}</div>
+                          : renderTile(r.id, box, tileRadius(Math.min(r.width, r.height)));
+                      })}
+                    </AnimatePresence>
+                  </div>
+                )}
+                {currentServerConnected === serverHost && !isFocused && !bentoRects && (
                   <>
                     {/* A share sits above the grid at sidebar proportions and
                         below the participant strip at stage proportions — the

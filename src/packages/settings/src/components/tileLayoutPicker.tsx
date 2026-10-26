@@ -1,4 +1,5 @@
 
+import { computeBentoLayout } from "@/socket/src/lib/bentoLayout";
 import { computeGridLayout, GRID_GAP } from "@/socket/src/lib/voiceLayout";
 
 import type { VoiceTileLayout } from "../hooks/settingsStorage";
@@ -19,6 +20,7 @@ const SWATCH = { width: 132, height: 74 };
  * function the voice grid runs, so the swatch cannot drift.
  */
 function LayoutSwatch({ rule }: { rule: VoiceTileLayout }) {
+  if (rule === "bento") return <BentoSwatch />;
   const layout = computeGridLayout(
     REFERENCE.width,
     REFERENCE.height,
@@ -69,11 +71,60 @@ function LayoutSwatch({ rule }: { rule: VoiceTileLayout }) {
   );
 }
 
+/** A share, two cameras and three people, which is where bento differs from a grid. */
+function BentoSwatch() {
+  const inner = { width: SWATCH.width - 12, height: SWATCH.height - 12 };
+  const scale = inner.width / REFERENCE.width;
+  const rects = computeBentoLayout(
+    [
+      { id: "s", kind: "share" },
+      { id: "c1", kind: "cam" },
+      { id: "c2", kind: "cam" },
+      { id: "a1", kind: "avatar" },
+      { id: "a2", kind: "avatar" },
+      { id: "a3", kind: "avatar" },
+    ],
+    REFERENCE.width,
+    inner.height / scale,
+    GRID_GAP,
+  );
+
+  return (
+    <div style={{
+        position: "relative",
+        width: SWATCH.width,
+        height: SWATCH.height,
+        background: "var(--gryt-neutral-3)",
+        borderRadius: "var(--gryt-radius-sm)",
+      }}>
+      {rects.map((r) => (
+        <div
+          key={r.id}
+          style={{
+            position: "absolute",
+            left: 6 + r.x * scale,
+            top: 6 + r.y * scale,
+            width: r.width * scale,
+            height: r.height * scale,
+            background: r.kind === "avatar" ? "var(--gryt-accent-6)" : "var(--gryt-accent-9)",
+            borderRadius: 2,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 const OPTIONS: Array<{
   value: VoiceTileLayout;
   label: string;
   hint: string;
 }> = [
+  {
+    value: "bento",
+    label: "Fill the view",
+    hint: "No empty space. Screens and cameras get the most room.",
+  },
   {
     value: "meet",
     label: "Match Google Meet",
