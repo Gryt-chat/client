@@ -152,7 +152,7 @@ export const ChatView = memo(({
   /** Opens the search palette; no button without it (GRYT-1738). */
   onSearch?: () => void;
   /** A search hit to scroll to once its conversation has loaded. `nonce` lets the same message be picked twice. */
-  pendingJump?: { conversationId: string; messageId: string; nonce: number } | null;
+  pendingJump?: { conversationId: string; messageId: string; nonce: number; reply?: boolean } | null;
   /** The server dropped: the box says so and takes nothing until it's back (GRYT-1751). */
   offlineLine?: string;
   canSend: boolean;
@@ -354,7 +354,9 @@ export const ChatView = memo(({
     if (chatMessages.length > 0 && chatMessages[0].conversation_id !== conversationKey) return;
     jumpedNonce.current = pendingJump.nonce;
     jumpToMessage(pendingJump.messageId);
-  }, [pendingJump, conversationKey, isLoadingMessages, chatMessages, jumpToMessage]);
+    const target = pendingJump.reply ? chatMessages.find((m) => m.message_id === pendingJump.messageId) : undefined;
+    if (target) handleReply(target);
+  }, [pendingJump, conversationKey, isLoadingMessages, chatMessages, jumpToMessage, handleReply]);
 
   const returnToPresent = useCallback(() => {
     historyWindow?.returnToPresent();

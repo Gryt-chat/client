@@ -274,7 +274,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [searchFocus, setSearchFocus] = useState(0);
   /* The header's button starts in its channel; Ctrl/Cmd+K starts on the whole server. */
   const [searchStartIn, setSearchStartIn] = useState<SearchFilter | undefined>(undefined);
-  const [pendingJump, setPendingJump] = useState<{ conversationId: string; messageId: string; nonce: number } | null>(null);
+  const [pendingJump, setPendingJump] = useState<{ conversationId: string; messageId: string; nonce: number; reply?: boolean } | null>(null);
   // Ctrl/Cmd+K, GRYT-1738. In the messages space it searches this device's copy (GRYT-1748).
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1567,6 +1567,14 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   hiddenForChat.current = true;
                   setVoiceStop("hidden");
                 } : undefined}
+                onOpenMessage={(messageId, reply) => {
+                  setSelectedChannelId(currentChannelId);
+                  if (chatPaneHidden) {
+                    if (forcedFull) hiddenForChat.current = true;
+                    setVoiceStop(forcedFull ? "hidden" : VOICE_PRESET_1);
+                  }
+                  setPendingJump({ conversationId: currentChannelId, messageId, nonce: Date.now(), reply });
+                }}
               />)}
               {voiceWidth !== "0px" && !chatTakenOver && !callWindow && (
                 <VoiceGrip

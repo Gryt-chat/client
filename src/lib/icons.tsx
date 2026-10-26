@@ -75,6 +75,7 @@ import {
   GlobeSimple,
   HandWaving,
   HardDrives,
+  Heart,
   House,
   HouseLine,
   Image,
@@ -231,6 +232,7 @@ export const PiGearSixFill: Icon = weighted(GearSix, "fill", "PiGearSixFill");
 export const PiGlobeSimpleFill: Icon = weighted(GlobeSimple, "fill", "PiGlobeSimpleFill");
 export const PiHandWavingFill: Icon = weighted(HandWaving, "fill", "PiHandWavingFill");
 export const PiHardDrivesFill: Icon = weighted(HardDrives, "fill", "PiHardDrivesFill");
+export const PiHeartFill: Icon = weighted(Heart, "fill", "PiHeartFill");
 export const PiHouseFill: Icon = weighted(House, "fill", "PiHouseFill");
 export const PiImageFill: Icon = weighted(Image, "fill", "PiImageFill");
 export const PiInfoBold: Icon = weighted(Info, "bold", "PiInfoBold");
