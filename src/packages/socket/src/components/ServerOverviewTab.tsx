@@ -300,7 +300,7 @@ export function ServerOverviewTab({
     }
     if (!effectiveAccessToken) {
       ensureJoined();
-      toast.error("Missing access token. Try rejoining the server.");
+      toast.error("You're not signed in to this server. Leave it and join again.");
       return false;
     }
     if (!canEdit) {

@@ -199,7 +199,7 @@ export function useEmojiUpload({
   const uploadOne = async (item: PendingEmoji): Promise<boolean> => {
     const token = await getFreshServerAccessToken(host, socket);
     if (!token) {
-      toast.error("Not authenticated. Join the server first.");
+      toast.error("You're not signed in to this server. Join it first.");
       return false;
     }
 
@@ -268,7 +268,7 @@ export function useEmojiUpload({
     const toUpload = pendingEmojis.filter((p) => p.status === "pending" && !p.nameError);
     if (toUpload.length === 0) return;
     if (!effectiveAccessToken) {
-      toast.error("Not authenticated. Join the server first.");
+      toast.error("You're not signed in to this server. Join it first.");
       return;
     }
 
