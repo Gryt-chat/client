@@ -23,6 +23,7 @@ import { liftScreenCapture, qualityBox } from "../utils/streamQuality";
 import { BAR_BUTTON_STYLE, BAR_SOLO_CLASS, CallControlButton, LEAVE_CLASS, SPLIT_BUTTON_CLASS, SplitControl } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
 import { controlState } from "./controlState";
+import { HeadsetMenu } from "./HeadsetMenu";
 import { MicMenu } from "./MicMenu";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
 import { ScreenShareControl } from "./ScreenShareControl";
@@ -81,6 +82,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { supported: canPickAudioSources } = useScreenAudioSources();
   const [showAudioSourcesModal, setShowAudioSourcesModal] = useState(false);
   const [micMenuOpen, setMicMenuOpen] = useState(false);
+  const [headsetMenuOpen, setHeadsetMenuOpen] = useState(false);
   const { sockets } = useSockets();
   const { recentre: recentreFace, detecting: detectingFace } = useVideoFraming();
   const {
@@ -93,7 +95,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
     screenShareMaxBitrate,
     screenShareScalabilityMode,
     cameraCodec,
-    openSettings,
   } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
@@ -450,7 +451,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
             an empty bubble on hover and kept it anchored to whichever control
             you hovered previously.
           */}
-          {/* The headset arrow opens Settings → Audio until its speaker menu lands (GRYT-1904). */}
           <SplitControl
             state={controlState(isServerMuted, isMuted)}
             arrowOpen={micMenuOpen}
@@ -470,7 +470,11 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </MaybeTooltip>
           </SplitControl>
 
-          <SplitControl state={controlState(isServerDeafened, isDeafened)} arrowLabel="Speaker options" onArrow={() => openSettings("audio")}>
+          <SplitControl
+            state={controlState(isServerDeafened, isDeafened)}
+            arrowOpen={headsetMenuOpen}
+            arrow={<HeadsetMenu state={controlState(isServerDeafened, isDeafened)} open={headsetMenuOpen} onOpenChange={setHeadsetMenuOpen} />}
+          >
             <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
               <CallControlButton
                 size={BAR_SIZE}
