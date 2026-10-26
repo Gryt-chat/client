@@ -27,6 +27,8 @@ type Role = string;
 
 export interface MemberInfo {
   serverUserId: string;
+  /** How many windows they share in voice, from the voice clients rather than the server's list. */
+  sharing?: number;
   nickname: string;
   avatarFileId?: string | null;
   /** Dominant colour of the avatar as #rrggbb. Null until it has been computed. */
@@ -177,7 +179,9 @@ const MemberItem = ({
 }) => {
   const isSelf = member.serverUserId === currentServerUserId;
   const dmUnread = dmUnreadFor?.(member.serverUserId) ?? 0;
-  const { label: statusLabel, color: statusColor } = statusConfig[member.status];
+  const { label: inVoiceLabel, color: statusColor } = statusConfig[member.status];
+  let statusLabel = inVoiceLabel;
+  if (member.status === "in_voice" && member.sharing) statusLabel = member.sharing > 1 ? `Sharing ${member.sharing} windows` : "Sharing";
   const isOffline = member.status === "offline";
   const showStatusLine = member.status === "in_voice" || member.status === "afk";
   const rowCard = useRowCard(member, serverHost);

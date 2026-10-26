@@ -54,6 +54,7 @@ import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
+import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
@@ -1200,11 +1201,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const voiceClientsSpeaking = fakeParticipantOptions
     ? { ...clientsSpeaking, ...fakeSpeech.speaking }
     : clientsSpeaking;
-  const hostMembers = withFakeMembers(
+  const hostMembers = withSharing(withFakeMembers(
     memberLists[host] || [],
     currentChannelId,
     fakeParticipantOptions,
-  );
+  ), hostClients);
   const serverName = serverDetails.server_info?.name || currentlyViewingServer.name;
   const popOut = () => {
     const title = `${hostChannels.find((c) => c.id === currentChannelId)?.name ?? "Voice"} · ${serverName}`;

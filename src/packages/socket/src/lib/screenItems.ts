@@ -31,3 +31,17 @@ export function shareCount(client: ShareFields & { screenShareEnabled?: boolean 
   if (!client?.screenShareEnabled || !client.screenShareVideoStreamID) return 0;
   return Math.max(1, client.screenShares?.length ?? 1);
 }
+
+/** Members with `sharing` set from the voice clients. The same array back when nobody shares. */
+export function withSharing<M extends { serverUserId: string }>(
+  members: M[],
+  clients: Record<string, ShareFields & { screenShareEnabled?: boolean; serverUserId?: string }> | undefined,
+): (M & { sharing?: number })[] {
+  const by = new Map<string, number>();
+  for (const c of Object.values(clients ?? {})) {
+    const n = shareCount(c);
+    if (n && c.serverUserId) by.set(c.serverUserId, n);
+  }
+  if (!by.size) return members;
+  return members.map((m) => (by.has(m.serverUserId) ? { ...m, sharing: by.get(m.serverUserId) } : m));
+}
