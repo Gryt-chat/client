@@ -81,6 +81,7 @@
     "test:capture-health": "node scripts/check-capture-health.ts",
     "test:screen-audio-state": "node scripts/check-screen-audio-state.ts",
     "test:screen-share-priority": "node scripts/check-screen-share-priority.ts",
+    "test:screen-items": "node scripts/check-screen-items.ts",
     "test:drawn-video-size": "node scripts/check-drawn-video-size.ts",
     "test:avatar-precedence": "node scripts/check-avatar-precedence.ts",
     "test:mention-tracker": "node scripts/check-mention-tracker.ts",

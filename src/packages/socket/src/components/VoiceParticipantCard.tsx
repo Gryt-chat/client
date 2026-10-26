@@ -10,6 +10,7 @@ import { PiCameraFill,PiEyeFill, PiEyeSlashFill, PiMicrophoneSlashFill, PiMonito
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import { cameraStreamFor } from "../lib/cameraStream";
+import { parseScreenItem, shareOf } from "../lib/screenItems";
 import type { Client } from "../types/clients";
 import { stopWatchingShare, useWatchedShares, watchShare } from "../utils/watchedShares";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -411,25 +412,26 @@ export function VoiceParticipantCard({
   );
 
   if (isScreenTile) {
-    const remoteScreen = client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] ?? null : null;
+    const share = shareOf(client, parseScreenItem(itemId).index);
+    const remoteScreen = share.videoStreamID ? videoStreams?.[share.videoStreamID] ?? null : null;
     const screenStream = isSelf ? localScreenStream : remoteScreen;
 
     if (!isSelf) {
       const vsKeys = videoStreams ? Object.keys(videoStreams) : [];
       console.log(
         `[ScreenShare] VoiceParticipantCard screen tile: nick=${client.nickname} streamID=${
-          client.screenShareVideoStreamID
+          share.videoStreamID
         } found=${!!screenStream} videoStreamKeys=[${vsKeys.join(",")}]`,
       );
     }
 
     const hasPendingRemoteScreen =
-      !isSelf && client.screenShareEnabled && !!client.screenShareVideoStreamID;
+      !isSelf && client.screenShareEnabled && !!share.videoStreamID;
 
     if (!screenStream && !hasPendingRemoteScreen) return null;
 
     const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
-    const shareId = client.screenShareVideoStreamID;
+    const shareId = share.videoStreamID;
     // Someone else's share waits for a click: nothing draws or plays until you choose to watch.
     const watching = isSelf || (!!shareId && watchedShares.has(shareId));
 
@@ -483,7 +485,7 @@ export function VoiceParticipantCard({
                   itemId,
                   screenStream,
                   screenTitle,
-                  (!isSelf && client.screenShareAudioStreamID) || undefined,
+                  (!isSelf && share.audioStreamID) || undefined,
                 )
             : undefined
         }
@@ -503,7 +505,7 @@ export function VoiceParticipantCard({
         ) : (
           <div className="group relative h-full w-full">
             <VideoCard
-              key={`${serverUserId ?? itemId}:${client.screenShareVideoStreamID || "local"}:${
+              key={`${serverUserId ?? itemId}:${share.videoStreamID || "local"}:${
                 screenStream?.id || "pending"
               }`}
               stream={screenStream}
@@ -529,7 +531,7 @@ export function VoiceParticipantCard({
                         stream: screenStream,
                         title: screenTitle,
                         audioStreamId:
-                          (!isSelf && client.screenShareAudioStreamID) || undefined,
+                          (!isSelf && share.audioStreamID) || undefined,
                         objectFit: "contain",
                       })
                   : undefined
