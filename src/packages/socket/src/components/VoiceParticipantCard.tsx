@@ -792,10 +792,7 @@ export function VoiceParticipantCard({
           stream={cameraStream}
           nickname={client.nickname}
           mirrored={isSelf ? cameraMirrored : false}
-          objectPosition={toObjectPosition(
-            isSelf ? localFraming : framingByClient[itemId],
-            isSelf ? cameraMirrored : false,
-          )}
+          objectPosition={toObjectPosition(isSelf ? localFraming : framingByClient[itemId])}
           isSpeaking={isSpeaking}
           statusIcons={statusBadges}
           radius={tileRadius}
