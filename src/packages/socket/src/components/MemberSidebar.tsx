@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
 
+import { PiUsersBold } from "../../../../lib/icons";
 import type { RichActivity } from "../../../../lib/richActivity";
 import { nameTags } from "../../../lib/nameTags";
 import { useDirectory } from "../hooks/dmDirectory";
@@ -116,6 +117,8 @@ export interface AdminActions {
 interface MemberSidebarProps {
   /** The desktop panel passes its own; the phone's sheet keeps 240. */
   width?: number;
+  /** Folded beside a call: avatars only, no headings. */
+  avatarsOnly?: boolean;
   members: MemberInfo[];
   currentConnectionId?: string;
   currentServerUserId?: string;
@@ -150,8 +153,10 @@ const MemberItem = ({
   cardOpen,
   onCardOpenChange,
   dmUnreadFor,
+  avatarOnly = false,
 }: {
   member: MemberInfo;
+  avatarOnly?: boolean;
   /** Already pulled into a readable band — see `readableRoleColor`. */
   roleColor?: string;
   /** Set when another member here shares the name (GRYT-1674). */
@@ -215,11 +220,13 @@ const MemberItem = ({
         <Popover.Trigger nativeButton={false} render={<div />}>
           <div
             className="member-row member-row-clickable member-row-card"
+            aria-label={avatarOnly ? member.nickname : undefined}
+            title={avatarOnly ? member.nickname : undefined}
             data-card-open={cardOpen || undefined}
             data-row-card={rowCard.kind}
             style={rowCard.style}
           >
-        <div className="flex items-center gap-2 w-full">
+        <div className={avatarOnly ? "flex items-center justify-center w-full" : "flex items-center gap-2 w-full"}>
           <Avatar
             size="small"
             fallback={member.nickname[0]}
@@ -230,7 +237,7 @@ const MemberItem = ({
             }}
           />
 
-          <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "1px" }}>
+          {!avatarOnly && <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "1px" }}>
             <div className="flex items-center gap-1">
               {/* The role's colour, or the ordinary text colour when the role
                   has none. Offline keeps its role colour and is dimmed rather
@@ -289,7 +296,7 @@ const MemberItem = ({
                 </span>
               </span>
             )}
-          </div>
+          </div>}
         </div>
           {/* Their conversation's unread, on their row: the sidebar is the way
               into it now, so the count belongs where the way in is. */}
@@ -322,6 +329,7 @@ export const MemberSidebar = ({
   isBlocked,
   onReport,
   width = 240,
+  avatarsOnly = false,
 }: MemberSidebarProps) => {
   const { roles } = useServerPermissions(serverHost);
   const { resolvedAppearance } = useTheme();
@@ -370,6 +378,7 @@ export const MemberSidebar = ({
     return map;
   }, [roles, resolvedAppearance]);
   const nameTagMap = useMemo(() => nameTags(members), [members]);
+  const groupGap = avatarsOnly ? "mt-2" : "mt-4";
 
   return (
     <div role="complementary" aria-label="Members" style={{ width,
@@ -378,7 +387,12 @@ export const MemberSidebar = ({
         height: "100%",
         overflow: "hidden",
       }}>
-      <div className="flex flex-col h-full p-3 gap-1">
+      <div className={avatarsOnly ? "flex flex-col h-full py-3 px-1 gap-1" : "flex flex-col h-full p-3 gap-1"}>
+        {avatarsOnly && (
+          <div className="flex justify-center text-gryt-muted" style={{ padding: "2px 0 6px" }}>
+            <PiUsersBold size={18} aria-hidden />
+          </div>
+        )}
         {/*
           No "Members — 12" above the groups (GRYT-904).
 
@@ -400,7 +414,7 @@ export const MemberSidebar = ({
               aria-labelledby={`members-${group.key}`}
               /* Space above each heading rather than between every row, so the
                  grouping is what the eye picks up. The first sits flush. */
-              className={index === 0 ? "" : "mt-4"}
+              className={index === 0 ? "" : groupGap}
             >
               {/* Sticky, because the whole point of a heading here is knowing
                   whose names you are looking at, and a list of thirty scrolls
@@ -408,7 +422,7 @@ export const MemberSidebar = ({
                   pass underneath rather than through. */}
               <h3
                 id={`members-${group.key}`}
-                className="text-xs font-bold uppercase tracking-wide text-gryt-muted"
+                className={avatarsOnly ? "sr-only" : "text-xs font-bold uppercase tracking-wide text-gryt-muted"}
                 style={{
                   position: "sticky",
                   top: 0,
@@ -437,6 +451,7 @@ export const MemberSidebar = ({
                     onToggleBlock={onToggleBlock}
                     isBlocked={isBlocked}
                     onReport={onReport}
+                    avatarOnly={avatarsOnly}
                     cardOpen={openCardFor === member.serverUserId}
                     onCardOpenChange={(open) => setCardOpen(member.serverUserId, open)}
                   />

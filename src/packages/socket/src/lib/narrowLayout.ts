@@ -81,6 +81,37 @@ export function hasRoomForMemberList({
   return windowWidth >= needed;
 }
 
+export const AVATAR_COLUMN_WIDTH = 56;
+/** What the chat keeps beside a call before the member list folds: about 60 characters. */
+const MIN_CHAT_BESIDE_CALL = 440;
+
+export type MemberListMode = "full" | "avatars" | "none";
+
+/** Beside a call the list folds to avatars before the chat drops under 440; with no call it's `hasRoomForMemberList`. */
+export function memberListMode({
+  windowWidth,
+  voicePanelWidth,
+  voiceFull = false,
+  threadPanelWidth = 0,
+}: {
+  windowWidth: number;
+  /** 0 when the voice view is hidden, full, or the user is not in a call. */
+  voicePanelWidth: number;
+  /** The call takes the whole middle and the chat is hidden. */
+  voiceFull?: boolean;
+  threadPanelWidth?: number;
+}): MemberListMode {
+  if (voiceFull) return windowWidth > COMPACT_MAX_WIDTH ? "avatars" : "none";
+  if (voicePanelWidth <= 0 || threadPanelWidth > 0) {
+    return hasRoomForMemberList({ windowWidth, voicePanelWidth, threadPanelWidth }) ? "full" : "none";
+  }
+  const row = (chat: number, members: number) =>
+    PAGE_PADDING + RAIL_WIDTH + GAP + SIDEBAR_WIDTH + GAP + voicePanelWidth + chat + GAP + members;
+  if (row(MIN_CHAT_BESIDE_CALL, SIDEBAR_WIDTH) <= windowWidth) return "full";
+  if (row(MIN_CHAT_WIDTH, AVATAR_COLUMN_WIDTH) <= windowWidth) return "avatars";
+  return "none";
+}
+
 /**
  * Whether the thread fits beside the conversation instead of over it. Below this
  * it takes the whole chat pane, which is a screen rather than a covered one.

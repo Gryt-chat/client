@@ -39,7 +39,7 @@ import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSe
 import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
-import { useIsTinyWindow, useRoomForMemberList, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
+import { useIsTinyWindow, useMemberListMode, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
@@ -52,7 +52,7 @@ import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
-import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
+import { AVATAR_COLUMN_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
@@ -296,10 +296,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
      list yields to it the way it already yields to the voice panel. */
   const threadOpen = useOpenThread();
   const threadBeside = useRoomForThreadBeside(drawnVoicePanelWidth);
-  const roomForMembers = useRoomForMemberList(
+  const membersMode = useMemberListMode(
     drawnVoicePanelWidth,
+    showVoiceView && voiceWidth !== "0px" && isMaximized && !chatTakenOver,
     threadBeside && threadOpen ? THREAD_PANEL_WIDTH : 0,
   );
+  const roomForMembers = membersMode !== "none";
   const roomForVoice = useRoomForVoicePanel();
 
   const {
@@ -1627,7 +1629,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               // Closed for good, not collapsed: the server stops sending the list,
               // so an open panel would show whatever was last cached.
               sidebarOpen={rightSidebarOpen && canViewMembers && !dmSpace}
-              sidebarWidthPx={SIDEBAR_WIDTH_PX}
+              sidebarWidthPx={membersMode === "avatars" ? AVATAR_COLUMN_WIDTH : SIDEBAR_WIDTH_PX}
+              avatarsOnly={membersMode === "avatars"}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={rightSidebarContentRef}
               isUnreachableWhileConnected={isServerUnreachable}

@@ -1265,7 +1265,8 @@ export const VoiceView = ({
         // would fight the browser for it.
         width: isFullscreen ? "100%" : openWidth,
         paddingRight:
-          isFullscreen || !showVoiceView || voiceWidth === "0px" ? 0 : 16,
+          // No chat beside it at 100%, so no gap to keep for one.
+          isFullscreen || !showVoiceView || voiceWidth === "0px" || voiceWidth === "100%" ? 0 : 16,
       }}
       style={{
         overflow: "hidden",
