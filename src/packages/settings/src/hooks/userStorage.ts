@@ -381,6 +381,7 @@ export const SETTINGS_KEYS = [
   "cameraQuality",
   "cameraMirrored",
   "faceFramingEnabled",
+  "cameraPreviewFirst",
   "voiceTileLayout",
   "voiceTwoPersonLayout",
   "devFakeParticipants",

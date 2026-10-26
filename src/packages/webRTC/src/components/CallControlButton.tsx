@@ -1,5 +1,5 @@
 import { IconButton, type IconButtonProps } from "@gryt/ui";
-import { type ComponentPropsWithoutRef, forwardRef, type ReactNode } from "react";
+import { type ComponentPropsWithoutRef, forwardRef, type ReactNode, type Ref } from "react";
 
 import { PiCaretDownFill, PiCaretUpFill, PiLockSimpleFill } from "../../../../lib/icons";
 
@@ -94,9 +94,11 @@ export function SplitControl({
   onArrow,
   arrowOpen = false,
   arrow,
+  rootRef,
   children,
 }: {
   state: CallControlState;
+  rootRef?: Ref<HTMLDivElement>;
   arrowLabel?: string;
   onArrow?: () => void;
   arrowOpen?: boolean;
@@ -105,6 +107,7 @@ export function SplitControl({
 }) {
   return (
     <div
+      ref={rootRef}
       className={`flex items-center rounded-full ${SPLIT_CLASS[state]}`}
       style={arrowOpen ? { outline: "2px solid var(--gryt-accent-9)", outlineOffset: 2 } : undefined}
     >

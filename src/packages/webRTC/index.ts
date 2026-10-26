@@ -10,6 +10,6 @@ export { useVoiceSounds } from "./src/adapters/useVoiceSounds";
 export { useVoiceConfigFromSettings } from "./src/adapters/voiceConfig";
 export { electronVoiceHost } from "./src/adapters/voiceHost";
 export { VoiceProvider } from "./src/adapters/VoiceProvider";
-export * from "./src/components/CameraPreviewModal";
+export * from "./src/components/CameraPreview";
 export * from "./src/components/controls";
 export * from "./src/components/ScreenSharePickerModal";

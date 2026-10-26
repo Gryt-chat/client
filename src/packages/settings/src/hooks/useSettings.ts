@@ -88,6 +88,7 @@ function useSettingsHook() {
   const [cameraQuality, setCameraQuality] = useState("native");
   const [cameraMirrored, setCameraMirrored] = useState(true);
   const [faceFramingEnabled, setFaceFramingEnabled] = useState(true);
+  const [cameraPreviewFirst, setCameraPreviewFirst] = useState(true);
   const [voiceTileLayout, setVoiceTileLayout] =
     useState<VoiceTileLayout>("bento");
   const [voiceTwoPersonLayout, setVoiceTwoPersonLayout] =
@@ -161,6 +162,7 @@ function useSettingsHook() {
       setCameraQuality(getUserValue("cameraQuality", "native"));
       setCameraMirrored(getUserValue("cameraMirrored", true));
       setFaceFramingEnabled(getUserValue("faceFramingEnabled", true));
+      setCameraPreviewFirst(getUserValue("cameraPreviewFirst", true));
       setVoiceTileLayout(
         getUserValue<VoiceTileLayout>("voiceTileLayout", "bento"),
       );
@@ -376,6 +378,11 @@ function useSettingsHook() {
   function updateFaceFramingEnabled(enabled: boolean) {
     setFaceFramingEnabled(enabled);
     setUserValue("faceFramingEnabled", enabled);
+  }
+
+  function updateCameraPreviewFirst(enabled: boolean) {
+    setCameraPreviewFirst(enabled);
+    setUserValue("cameraPreviewFirst", enabled);
   }
 
   function updateDevFakeParticipants(count: number) {
@@ -633,6 +640,8 @@ function useSettingsHook() {
     setCameraMirrored: updateCameraMirrored,
     faceFramingEnabled,
     setFaceFramingEnabled: updateFaceFramingEnabled,
+    cameraPreviewFirst,
+    setCameraPreviewFirst: updateCameraPreviewFirst,
     voiceTileLayout,
     setVoiceTileLayout: updateVoiceTileLayout,
     voiceTwoPersonLayout,

@@ -205,6 +205,9 @@ export interface Settings {
   setCameraMirrored: (mirrored: boolean) => void;
   faceFramingEnabled: boolean;
   setFaceFramingEnabled: (enabled: boolean) => void;
+  /** Pressing the camera button opens the preview first; off, it turns straight on. */
+  cameraPreviewFirst: boolean;
+  setCameraPreviewFirst: (enabled: boolean) => void;
   voiceTileLayout: VoiceTileLayout;
   setVoiceTileLayout: (layout: VoiceTileLayout) => void;
   voiceTwoPersonLayout: VoiceTwoPersonLayout;
@@ -408,6 +411,8 @@ export const settingsInit: Settings = {
   setCameraMirrored: noop,
   faceFramingEnabled: true,
   setFaceFramingEnabled: noop,
+  cameraPreviewFirst: true,
+  setCameraPreviewFirst: noop,
   voiceTileLayout: "bento",
   setVoiceTileLayout: noop,
   voiceTwoPersonLayout: "hero",
