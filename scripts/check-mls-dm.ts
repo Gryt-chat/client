@@ -77,14 +77,14 @@ test("an archived message becomes a row with its reply, edit and files", () => {
     conversationId: "dm_1",
     messageId: "m1",
     sentAt: 1000,
-    senderId: "ola",
+    senderId: "mia",
     text: "hei",
     attachments: { f1: key("a") },
     editedAt: 2000,
     replyTo: "m0",
   };
-  const r = archivedRow(m, () => "Ola");
-  assert.equal(r.sender_nickname, "Ola");
+  const r = archivedRow(m, () => "Mia");
+  assert.equal(r.sender_nickname, "Mia");
   assert.equal(r.created_at, new Date(1000).toISOString());
   assert.equal(r.edited_at, new Date(2000).toISOString());
   assert.equal(r.reply_to_message_id, "m0");
@@ -124,15 +124,15 @@ test("files show as they open, and one that won't open shows as its id", () => {
 
 test("the composer line: quiet when healthy, says why otherwise, and on the web where history lives", () => {
   const none = { undecryptable: 0, lost: null };
-  const app = { lostHistory: false, home: "app", peerName: "Ola" } as const;
+  const app = { lostHistory: false, home: "app", peerName: "Mia" } as const;
   assert.equal(mlsNotice({ kind: "mls" }, none, app), null);
-  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }) ?? "", /Ola has a new key.*compare the pictures/);
+  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }) ?? "", /Mia has a new key.*compare the pictures/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, app), null);
-  assert.match(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, app) ?? "", /Ola/);
+  assert.match(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, app) ?? "", /Mia/);
   assert.equal(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, app), "1 message couldn't be decrypted on this device.");
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, app) ?? "", /3 messages/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "removed" }, app) ?? "", /taken out/);
-  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "not_added" }, app) ?? "", /new to your chat with Ola.*waits and goes out on its own/);
+  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "not_added" }, app) ?? "", /new to your chat with Mia.*waits and goes out on its own/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /different encryption key.*Link it/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*Settings/);
   const refused = { kind: "refused", reason: "no_own_device" } as const;
@@ -213,25 +213,25 @@ test("sending your copy pages the whole DM and leaves server copies out (GRYT-18
 
 test("a sender's message is stored, edited and deleted", async () => {
   const db = memoryArchive();
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei", replyTo: "q" } });
-  await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "hei", replyTo: "q" } });
+  await applyMlsContent(db, { ...base, at: 2000, senderId: "mia", content: { type: "edit", id: "m", text: "hallo" } });
   const edited = stored(db, "m");
   assert.equal(edited.text, "hallo");
   assert.equal(edited.editedAt, 2000);
   assert.equal(edited.sentAt, 1000);
   assert.equal(edited.replyTo, "q");
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "delete", id: "m" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "delete", id: "m" } });
   assert.equal(db.rows.has("m"), false);
 });
 
 test("somebody else can't overwrite, edit or delete your message", async () => {
   const db = memoryArchive();
   await applyMlsContent(db, { ...base, senderId: "me", content: { type: "message", id: "m", text: "mine" } });
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "theirs" } });
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "m", text: "edited" } });
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "delete", id: "m" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "theirs" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "edit", id: "m", text: "edited" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "delete", id: "m" } });
   assert.equal(stored(db, "m").text, "mine");
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "edit", id: "gone", text: "x" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "edit", id: "gone", text: "x" } });
   assert.equal(db.rows.size, 1);
 });
 
@@ -239,30 +239,30 @@ test("anyone in the DM can react, a repeat changes nothing, and taking the last 
   const db = memoryArchive();
   const react = (senderId: string, emoji: string, action: "add" | "remove") => applyMlsContent(db, { ...base, senderId, content: { type: "reaction", id: "m", emoji, action } });
   await applyMlsContent(db, { ...base, senderId: "me", content: { type: "message", id: "m", text: "mine" } });
-  await react("ola", "👍", "add");
-  await react("ola", "👍", "add");
+  await react("mia", "👍", "add");
+  await react("mia", "👍", "add");
   await react("me", "👍", "add");
   await react("me", ":owl:", "add");
   assert.deepEqual(stored(db, "m").reactions, [
-    { src: "👍", amount: 2, users: ["ola", "me"] },
+    { src: "👍", amount: 2, users: ["mia", "me"] },
     { src: ":owl:", amount: 1, users: ["me"] },
   ]);
   assert.equal(stored(db, "m").text, "mine");
-  await react("ola", "👍", "remove");
+  await react("mia", "👍", "remove");
   await react("me", "👍", "remove");
   await react("me", ":owl:", "remove");
   assert.equal("reactions" in stored(db, "m"), false);
-  await react("ola", "👍", "add");
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "reaction", id: "never-had", emoji: "👍", action: "add" } });
+  await react("mia", "👍", "add");
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "reaction", id: "never-had", emoji: "👍", action: "add" } });
   assert.equal(db.rows.has("never-had"), false);
 });
 
 test("reactions survive an edit and a repeat of the message, and reach the row", async () => {
   const db = memoryArchive();
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hei" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "hei" } });
   await applyMlsContent(db, { ...base, senderId: "me", content: { type: "reaction", id: "m", emoji: "👍", action: "add" } });
-  await applyMlsContent(db, { ...base, at: 2000, senderId: "ola", content: { type: "edit", id: "m", text: "hallo" } });
-  await applyMlsContent(db, { ...base, senderId: "ola", content: { type: "message", id: "m", text: "hallo" } });
+  await applyMlsContent(db, { ...base, at: 2000, senderId: "mia", content: { type: "edit", id: "m", text: "hallo" } });
+  await applyMlsContent(db, { ...base, senderId: "mia", content: { type: "message", id: "m", text: "hallo" } });
   const row = stored(db, "m");
   assert.deepEqual(row.reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
   assert.deepEqual(archivedRow(row, () => undefined).reactions, [{ src: "👍", amount: 1, users: ["me"] }]);
@@ -272,8 +272,8 @@ test("reactions survive an edit and a repeat of the message, and reach the row",
 });
 
 test("a report of an MLS message carries this device's copy, and waits for a server that takes it", () => {
-  assert.deepEqual(mlsReportCopy({ sender_server_id: "ola", text: "hei" }), { senderServerUserId: "ola", text: "hei" });
-  assert.deepEqual(mlsReportCopy({ sender_server_id: "ola", text: null }), { senderServerUserId: "ola", text: "" });
+  assert.deepEqual(mlsReportCopy({ sender_server_id: "mia", text: "hei" }), { senderServerUserId: "mia", text: "hei" });
+  assert.deepEqual(mlsReportCopy({ sender_server_id: "mia", text: null }), { senderServerUserId: "mia", text: "" });
   assert.equal(readMlsReports({ version: 1, ciphersuites: [1], reports: true }), true);
   assert.equal(readMlsReports({ version: 1, ciphersuites: [1] }), false);
   assert.equal(readMlsReports({ reports: "yes" }), false);
@@ -396,12 +396,12 @@ test("somebody seen on MLS stays seen, per server, across tabs", () => {
   const store = new Map<string, string>();
   const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
   const a = seenOnMlsFor("srv:a", storage);
-  a.add("ola");
-  a.add("ola");
-  assert.equal(seenOnMlsFor("srv:a", storage).has("ola"), true);
-  assert.equal(seenOnMlsFor("srv:b", storage).has("ola"), false);
+  a.add("mia");
+  a.add("mia");
+  assert.equal(seenOnMlsFor("srv:a", storage).has("mia"), true);
+  assert.equal(seenOnMlsFor("srv:b", storage).has("mia"), false);
   store.set("gryt_mls_seen:srv:a", "not json");
-  assert.equal(a.has("ola"), false);
+  assert.equal(a.has("mia"), false);
 });
 
 /* ── a DM while the archive won't open (GRYT-1553) ────────────────────── */
@@ -537,7 +537,7 @@ test("a removed device stays removed until a sign-in after the removal (GRYT-155
 test("a DM on a server that removed this device says so, and how to set it up again", () => {
   const removed = { undecryptable: 0, lost: "device_removed" } as const;
   const refused = { kind: "refused", reason: "no_own_device" } as const;
-  const opts = { lostHistory: false, home: "app", peerName: "Ola" } as const;
+  const opts = { lostHistory: false, home: "app", peerName: "Mia" } as const;
   assert.equal(
     mlsNotice(refused, removed, { ...opts, signedIn: true }),
     "This device was removed from encrypted DMs on this server. To set it up again, sign out and sign back in.",
