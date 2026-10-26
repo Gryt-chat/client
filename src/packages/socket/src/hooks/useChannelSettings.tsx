@@ -81,7 +81,6 @@ interface UseHandleChannelClickParams {
   currentChannelId: string;
   selectedChannelId: string | null;
   isConnecting: boolean;
-  showVoiceView: boolean;
   mediaAutoShownRef: MutableRefObject<boolean>;
   setSelectedChannelId: (id: string) => void;
   setShowVoiceView: (v: boolean) => void;
@@ -98,7 +97,7 @@ interface UseHandleChannelClickParams {
 function useHandleChannelClick({
   currentlyViewingServer, isConnected, currentServerConnected,
   currentChannelId, selectedChannelId, isConnecting,
-  showVoiceView, mediaAutoShownRef,
+  mediaAutoShownRef,
   setSelectedChannelId, setShowVoiceView, setPendingChannelId,
   setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
   connect, applyChannelSettings, setIsMuted, setIsDeafened,
@@ -130,28 +129,25 @@ function useHandleChannelClick({
         const isAlreadyConnectedToThis =
           isConnected && currentServerConnected === currentlyViewingServer.host && currentChannelId === channel.id;
 
-        if (isAlreadyConnectedToThis) {
+        // Clicking the call you're in shows it, beside its own text chat when it has one.
+        // Hiding it is the voice view's own button, so a second click doesn't take it away.
+        const openCall = () => {
           mediaAutoShownRef.current = false;
-          if (selectedChannelId !== channel.id && channel.textInVoice) {
+          if (channel.textInVoice && selectedChannelId !== channel.id) {
             setSelectedChannelId(channel.id);
+            setLastSelectedChannelForServer(currentlyViewingServer.host, channel.id);
           }
-          setShowVoiceView(!showVoiceView);
-          return;
-        }
+          setShowVoiceView(true);
+        };
 
-        if (isConnecting && currentChannelId === channel.id) {
-          mediaAutoShownRef.current = false;
-          if (channel.textInVoice) {
-            setSelectedChannelId(channel.id);
-          }
-          setShowVoiceView(!showVoiceView);
+        if (isAlreadyConnectedToThis || (isConnecting && currentChannelId === channel.id)) {
+          openCall();
           return;
         }
 
         setPendingChannelId(null);
         applyChannelSettings(channel);
-        mediaAutoShownRef.current = false;
-        setShowVoiceView(false);
+        openCall();
         setIsMuted(false);
         setIsDeafened(false);
         connect(channel.id, channel.eSportsMode, channel.maxBitrate).catch((error) => {
@@ -197,7 +193,7 @@ function useHandleChannelClick({
   }, [
     currentlyViewingServer, isConnected, currentServerConnected,
     currentChannelId, selectedChannelId, isConnecting,
-    showVoiceView, mediaAutoShownRef,
+    mediaAutoShownRef,
     setSelectedChannelId, setShowVoiceView, setPendingChannelId,
     setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
     connect, applyChannelSettings, setIsMuted, setIsDeafened, can, serverDetailsList,

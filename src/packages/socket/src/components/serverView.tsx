@@ -718,7 +718,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const handleChannelClick = useHandleChannelClick({
     currentlyViewingServer, isConnected, currentServerConnected,
     currentChannelId, selectedChannelId, isConnecting,
-    showVoiceView, mediaAutoShownRef,
+    mediaAutoShownRef,
     setSelectedChannelId, setShowVoiceView, setPendingChannelId,
     setSettingsTab, setShowSettings, setLastSelectedChannelForServer,
     connect, applyChannelSettings, setIsMuted, setIsDeafened,
