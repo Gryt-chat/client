@@ -68,15 +68,18 @@ export async function leaveVoice(page: Page): Promise<void> {
 
 export async function turnCameraOn(guest: Guest): Promise<void> {
   await callButton(guest.page, "Turn camera on").click();
-  const start = guest.page.getByRole("button", { name: "Start Camera" });
-  await expect(start, "the camera preview never got a stream").toBeEnabled();
-  await start.click();
-  await expect(callButton(guest.page, "Camera is on")).toBeVisible();
+  // The preview opens first unless "preview first" is off, and its own button turns the camera on.
+  const start = guest.page.getByRole("dialog", { name: "Turn your camera on" }).getByRole("button", { name: "Turn camera on" });
+  await expect(start.or(callButton(guest.page, "Turn camera off")).first()).toBeVisible();
+  if (await start.count()) {
+    await expect(start, "the camera preview never got a stream").toBeEnabled();
+    await start.click();
+  }
+  await expect(callButton(guest.page, "Turn camera off")).toBeVisible();
 }
 
 export async function turnCameraOff(guest: Guest): Promise<void> {
-  await callButton(guest.page, "Camera is on").click();
-  await guest.page.getByRole("menuitem", { name: "Turn camera off", exact: true }).click();
+  await callButton(guest.page, "Turn camera off").click();
   await expect(callButton(guest.page, "Turn camera on")).toBeVisible();
 }
 

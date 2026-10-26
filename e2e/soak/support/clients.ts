@@ -262,9 +262,10 @@ async function press(page: Page, name: string): Promise<void> {
 
 async function cameraOn(page: Page): Promise<void> {
   await press(page, "Turn camera on");
-  await expect(page.getByRole("button", { name: "Start Camera" }), "the camera preview never got a stream").toBeEnabled();
-  await press(page, "Start Camera");
-  await expect(page.getByRole("button", { name: "Turn camera off" })).toBeAttached();
+  const start = page.getByRole("dialog", { name: "Turn your camera on" }).getByRole("button", { name: "Turn camera on" });
+  await expect(start, "the camera preview never got a stream").toBeEnabled();
+  await start.evaluate((button: HTMLElement) => button.click());
+  await expect(page.getByRole("button", { name: "Turn camera off" }).first()).toBeAttached();
 }
 
 async function leaveCall(page: Page): Promise<void> {
