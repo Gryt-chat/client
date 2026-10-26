@@ -216,12 +216,11 @@ const MemberItem = ({
       }
     >
       <Popover.Root open={cardOpen} onOpenChange={(open) => onCardOpenChange(open)}>
-        {/* Clicking opens the card. Messaging is a button on it, and in the context menu. */}
-        <Popover.Trigger nativeButton={false} render={<div />}>
+        {/* Clicking opens the card; in the slim strip hovering does too, since there's no name to read. */}
+        <Popover.Trigger nativeButton={false} openOnHover={avatarOnly} delay={250} render={<div />}>
           <div
             className="member-row member-row-clickable member-row-card"
             aria-label={avatarOnly ? member.nickname : undefined}
-            title={avatarOnly ? member.nickname : undefined}
             data-card-open={cardOpen || undefined}
             data-row-card={rowCard.kind}
             style={rowCard.style}
@@ -229,6 +228,7 @@ const MemberItem = ({
         <div className={avatarOnly ? "flex items-center justify-center w-full" : "flex items-center gap-2 w-full"}>
           <Avatar
             size="small"
+            className={avatarOnly ? "h-6 w-6 text-[10px]" : undefined}
             fallback={member.nickname[0]}
             src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.nickname, member.avatarWorn)}
             style={{

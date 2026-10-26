@@ -81,13 +81,13 @@ export function hasRoomForMemberList({
   return windowWidth >= needed;
 }
 
-export const AVATAR_COLUMN_WIDTH = 56;
+export const AVATAR_COLUMN_WIDTH = 40;
 /** What the chat keeps beside a call before the member list folds: about 60 characters. */
 const MIN_CHAT_BESIDE_CALL = 440;
 
 export type MemberListMode = "full" | "avatars" | "none";
 
-/** Beside a call the list folds to avatars before the chat drops under 440; with no call it's `hasRoomForMemberList`. */
+/** Beside a call the list folds to a slim strip of faces before the chat drops under 440; with no call it's `hasRoomForMemberList`. */
 export function memberListMode({
   windowWidth,
   voicePanelWidth,
