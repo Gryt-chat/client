@@ -23,6 +23,7 @@ import { liftScreenCapture, qualityBox } from "../utils/streamQuality";
 import { BAR_BUTTON_STYLE, BAR_SOLO_CLASS, CallControlButton, LEAVE_CLASS, SPLIT_BUTTON_CLASS, SplitControl } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
 import { controlState } from "./controlState";
+import { MicMenu } from "./MicMenu";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
 import { ScreenShareControl } from "./ScreenShareControl";
 
@@ -79,6 +80,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
   const { supported: canPickAudioSources } = useScreenAudioSources();
   const [showAudioSourcesModal, setShowAudioSourcesModal] = useState(false);
+  const [micMenuOpen, setMicMenuOpen] = useState(false);
   const { sockets } = useSockets();
   const { recentre: recentreFace, detecting: detectingFace } = useVideoFraming();
   const {
@@ -448,8 +450,12 @@ export function Controls({ onDisconnect }: ControlsProps) {
             an empty bubble on hover and kept it anchored to whichever control
             you hovered previously.
           */}
-          {/* The arrows open Settings → Audio until the mic and speaker menus land (GRYT-1891, GRYT-1904). */}
-          <SplitControl state={controlState(isServerMuted, isMuted)} arrowLabel="Microphone options" onArrow={() => openSettings("audio")}>
+          {/* The headset arrow opens Settings → Audio until its speaker menu lands (GRYT-1904). */}
+          <SplitControl
+            state={controlState(isServerMuted, isMuted)}
+            arrowOpen={micMenuOpen}
+            arrow={<MicMenu state={controlState(isServerMuted, isMuted)} open={micMenuOpen} onOpenChange={setMicMenuOpen} />}
+          >
             <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
               <CallControlButton
                 size={BAR_SIZE}

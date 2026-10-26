@@ -1,5 +1,5 @@
 import { IconButton, type IconButtonProps } from "@gryt/ui";
-import { forwardRef, type ReactNode } from "react";
+import { type ComponentPropsWithoutRef, forwardRef, type ReactNode } from "react";
 
 import { PiCaretDownFill, PiCaretUpFill, PiLockSimpleFill } from "../../../../lib/icons";
 
@@ -66,31 +66,49 @@ const SPLIT_CLASS: Record<CallControlState, string> = {
 const ARROW_CLASS = { live: "text-gryt-success-11 hover:bg-gryt-success-7", rest: "text-gryt-accent-11 hover:bg-gryt-neutral-6" };
 const ARROW_OPEN_CLASS = { live: "bg-gryt-success-7", rest: "bg-gryt-accent-4 text-gryt-accent-12" };
 
-/** A control with a small arrow on its left for its options, the way Meet does it. */
+type SplitArrowProps = ComponentPropsWithoutRef<"button"> & { state: CallControlState; open?: boolean };
+
+/** The arrow on a split control's left. Forwards its ref and props so it can be a Popover.Trigger. */
+export const SplitArrow = forwardRef<HTMLButtonElement, SplitArrowProps>(function SplitArrow(
+  { state, open = false, className, ...rest },
+  ref,
+) {
+  const tone = state === "live" ? "live" : "rest";
+  return (
+    <button
+      ref={ref}
+      type="button"
+      aria-expanded={open}
+      className={`flex h-11 w-[30px] cursor-pointer items-center justify-center rounded-l-full border-0 p-0 ${ARROW_CLASS[tone]} ${open ? ARROW_OPEN_CLASS[tone] : "bg-transparent"} ${className ?? ""}`}
+      {...rest}
+    >
+      {open ? <PiCaretDownFill size={11} /> : <PiCaretUpFill size={11} />}
+    </button>
+  );
+});
+
+/** A control with a small arrow on its left for its options, the way Meet does it. `arrow` replaces the plain one. */
 export function SplitControl({
   state,
   arrowLabel,
   onArrow,
   arrowOpen = false,
+  arrow,
   children,
 }: {
   state: CallControlState;
-  arrowLabel: string;
-  onArrow: () => void;
+  arrowLabel?: string;
+  onArrow?: () => void;
   arrowOpen?: boolean;
+  arrow?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className={`flex items-center rounded-full ${SPLIT_CLASS[state]}`}>
-      <button
-        type="button"
-        aria-label={arrowLabel}
-        aria-expanded={arrowOpen}
-        onClick={onArrow}
-        className={`flex h-11 w-[30px] cursor-pointer items-center justify-center rounded-l-full border-0 p-0 ${ARROW_CLASS[state === "live" ? "live" : "rest"]} ${arrowOpen ? ARROW_OPEN_CLASS[state === "live" ? "live" : "rest"] : "bg-transparent"}`}
-      >
-        {arrowOpen ? <PiCaretDownFill size={11} /> : <PiCaretUpFill size={11} />}
-      </button>
+    <div
+      className={`flex items-center rounded-full ${SPLIT_CLASS[state]}`}
+      style={arrowOpen ? { outline: "2px solid var(--gryt-accent-9)", outlineOffset: 2 } : undefined}
+    >
+      {arrow ?? <SplitArrow state={state} open={arrowOpen} aria-label={arrowLabel} onClick={onArrow} />}
       {children}
     </div>
   );

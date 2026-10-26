@@ -1306,7 +1306,8 @@ export const VoiceView = ({
           style={{
             flexGrow: 1,
             position: "relative",
-            overflow: "hidden",
+            // The call bar reaches 12px past this box to fit preset 1; the panel around it does the clipping.
+            overflow: "visible",
             display: "flex",
             flexDirection: "column",
           }}
