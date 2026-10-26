@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
+import { VOICE_PRESET_1, type VoiceStop, voiceStopWidth } from "../lib/voiceGrip";
 
 const SIDEBAR_WIDTH_PX = 200;
 const SIDEBAR_HOVER_PX = 8;
@@ -167,7 +167,7 @@ interface UseVoiceLayoutParams {
 /** The voice view's size: hidden is `showVoiceView === false`, otherwise a width or full. Not persisted. */
 function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
   const [voiceFocused, setVoiceFocused] = useState(false);
-  const [voiceSize, setVoiceSize] = useState<number | "full">(VOICE_PRESET_1);
+  const [voiceSize, setVoiceSize] = useState<Exclude<VoiceStop, "hidden">>(VOICE_PRESET_1);
   const isMaximized = voiceSize === "full";
 
   // A callback ref: the middle area mounts after the first render, so an effect on a plain ref never observed it.
@@ -193,7 +193,7 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
     : 0;
 
   // Stops are the panel's visible width; the view's 16px right padding is the gap to the chat.
-  const chosenWidth = (voiceSize === "full" ? VOICE_PRESET_1 : voiceSize) + 16;
+  const chosenWidth = (voiceStopWidth(voiceSize, voiceContainerWidth) ?? VOICE_PRESET_1) + 16;
   const shownVoiceWidth = voiceMaxWidth > 0 ? Math.min(chosenWidth, voiceMaxWidth) : chosenWidth;
 
   const setVoiceStop = useCallback((stop: VoiceStop) => {

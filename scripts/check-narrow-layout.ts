@@ -14,6 +14,7 @@ import {
   hasRoomForThreadBeside,
   hasRoomForVoicePanel,
   isTinyWindow,
+  memberListMode,
   SERVER_SETTINGS_CHROME,
   THREAD_PANEL_WIDTH,
   TINY_MAX_WIDTH,
@@ -84,6 +85,26 @@ for (let w = 300; w <= 2000; w += 1) {
   if (!hasRoomForVoicePanel(w)) continue;
   const used = 32 + 32 + 16 + 200 + 16 + 368 + 200 + 16 + 8;
   assert.ok(used <= w, `voice panel allowed at ${w}px, needing ${used}px`);
+}
+
+/* ── Beside a call the member list folds to avatars ────────────────── */
+
+// The board at 1440: preset 1 (352 + its 16px gap) keeps the full list, preset 2 folds it.
+assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 368 }), "full");
+assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 680 }), "avatars");
+assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 0, voiceFull: true }), "avatars");
+// No call, or a thread beside the chat: the old rule, unchanged.
+assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 0 }), "full");
+assert.equal(memberListMode({ windowWidth: 1000, voicePanelWidth: 0 }), "none");
+
+// Whatever it picks, the chat keeps 440 beside the full list and 200 beside the avatars.
+for (let w = 300; w <= 2400; w += 1) {
+  for (const voice of [368, 500, 700, 900]) {
+    const mode = memberListMode({ windowWidth: w, voicePanelWidth: voice });
+    const before = 32 + 32 + 16 + 200 + 16 + voice;
+    if (mode === "full") assert.ok(w - before - 16 - 200 >= 440, `full list at ${w}px with a ${voice}px call`);
+    if (mode === "avatars") assert.ok(w - before - 16 - 56 >= 200, `avatars at ${w}px with a ${voice}px call`);
+  }
 }
 
 /* ── The tiny window ───────────────────────────────────────────────── */

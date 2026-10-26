@@ -90,7 +90,7 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
           style={{
             position: "absolute",
             top: "50%",
-            left: -19,
+            left: stop === "full" ? -3 : -19,
             transform: "translateY(-50%)",
             width: 22,
             height: presets ? 132 : 76,
@@ -111,7 +111,7 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
           {presets && (
             <>
               <Dot on={stop === presets[0]} hidden={hidden} />
-              <Dot on={stop === presets[1]} hidden={hidden} />
+              <Dot on={stop === "preset2"} hidden={hidden} />
             </>
           )}
           <PiArrowsOutBold size={12} color={iconColor(stop === "full")} aria-hidden />
