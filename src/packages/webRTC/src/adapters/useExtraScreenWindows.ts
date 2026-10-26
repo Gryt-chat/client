@@ -4,10 +4,8 @@ import { useEffect, useRef } from "react";
 import { useSettings } from "@/settings";
 
 import { senderStreamId } from "../utils/senderStreamIds";
-import { screenSendSettings } from "../utils/streamQuality";
-
-/** What the picker chose for each window after the first, by source id. */
-export const windowPresets = new Map<string, { quality: string; fps: number }>();
+import { liftScreenCapture, screenSendSettings } from "../utils/streamQuality";
+import { shareMeta, useShareWindowsVersion, windowKey } from "./shareWindows";
 
 export interface AnnouncedShare {
   videoStreamId: string;
@@ -27,6 +25,7 @@ export function useExtraScreenWindows(): AnnouncedShare[] {
   const {
     screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode,
   } = useSettings();
+  const shareVersion = useShareWindowsVersion();
   const published = useRef(new Map<number, ScreenWindow>());
 
   useEffect(() => {
@@ -47,14 +46,18 @@ export function useExtraScreenWindows(): AnnouncedShare[] {
       if (video) addScreenVideoTrack(video, w.videoStream, screenShareCodec, w.index);
       const audio = w.audioStream?.getAudioTracks()[0];
       if (audio && w.audioStream) addScreenAudioTrack(audio, w.audioStream, w.index);
-      const preset = windowPresets.get(w.sourceId ?? "");
-      setVideoSendSettings?.(`screen:${w.index}`, screenSendSettings({
-        quality: preset?.quality ?? screenShareQuality, fps: preset?.fps ?? screenShareFps, gamingMode: screenShareGamingMode, codec: screenShareCodec,
+      const preset = shareMeta(windowKey(w));
+      const quality = preset?.quality ?? screenShareQuality;
+      const fps = preset?.fps ?? screenShareFps;
+      const settings = screenSendSettings({
+        quality, fps, gamingMode: screenShareGamingMode, codec: screenShareCodec,
         maxBitrate: screenShareMaxBitrate, scalabilityMode: screenShareScalabilityMode, nativeH264: false,
-      }));
+      });
+      // Opened at the saved quality, so a higher pick has to widen the capture first.
+      if (video) void liftScreenCapture(video, quality, fps).then(() => setVideoSendSettings?.(`screen:${w.index}`, settings));
       published.current.set(w.index, w);
     }
-  }, [extraWindows, isConnected, addScreenVideoTrack, removeScreenVideoTrack, addScreenAudioTrack, removeScreenAudioTrack, setVideoSendSettings, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode]);
+  }, [extraWindows, isConnected, addScreenVideoTrack, removeScreenVideoTrack, addScreenAudioTrack, removeScreenAudioTrack, setVideoSendSettings, shareVersion, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode]);
 
   // A sender keeps the first stream id it was given, so a reused index announces that one.
   const pc = getPeerConnection?.();

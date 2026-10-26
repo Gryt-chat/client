@@ -8,13 +8,20 @@ export interface QualityPreset {
   quality: CaptureQuality;
   fps: number;
   hint: string;
+  name?: string;
 }
 
 export const SCREEN_PRESETS: QualityPreset[] = [
-  { quality: "native", fps: 30, hint: "Sharpest text" },
-  { quality: "1080p", fps: 60, hint: "Smoothest motion" },
-  { quality: "720p", fps: 30, hint: "Uses less data" },
+  { quality: "native", fps: 30, hint: "Sharpest text", name: "Sharp text" },
+  { quality: "1080p", fps: 60, hint: "Smoothest motion", name: "Smooth" },
+  { quality: "720p", fps: 30, hint: "Uses less data", name: "Less data" },
 ];
+
+/** A screen preset as the picker and the share menu name it: "Smooth · 60". */
+export function screenPresetName(quality: string, fps: number): string {
+  const preset = SCREEN_PRESETS.find((p) => p.quality === quality && p.fps === fps);
+  return `${preset?.name ?? "Your default"} · ${fps}`;
+}
 
 export const CAMERA_PRESETS: QualityPreset[] = [
   { quality: "native", fps: 30, hint: "Sharp" },
