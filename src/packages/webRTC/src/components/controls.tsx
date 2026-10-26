@@ -20,7 +20,7 @@ import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { senderStreamId } from "../utils/senderStreamIds";
 import { liftScreenCapture, qualityBox } from "../utils/streamQuality";
-import { BAR_BUTTON_STYLE, BAR_SOLO_CLASS, CallControlButton, LEAVE_CLASS, SplitControl } from "./CallControlButton";
+import { BAR_BUTTON_STYLE, BAR_SOLO_CLASS, CallControlButton, LEAVE_CLASS, SPLIT_BUTTON_CLASS, SplitControl } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
 import { controlState } from "./controlState";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
@@ -455,6 +455,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
                 size={BAR_SIZE}
                 style={BAR_BUTTON_STYLE}
                 state={controlState(isServerMuted, isMuted)}
+                idleClassName={SPLIT_BUTTON_CLASS}
                 aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
                 onClick={handleMute}
               >
@@ -469,6 +470,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
                 size={BAR_SIZE}
                 style={BAR_BUTTON_STYLE}
                 state={controlState(isServerDeafened, isDeafened)}
+                idleClassName={SPLIT_BUTTON_CLASS}
                 aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
                 onClick={handleDeafen}
               >

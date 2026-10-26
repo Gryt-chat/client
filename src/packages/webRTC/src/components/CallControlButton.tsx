@@ -1,7 +1,7 @@
 import { IconButton, type IconButtonProps } from "@gryt/ui";
 import { forwardRef, type ReactNode } from "react";
 
-import { PiCaretUpFill, PiLockSimpleFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretUpFill, PiLockSimpleFill } from "../../../../lib/icons";
 
 /**
  * One state language for the call bar. Neutral is where each control rests, red is you cut
@@ -12,17 +12,19 @@ export type CallControlState = "idle" | "off" | "live" | "blocked";
 const STATE_CLASS: Record<CallControlState, string> = {
   idle: "",
   off: "bg-gryt-danger-4 text-gryt-danger-11 hover:not-data-disabled:bg-gryt-danger-5 hover:not-data-disabled:text-gryt-danger-11",
-  live: "bg-gryt-success-4 text-gryt-success-11 hover:not-data-disabled:bg-gryt-success-5 hover:not-data-disabled:text-gryt-success-11",
+  live: "bg-gryt-success-6 text-gryt-success-11 hover:not-data-disabled:bg-gryt-success-7 hover:not-data-disabled:text-gryt-success-11",
   blocked: "text-gryt-danger-11 opacity-60 cursor-not-allowed hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-gryt-danger-11",
 };
 
 export interface CallControlButtonProps extends Omit<IconButtonProps, "tone"> {
   state: CallControlState;
+  /** Only while `state` is idle, so a muted or live colour isn't fighting it. */
+  idleClassName?: string;
 }
 
 /** Forwards its ref and props so it can be a Menu.Trigger's render target. */
 export const CallControlButton = forwardRef<HTMLButtonElement, CallControlButtonProps>(
-  function CallControlButton({ state, className, children, size = "xsmall", ...rest }, ref) {
+  function CallControlButton({ state, className, idleClassName, children, size = "xsmall", ...rest }, ref) {
     return (
       <IconButton
         ref={ref}
@@ -30,7 +32,7 @@ export const CallControlButton = forwardRef<HTMLButtonElement, CallControlButton
         size={size}
         data-call-state={state}
         aria-disabled={state === "blocked" || undefined}
-        className={`relative ${STATE_CLASS[state]} ${className ?? ""}`}
+        className={`relative ${STATE_CLASS[state]} ${state === "idle" ? idleClassName ?? "" : ""} ${className ?? ""}`}
         {...rest}
       >
         {children}
@@ -48,18 +50,21 @@ export const LEAVE_CLASS = "bg-gryt-danger text-gryt-on-danger hover:not-data-di
 /** The call bar's button size: one camera wide, three split buttons, share and leave still fit. */
 export const BAR_BUTTON_STYLE = { width: 44, height: 44 } as const;
 /** A bar button on its own gets the split buttons' fill, so the row reads as one set. */
-export const BAR_SOLO_CLASS = "bg-gryt-neutral-4";
+export const BAR_SOLO_CLASS = "bg-gryt-neutral-5 text-gryt-neutral-12 hover:not-data-disabled:text-gryt-neutral-12";
+/** The button inside a split control: a circle a step lighter than the pill around it. */
+export const SPLIT_BUTTON_CLASS = "bg-gryt-neutral-6 text-gryt-neutral-12 hover:not-data-disabled:bg-gryt-neutral-7 hover:not-data-disabled:text-gryt-neutral-12";
 
+// Muted only reddens the inner circle; live greens the whole control.
 const SPLIT_CLASS: Record<CallControlState, string> = {
-  idle: "bg-gryt-neutral-4",
-  off: "bg-gryt-danger-3",
-  live: "bg-gryt-success-4",
-  blocked: "bg-gryt-neutral-4",
+  idle: "bg-gryt-neutral-5",
+  off: "bg-gryt-neutral-5",
+  live: "bg-gryt-success-6",
+  blocked: "bg-gryt-neutral-5",
 };
 
 // Live, the arrow stays inside the green; otherwise it takes the accent so it reads as a menu.
-const ARROW_CLASS = { live: "text-gryt-success-11 hover:bg-gryt-success-5", rest: "text-gryt-accent-11 hover:bg-gryt-neutral-6" };
-const ARROW_OPEN_CLASS = { live: "bg-gryt-success-5", rest: "bg-gryt-accent-4" };
+const ARROW_CLASS = { live: "text-gryt-success-11 hover:bg-gryt-success-7", rest: "text-gryt-accent-11 hover:bg-gryt-neutral-6" };
+const ARROW_OPEN_CLASS = { live: "bg-gryt-success-7", rest: "bg-gryt-accent-4 text-gryt-accent-12" };
 
 /** A control with a small arrow on its left for its options, the way Meet does it. */
 export function SplitControl({
@@ -84,7 +89,7 @@ export function SplitControl({
         onClick={onArrow}
         className={`flex h-11 w-[30px] cursor-pointer items-center justify-center rounded-l-full border-0 p-0 ${ARROW_CLASS[state === "live" ? "live" : "rest"]} ${arrowOpen ? ARROW_OPEN_CLASS[state === "live" ? "live" : "rest"] : "bg-transparent"}`}
       >
-        <PiCaretUpFill size={11} />
+        {arrowOpen ? <PiCaretDownFill size={11} /> : <PiCaretUpFill size={11} />}
       </button>
       {children}
     </div>

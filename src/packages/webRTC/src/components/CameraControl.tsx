@@ -6,7 +6,7 @@ import { useSettings } from "@/settings";
 
 import { PiCameraFill, PiCameraSlashFill } from "../../../../lib/icons";
 import { CAMERA_PRESETS, presetKey, presetLabel } from "../utils/streamQuality";
-import { BAR_BUTTON_STYLE, CallControlButton, type CallControlButtonProps, SplitControl } from "./CallControlButton";
+import { BAR_BUTTON_STYLE, CallControlButton, type CallControlButtonProps, SPLIT_BUTTON_CLASS, SplitControl } from "./CallControlButton";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 
 interface CameraControlProps {
@@ -92,7 +92,7 @@ export function CameraControl({ iconSize = 16, size, allowed = true, side = "top
           </Menu.Portal>
         </Menu.Root>
       ) : (
-        <CallControlButton size={size} style={buttonStyle} state="idle" aria-label="Turn camera on" onClick={() => setShowPreview(true)}>
+        <CallControlButton size={size} style={buttonStyle} state="idle" idleClassName={split ? SPLIT_BUTTON_CLASS : undefined} aria-label="Turn camera on" onClick={() => setShowPreview(true)}>
           <PiCameraSlashFill size={iconSize} />
         </CallControlButton>
       )}
