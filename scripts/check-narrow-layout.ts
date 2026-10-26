@@ -73,21 +73,16 @@ for (let w = 300; w <= 2000; w += 1) {
 
 /* ── Room for the voice panel at all ───────────────────────────────── */
 
-// Rail, padding, channel list, the 600px panel, a 200px chat, and the 24px the
-// collapsed member strip and its gap still cost: 1160.
-assert.equal(hasRoomForVoicePanel(1160), true);
-assert.equal(hasRoomForVoicePanel(1159), false);
-
-// Measured before this rule existed: at 1030 the panel stayed at 600 and the chat
-// was squeezed to 118px. The panel minimizes there now.
-assert.equal(hasRoomForVoicePanel(1030), false);
-assert.equal(hasRoomForVoicePanel(1136), false);
+// Rail, padding, channel list, preset 1's 352px panel and its 8px gap, a 200px
+// chat, and the 24px the collapsed member strip and its gap still cost: 920.
+assert.equal(hasRoomForVoicePanel(920), true);
+assert.equal(hasRoomForVoicePanel(919), false);
 
 // Wherever the panel is allowed, the chat still gets its minimum with the
 // member strip paid for.
 for (let w = 300; w <= 2000; w += 1) {
   if (!hasRoomForVoicePanel(w)) continue;
-  const used = 32 + 32 + 16 + 240 + 16 + 600 + 200 + 16 + 8;
+  const used = 32 + 32 + 16 + 240 + 16 + 360 + 200 + 16 + 8;
   assert.ok(used <= w, `voice panel allowed at ${w}px, needing ${used}px`);
 }
 

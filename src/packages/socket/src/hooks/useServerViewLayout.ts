@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
+
 const SIDEBAR_WIDTH_PX = 240;
 const SIDEBAR_HOVER_PX = 8;
 const SIDEBAR_CLOSE_DELAY = 1000;
-// GRYT-40's "Shown" state: one fixed sidebar width, no drag handle. 600 is what
-// the Meet layout was checked against and where a third column starts winning.
+// Only says "this server has a call" now; the grip sets the drawn width (lib/voiceGrip.ts).
 const VOICE_SIDEBAR_WIDTH = 600;
 const MIN_CHAT_WIDTH = 200;
 
@@ -163,48 +164,51 @@ interface UseVoiceLayoutParams {
   setShowVoiceView: (v: boolean) => void;
 }
 
-/**
- * The voice view's layout state: minimized is `showVoiceView === false`, shown is
- * the fixed sidebar width, maximized fills the row. Neither is persisted.
- */
+/** The voice view's size: hidden is `showVoiceView === false`, otherwise a width or full. Not persisted. */
 function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
   const [voiceFocused, setVoiceFocused] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [voiceSize, setVoiceSize] = useState<number | "full">(VOICE_PRESET_1);
+  const isMaximized = voiceSize === "full";
 
-  const voiceContainerRef = useRef<HTMLDivElement>(null);
+  // A callback ref: the middle area mounts after the first render, so an effect on a plain ref never observed it.
+  const voiceContainerRef = useRef<HTMLDivElement | null>(null);
+  const [voiceContainer, setVoiceContainer] = useState<HTMLDivElement | null>(null);
+  const attachVoiceContainer = useCallback((el: HTMLDivElement | null) => {
+    voiceContainerRef.current = el;
+    setVoiceContainer(el);
+  }, []);
   const [voiceContainerWidth, setVoiceContainerWidth] = useState(0);
 
   useEffect(() => {
-    const el = voiceContainerRef.current;
-    if (!el) return;
+    if (!voiceContainer) return;
     const ro = new ResizeObserver(([entry]) => {
       setVoiceContainerWidth(entry.contentRect.width);
     });
-    ro.observe(el);
+    ro.observe(voiceContainer);
     return () => ro.disconnect();
-  }, []);
+  }, [voiceContainer]);
 
   const voiceMaxWidth = voiceContainerWidth > 0
     ? Math.max(0, voiceContainerWidth - MIN_CHAT_WIDTH)
     : 0;
 
-  // The sidebar width, unless the window is too narrow to leave the chat a
-  // usable column — then the chat's minimum wins and the panel gives way.
-  const shownVoiceWidth = voiceMaxWidth > 0
-    ? Math.min(VOICE_SIDEBAR_WIDTH, voiceMaxWidth)
-    : VOICE_SIDEBAR_WIDTH;
+  // Stops are the panel's visible width; the view's 8px right padding is the gap to the chat.
+  const chosenWidth = (voiceSize === "full" ? VOICE_PRESET_1 : voiceSize) + 8;
+  const shownVoiceWidth = voiceMaxWidth > 0 ? Math.min(chosenWidth, voiceMaxWidth) : chosenWidth;
 
-  const toggleMaximized = useCallback(() => {
-    // Maximizing while minimized would grow something invisible. Read here rather
-    // than inside the updater, which used to call setShowVoiceView from within one.
-    if (!isMaximized) setShowVoiceView(true);
-    setIsMaximized(!isMaximized);
-  }, [isMaximized, setShowVoiceView]);
+  const setVoiceStop = useCallback((stop: VoiceStop) => {
+    if (stop === "hidden") {
+      setShowVoiceView(false);
+      return;
+    }
+    setVoiceSize(stop);
+    setShowVoiceView(true);
+  }, [setShowVoiceView]);
 
   return {
     voiceFocused, setVoiceFocused,
-    isMaximized, toggleMaximized,
-    voiceContainerRef, voiceMaxWidth, shownVoiceWidth,
+    isMaximized, voiceSize, setVoiceStop, voiceContainerWidth,
+    voiceContainerRef, attachVoiceContainer, voiceMaxWidth, shownVoiceWidth,
   };
 }
 

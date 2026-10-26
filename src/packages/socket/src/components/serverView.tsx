@@ -86,6 +86,7 @@ import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
 import { type ChannelPlacement, folderOf } from "./sidebarTree";
 import { UnreachableServer } from "./UnreachableServer";
+import { VoiceGrip } from "./VoiceGrip";
 import { VoiceSheetButton } from "./VoiceSheetButton";
 import { VoiceView } from "./VoiceView";
 
@@ -176,9 +177,10 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const peerLatency = usePeerLatency(currentConnection, heldHostClients);
 
   const {
-    voiceFocused, setVoiceFocused, isMaximized, toggleMaximized,
-    voiceContainerRef, voiceMaxWidth, shownVoiceWidth,
+    voiceFocused, setVoiceFocused, isMaximized, voiceSize, setVoiceStop, voiceContainerWidth,
+    voiceContainerRef, attachVoiceContainer, voiceMaxWidth, shownVoiceWidth,
   } = useVoiceLayout({ setShowVoiceView });
+  const [voiceResizing, setVoiceResizing] = useState(false);
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
@@ -304,7 +306,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     leftSidebarOpen, rightSidebarOpen,
     leftSidebarContentRef, rightSidebarContentRef,
     openLeftSidebar, closeLeftSidebar, hideLeftSidebarNow, openRightSidebar, closeRightSidebar,
-  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: false, isCompact, roomForMembers });
+  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: voiceResizing, isCompact, roomForMembers });
 
   const serverClients = currentlyViewingServer ? heldHostClients : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
@@ -1471,7 +1473,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               streamSources={voiceStreamSources}
             />
             )}
-            <div className="flex grow" ref={voiceContainerRef} style={{ position: "relative", minWidth: 0 }}>
+            <div className="flex grow" ref={attachVoiceContainer} style={{ position: "relative", minWidth: 0 }}>
               <VoiceView
                 showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
                 /* Focusing a stream makes it the big one inside the panel and
@@ -1499,11 +1501,22 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 videoStreams={voiceVideoStreams}
                 streamSources={voiceStreamSources}
                 onFocusChange={setVoiceFocused}
-                isMaximized={isMaximized}
-                onToggleMaximize={toggleMaximized}
+                isDragging={voiceResizing}
                 chatHidden={focusedChatHidden}
                 onToggleChat={toggleFocusedChat}
               />
+              {voiceWidth !== "0px" && !isCompact && !chatTakenOver && (
+                <VoiceGrip
+                  containerRef={voiceContainerRef}
+                  room={voiceContainerWidth}
+                  stop={showVoiceView ? voiceSize : "hidden"}
+                  onStop={(stop) => {
+                    mediaAutoShownRef.current = false;
+                    setVoiceStop(stop);
+                  }}
+                  onResizing={setVoiceResizing}
+                />
+              )}
               <div style={{
                 display: chatPaneHidden ? "none" : "flex",
                 flex: 1,
