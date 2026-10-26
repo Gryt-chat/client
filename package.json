@@ -239,7 +239,7 @@
     "@gryt/core": "0.20.0",
     "@gryt/crypto": "0.13.0",
     "@gryt/owl": "^0.7.0",
-    "@gryt/ui": "^0.45.1",
+    "@gryt/ui": "^0.45.2",
     "@gryt/voice": "0.8.13",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@noble/curves": "^2.3.0",

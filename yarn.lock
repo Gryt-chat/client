@@ -559,18 +559,6 @@
     "@gryt/crypto" "0.13.0"
     "@noble/hashes" "^2.3.0"
 
-"@gryt/crypto@0.12.0":
-  version "0.12.0"
-  resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.12.0.tgz#279b22a64ab29d93f3e2eef15bc15d89bc584bc6"
-  integrity sha512-mwTWljY3sxk3lRuMJSwJzsGvUr0A4PzfWfe1P62nFFgKpeAg7X2B8aH3IpE6Uvc+e+Wchi5BBtUGErZHt8+Hog==
-  dependencies:
-    "@noble/ciphers" "^2"
-    "@noble/curves" "^2.3.0"
-    "@noble/hashes" "^2.3.0"
-    "@scure/bip39" "^2.3.0"
-    fflate "0.8.3"
-    ts-mls "npm:@gryt/ts-mls@1.6.4-gryt.1"
-
 "@gryt/crypto@0.13.0":
   version "0.13.0"
   resolved "https://registry.yarnpkg.com/@gryt/crypto/-/crypto-0.13.0.tgz#f4369127ad1f8afe25b1a89f79eedd5a84c939d1"
@@ -588,19 +576,19 @@
   resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.7.0.tgz#730a4f9fc3b355dd3629e1bce1d8af71e765ff75"
   integrity sha512-Bi+xkPjEnvdjGvqV+nYGLYCtlEG5ZkeUZNmGA1KK7U5Gu350mGrpCB5k+h+hss8BbHt5kfX15PDoNHKVoUOevA==
 
-"@gryt/theme@^0.12.0":
-  version "0.12.1"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.12.1.tgz#9a21b6a4d0ec0f5139828b99bd86a9d9893472c4"
-  integrity sha512-oAMaBq/xF1YdR1AcBgqIRhN3CvkPW+Ifx7FgN6hC0xQ37SMp+g3WG34VNHInp5xVA5ahITUHkdRzDUq4Hb67uQ==
+"@gryt/theme@^0.13.0":
+  version "0.13.0"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.13.0.tgz#640f3049b53cfe427f0067cfc5faeffbd04d36aa"
+  integrity sha512-7CW/wBKZFL1bfk5xQcJtvdoD+rbCvmHeA0U2uTQMQ9gfXAvIbPx7GL+TjMYYouTtLdJ/OKFARK+NXuS0RaBveg==
 
-"@gryt/ui@^0.45.1":
-  version "0.45.1"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.45.1.tgz#9ba90abbea12f35c2911587a9a7afbe5e76d73de"
-  integrity sha512-KIk+owNxfrSLsmLuMpE3Gj56a93YYnkaZ06K9fi+M6hriLhlKindYa4oBDb/CvoxP/O+pkLMH5ESYOs1/EVKQg==
+"@gryt/ui@^0.45.2":
+  version "0.45.2"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.45.2.tgz#e9e211e8d3e6499783ac4e2e12b9a6952e956e6d"
+  integrity sha512-+Xjx3BT67a/tdr0SZ/5LKi54mzxtrKYLgRRHgN8XdnmFKsMWZ3cVSYFP6CYeVHg0VfcBk7L5pWjY7fzH2/REyw==
   dependencies:
     "@base-ui/react" "^1.7.0"
     "@gryt/owl" "^0.7.0"
-    "@gryt/theme" "^0.12.0"
+    "@gryt/theme" "^0.13.0"
     "@phosphor-icons/react" "^2.1.10"
     "@tanstack/react-virtual" "^3.13.12"
     clsx "^2.1.1"
