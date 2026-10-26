@@ -92,18 +92,21 @@ for (let w = 300; w <= 2000; w += 1) {
 // The board at 1440: preset 1 (352 + its 16px gap) keeps the full list, preset 2 folds it.
 assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 368 }), "full");
 assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 680 }), "avatars");
+// The Narrow board: preset 1 at 1280 folds to avatars, and at 1100 the avatars go into a header button.
+assert.equal(memberListMode({ windowWidth: 1280, voicePanelWidth: 368 }), "avatars");
+assert.equal(memberListMode({ windowWidth: 1100, voicePanelWidth: 368 }), "none");
 assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 0, voiceFull: true }), "avatars");
 // No call, or a thread beside the chat: the old rule, unchanged.
 assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 0 }), "full");
 assert.equal(memberListMode({ windowWidth: 1000, voicePanelWidth: 0 }), "none");
 
-// Whatever it picks, the chat keeps 440 beside the full list and 200 beside the avatars.
+// Whatever it picks, the chat keeps 440 beside the full list and 380 beside the avatars.
 for (let w = 300; w <= 2400; w += 1) {
   for (const voice of [368, 500, 700, 900]) {
     const mode = memberListMode({ windowWidth: w, voicePanelWidth: voice });
     const before = 32 + 32 + 16 + 200 + 16 + voice;
     if (mode === "full") assert.ok(w - before - 16 - 200 >= 440, `full list at ${w}px with a ${voice}px call`);
-    if (mode === "avatars") assert.ok(w - before - 16 - 56 >= 200, `avatars at ${w}px with a ${voice}px call`);
+    if (mode === "avatars") assert.ok(w - before - 16 - 56 >= 380, `avatars at ${w}px with a ${voice}px call`);
   }
 }
 

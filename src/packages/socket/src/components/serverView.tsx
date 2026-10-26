@@ -71,6 +71,7 @@ import { GroupFace } from "./GroupFace";
 import { hideConversationWithUndo, useConfirmHide } from "./hideConversation";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { type MemberCardActions, MemberCardActionsContext } from "./memberCard/memberCardContext";
+import { MembersHeaderButton } from "./MembersHeaderButton";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
 import { statusConfig } from "./memberStatus";
 import { MessagesHome } from "./MessagesHome";
@@ -1158,6 +1159,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const canManage = viewerPermissions.can("manage_channels");
   const canDisconnectFromVoice = viewerPermissions.can("disconnect_members");
   const canViewMembers = viewerPermissions.can("view_members");
+  // With no room for even the avatar column, the list moves into the chat header (GRYT-1899).
+  const membersInHeader = membersMode === "none" && canViewMembers && !dmSpace && !isTiny && !isMobile;
 
   const hostChannels = serverDetails.channels || [];
 
@@ -1256,7 +1259,23 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         layout={activeDm ? "chat" : activeChannelLayout}
 forumTags={activeDm ? [] : activeChannelForumTags}
         conversationKind={activeDm ? "dm" : "channel"}
-        headerAction={dmHeaderActions}
+        headerAction={membersInHeader ? (
+          <MembersHeaderButton
+            members={hostMembers}
+            currentConnectionId={selfClientId}
+            currentServerUserId={currentServerUserId}
+            currentUserRole={currentUserRole}
+            currentServerConnected={currentServerConnected}
+            serverHost={host}
+            adminActions={currentAdminActions}
+            onOpenDm={requestOpenDm}
+            isBlocked={isBlocked}
+            onToggleBlock={(targetServerUserId) =>
+              (isBlocked(targetServerUserId) ? unblock : blockAndHide)(targetServerUserId)
+            }
+            onReport={setReportTarget}
+          />
+        ) : dmHeaderActions}
         headerLead={tinyBack}
         headerDetail={activeDm ? narrowDmDetail : <ChannelDescription text={activeChannelDescription} />}
         headerIcon={activeDm && !isTiny && !isMobile ? dmHeaderIcon : undefined}
@@ -1664,7 +1683,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               )}
               </motion.div>
             )}
-            {sidePanel === "members" && (
+            {sidePanel === "members" && !membersInHeader && (
             <MemberSidebarPanel
               // Closed for good, not collapsed: the server stops sending the list,
               // so an open panel would show whatever was last cached.
