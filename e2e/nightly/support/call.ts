@@ -31,7 +31,7 @@ function hittable(locator: Locator): Promise<boolean> {
   });
 }
 
-/** Joining leaves the panel minimized when the window is new, and pressing the channel again opens it. */
+/** Joining opens the panel; pressing the channel again opens it if something hid it since. */
 export async function openVoicePanel(page: Page): Promise<void> {
   if (!(await hittable(leaveVoiceButton(page)))) {
     await page.getByRole("button", { name: VOICE_CHANNEL, exact: true }).click();
