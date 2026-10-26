@@ -824,6 +824,7 @@ export const VoiceView = ({
 
   // The pop-out has no bar under the tiles; its toggles float over them on hover, as on the board.
   const controlsHeight = inPopout ? GRID_PADDING : CONTROLS_HEIGHT;
+  const channelName = serverDetailsList[serverHost]?.channels?.find((c) => c.id === currentChannelId)?.name ?? "Voice";
   const availableHeight = Math.max(
     0,
     gridHeight - controlsHeight - GRID_PADDING,
@@ -1302,13 +1303,20 @@ export const VoiceView = ({
           background: isFullscreen ? "var(--gryt-neutral-1)" : "var(--gryt-neutral-3)",
           borderRadius: isFullscreen ? 0 : "var(--gryt-radius-lg)",
         }}>
-        {isFullscreen && (
+        {isFullscreen ? (
           <FullscreenLabel
-            channelName={serverDetailsList[serverHost]?.channels?.find((c) => c.id === currentChannelId)?.name ?? "Voice"}
+            channelName={channelName}
             serverName={servers[serverHost]?.name || serverHost}
             people={visibleClients.length}
             hidden={idle}
           />
+        ) : !inPopout && (
+          <div className="flex h-10 shrink-0 items-baseline gap-2.5 overflow-hidden whitespace-nowrap px-2 pt-2">
+            <span className="truncate text-[17px] font-extrabold">{channelName}</span>
+            <span className="text-[13px] text-gryt-muted">
+              {visibleClients.length} {visibleClients.length === 1 ? "person" : "people"}
+            </span>
+          </div>
         )}
         {secondsLeft === null ? null : (
           <div
