@@ -424,31 +424,33 @@ export const VoiceView = ({
 
     toast(
       (t) => (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2">
           <span className="text-sm">
             Your microphone is not picking up any sound — others cannot hear
             you. Check the selected device, and that it is not muted.
           </span>
-          <Button tone="neutral" size="xsmall"
-            onClick={() => {
-              toast.dismiss(t.id);
-              setSettingsTab("sound-video");
-              setShowSettings(true);
-            }}
-          >
-            Open settings
-          </Button>
-          {/* Turns it off everywhere, not just this once. Sound & video has a
-              switch to put it back, because a warning you cannot get back is
-              worse than one that nags. */}
-          <Button tone="neutral" size="xsmall"
-            onClick={() => {
-              toast.dismiss(t.id);
-              setMicSilentWarningDismissed(true);
-            }}
-          >
-            Don&apos;t show again
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button tone="neutral" size="xsmall"
+              onClick={() => {
+                toast.dismiss(t.id);
+                setSettingsTab("sound-video");
+                setShowSettings(true);
+              }}
+            >
+              Open settings
+            </Button>
+            {/* Turns it off everywhere, not just this once. Sound & video has a
+                switch to put it back, because a warning you cannot get back is
+                worse than one that nags. */}
+            <Button tone="neutral" size="xsmall"
+              onClick={() => {
+                toast.dismiss(t.id);
+                setMicSilentWarningDismissed(true);
+              }}
+            >
+              Don&apos;t show again
+            </Button>
+          </div>
         </div>
       ),
       {
