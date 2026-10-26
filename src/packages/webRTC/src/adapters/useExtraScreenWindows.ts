@@ -10,6 +10,7 @@ import { shareMeta, useShareWindowsVersion, windowKey } from "./shareWindows";
 export interface AnnouncedShare {
   videoStreamId: string;
   audioStreamId: string;
+  name?: string;
 }
 
 /**
@@ -64,5 +65,6 @@ export function useExtraScreenWindows(): AnnouncedShare[] {
   return extraWindows.map((w) => ({
     videoStreamId: senderStreamId(pc, `screenVideo:${w.index}`, w.videoStream.id),
     audioStreamId: w.audioStream ? senderStreamId(pc, `screenAudio:${w.index}`, w.audioStream.id) : "",
+    name: shareMeta(windowKey(w))?.name,
   }));
 }

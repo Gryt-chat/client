@@ -13,6 +13,7 @@ import { getElectronAPI } from "../../../../lib/electron";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSignOutFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
 import { useInACall } from "../adapters/inACall";
+import { firstShareKey, shareMeta, useShareWindowsVersion } from "../adapters/shareWindows";
 import { type AnnouncedShare, useExtraScreenWindows } from "../adapters/useExtraScreenWindows";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
@@ -82,6 +83,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { supported: canPickAudioSources } = useScreenAudioSources();
   const extraShares = useExtraScreenWindows();
   const extraSharesKey = JSON.stringify(extraShares);
+  const shareVersion = useShareWindowsVersion();
   const [showAudioSourcesModal, setShowAudioSourcesModal] = useState(false);
   const [micMenuOpen, setMicMenuOpen] = useState(false);
   const [headsetMenuOpen, setHeadsetMenuOpen] = useState(false);
@@ -313,13 +315,14 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (!isConnected || !currentServerConnected) return;
     const socket = sockets[currentServerConnected];
     if (socket) {
-      const first = {
+      const first: AnnouncedShare = {
         videoStreamId: (screenShareActive && webrtcScreenVideoStreamId.current) || screenVideoStream?.id || "",
         audioStreamId: screenAudioStreamId(screenShareActive, screenAudioStream, webrtcScreenAudioStreamId.current),
+        name: shareMeta(firstShareKey())?.name,
       };
       const extra: AnnouncedShare[] = JSON.parse(extraSharesKey);
-      // Older servers read the single pair; `shares` carries every window (GRYT-1905).
-      const payload = { enabled: screenShareActive, ...first, ...(extra.length ? { shares: [first, ...extra] } : {}) };
+      // Older servers read the single pair; `shares` carries every window and its name.
+      const payload = { enabled: screenShareActive, videoStreamId: first.videoStreamId, audioStreamId: first.audioStreamId, ...(screenShareActive ? { shares: [first, ...extra] } : {}) };
       lastScreenStateRef.current = payload;
       voiceLog.info("SCREEN", `controls: emitting voice:screen:state`, payload);
       if (screenShareActive && !payload.audioStreamId) {
@@ -327,7 +330,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       }
       socket.emit("voice:screen:state", payload);
     }
-  }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets, extraSharesKey]);
+  }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets, extraSharesKey, shareVersion]);
 
   /* Re-announce camera and screen after a reconnect, on `voice:room:granted` and
      not on the reconnect itself: permissions are not cached yet (GRYT-612). */
