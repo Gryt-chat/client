@@ -111,15 +111,9 @@ function useVideoFramingHook() {
 
 export const useVideoFraming = singletonHook(INITIAL, useVideoFramingHook);
 
-/**
- * The framing as a CSS object-position. Mirroring flips the picture, so an offset
- * measured on the unmirrored frame has to flip with it.
- */
-export function toObjectPosition(
-  framing: Framing | undefined,
-  mirrored?: boolean,
-): string {
+/** The framing as a CSS object-position. Measured on the raw frame, and a mirror transform
+    applies after object-position, so it is never flipped here. */
+export function toObjectPosition(framing: Framing | undefined): string {
   const f = framing ?? CENTRED;
-  const x = mirrored ? 1 - f.x : f.x;
-  return `${(x * 100).toFixed(1)}% ${(f.y * 100).toFixed(1)}%`;
+  return `${(f.x * 100).toFixed(1)}% ${(f.y * 100).toFixed(1)}%`;
 }
