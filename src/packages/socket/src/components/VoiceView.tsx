@@ -28,6 +28,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 
+import { getServerAccessToken } from "@/common";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
@@ -56,7 +57,7 @@ import {
 } from "../lib/voiceLayout";
 import type { Client } from "../types/clients";
 import { stopWatchingShare, useWatchedShares } from "../utils/watchedShares";
-import { CallBubbles } from "./CallBubbles";
+import { type BubbleAction, CallBubbles } from "./CallBubbles";
 import { FocusedVideoView } from "./FocusedVideoView";
 import { FullscreenLabel } from "./FullscreenChrome";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -280,6 +281,7 @@ export const VoiceView = ({
   onPopOut,
   inPopout = false,
   onShowChat,
+  onOpenMessage,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -312,6 +314,8 @@ export const VoiceView = ({
   inPopout?: boolean;
   /** Swaps the full call for its channel's text chat, where the two can't share the middle. */
   onShowChat?: () => void;
+  /** A bubble's Reply or Open in chat: the call's chat, at that message. */
+  onOpenMessage?: (messageId: string, reply: boolean) => void;
 }) => {
   const {
     showPeerLatency,
@@ -521,10 +525,17 @@ export const VoiceView = ({
   const idle = useIdle(isFullscreen, panelRef);
   const { servers } = useServerManagement();
   const { serverDetailsList, sockets } = useSockets();
-  const callBubbles = useCallBubbles(
-    currentServerConnected === serverHost ? sockets[serverHost] : null,
-    currentChannelId,
-  );
+  const callSocket = currentServerConnected === serverHost ? sockets[serverHost] : null;
+  const callBubbles = useCallBubbles(callSocket, currentChannelId);
+  const onBubbleAction = (kind: BubbleAction, messageId: string) => {
+    if (kind !== "react") {
+      onOpenMessage?.(messageId, kind === "reply");
+      return;
+    }
+    const accessToken = getServerAccessToken(serverHost);
+    if (!callSocket || !accessToken || !currentChannelId) return;
+    callSocket.emit("chat:react", { conversationId: currentChannelId, messageId, reactionSrc: "❤️", accessToken });
+  };
 
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
@@ -1276,6 +1287,7 @@ export const VoiceView = ({
                 bubbles={callBubbles.bubbles[serverUserId] ?? []}
                 typing={callBubbles.typing.has(serverUserId)}
                 glass={!!client.cameraEnabled}
+                onAction={onBubbleAction}
               />
             )}
           </SortableParticipant>
