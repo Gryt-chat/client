@@ -1,9 +1,10 @@
 import { Avatar, Skeleton, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { motion } from "motion/react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { PiCameraFill,PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 import { SpeakingHalo } from "./SpeakingHalo";
 import {
   speakingRingStyle,
@@ -48,6 +49,7 @@ export function ConnectedUser({
   onToggleRole,
   targetRoles,
   serverHost,
+  liveCamera,
 }: {
   isSpeaking: boolean;
   /** Dominant colour of the avatar, so the ring matches the voice tile's. */
@@ -80,6 +82,8 @@ export function ConnectedUser({
   onToggleRole?: (role: Role, hold: boolean) => void;
   targetRoles?: Role[];
   serverHost?: string;
+  /** Their camera, drawn in place of the dot while the voice view is hidden (GRYT-1893). */
+  liveCamera?: MediaStream | null;
 }) {
   const hue = tileHue(nickname, avatarColor, { nickname, worn: avatarWorn });
   // Own-transport voice has no analyser; the transport reports its level, as on the tile (GRYT-1830).
@@ -128,7 +132,7 @@ export function ConnectedUser({
               hue={hue}
               size={SIDEBAR_AVATAR_PX}
             />
-            <Avatar
+            {liveCamera ? <LiveDot stream={liveCamera} nickname={nickname} /> : <Avatar
               size="small"
               className="h-6 w-6 text-[10px]"
               fallback={nickname[0]}
@@ -139,7 +143,7 @@ export function ConnectedUser({
                 // speakingRingStyle is the point: the two used to disagree.
                 ...speakingRingStyle(hue, isSpeaking, SIDEBAR_RING),
               }}
-            />
+            />}
           </div>
           <span className="text-sm truncate" style={{ whiteSpace: "nowrap" }}>{nickname}</span>
         </div>
@@ -173,5 +177,25 @@ export function ConnectedUser({
       </div>
     </motion.div>
     </UserContextMenu>
+  );
+}
+
+/** 28px of their camera. Its drawn size is reported, so the sender only needs its lowest layer. */
+function LiveDot({ stream, nickname }: { stream: MediaStream; nickname: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useDrawnVideoSize(ref, stream, "cover");
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream;
+  }, [stream]);
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      playsInline
+      muted
+      aria-label={`${nickname}'s camera`}
+      className="h-7 w-7 shrink-0 rounded-full object-cover"
+      style={{ boxShadow: "0 0 0 2px var(--gryt-success-11)", background: "var(--gryt-accent-4)" }}
+    />
   );
 }
