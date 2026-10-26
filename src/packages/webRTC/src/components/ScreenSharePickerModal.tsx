@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
 import { PiMonitorFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiSquaresFourFill } from "../../../../lib/icons";
 import { currentPlatform, shareSoundHint } from "../../../../lib/screenShareAudio";
-import { presetKey, SCREEN_PRESETS } from "../utils/streamQuality";
+import { presetKey, SCREEN_PRESETS, screenPresetName } from "../utils/streamQuality";
 
 export interface SharePick {
   sourceId: string;
+  name?: string;
   quality: string;
   fps: number;
   withAudio: boolean;
@@ -19,17 +20,17 @@ interface ScreenSharePickerModalProps {
   /** The saved default, which a newly picked card starts on. */
   quality: string;
   fps: number;
-  /** Switch picks one new source for a share that is already running. */
-  mode?: "start" | "switch";
+  /** Add puts the picks next to a share that is already running. */
+  mode?: "start" | "add";
+  /** Sources already being shared, left out when adding. */
+  shared?: string[];
   onStart: (picks: SharePick[]) => void;
 }
 
-const PRESET_NAMES = ["Sharp text", "Smooth", "Less data"];
-
 type Tab = "windows" | "screens";
 
-export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode = "start", onStart }: ScreenSharePickerModalProps) {
-  const switching = mode === "switch";
+export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode = "start", shared = [], onStart }: ScreenSharePickerModalProps) {
+  const adding = mode === "add";
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [tab, setTab] = useState<Tab>("windows");
   const [picks, setPicks] = useState<SharePick[]>([]);
@@ -58,23 +59,23 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
 
   if (!inElectron) return null;
 
-  const shown = sources.filter((s) => s.sourceType === (tab === "screens" ? "screen" : "window"));
-  const presets = SCREEN_PRESETS.map((p, i) => ({ value: presetKey(p.quality, p.fps), label: `${PRESET_NAMES[i]} · ${p.fps}` }));
+  const shown = sources.filter((s) => s.sourceType === (tab === "screens" ? "screen" : "window") && !shared.includes(s.id));
+  const presets = SCREEN_PRESETS.map((p) => ({ value: presetKey(p.quality, p.fps), label: screenPresetName(p.quality, p.fps) }));
   const savedKey = presetKey(quality, fps);
-  if (!presets.some((p) => p.value === savedKey)) presets.push({ value: savedKey, label: `Your default · ${fps}` });
+  if (!presets.some((p) => p.value === savedKey)) presets.push({ value: savedKey, label: screenPresetName(quality, fps) });
 
-  const toggle = (sourceId: string) => setPicks((p) => {
+  const toggle = (sourceId: string, name: string) => setPicks((p) => {
     if (p.some((x) => x.sourceId === sourceId)) return p.filter((x) => x.sourceId !== sourceId);
-    const pick = { sourceId, quality, fps, withAudio: true };
-    return switching ? [pick] : [...p, pick];
+    const pick = { sourceId, name, quality, fps, withAudio: true };
+    return [...p, pick];
   });
   const update = (sourceId: string, change: Partial<SharePick>) =>
     setPicks((p) => p.map((x) => (x.sourceId === sourceId ? { ...x, ...change } : x)));
 
   const n = picks.length;
   const noun = picks.every((p) => p.sourceId.startsWith("screen:")) ? "screen" : "window";
-  let goLabel = switching ? "Switch" : "Share";
-  if (!switching && n) goLabel = `Share ${n} ${noun}${n > 1 ? "s" : ""}`;
+  const verb = adding ? "Add" : "Share";
+  const goLabel = n ? `${verb} ${n} ${noun}${n > 1 ? "s" : ""}` : verb;
   const hint = shareSoundHint(currentPlatform(), picks.some((p) => p.sourceId.startsWith("screen:")));
 
   return (
@@ -83,7 +84,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[820px] max-w-[calc(100vw-32px)]" aria-label="Share your screen">
           <div className="flex h-11 items-center justify-between gap-3">
-            <Dialog.Title className="text-lg font-extrabold">{switching ? "Share something else" : "Share your screen"}</Dialog.Title>
+            <Dialog.Title className="text-lg font-extrabold">{adding ? "Add a window" : "Share your screen"}</Dialog.Title>
             <div className="flex rounded-full p-[3px] text-[13px] font-bold" style={{ background: "var(--gryt-neutral-3)" }} role="tablist">
               {(["windows", "screens"] as const).map((t) => (
                 <button
@@ -92,7 +93,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                   role="tab"
                   aria-selected={tab === t}
                   className="cursor-pointer rounded-full border-0 px-3.5 py-1.5"
-                  style={tab === t ? { background: "var(--gryt-accent-9)", color: "var(--gryt-accent-contrast)" } : { background: "transparent", color: "inherit" }}
+                  style={tab === t ? { background: "var(--color-gryt-accent)", color: "var(--color-gryt-on-accent)" } : { background: "transparent", color: "inherit" }}
                   onClick={() => setTab(t)}
                 >
                   {t === "windows" ? "Windows" : "Whole screen"}
@@ -132,11 +133,11 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                   style={pick
                     ? { borderColor: "var(--gryt-accent-9)", background: "var(--gryt-accent-3)" }
                     : { borderColor: "var(--gryt-neutral-6)", background: "var(--gryt-neutral-2)" }}
-                  onClick={() => toggle(src.id)}
+                  onClick={() => toggle(src.id, src.name)}
                   onKeyDown={(e) => {
                     if (e.target !== e.currentTarget || (e.key !== " " && e.key !== "Enter")) return;
                     e.preventDefault();
-                    toggle(src.id);
+                    toggle(src.id, src.name);
                   }}
                 >
                   <div className="relative flex h-[108px] items-center justify-center overflow-hidden bg-black">
@@ -144,8 +145,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                     {!src.thumbnail && (src.sourceType === "screen" ? <PiMonitorFill size={24} /> : <PiSquaresFourFill size={24} />)}
                     {pick && (
                       <span
-                        className="absolute left-2 top-2 flex h-[26px] w-[26px] items-center justify-center rounded-full text-sm font-extrabold"
-                        style={{ background: "var(--gryt-accent-9)", color: "var(--gryt-accent-contrast)" }}
+                        className="absolute left-2 top-2 flex h-[26px] w-[26px] items-center justify-center rounded-full bg-gryt-accent text-sm font-extrabold text-gryt-on-accent"
                       >
                         {i + 1}
                       </span>

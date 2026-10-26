@@ -38,6 +38,7 @@ export function ConnectedUser({
   isSelf,
   isConnectingToVoice = false,
   screenShareEnabled,
+  screenShareCount = 1,
   cameraEnabled,
   canDisconnect,
   onDisconnectFromVoice,
@@ -72,6 +73,8 @@ export function ConnectedUser({
   isConnectedToVoice?: boolean;
   isConnectingToVoice?: boolean;
   screenShareEnabled?: boolean;
+  /** How many windows they share; above one it shows next to the icon. */
+  screenShareCount?: number;
   cameraEnabled?: boolean;
   canDisconnect?: boolean;
   onDisconnectFromVoice?: () => void;
@@ -160,9 +163,10 @@ export function ConnectedUser({
             <Skeleton variant="circular" width="12px" height="12px" />
           )}
           {screenShareEnabled && (
-            <Tooltip title="Streaming">
-              <div className="flex items-center">
-                <PiMonitorArrowUpFill size={14} color="var(--gryt-accent-9)" />
+            <Tooltip title={screenShareCount > 1 ? `Sharing ${screenShareCount} windows` : "Streaming"}>
+              <div className="flex items-center gap-0.5 text-xs font-bold" style={{ color: "var(--gryt-accent-9)" }}>
+                <PiMonitorArrowUpFill size={14} />
+                {screenShareCount > 1 && screenShareCount}
               </div>
             </Tooltip>
           )}

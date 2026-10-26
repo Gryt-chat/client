@@ -27,6 +27,7 @@ import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/t
 import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiChatTeardropTextFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import type { CallBubble } from "../hooks/useCallBubbles";
 import { cameraStreamFor } from "../lib/cameraStream";
+import { shareCount } from "../lib/screenItems";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
 import { EmojiText } from "./EmojiText";
@@ -557,6 +558,7 @@ export const ChannelList = ({
                             (id !== currentConnectionId && !clients[id].isConnectedToVoice)
                           }
                           screenShareEnabled={clients[id].screenShareEnabled}
+                          screenShareCount={shareCount(clients[id])}
                           cameraEnabled={clients[id].cameraEnabled}
                           liveCamera={liveCameraFor(id)}
                           peek={inThisCall && clients[id].serverUserId ? newestPeek(callPeek, clients[id].serverUserId) : undefined}
