@@ -11,6 +11,8 @@ export interface CallBubble {
   /** "Name: text" of the message this one answers, when it was said recently. */
   quote?: string;
   reactions?: Reaction[] | null;
+  /** The first link in it, drawn as a small card. */
+  url?: string;
 }
 
 export interface CallBubbleState {
@@ -62,7 +64,8 @@ export function useCallBubbles(socket: Socket | null | undefined, conversationId
       const userId = msg.sender_server_id;
       const text = toPlainNotificationText(msg.text);
       const quoted = msg.reply_to_message_id ? recent.get(msg.reply_to_message_id) : undefined;
-      const bubble: CallBubble = { id: msg.message_id, text, quote: quoted, reactions: msg.reactions };
+      const url = /https?:\/\/[^\s<>)\]]+/.exec(msg.text)?.[0];
+      const bubble: CallBubble = { id: msg.message_id, text, quote: quoted, reactions: msg.reactions, url };
       recent.set(msg.message_id, `${msg.sender_nickname ?? "Someone"}: ${text}`);
       if (recent.size > QUOTABLE) recent.delete(recent.keys().next().value as string);
       setTyping(userId, false);

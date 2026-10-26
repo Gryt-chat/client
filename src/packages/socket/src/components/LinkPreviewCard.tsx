@@ -10,21 +10,17 @@ import {
 import { Skeleton } from "@gryt/ui";
 import { memo, useEffect, useMemo, useState } from "react";
 
-import { getPreviewImageUrl, getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
-import { useSettings } from "@/settings/src/hooks/useSettings";
+import { useTheme } from "@/common";
 
 import { PiLinkSimpleBold } from "../../../../lib/icons";
-import { useTrustedEmbedHosts } from "../lib/trustedEmbedHosts";
+import { useLinkPreview } from "../hooks/useLinkPreview";
 import { DismissButton } from "./EmbedRenderers";
 import {
   cardByline,
   describePreviewFailure,
   getLinkCardLayout,
   type LinkPreviewData,
-  previewCache,
-  previewRefused,
 } from "./embedUtils";
-import { nextPreviewStep, type PreviewFailure } from "./linkPreviewRetry";
 
 /**
  * The line above the title: a logo where we have one, the site's own favicon
@@ -110,14 +106,6 @@ LinkPreviewSkeleton.displayName = "LinkPreviewSkeleton";
  * A link drawn as a card. The shape follows what the page gave us rather than one
  * fixed template — see `getLinkCardLayout`.
  */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return "";
-  }
-}
-
 export const LinkPreviewCard = memo(({
   url,
   serverHost,
@@ -128,85 +116,12 @@ export const LinkPreviewCard = memo(({
   onDismiss: () => void;
 }) => {
   const { resolvedAppearance } = useTheme();
-  // The picture and favicon come from the linked site itself; the text came through the server.
-  const { autoLoadEmbeds } = useSettings();
-  const trusted = useTrustedEmbedHosts();
-  const remoteImagesOk = autoLoadEmbeds || trusted.includes(hostOf(url));
-  const [data, setData] = useState<LinkPreviewData | null>(() => previewCache.get(url) ?? null);
-  const [failed, setFailed] = useState(() => previewRefused.has(url));
+  const { data, failed, pictureSrc } = useLinkPreview(url, serverHost);
   const [imageFailed, setImageFailed] = useState(false);
-
   useEffect(() => {
     setImageFailed(false);
   }, [url, data?.image]);
 
-  useEffect(() => {
-    if (data) return;
-    // Asked before and refused. Nothing about the answer can have changed.
-    if (previewRefused.has(url)) { setFailed(true); return; }
-
-    const accessToken = getServerAccessToken(serverHost);
-    if (!accessToken) {
-      setFailed(true);
-      return;
-    }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const base = getServerHttpBase(serverHost);
-
-    const settle = (attempt: number, failure: PreviewFailure) => {
-      const step = nextPreviewStep(failure, attempt);
-      if (step.action === "retry") {
-        timer = setTimeout(() => void request(attempt + 1), step.delayMs);
-        return;
-      }
-      if (step.action === "refuse") previewRefused.add(url);
-      setFailed(true);
-    };
-
-    const request = async (attempt: number) => {
-      let res: Response;
-      try {
-        res = await fetch(`${base}/api/link-preview?url=${encodeURIComponent(url)}`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-      } catch {
-        if (!cancelled) settle(attempt, { kind: "network" });
-        return;
-      }
-      if (cancelled) return;
-
-      if (!res.ok) {
-        // Retry-After is not CORS-exposed, so cross-origin the body's retryAfterMs is what we get.
-        const body = res.status === 429 ? await res.json().catch(() => null) : null;
-        if (cancelled) return;
-        settle(attempt, {
-          kind: "status",
-          status: res.status,
-          retryAfter: res.headers.get("Retry-After"),
-          retryAfterMs: (body as { retryAfterMs?: unknown } | null)?.retryAfterMs,
-        });
-        return;
-      }
-
-      try {
-        const d = (await res.json()) as LinkPreviewData;
-        if (cancelled) return;
-        previewCache.set(url, d);
-        setData(d);
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
-    };
-
-    void request(0);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [url, serverHost, data]);
 
   const accent = useMemo(
     () => getAccentColor(url, data?.themeColor ?? null, resolvedAppearance),
@@ -231,12 +146,7 @@ export const LinkPreviewCard = memo(({
 
   const byline = cardByline(data.author, data.publishedAt);
 
-  // A server that fetches the picture and icon itself hands out ids for them, and then the setting needn't hold them back.
   const served = data as LinkPreviewData & { imageId?: string | null; faviconId?: string | null };
-  const pictureSrc = (id: string | null | undefined, direct: string | null) => {
-    if (id) return getPreviewImageUrl(serverHost, id);
-    return remoteImagesOk ? direct : null;
-  };
   const imageSrc = pictureSrc(served.imageId, data.image);
   const faviconSrc = pictureSrc(served.faviconId, data.favicon);
   const showImage = Boolean(imageSrc) && !imageFailed && layout !== "text" && layout !== "bare";

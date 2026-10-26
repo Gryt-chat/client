@@ -1287,6 +1287,7 @@ export const VoiceView = ({
                 bubbles={callBubbles.bubbles[serverUserId] ?? []}
                 typing={callBubbles.typing.has(serverUserId)}
                 glass={!!client.cameraEnabled}
+                serverHost={serverHost}
                 onAction={onBubbleAction}
               />
             )}
