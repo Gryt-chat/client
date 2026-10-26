@@ -17,6 +17,9 @@ assert.deepEqual(shareOf(legacy, 1), { videoStreamID: "", audioStreamID: "" });
 const two = { ...legacy, screenShares: [{ videoStreamID: "v0", audioStreamID: "a0" }, { videoStreamID: "v1", audioStreamID: "" }] };
 assert.equal(shareCount(two), 2);
 assert.deepEqual(shareOf(two, 1), { videoStreamID: "v1", audioStreamID: "" });
+
+const named = { ...legacy, screenShares: [{ videoStreamID: "v0", audioStreamID: "a0", name: "Counter-Strike 2" }] };
+assert.equal(shareOf(named, 0).name, "Counter-Strike 2", "the first window's name comes from the list");
 assert.equal(shareCount({ ...two, screenShareEnabled: false }), 0);
 
 const members = [{ serverUserId: "u1" }, { serverUserId: "u2" }];

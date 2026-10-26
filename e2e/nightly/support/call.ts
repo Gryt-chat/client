@@ -68,34 +68,37 @@ export async function leaveVoice(page: Page): Promise<void> {
 
 export async function turnCameraOn(guest: Guest): Promise<void> {
   await callButton(guest.page, "Turn camera on").click();
-  const start = guest.page.getByRole("button", { name: "Start Camera" });
-  await expect(start, "the camera preview never got a stream").toBeEnabled();
-  await start.click();
-  await expect(callButton(guest.page, "Camera is on")).toBeVisible();
+  // The preview opens first unless "preview first" is off, and its own button turns the camera on.
+  const start = guest.page.getByRole("dialog", { name: "Turn your camera on" }).getByRole("button", { name: "Turn camera on" });
+  await expect(start.or(callButton(guest.page, "Turn camera off")).first()).toBeVisible();
+  if (await start.count()) {
+    await expect(start, "the camera preview never got a stream").toBeEnabled();
+    await start.click();
+  }
+  await expect(callButton(guest.page, "Turn camera off")).toBeVisible();
 }
 
 export async function turnCameraOff(guest: Guest): Promise<void> {
-  await callButton(guest.page, "Camera is on").click();
-  await guest.page.getByRole("menuitem", { name: "Turn camera off", exact: true }).click();
+  await callButton(guest.page, "Turn camera off").click();
   await expect(callButton(guest.page, "Turn camera on")).toBeVisible();
 }
 
 /** In a browser the button calls getDisplayMedia straight away, and Chrome's fake capture answers it. */
 export async function shareScreen(guest: Guest): Promise<void> {
   await callButton(guest.page, "Share your screen").click();
-  await expect(callButton(guest.page, "Sharing your screen")).toBeVisible();
+  await expect(callButton(guest.page, "What you share")).toBeVisible();
 }
 
-/** Somebody else's share waits for a click before it plays (GRYT-1681), so the viewer presses Watch stream. */
+/** Somebody else's share waits for a click before it plays (GRYT-1681), so the viewer presses Watch. */
 export async function watchShare(page: Page, sharer: string): Promise<void> {
-  const waiting = page.locator('[data-gryt="share-unwatched"]').filter({ hasText: `${sharer} is sharing their screen` });
+  const waiting = page.locator('[data-gryt="share-unwatched"]').filter({ hasText: `${sharer}'s Screen` });
   // A share again under the first one's stream id (GRYT-1319) counts as watched already, so it plays with no button.
   await expect(waiting.or(tileVideo(page, `${sharer}'s Screen`)).first()).toBeAttached();
-  if (await waiting.count()) await waiting.getByRole("button", { name: "Watch stream" }).click();
+  if (await waiting.count()) await waiting.getByRole("button", { name: "Watch", exact: true }).click();
 }
 
 export async function stopSharing(guest: Guest): Promise<void> {
-  await callButton(guest.page, "Sharing your screen").click();
+  await callButton(guest.page, "What you share").click();
   await guest.page.getByRole("menuitem", { name: "Stop sharing", exact: true }).click();
   await expect(callButton(guest.page, "Share your screen")).toBeVisible();
 }

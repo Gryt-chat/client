@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
-import { PiCameraFill,PiEyeFill, PiEyeSlashFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { PiCameraFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
 import { toObjectPosition, useVideoFraming } from "../hooks/useVideoFraming";
 import { cameraStreamFor } from "../lib/cameraStream";
@@ -14,6 +14,7 @@ import { parseScreenItem, shareOf } from "../lib/screenItems";
 import type { Client } from "../types/clients";
 import { stopWatchingShare, useWatchedShares, watchShare } from "../utils/watchedShares";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
+import { ShareTileBar } from "./ShareTileBar";
 import { SpeakingHalo } from "./SpeakingHalo";
 import {
   SPEAKING_RING,
@@ -430,7 +431,9 @@ export function VoiceParticipantCard({
 
     if (!screenStream && !hasPendingRemoteScreen) return null;
 
-    const screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
+    let screenTitle = isSelf ? "Your Screen" : `${client.nickname}'s Screen`;
+    if (share.name) screenTitle = isSelf ? `Your ${share.name}` : `${client.nickname} · ${share.name}`;
+    const sharerTint = tileTint(client.nickname, memberInfo?.avatarColor, { nickname: client.nickname, worn: memberInfo?.avatarWorn });
     const shareId = share.videoStreamID;
     // Someone else's share waits for a click: nothing draws or plays until you choose to watch.
     const watching = isSelf || (!!shareId && watchedShares.has(shareId));
@@ -493,17 +496,22 @@ export function VoiceParticipantCard({
         {!watching ? (
           <div
             data-gryt="share-unwatched"
-            className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center"
-            style={{ borderRadius: tileRadius, background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
+            className="flex h-full w-full flex-col items-center justify-center gap-1.5 p-4 text-center"
+            style={{
+              borderRadius: tileRadius,
+              background: tileGradientFrom(sharerTint),
+              boxShadow: `inset 0 0 0 2px hsl(${sharerTint.hue} ${sharerTint.sat}% ${Math.min(sharerTint.light + 18, 70)}%)`,
+              color: "#fff",
+            }}
           >
             <PiMonitorArrowUpFill size={28} />
-            <span className="text-sm">{client.nickname} is sharing their screen</span>
+            <span className="text-[13px] font-bold">{screenTitle}</span>
             <Button size="small" onClick={() => shareId && watchShare(shareId)}>
-              <PiEyeFill size={14} /> Watch stream
+              Watch
             </Button>
           </div>
         ) : (
-          <div className="group relative h-full w-full">
+          <div className="group relative h-full w-full" data-share-tile>
             <VideoCard
               key={`${serverUserId ?? itemId}:${share.videoStreamID || "local"}:${
                 screenStream?.id || "pending"
@@ -537,22 +545,21 @@ export function VoiceParticipantCard({
                   : undefined
               }
             />
+            {share.audioStreamID && (
+              <span
+                className="pointer-events-none absolute bottom-2.5 right-2.5 rounded-full px-2 py-0.5 text-xs"
+                style={{ background: "rgba(17,19,24,.8)", color: "var(--gryt-success-11)" }}
+              >
+                ♪ {isSelf ? "sound on" : "sound"}
+              </span>
+            )}
             {!isSelf && shareId && (
-              <Tooltip title="Stop watching">
-                <button
-                  type="button"
-                  aria-label="Stop watching"
-                  data-gryt="share-stop-watching"
-                  className="absolute bottom-2 right-2 flex items-center rounded-full border-0 p-2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                  style={{ background: "rgba(0,0,0,0.6)", color: "white", cursor: "pointer" }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    stopWatchingShare(shareId);
-                  }}
-                >
-                  <PiEyeSlashFill size={16} />
-                </button>
-              </Tooltip>
+              <ShareTileBar
+                name={screenTitle}
+                audioStreamId={share.audioStreamID || undefined}
+                streamSources={streamSources}
+                onStop={() => stopWatchingShare(shareId)}
+              />
             )}
           </div>
         )}

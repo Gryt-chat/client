@@ -989,7 +989,7 @@ export const VoiceView = ({
       const { clientId, index } = parseScreenItem(id);
       const shareId = shareOf(clientsForHost[clientId], index).videoStreamID;
       const watched = clientId === currentConnectionId || (!!shareId && watchedShares.has(shareId));
-      return { id, kind: watched ? "share" : "cam" };
+      return { id, kind: watched ? "share" : "avatar" };
     });
 
     for (const id of laidOutItems) {

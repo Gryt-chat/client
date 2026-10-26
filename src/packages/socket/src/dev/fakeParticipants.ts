@@ -191,6 +191,8 @@ function fakeScreenStream(): MediaStream {
  * The real record plus the fakes. Returns the inputs untouched when the query
  * string did not ask for any, so the normal path is genuinely unchanged.
  */
+const FAKE_WINDOWS = ["Counter-Strike 2", "Firefox", "Visual Studio Code"];
+
 export function withFakeParticipants(
   clients: Record<string, Client>,
   videoStreams: Record<string, MediaStream> | undefined,
@@ -226,7 +228,7 @@ export function withFakeParticipants(
       screenShareEnabled: sharing,
       screenShareVideoStreamID: sharing ? `${id}-screen` : undefined,
       screenShares: sharing
-        ? Array.from({ length: Math.max(1, options.shareWindows ?? 1) }, (_, n) => ({ videoStreamID: n ? `${id}-screen-${n}` : `${id}-screen`, audioStreamID: "" }))
+        ? Array.from({ length: Math.max(1, options.shareWindows ?? 1) }, (_, n) => ({ videoStreamID: n ? `${id}-screen-${n}` : `${id}-screen`, audioStreamID: "", name: FAKE_WINDOWS[n % FAKE_WINDOWS.length] }))
         : undefined,
     };
 

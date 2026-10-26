@@ -17,13 +17,14 @@ export function parseScreenItem(itemId: string): { clientId: string; index: numb
 interface ShareFields {
   screenShareVideoStreamID?: string;
   screenShareAudioStreamID?: string;
-  screenShares?: { videoStreamID: string; audioStreamID: string }[];
+  screenShares?: { videoStreamID: string; audioStreamID: string; name?: string }[];
 }
 
-/** One window's stream ids. A server from before the list only knows the first. */
-export function shareOf(client: ShareFields | undefined, index: number): { videoStreamID: string; audioStreamID: string } {
+/** One window's stream ids and name. A server from before the list only knows the first's ids. */
+export function shareOf(client: ShareFields | undefined, index: number): { videoStreamID: string; audioStreamID: string; name?: string } {
   if (index > 0) return client?.screenShares?.[index] ?? { videoStreamID: "", audioStreamID: "" };
-  return { videoStreamID: client?.screenShareVideoStreamID ?? "", audioStreamID: client?.screenShareAudioStreamID ?? "" };
+  const name = client?.screenShares?.[0]?.name;
+  return { videoStreamID: client?.screenShareVideoStreamID ?? "", audioStreamID: client?.screenShareAudioStreamID ?? "", ...(name ? { name } : {}) };
 }
 
 /** How many windows a client is sharing, from the list where the server sends one. */
