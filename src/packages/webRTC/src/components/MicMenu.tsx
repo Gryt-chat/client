@@ -6,6 +6,16 @@ import { useSettings } from "@/settings";
 
 import { type CallControlState, SplitArrow } from "./CallControlButton";
 
+/** The popup the call bar's arrows open, as on the Mic board. */
+export const CALL_MENU_STYLE = {
+  width: 320,
+  padding: 8,
+  background: "var(--gryt-neutral-2)",
+  border: "1px solid var(--gryt-neutral-6)",
+  borderRadius: 16,
+  boxShadow: "0 18px 48px rgba(0,0,0,.55)",
+} as const;
+
 /** The mic's arrow and its menu: microphone, a live level, noise suppression. */
 export function MicMenu({ state, open, onOpenChange }: {
   state: CallControlState;
@@ -51,14 +61,7 @@ export function MicMenu({ state, open, onOpenChange }: {
             aria-label="Microphone"
             // A mouse open leaves focus alone, so the dropdown doesn't open wearing its focus ring.
             initialFocus={(type) => type === "keyboard"}
-            style={{
-              width: 320,
-              padding: 8,
-              background: "var(--gryt-neutral-2)",
-              border: "1px solid var(--gryt-neutral-6)",
-              borderRadius: 16,
-              boxShadow: "0 18px 48px rgba(0,0,0,.55)",
-            }}
+            style={CALL_MENU_STYLE}
           >
             <div className="px-2.5 pt-2 pb-1 text-xs font-bold text-gryt-muted">Microphone</div>
             <div className="px-2.5 pt-0.5 pb-1.5">
