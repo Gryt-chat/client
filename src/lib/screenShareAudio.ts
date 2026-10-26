@@ -1,20 +1,8 @@
-/**
- * What "include audio" picks up, which differs by platform and source. Windows
- * captures per process; macOS captures the machine either way (GRYT-564).
- */
-export function audioScopeHint(platform: string, sourceId: string | null): string {
-  const isWindows = platform === "win32";
-  const isWindowSource = sourceId?.startsWith("window:") ?? false;
-
-  if (isWindows && isWindowSource) {
-    return "Shares this window's audio only. Anything else playing stays out of it.";
-  }
-
-  if (isWindows) {
-    return "Shares every sound on this machine except Gryt, including any other voice app you are in. Pick a single window to send just that app.";
-  }
-
-  return "Shares every sound on this machine except Gryt, including any other voice app you are in.";
+/** The picker's footer. Only Windows captures per process, and only for a window rather than a screen. */
+export function shareSoundHint(platform: string, picksScreen: boolean): string {
+  const lead = "Click more than one to share several windows. Each picked window sets its own quality and sound";
+  if (platform === "win32" && !picksScreen) return `${lead}, and sound only ever comes from the windows you pick.`;
+  return `${lead}. Sound comes from everything playing on this computer except Gryt.`;
 }
 
 /** Mirrors CaptureProblem in electron/captureHealth.ts. */

@@ -1,5 +1,5 @@
 import { Menu, Tooltip } from "@gryt/ui";
-import { type ScreenShareQuality, useScreenShare } from "@gryt/voice";
+import { useScreenShare } from "@gryt/voice";
 import { type CSSProperties, useCallback, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -7,10 +7,11 @@ import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 import { PiMonitorArrowUpFill } from "../../../../lib/icons";
+import { windowPresets } from "../adapters/useExtraScreenWindows";
 import { presetKey, presetLabel, SCREEN_PRESETS } from "../utils/streamQuality";
 import { useCallButtonPress } from "./callButtonPress";
 import { CallControlButton, type CallControlButtonProps } from "./CallControlButton";
-import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
+import { ScreenSharePickerModal,type SharePick } from "./ScreenSharePickerModal";
 
 interface ScreenShareControlProps {
   iconSize?: number;
@@ -29,40 +30,41 @@ interface ScreenShareControlProps {
 /** Off, it opens the picker. Live, it opens a menu, so a stray click can't end the share. */
 export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClassName, allowed = true, side = "top", takesRailPress = false }: ScreenShareControlProps) {
   const {
-    screenShareActive, nativeScreenCaptureAvailable, nativeEncodedCodec,
-    startScreenShare, stopScreenShare,
+    screenShareActive, nativeEncodedCodec,
+    startScreenShare, stopScreenShare, addScreenWindow,
   } = useScreenShare();
   const {
     screenShareQuality, setScreenShareQuality,
     screenShareFps, setScreenShareFps,
-    experimentalScreenShare,
-    screenShareGamingMode, setScreenShareGamingMode,
-    screenShareCodec, setScreenShareCodec,
-    screenShareMaxBitrate, setScreenShareMaxBitrate,
-    screenShareScalabilityMode, setScreenShareScalabilityMode,
   } = useSettings();
   const [picker, setPicker] = useState<"start" | "switch" | null>(null);
   const [isStarting, setIsStarting] = useState(false);
 
   const start = useCallback(
-    async ({ sourceId, withAudio }: { sourceId?: string; withAudio: boolean }, mode: "start" | "switch") => {
+    async ([first, ...rest]: SharePick[], mode: "start" | "switch") => {
       const toastId = "screen-share-starting";
       setIsStarting(true);
       toast.loading(mode === "switch" ? "Switching…" : "Starting screen share…", { id: toastId });
       try {
-        await startScreenShare(withAudio, sourceId);
+        setScreenShareQuality(first.quality);
+        setScreenShareFps(first.fps);
+        await startScreenShare(first.withAudio, first.sourceId || undefined);
+        for (const p of rest) {
+          windowPresets.set(p.sourceId, p);
+          await addScreenWindow(p.withAudio, p.sourceId);
+        }
       } finally {
         setIsStarting(false);
         toast.dismiss(toastId);
       }
     },
-    [startScreenShare],
+    [startScreenShare, addScreenWindow, setScreenShareQuality, setScreenShareFps],
   );
 
   // The browser brings its own picker, so the app's one is only for the desktop app.
   const openPicker = (mode: "start" | "switch") => {
     if (isElectron()) setPicker(mode);
-    else void start({ withAudio: true }, mode);
+    else void start([{ sourceId: "", quality: screenShareQuality, fps: screenShareFps, withAudio: true }], mode);
   };
 
   useCallButtonPress("share", () => openPicker("start"), takesRailPress && !screenShareActive);
@@ -141,21 +143,9 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
         open={picker !== null}
         onOpenChange={(open) => { if (!open) setPicker(null); }}
         mode={picker ?? "start"}
-        quality={screenShareQuality as ScreenShareQuality}
-        onQualityChange={setScreenShareQuality}
+        quality={screenShareQuality}
         fps={screenShareFps}
-        onFpsChange={setScreenShareFps}
-        experimentalScreenShare={experimentalScreenShare}
-        gamingMode={screenShareGamingMode}
-        onGamingModeChange={setScreenShareGamingMode}
-        codec={screenShareCodec}
-        onCodecChange={setScreenShareCodec}
-        maxBitrate={screenShareMaxBitrate}
-        onMaxBitrateChange={setScreenShareMaxBitrate}
-        scalabilityMode={screenShareScalabilityMode}
-        onScalabilityModeChange={setScreenShareScalabilityMode}
-        nativeScreenCaptureAvailable={nativeScreenCaptureAvailable}
-        onStart={(opts) => void start(opts, picker ?? "start")}
+        onStart={(picks) => void start(picks, picker ?? "start")}
       />
     </>
   );
