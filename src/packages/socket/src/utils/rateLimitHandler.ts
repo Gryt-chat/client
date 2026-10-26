@@ -44,7 +44,8 @@ export const handleRateLimitError = (
     return;
   }
 
-  // Handle other errors
-  const errorMessage = typeof error === 'string' ? error : error.error || `Unknown ${context} error`;
-  toast.error(`${context} error: ${errorMessage}`);
+  // The server's sentence when it sent one; a bare code like "unidentified" means nothing to a reader.
+  console.warn(`[${context}] error:`, error);
+  const message = typeof error === 'object' && error.message ? error.message : "Something went wrong. Try again in a moment.";
+  toast.error(message, { id: `error:${message}` });
 };

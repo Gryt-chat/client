@@ -66,6 +66,7 @@ import { setServerJoinPolicy } from "./useServerJoinPolicy";
 
 const TOKEN_HEAL_COOLDOWN_MS = 10_000;
 const tokenHealLastAttempt = new Map<string, number>();
+const nonceRetryLastAttempt = new Map<string, number>();
 
 /** The member list identifies people by serverUserId but says nothing about
     which entry is you, so this is how the two are joined up. */
@@ -540,8 +541,24 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }));
   });
 
-  socket.on("server:error", (errorInfo: { error: string; message?: string; retryAfterMs?: number; currentScore?: number; maxScore?: number; canReapply?: boolean }) => {
+  socket.on("server:error", (errorInfo: { error: string; message?: string; retryAfterMs?: number; currentScore?: number; maxScore?: number; canReapply?: boolean; reason?: string }) => {
     console.error(`Server join failed for ${host}:`, errorInfo);
+
+    // A sign-in mid-join answers the old challenge with the new key. A fresh join gets a fresh nonce.
+    if (errorInfo.error === "identity_verification_failed" && errorInfo.reason === "nonce_mismatch") {
+      const last = nonceRetryLastAttempt.get(host) ?? 0;
+      if (Date.now() - last >= TOKEN_HEAL_COOLDOWN_MS) {
+        nonceRetryLastAttempt.set(host, Date.now());
+        toast("Still joining…", { id: `still-joining:${host}`, duration: 3000 });
+        socket.emit("server:join", {
+          nickname,
+          inviteCode: serversRef.current[host]?.token || undefined,
+        });
+        return;
+      }
+      toast.error(errorInfo.message || `Couldn't join ${host}. Try again in a moment.`, { id: `still-joining:${host}` });
+      return;
+    }
 
     if (errorInfo.error === 'rate_limited' && errorInfo.message) {
       handleRateLimitError(errorInfo, "Server connection");
@@ -702,7 +719,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       }
       return;
     }
-    toast.error(`Failed to join server ${host}: ${errorInfo.error}`);
+    toast.error(errorInfo.message || `Couldn't join ${host}. Try again in a moment.`);
   });
 
   /** Sent into that call's own room and nowhere else, so receiving it is the
