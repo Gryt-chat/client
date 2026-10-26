@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  CHANNEL_ICONS_MAX_WIDTH,
   hasRoomForSettingsRail,
   hasRoomForThreadBeside,
   hasRoomForVoicePanel,
@@ -65,6 +66,13 @@ export function useRoomForThreadBeside(voicePanelWidth: number): boolean {
  */
 export function useRoomForVoicePanel(): boolean {
   return hasRoomForVoicePanel(useWindowWidth());
+}
+
+/** The channel list as square icons, below the Narrow board's 960. Never in the tiny window, which has its own list. */
+export function useChannelIcons(): boolean {
+  const windowWidth = useWindowWidth();
+  const pointerFine = usePointerFine();
+  return windowWidth <= CHANNEL_ICONS_MAX_WIDTH && !isTinyWindow({ windowWidth, pointerFine });
 }
 
 /** One channel and nothing else. Desktop only; see `usePointerFine`. */

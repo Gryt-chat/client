@@ -123,7 +123,7 @@ export function ConnectedUser({
       transition={{ duration: 0.25 }}
       style={{ width: "100%", overflow: "hidden" }}
     >
-      <div ref={rowRef} className="flex gap-2 items-center px-3 py-2 w-full" style={{
+      <div ref={rowRef} className="gryt-member-row flex gap-2 items-center px-3 py-2 w-full" style={{
           opacity: 1,
           transition: "opacity 0.3s ease",
         }}>
@@ -148,10 +148,10 @@ export function ConnectedUser({
               }}
             />}
           </div>
-          <span className="text-sm truncate" style={{ whiteSpace: "nowrap" }}>{nickname}</span>
+          <span className="gryt-hide-in-icons text-sm truncate" style={{ whiteSpace: "nowrap" }}>{nickname}</span>
         </div>
 
-        <div className="flex gap-1 items-center" style={{ flexShrink: 0 }}>
+        <div className="gryt-hide-in-icons flex gap-1 items-center" style={{ flexShrink: 0 }}>
           {isConnectingToVoice && (
             <Skeleton variant="circular" width="12px" height="12px" />
           )}

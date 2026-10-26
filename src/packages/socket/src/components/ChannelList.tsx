@@ -2,7 +2,7 @@ import { Button, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useCamera, useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import toast from "react-hot-toast";
 
 import {
@@ -114,6 +114,11 @@ function rowLabel(item: SidebarItem, channelById: Map<string, Channel>): string 
   return item.kind === "folder" ? item.label || "Folder" : item.kind;
 }
 
+/** The narrow list's name on hover; a plain row has the name written out already. */
+function MaybeNameTip({ name, children }: { name?: string; children: ReactElement }) {
+  return name ? <Tooltip title={name} side="right">{children}</Tooltip> : children;
+}
+
 export const ChannelList = ({
   channels,
   items,
@@ -130,6 +135,7 @@ export const ChannelList = ({
   clientsSpeaking,
   streamSources,
   videoStreams,
+  iconsOnly = false,
   canManage,
   onEditItem,
   onDeleteItem,
@@ -160,6 +166,8 @@ export const ChannelList = ({
   streamSources?: StreamSources;
   /** Remote cameras, drawn in the rows of the call you're in while its view is hidden. */
   videoStreams?: Record<string, MediaStream>;
+  /** Square icons with the name on hover; the CSS in style.css does most of it (GRYT-1899). */
+  iconsOnly?: boolean;
   canManage?: boolean;
   onEditItem?: (item: SidebarItem) => void;
   onDeleteItem?: (item: SidebarItem) => void;
@@ -318,7 +326,7 @@ export const ChannelList = ({
             folderTone(holdsSelected, unread > 0 || mentions > 0),
           ].join(" ")}
         >
-          <span className="min-w-0 shrink truncate">
+          <span className="gryt-hide-in-icons min-w-0 shrink truncate">
             <EmojiText text={item.label || "Folder"} />
           </span>
           <span
@@ -378,7 +386,9 @@ export const ChannelList = ({
             <Button>, which is the filled accent one, so the whole list read as
             selected and the channel you were actually in was invisible —
             "you are here" was the one thing the list stopped saying. */}
+        <MaybeNameTip name={iconsOnly ? channel?.name : undefined}>
         <Button size="small"
+          data-gryt="channel-row"
           tone={selected ? "primary" : "ghost"}
           style={{
             position: "relative",
@@ -406,13 +416,13 @@ export const ChannelList = ({
           {/* A ghost row's label is muted, so an unread channel looked exactly
               like a read one until you found the badge at the far end. */}
           <span
-            className={`truncate${unread > 0 || mentions > 0 ? " font-semibold text-gryt-text" : ""}`}
+            className={`gryt-hide-in-icons truncate${unread > 0 || mentions > 0 ? " font-semibold text-gryt-text" : ""}`}
             style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}
           >
             <EmojiText text={channel?.name || "(missing channel)"} />
           </span>
           {hasIndicators && channel && (
-            <div className="flex gap-1 items-center" style={{ marginLeft: "auto", flexShrink: 0 }}>
+            <div className="gryt-hide-in-icons flex gap-1 items-center" style={{ marginLeft: "auto", flexShrink: 0 }}>
               {channel.eSportsMode && (
                 <Tooltip title="eSports mode">
                   <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
@@ -458,8 +468,9 @@ export const ChannelList = ({
               the name. `marginLeft: auto` rather than a spacer, because the
               per-channel indicators above already claim `auto` when they are
               there and two of them would fight. */}
-          <UnreadIndicator unread={unread} mentions={mentions} />
+          <span className="gryt-channel-unread"><UnreadIndicator unread={unread} mentions={mentions} /></span>
         </Button>
+        </MaybeNameTip>
 
         {channel?.type === "voice" && (
           <AnimatePresence initial={false}>

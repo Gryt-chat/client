@@ -2581,3 +2581,29 @@ body {
   background: var(--gryt-success-6);
   color: var(--gryt-success-11);
 }
+
+/* The narrow channel list (GRYT-1899): square icons, names on hover, people as dots. */
+[data-channel-icons] .gryt-hide-in-icons {
+  display: none !important;
+}
+[data-channel-icons] [data-gryt="channel-row"] {
+  width: 40px !important;
+  height: 40px;
+  padding: 0;
+  margin: 0 auto;
+  justify-content: center !important;
+  border-radius: 12px;
+}
+[data-channel-icons] .gryt-channel-unread {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+[data-channel-icons] .gryt-member-row {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+[data-channel-icons] .gryt-member-row > div {
+  flex: none !important;
+}

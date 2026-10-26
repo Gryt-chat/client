@@ -18,6 +18,8 @@ const SIDEBAR_SPRING = { type: "spring" as const, stiffness: 380, damping: 34 };
 interface ServerSidebarProps {
   sidebarOpen: boolean;
   sidebarWidthPx: number;
+  /** Narrow windows fold the list to square icons; names show on hover (GRYT-1899). */
+  iconsOnly?: boolean;
   hoverPx: number;
   contentRef: RefObject<HTMLDivElement | null>;
   /** The server dropped: the channels dim and stop taking clicks, the header stays. */
@@ -73,7 +75,7 @@ interface ServerSidebarProps {
 }
 
 export const ServerSidebar = ({
-  sidebarOpen, sidebarWidthPx, hoverPx, contentRef,
+  sidebarOpen, sidebarWidthPx, iconsOnly = false, hoverPx, contentRef,
   isUnreachableWhileConnected, statusLine,
   onMouseEnter, onMouseLeave,
   serverName, serverRole,
@@ -88,6 +90,7 @@ export const ServerSidebar = ({
   <div
     role="navigation"
     aria-label="Channels"
+    data-channel-icons={iconsOnly || undefined}
     onMouseLeave={onMouseLeave}
     onMouseEnter={onMouseEnter}
     style={{ flexShrink: 0, display: "flex" }}
@@ -118,6 +121,7 @@ export const ServerSidebar = ({
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <div className="flex flex-col h-full w-full items-center gap-4">
             <ServerHeader
+              iconsOnly={iconsOnly}
               serverName={serverName}
               statusLine={statusLine}
               role={serverRole}
@@ -162,6 +166,7 @@ export const ServerSidebar = ({
               transition: "opacity 0.3s ease",
             }}>
               <ChannelList
+                iconsOnly={iconsOnly}
                 channels={channels}
                 items={sidebarItems}
                 serverHost={serverHost}

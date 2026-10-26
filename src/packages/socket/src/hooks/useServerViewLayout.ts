@@ -78,7 +78,6 @@ interface UseSidebarHoverParams {
   pinChannelsSidebar: boolean;
   pinMembersSidebar: boolean;
   isDraggingResize: boolean;
-  isCompact: boolean;
   /**
    * Whether the row can pay for the member list, which depends on the voice
    * panel and not only on the window. See `lib/narrowLayout.ts`.
@@ -86,7 +85,7 @@ interface UseSidebarHoverParams {
   roomForMembers: boolean;
 }
 
-function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize, isCompact, roomForMembers }: UseSidebarHoverParams) {
+function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize, roomForMembers }: UseSidebarHoverParams) {
   const [hoverLeftSidebar, setHoverLeftSidebar] = useState(false);
   const [hoverRightSidebar, setHoverRightSidebar] = useState(false);
   const leftCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,7 +96,8 @@ function useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResi
   const leftSidebarContentRef = useRef<HTMLDivElement>(null);
   const rightSidebarContentRef = useRef<HTMLDivElement>(null);
 
-  const leftSidebarOpen = (!isCompact && pinChannelsSidebar) || hoverLeftSidebar;
+  // A narrow window folds the list to icons rather than hiding it (GRYT-1899), so only an unpinned list hides.
+  const leftSidebarOpen = pinChannelsSidebar || hoverLeftSidebar;
 
   /*
    * Hovering is gated too, not just the pin. The member panel is `flexShrink: 0`

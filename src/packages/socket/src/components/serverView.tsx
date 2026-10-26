@@ -39,7 +39,7 @@ import { useChannelSettings, useHandleChannelClick } from "../hooks/useChannelSe
 import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
-import { useIsTinyWindow, useMemberListMode, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
+import { useChannelIcons, useIsTinyWindow, useMemberListMode, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
@@ -52,7 +52,7 @@ import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
-import { AVATAR_COLUMN_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
+import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { VOICE_PRESET_1 } from "../lib/voiceGrip";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
@@ -136,6 +136,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
   const isTiny = useIsTinyWindow();
+  const channelIcons = useChannelIcons();
   const {
     showVoiceView, setShowVoiceView, nickname, setShowSettings, setSettingsTab, openSettings,
     inputMode, setInputMode, rnnoiseEnabled, setRnnoiseEnabled,
@@ -332,7 +333,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     leftSidebarOpen, rightSidebarOpen,
     leftSidebarContentRef, rightSidebarContentRef,
     openLeftSidebar, closeLeftSidebar, hideLeftSidebarNow, openRightSidebar, closeRightSidebar,
-  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: voiceResizing, isCompact, roomForMembers });
+  } = useSidebarHover({ pinChannelsSidebar, pinMembersSidebar, isDraggingResize: voiceResizing, roomForMembers });
 
   const serverClients = currentlyViewingServer ? heldHostClients : undefined;
   const { mediaAutoShownRef } = useMediaAutoShow({
@@ -1468,7 +1469,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             ) : (
             <ServerSidebar
               sidebarOpen={leftSidebarOpen}
-              sidebarWidthPx={SIDEBAR_WIDTH_PX}
+              sidebarWidthPx={channelIcons ? CHANNEL_ICON_LIST_WIDTH : SIDEBAR_WIDTH_PX}
+              iconsOnly={channelIcons}
               hoverPx={SIDEBAR_HOVER_PX}
               contentRef={leftSidebarContentRef}
               isUnreachableWhileConnected={isServerUnreachable}

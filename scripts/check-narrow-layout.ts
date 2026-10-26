@@ -8,6 +8,9 @@ import { readFileSync } from "node:fs";
 
 import { tourSteps } from "../src/components/onboarding/steps.ts";
 import {
+  CHANNEL_ICON_LIST_WIDTH,
+  CHANNEL_ICONS_MAX_WIDTH,
+  channelListWidth,
   COMPACT_MAX_WIDTH,
   hasRoomForMemberList,
   hasRoomForSettingsRail,
@@ -64,7 +67,7 @@ assert.equal(hasRoomForMemberList({ windowWidth: 1100, voicePanelWidth: 400 }), 
 for (let w = 300; w <= 2000; w += 1) {
   for (const voice of [0, 200, 400, VOICE_PANEL_WIDTH]) {
     if (!hasRoomForMemberList({ windowWidth: w, voicePanelWidth: voice })) continue;
-    const used = 32 + 32 + 16 + 200 + (voice > 0 ? 16 + voice : 0) + 200 + 16 + 200;
+    const used = 32 + 32 + 16 + channelListWidth(w) + (voice > 0 ? 16 + voice : 0) + 200 + 16 + 200;
     assert.ok(
       used <= w,
       `member list allowed at ${w}px with a ${voice}px voice panel, needing ${used}px`,
@@ -74,18 +77,25 @@ for (let w = 300; w <= 2000; w += 1) {
 
 /* ── Room for the voice panel at all ───────────────────────────────── */
 
-// Rail, padding, channel list, preset 1's 352px panel and its 16px gap, a 200px
-// chat, and the 24px the collapsed member strip and its gap still cost: 888.
-assert.equal(hasRoomForVoicePanel(888), true);
-assert.equal(hasRoomForVoicePanel(887), false);
+// Rail, padding, the 56px icon column, preset 1's 352px panel and its 16px gap, a 200px
+// chat, and the 24px the collapsed member strip and its gap still cost: 744.
+assert.equal(hasRoomForVoicePanel(744), true);
+assert.equal(hasRoomForVoicePanel(743), false);
 
 // Wherever the panel is allowed, the chat still gets its minimum with the
 // member strip paid for.
 for (let w = 300; w <= 2000; w += 1) {
   if (!hasRoomForVoicePanel(w)) continue;
-  const used = 32 + 32 + 16 + 200 + 16 + 368 + 200 + 16 + 8;
+  const used = 32 + 32 + 16 + channelListWidth(w) + 16 + 368 + 200 + 16 + 8;
   assert.ok(used <= w, `voice panel allowed at ${w}px, needing ${used}px`);
 }
+
+/* ── At 960 or less the channel list folds to icons ─────────────── */
+
+assert.equal(channelListWidth(CHANNEL_ICONS_MAX_WIDTH + 1), 200);
+assert.equal(channelListWidth(CHANNEL_ICONS_MAX_WIDTH), CHANNEL_ICON_LIST_WIDTH);
+// The 144px it gives back goes to the voice panel: preset 1 now fits at 960 and below.
+assert.equal(hasRoomForVoicePanel(960), true);
 
 /* ── Beside a call the member list folds to avatars ────────────────── */
 
@@ -104,7 +114,7 @@ assert.equal(memberListMode({ windowWidth: 1000, voicePanelWidth: 0 }), "none");
 for (let w = 300; w <= 2400; w += 1) {
   for (const voice of [368, 500, 700, 900]) {
     const mode = memberListMode({ windowWidth: w, voicePanelWidth: voice });
-    const before = 32 + 32 + 16 + 200 + 16 + voice;
+    const before = 32 + 32 + 16 + channelListWidth(w) + 16 + voice;
     if (mode === "full") assert.ok(w - before - 16 - 200 >= 440, `full list at ${w}px with a ${voice}px call`);
     if (mode === "avatars") assert.ok(w - before - 16 - 40 >= 200, `avatars at ${w}px with a ${voice}px call`);
   }
@@ -195,7 +205,7 @@ assert.equal(hasRoomForMemberList({ windowWidth: 1280, voicePanelWidth: 0, threa
 for (let w = 300; w <= 2400; w += 1) {
   if (!hasRoomForThreadBeside({ windowWidth: w, voicePanelWidth: 0 })) continue;
   const members = hasRoomForMemberList({ windowWidth: w, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH });
-  const used = 32 + 32 + 16 + 200 + 16 + 440 + THREAD_PANEL_WIDTH + (members ? 16 + 200 : 8);
+  const used = 32 + 32 + 16 + channelListWidth(w) + 16 + 440 + THREAD_PANEL_WIDTH + (members ? 16 + 200 : 8);
   assert.ok(used <= w, `the thread panel sits beside the conversation at ${w}px, needing ${used}px`);
 }
 
