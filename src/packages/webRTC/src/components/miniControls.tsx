@@ -8,15 +8,13 @@ import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSignOutFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { PiCameraFill, PiCameraSlashFill, PiMicrophoneFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiPhoneDisconnectFill, PiSignOutFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useInACall } from "../adapters/inACall";
-import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useVoicePresence } from "../adapters/useVoicePresence";
+import { type CallButton, pressCallButton, useBackToCall } from "./callButtonPress";
 import { CallCapsuleFace } from "./CallCapsuleFace";
 import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
-import { CameraControl } from "./CameraControl";
 import { controlState } from "./controlState";
-import { ScreenShareControl } from "./ScreenShareControl";
 
 const buttonAnimations: Variants = {
   hidden: { opacity: 0, x: -15, transition: { duration: 0.1 } },
@@ -55,9 +53,13 @@ export function MiniControls({
   const { disconnect, currentServerConnected, currentChannelConnected } = useSFU();
   const voice = useVoicePresence();
 
-  const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
-  const { cameraEnabled } = useCamera();
-  const { screenShareActive } = useScreenShare();
+  const { cameraEnabled, setCameraEnabled } = useCamera();
+  const { screenShareActive, stopScreenShare } = useScreenShare();
+  const backToCall = useBackToCall();
+  const openAndPress = (button: CallButton) => {
+    backToCall(voice.host, voice.channelId);
+    pressCallButton(button);
+  };
   const { canIn } = useServerPermissions(currentServerConnected || "");
   // The room's answer. One already on keeps its button, so it can be turned off.
   const showCamera = cameraEnabled || canIn(currentChannelConnected, "share_video");
@@ -131,26 +133,29 @@ export function MiniControls({
               </CallControlButton>
             </motion.div>
 
+            {/* Plain toggles: off opens the voice view and presses its own button there, on turns straight off. */}
             {showCamera && (
               <motion.div variants={buttonAnimations}>
-                <CameraControl iconSize={iconSize} side={isColumn ? "right" : "top"} />
+                <CallControlButton
+                  state={cameraEnabled ? "live" : "idle"}
+                  aria-label={cameraEnabled ? "Turn camera off" : "Turn camera on"}
+                  data-media
+                  onClick={() => (cameraEnabled ? setCameraEnabled(false) : openAndPress("camera"))}
+                >
+                  {cameraEnabled ? <PiCameraFill size={iconSize} /> : <PiCameraSlashFill size={iconSize} />}
+                </CallControlButton>
               </motion.div>
             )}
 
             {showScreenShare && (
               <motion.div variants={buttonAnimations}>
-                <ScreenShareControl iconSize={iconSize} side={isColumn ? "right" : "top"} />
-              </motion.div>
-            )}
-
-            {canMuteScreenAudio && (
-              <motion.div variants={buttonAnimations}>
                 <CallControlButton
-                  state={screenAudioMuted ? "off" : "idle"}
-                  aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
-                  onClick={() => setScreenAudioMuted(!screenAudioMuted)}
+                  state={screenShareActive ? "live" : "idle"}
+                  aria-label={screenShareActive ? "Stop sharing" : "Share your screen"}
+                  data-media
+                  onClick={() => (screenShareActive ? stopScreenShare() : openAndPress("share"))}
                 >
-                  {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={iconSize} /> : <PiSpeakerSimpleHighFill size={iconSize} />}
+                  <PiMonitorArrowUpFill size={iconSize} />
                 </CallControlButton>
               </motion.div>
             )}

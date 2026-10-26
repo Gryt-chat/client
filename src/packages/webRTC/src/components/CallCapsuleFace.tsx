@@ -1,27 +1,23 @@
 import { Avatar, Button, PreviewCard } from "@gryt/ui";
 
 import { getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
-import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 import { GroupFace } from "@/socket/src/components/GroupFace";
 import { ServerMark } from "@/socket/src/components/ServerChip";
 import { useDirectory } from "@/socket/src/hooks/dmDirectory";
-import { requestConversation, setDmSpaceOpen } from "@/socket/src/hooks/dmSpace";
 import { callClock, useCallClock } from "@/socket/src/hooks/useCallClock";
 import { conversationTitle } from "@/socket/src/hooks/useDirectMessages";
 import { useSockets } from "@/socket/src/hooks/useSockets";
 
+import { useBackToCall } from "./callButtonPress";
+
 const FACE = 36;
 
-/**
- * The top of the rail's call capsule: whose call this is, as a circle with the
- * call's green ring. Hovering says where it is and offers the way back to it.
- */
 export function CallCapsuleFace({ host, channelId, live }: { host: string; channelId: string; live: boolean }) {
   const directory = useDirectory();
-  const { servers, switchToServer, viewServerBehindDmSpace } = useServerManagement();
+  const { servers } = useServerManagement();
   const { serverDetailsList, clients, memberLists } = useSockets();
-  const { setShowVoiceView } = useSettings();
+  const backToCall = useBackToCall();
   const seconds = useCallClock(live, `${host}/${channelId}`);
 
   const entry = directory.find((e) => e.host === host && e.conversation.conversation_id === channelId);
@@ -36,16 +32,7 @@ export function CallCapsuleFace({ host, channelId, live }: { host: string; chann
     return resolveAvatarSrc(m?.avatarFileId ? getUploadsFileUrl(host, m.avatarFileId, { thumb: true }) : undefined, nickname, m?.avatarWorn);
   };
 
-  const back = () => {
-    if (entry) {
-      requestConversation(host, channelId);
-      viewServerBehindDmSpace(host);
-      setDmSpaceOpen(true);
-    } else {
-      switchToServer(host);
-    }
-    setShowVoiceView(true);
-  };
+  const back = () => backToCall(host, channelId);
 
   // A DM's person, a group's faces, or the server's icon filling the circle.
   const serverFace = (
