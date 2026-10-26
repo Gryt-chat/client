@@ -31,7 +31,7 @@ import toast from "react-hot-toast";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
-import { PiCameraSlashFill,PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "../../../../lib/icons";
+import { PiArrowSquareOutFill, PiCameraSlashFill,PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "../../../../lib/icons";
 import { useAloneInCall } from "../hooks/useAloneInCall";
 import { useIdle } from "../hooks/useIdle";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
@@ -274,6 +274,8 @@ export const VoiceView = ({
   onFocusChange,
   chatHidden,
   onToggleChat,
+  onPopOut,
+  inPopout = false,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -300,6 +302,10 @@ export const VoiceView = ({
   onFocusChange?: (focused: boolean) => void;
   chatHidden?: boolean;
   onToggleChat?: () => void;
+  /** Moves the call into a window of its own (GRYT-1910). */
+  onPopOut?: () => void;
+  /** Drawn inside that window, which brings its own controls. */
+  inPopout?: boolean;
 }) => {
   const {
     showPeerLatency,
@@ -816,9 +822,11 @@ export const VoiceView = ({
     screenItems.length === 0 &&
     peopleItems.length === 2;
 
+  // The pop-out has no bar under the tiles; its toggles float over them on hover, as on the board.
+  const controlsHeight = inPopout ? GRID_PADDING : CONTROLS_HEIGHT;
   const availableHeight = Math.max(
     0,
-    gridHeight - CONTROLS_HEIGHT - GRID_PADDING,
+    gridHeight - controlsHeight - GRID_PADDING,
   );
   const usableWidth = Math.max(0, gridWidth - 2 * GRID_PADDING);
 
@@ -1449,7 +1457,7 @@ export const VoiceView = ({
                         gap: `${GRID_GAP}px`,
                         // The controls float over this area, so a full-height tile
                         // puts the name behind the mute button.
-                        padding: `${GRID_PADDING}px ${GRID_PADDING}px ${CONTROLS_HEIGHT}px`,
+                        padding: `${GRID_PADDING}px ${GRID_PADDING}px ${controlsHeight}px`,
                         height: "100%",
                         overflow: "hidden",
                       }
@@ -1632,7 +1640,7 @@ export const VoiceView = ({
             </SortableContext>
           </DndContext>
 
-          {!isFocused && (
+          {!isFocused && !inPopout && (
             <AnimatePresence>
               {currentServerConnected && (
                 <motion.div
@@ -1672,7 +1680,14 @@ export const VoiceView = ({
                   </div>
                   {cornerFullscreen && (
                     <div className="flex justify-end" style={{ flex: 1, pointerEvents: "none", paddingRight: 12 }}>
-                      <div style={{ pointerEvents: "auto", paddingBottom: 8 }}>
+                      <div className="flex gap-2" style={{ pointerEvents: "auto", paddingBottom: 8 }}>
+                        {onPopOut && (
+                          <Tooltip title="Pop out">
+                            <IconButton tone="neutral" size="xsmall" aria-label="Pop the call out into its own window" onClick={onPopOut}>
+                              <PiArrowSquareOutFill size={18} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         <Tooltip title="Fullscreen">
                           <IconButton tone="neutral" size="xsmall"
                             aria-label="Fullscreen voice view"

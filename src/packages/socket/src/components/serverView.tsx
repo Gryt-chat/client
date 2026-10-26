@@ -57,6 +57,8 @@ import { VOICE_PRESET_1 } from "../lib/voiceGrip";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
+import { type CallWindow, openCallWindow } from "../utils/popoutCall";
+import { CallPopout } from "./CallPopout";
 import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -182,6 +184,25 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     voiceContainerRef, attachVoiceContainer, voiceMaxWidth, shownVoiceWidth,
   } = useVoiceLayout({ setShowVoiceView });
   const [voiceResizing, setVoiceResizing] = useState(false);
+  const [callWindow, setCallWindow] = useState<CallWindow | null>(null);
+  const popIn = useCallback(() => {
+    callWindow?.close();
+    setCallWindow(null);
+    setShowVoiceView(true);
+  }, [callWindow, setShowVoiceView]);
+  // Opening the view any other way (a channel, the rail) brings the call back. On the change only:
+  // popping out sets two stores, and for a render the call is out while the view still reads shown.
+  const viewShownBefore = useRef(showVoiceView);
+  useEffect(() => {
+    const was = viewShownBefore.current;
+    viewShownBefore.current = showVoiceView;
+    if (callWindow && showVoiceView && !was) popIn();
+  }, [callWindow, showVoiceView, popIn]);
+  useEffect(() => {
+    if (isConnected || !callWindow) return;
+    callWindow.close();
+    setCallWindow(null);
+  }, [isConnected, callWindow]);
   // The rail's camera or share, pressed while off, opens the view at preset 1 for the bar's button to act in.
   useAnyCallButtonPress(() => setVoiceStop(VOICE_PRESET_1));
 
@@ -1162,6 +1183,19 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     fakeParticipantOptions,
   );
   const serverName = serverDetails.server_info?.name || currentlyViewingServer.name;
+  const popOut = () => {
+    const title = `${hostChannels.find((c) => c.id === currentChannelId)?.name ?? "Voice"} · ${serverName}`;
+    void openCallWindow(title, () => {
+      setCallWindow(null);
+      setShowVoiceView(true);
+    }).then((opened) => {
+      if (!opened) return;
+      setCallWindow(opened);
+      setShowVoiceView(false);
+    });
+  };
+  const inCallWindow = (view: ReactNode) =>
+    callWindow ? <CallPopout callWindow={callWindow} onReturn={popIn}>{view}</CallPopout> : view;
 
   const onOpenSettings = () => {
     window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host } }));
@@ -1480,15 +1514,15 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             />
             )}
             <div className="flex grow" ref={attachVoiceContainer} style={{ position: "relative", minWidth: 0 }}>
-              <VoiceView
-                showVoiceView={showVoiceView && (!isCompact || voiceFocused)}
+              {inCallWindow(<VoiceView
+                showVoiceView={callWindow ? true : showVoiceView && (!isCompact || voiceFocused)}
                 /* Focusing a stream makes it the big one inside the panel and
                    leaves the app where it was. Hiding the chat is its own press. */
-                voiceWidth={voiceWidthFor({ chatTakenOver, voiceWidth, isMaximized, shownVoiceWidth })}
+                voiceWidth={callWindow ? "100%" : voiceWidthFor({ chatTakenOver, voiceWidth, isMaximized, shownVoiceWidth })}
                 maxWidth={
                   // Both of these hide the chat, so the width reserved for a
                   // minimum chat column would otherwise cap the panel.
-                  isMaximized || chatTakenOver ? undefined : voiceMaxWidth
+                  callWindow || isMaximized || chatTakenOver ? undefined : voiceMaxWidth
                 }
                 serverHost={host}
                 currentServerConnected={currentServerConnected}
@@ -1510,8 +1544,10 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 isDragging={voiceResizing}
                 chatHidden={focusedChatHidden}
                 onToggleChat={toggleFocusedChat}
-              />
-              {voiceWidth !== "0px" && !isCompact && !chatTakenOver && (
+                onPopOut={popOut}
+                inPopout={!!callWindow}
+              />)}
+              {voiceWidth !== "0px" && !isCompact && !chatTakenOver && !callWindow && (
                 <VoiceGrip
                   containerRef={voiceContainerRef}
                   room={voiceContainerWidth}

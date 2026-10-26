@@ -4703,9 +4703,14 @@ if (!gotSingleInstanceLock) {
           }
 
           if (win) {
+            // "screen-saver" and every workspace, so a pinned window stays over a fullscreen game too.
             win.setAlwaysOnTop(
               pinned,
-              "floating"
+              "screen-saver"
+            );
+            win.setVisibleOnAllWorkspaces(
+              pinned,
+              { visibleOnFullScreen: true }
             );
           }
         }
