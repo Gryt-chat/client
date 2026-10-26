@@ -1,4 +1,4 @@
-import { type CaptureQuality, QUALITY_CONSTRAINTS } from "@gryt/voice";
+import { type CaptureQuality, estimateBitrate, QUALITY_CONSTRAINTS, type ScreenShareQuality, type VideoSendSettings } from "@gryt/voice";
 
 /**
  * The in-call quality choices. Each one is a ceiling, not a fixed size: GRYT-1321's
@@ -69,4 +69,34 @@ export async function liftScreenCapture(track: MediaStreamTrack, quality: string
 function maxOf(c: ConstrainULong | ConstrainDouble | undefined): number | null {
   if (typeof c === "object" && c && typeof c.max === "number") return c.max;
   return null;
+}
+
+/** What a shared window's sender is told, from the screen share settings. Every window gets its own. */
+export function screenSendSettings(o: {
+  quality: string;
+  fps: number;
+  gamingMode: boolean;
+  codec: string | undefined;
+  maxBitrate: number;
+  scalabilityMode: string;
+  /** Frames the native encoder made are injected past the encoder, so viewers can't size them (GRYT-1436). */
+  nativeH264: boolean;
+}): VideoSendSettings {
+  let bitrate: number | null;
+  if (o.maxBitrate > 0) bitrate = o.maxBitrate;
+  else {
+    bitrate = estimateBitrate(o.quality as ScreenShareQuality, o.fps);
+    if (bitrate && o.gamingMode) bitrate = Math.min(Math.round(bitrate * 1.5), 50_000_000);
+  }
+  const box = qualityBox(o.quality);
+  const isH264 = o.codec === "h264" || (!o.codec || o.codec === "auto");
+  return {
+    priority: "high",
+    maxBitrate: bitrate ?? 50_000_000,
+    maxFramerate: o.fps,
+    maxSize: box ? { width: box.maxWidth, height: box.maxHeight } : null,
+    degradationPreference: o.gamingMode ? "maintain-framerate" : "maintain-resolution",
+    scalabilityMode: !isH264 && o.scalabilityMode !== "L1T1" ? o.scalabilityMode : undefined,
+    followDemand: !o.nativeH264,
+  };
 }
