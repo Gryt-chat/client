@@ -54,7 +54,7 @@ assert.equal(await (await renderOwl("sivert", look, svg)).text(), text);
 // Filenames.
 assert.equal(exportFilename("Sivert", EXPORT_FORMATS[1]), "sivert-owl.png");
 assert.equal(exportFilename("Sivert", svg), "sivert-owl.svg");
-assert.equal(exportFilename("  Ola Nordmann  ", svg), "ola-nordmann-owl.svg");
+assert.equal(exportFilename("  Mia Nordmann  ", svg), "mia-nordmann-owl.svg");
 // Nothing a filesystem will refuse, and never an empty name.
 assert.equal(exportFilename("../../etc/passwd", svg), "etc-passwd-owl.svg");
 assert.equal(exportFilename("???", svg), "gryt-owl.svg");

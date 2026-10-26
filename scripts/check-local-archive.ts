@@ -157,7 +157,7 @@ test("with a keychain, records on disk hold no plaintext and reopen with the sam
   assert.ok(key);
   const archive = new MessageArchive(db, key);
   assert.equal(archive.sealed, true);
-  const reactions = [{ src: ":secret_owl:", amount: 1, users: ["ola"] }];
+  const reactions = [{ src: ":secret_owl:", amount: 1, users: ["mia"] }];
   await archive.put([msg({ messageId: "m1", sentAt: 1, text: "a secret", attachments: { f: { id: "f", key: "x", iv: "y" } }, reactions })]);
 
   const [row] = await rawRows(db, MESSAGE_STORE);

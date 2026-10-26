@@ -17,7 +17,7 @@ const { createMlsSession } = await import("../src/packages/socket/src/mls/sessio
 
 const SCOPE = asIdentityScope("srv:restart-test");
 const CAPABILITY = { version: 1, ciphersuites: [1], retentionDays: 30 };
-const SEEDS = { kari: seed(3), ola: seed(5) };
+const SEEDS = { kari: seed(3), mia: seed(5) };
 const EVENTS = {
   "mls:keypackages:publish": "publishKeyPackages",
   "mls:keypackages:claim": "claimKeyPackages",
@@ -105,8 +105,8 @@ function archive() {
   return { rows, store: store as MessageArchive };
 }
 
-function member(fake: FakeDeliveryService, who: "kari" | "ola") {
-  const peer = who === "kari" ? "ola" : "kari";
+function member(fake: FakeDeliveryService, who: "kari" | "mia") {
+  const peer = who === "kari" ? "mia" : "kari";
   type PinStore = Parameters<typeof pinPeerKey>[0];
   let pins: ReturnType<PinStore["read"]> = {};
   const pinStore: PinStore = { read: () => structuredClone(pins), write: (p) => void (pins = structuredClone(p)) };
@@ -148,25 +148,25 @@ async function until(what: string, check: () => boolean, ms = 5000) {
 
 async function pair() {
   const fake = new FakeDeliveryService(SCOPE);
-  const dm = fake.dm("kari", "ola");
+  const dm = fake.dm("kari", "mia");
   const kari = member(fake, "kari");
-  const ola = member(fake, "ola");
+  const mia = member(fake, "mia");
   await kari.session.start();
-  await ola.session.start();
-  await kari.session.send(dm, "ola", { type: "message", id: "m0", text: "before" });
-  await until("ola to read the first message", () => ola.texts().includes("before"));
+  await mia.session.start();
+  await kari.session.send(dm, "mia", { type: "message", id: "m0", text: "before" });
+  await until("mia to read the first message", () => mia.texts().includes("before"));
   const sent = () => (fake.groups.get(dm)?.log ?? []).filter((e) => e.kind === "application").length;
-  return { fake, dm, kari, ola, sent };
+  return { fake, dm, kari, mia, sent };
 }
 
 const tests: { name: string; fn: () => Promise<void> }[] = [];
 const test = (name: string, fn: () => Promise<void>) => tests.push({ name, fn });
 
 test("a DM sent while the server is down waits, says so, and goes out once it's back", async () => {
-  const { dm, kari, ola, sent } = await pair();
+  const { dm, kari, mia, sent } = await pair();
   kari.line.drop();
   let done = false;
-  const sending = kari.session.send(dm, "ola", { type: "message", id: "m1", text: "while down" }).finally(() => (done = true));
+  const sending = kari.session.send(dm, "mia", { type: "message", id: "m1", text: "while down" }).finally(() => (done = true));
   await until("the session to say it's waiting", () => kari.session.waiting());
   assert.equal(done, false);
 
@@ -174,36 +174,36 @@ test("a DM sent while the server is down waits, says so, and goes out once it's 
   await kari.session.start();
   await sending;
   assert.equal(kari.session.waiting(), false);
-  await until("ola to read it", () => ola.texts().includes("while down"));
+  await until("mia to read it", () => mia.texts().includes("while down"));
   assert.equal(sent(), 2);
   assert.deepEqual(kari.texts(), ["before", "while down"]);
 });
 
 test("one written by the server whose ack was lost goes out once, not twice", async () => {
-  const { dm, kari, ola, sent } = await pair();
+  const { dm, kari, mia, sent } = await pair();
   kari.line.loseNextAck();
-  const sending = kari.session.send(dm, "ola", { type: "message", id: "m1", text: "ack lost" });
+  const sending = kari.session.send(dm, "mia", { type: "message", id: "m1", text: "ack lost" });
   await until("the server to write it", () => sent() === 2);
   kari.line.drop();
   await until("the session to say it's waiting", () => kari.session.waiting());
   kari.line.back();
   await kari.session.start();
   await sending;
-  await until("ola to read it", () => ola.texts().includes("ack lost"));
+  await until("mia to read it", () => mia.texts().includes("ack lost"));
   assert.equal(sent(), 2, "the log holds it once");
-  assert.deepEqual(ola.texts(), ["before", "ack lost"]);
+  assert.deepEqual(mia.texts(), ["before", "ack lost"]);
 });
 
 test("sends typed while down go out in order", async () => {
-  const { dm, kari, ola } = await pair();
+  const { dm, kari, mia } = await pair();
   kari.line.drop();
-  const sends = ["one", "two", "three"].map((text, i) => kari.session.send(dm, "ola", { type: "message", id: `n${i}`, text }));
+  const sends = ["one", "two", "three"].map((text, i) => kari.session.send(dm, "mia", { type: "message", id: `n${i}`, text }));
   await until("the session to say it's waiting", () => kari.session.waiting());
   kari.line.back();
   await kari.session.start();
   await Promise.all(sends);
-  await until("ola to read all three", () => ola.texts().length === 4);
-  const seqs = [...ola.messages.rows.values()].map((m) => m.text);
+  await until("mia to read all three", () => mia.texts().length === 4);
+  const seqs = [...mia.messages.rows.values()].map((m) => m.text);
   assert.deepEqual(seqs, ["before", "one", "two", "three"]);
 });
 
@@ -216,7 +216,7 @@ test("the transport answers offline without emitting while the socket is down", 
     return emit(event, ...rest);
   };
   kari.line.drop();
-  const sending = kari.session.send(dm, "ola", { type: "message", id: "m1", text: "held" });
+  const sending = kari.session.send(dm, "mia", { type: "message", id: "m1", text: "held" });
   await until("the session to say it's waiting", () => kari.session.waiting());
   assert.deepEqual(emitted, []);
   await kari.session.dispose();
