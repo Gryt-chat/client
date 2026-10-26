@@ -123,23 +123,26 @@ export function VoiceSettings() {
       />
       <SettingGroup
         title="Tile layout"
-        description="How the voice grid arranges people once it is maximised or fullscreen. Both were measured against Google Meet; which you prefer is a matter of taste. The sidebar looks the same either way."
+        description="How the voice view arranges tiles. Fill the view uses all the space and gives screens and cameras the most room. The other two are even grids measured against Google Meet."
       >
         <TileLayoutPicker value={voiceTileLayout} onChange={setVoiceTileLayout} />
 
 
       </SettingGroup>
 
-      <SettingGroup
-        title="Two people"
-        description="With exactly two of you in a channel and nobody sharing a screen. One large and one small is what a video call usually does; same size is better when you are both doing something rather than talking to each other."
-      >
-        <TwoPersonLayoutPicker
-          value={voiceTwoPersonLayout}
-          onChange={setVoiceTwoPersonLayout}
-          rule={voiceTileLayout}
-        />
-      </SettingGroup>
+      {/* Fill the view places two people itself, so this only applies to the grids. */}
+      {voiceTileLayout !== "bento" && (
+        <SettingGroup
+          title="Two people"
+          description="With exactly two of you in a channel and nobody sharing a screen. One large and one small is what a video call usually does; same size is better when you are both doing something rather than talking to each other."
+        >
+          <TwoPersonLayoutPicker
+            value={voiceTwoPersonLayout}
+            onChange={setVoiceTwoPersonLayout}
+            rule={voiceTileLayout}
+          />
+        </SettingGroup>
+      )}
     </SettingsContainer>
   );
 }

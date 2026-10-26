@@ -106,6 +106,7 @@
     "test:tile-contrast": "node scripts/check-tile-contrast.ts",
     "test:fake-participants": "node scripts/check-fake-participants.ts",
     "test:narrow-layout": "node scripts/check-narrow-layout.ts",
+    "test:bento-layout": "node scripts/check-bento-layout.ts",
     "test:permission-grid": "node scripts/check-permission-grid.ts",
     "test:channel-answer": "node scripts/check-channel-answer.ts",
     "test:call-controls": "node scripts/check-call-controls.ts",

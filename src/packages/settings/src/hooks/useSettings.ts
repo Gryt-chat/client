@@ -89,7 +89,7 @@ function useSettingsHook() {
   const [cameraMirrored, setCameraMirrored] = useState(true);
   const [faceFramingEnabled, setFaceFramingEnabled] = useState(true);
   const [voiceTileLayout, setVoiceTileLayout] =
-    useState<VoiceTileLayout>("meet");
+    useState<VoiceTileLayout>("bento");
   const [voiceTwoPersonLayout, setVoiceTwoPersonLayout] =
     useState<VoiceTwoPersonLayout>("hero");
   const [devFakeParticipants, setDevFakeParticipants] = useState(0);
@@ -162,7 +162,7 @@ function useSettingsHook() {
       setCameraMirrored(getUserValue("cameraMirrored", true));
       setFaceFramingEnabled(getUserValue("faceFramingEnabled", true));
       setVoiceTileLayout(
-        getUserValue<VoiceTileLayout>("voiceTileLayout", "meet"),
+        getUserValue<VoiceTileLayout>("voiceTileLayout", "bento"),
       );
       setVoiceTwoPersonLayout(
         getUserValue<VoiceTwoPersonLayout>("voiceTwoPersonLayout", "hero"),
