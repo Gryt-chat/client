@@ -6,6 +6,9 @@ import { useSettings } from "@/settings";
 import { senderStreamId } from "../utils/senderStreamIds";
 import { screenSendSettings } from "../utils/streamQuality";
 
+/** What the picker chose for each window after the first, by source id. */
+export const windowPresets = new Map<string, { quality: string; fps: number }>();
+
 export interface AnnouncedShare {
   videoStreamId: string;
   audioStreamId: string;
@@ -44,8 +47,9 @@ export function useExtraScreenWindows(): AnnouncedShare[] {
       if (video) addScreenVideoTrack(video, w.videoStream, screenShareCodec, w.index);
       const audio = w.audioStream?.getAudioTracks()[0];
       if (audio && w.audioStream) addScreenAudioTrack(audio, w.audioStream, w.index);
+      const preset = windowPresets.get(w.sourceId ?? "");
       setVideoSendSettings?.(`screen:${w.index}`, screenSendSettings({
-        quality: screenShareQuality, fps: screenShareFps, gamingMode: screenShareGamingMode, codec: screenShareCodec,
+        quality: preset?.quality ?? screenShareQuality, fps: preset?.fps ?? screenShareFps, gamingMode: screenShareGamingMode, codec: screenShareCodec,
         maxBitrate: screenShareMaxBitrate, scalabilityMode: screenShareScalabilityMode, nativeH264: false,
       }));
       published.current.set(w.index, w);
