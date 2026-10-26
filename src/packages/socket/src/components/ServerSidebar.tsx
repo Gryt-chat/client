@@ -5,7 +5,7 @@ import type { RefObject } from "react";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import type { Client } from "../types/clients";
-import { ChannelList } from "./ChannelList";
+import { type CallPeek, ChannelList } from "./ChannelList";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { ServerHeader } from "./ServerHeader";
 import type { ChannelPlacement } from "./sidebarTree";
@@ -20,6 +20,7 @@ interface ServerSidebarProps {
   sidebarWidthPx: number;
   /** Narrow windows fold the list to square icons; names show on hover (GRYT-1899). */
   iconsOnly?: boolean;
+  callPeek?: CallPeek;
   hoverPx: number;
   contentRef: RefObject<HTMLDivElement | null>;
   /** The server dropped: the channels dim and stop taking clicks, the header stays. */
@@ -75,7 +76,7 @@ interface ServerSidebarProps {
 }
 
 export const ServerSidebar = ({
-  sidebarOpen, sidebarWidthPx, iconsOnly = false, hoverPx, contentRef,
+  sidebarOpen, sidebarWidthPx, iconsOnly = false, callPeek, hoverPx, contentRef,
   isUnreachableWhileConnected, statusLine,
   onMouseEnter, onMouseLeave,
   serverName, serverRole,
@@ -167,6 +168,7 @@ export const ServerSidebar = ({
             }}>
               <ChannelList
                 iconsOnly={iconsOnly}
+                callPeek={callPeek}
                 channels={channels}
                 items={sidebarItems}
                 serverHost={serverHost}

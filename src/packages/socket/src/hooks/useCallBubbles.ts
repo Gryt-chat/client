@@ -19,6 +19,8 @@ export interface CallBubbleState {
   /** Newest last; only the last two are kept. */
   bubbles: Record<string, CallBubble[]>;
   typing: Set<string>;
+  /** Messages seen since the call started, for "n new" while the view is hidden. */
+  total: number;
 }
 
 const BUBBLE_MS = 10_000;
@@ -28,10 +30,10 @@ const QUOTABLE = 30;
 
 /** The call chat's live layer: who is typing in it, and what each person just said (GRYT-1911). */
 export function useCallBubbles(socket: Socket | null | undefined, conversationId: string | undefined): CallBubbleState {
-  const [state, setState] = useState<CallBubbleState>({ bubbles: {}, typing: new Set() });
+  const [state, setState] = useState<CallBubbleState>({ bubbles: {}, typing: new Set(), total: 0 });
 
   useEffect(() => {
-    setState({ bubbles: {}, typing: new Set() });
+    setState({ bubbles: {}, typing: new Set(), total: 0 });
     if (!socket || !conversationId) return;
     const timers = new Set<ReturnType<typeof setTimeout>>();
     const recent = new Map<string, string>();
@@ -69,7 +71,7 @@ export function useCallBubbles(socket: Socket | null | undefined, conversationId
       recent.set(msg.message_id, `${msg.sender_nickname ?? "Someone"}: ${text}`);
       if (recent.size > QUOTABLE) recent.delete(recent.keys().next().value as string);
       setTyping(userId, false);
-      setState((s) => ({ ...s, bubbles: { ...s.bubbles, [userId]: [...(s.bubbles[userId] ?? []), bubble].slice(-KEEP) } }));
+      setState((s) => ({ ...s, total: s.total + 1, bubbles: { ...s.bubbles, [userId]: [...(s.bubbles[userId] ?? []), bubble].slice(-KEEP) } }));
       later(BUBBLE_MS, () => setState((s) => ({
         ...s,
         bubbles: { ...s.bubbles, [userId]: (s.bubbles[userId] ?? []).filter((b) => b.id !== bubble.id) },
