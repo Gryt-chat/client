@@ -1,8 +1,11 @@
+import { hostnameOf } from "@gryt/core";
 import { AnimatePresence, motion } from "motion/react";
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 
 import { PiHeartFill } from "../../../../lib/icons";
 import type { CallBubble } from "../hooks/useCallBubbles";
+import { useLinkPreview } from "../hooks/useLinkPreview";
+import type { LinkPreviewData } from "./embedUtils";
 import { EmojiText } from "./EmojiText";
 
 const BUBBLE: CSSProperties = {
@@ -36,9 +39,31 @@ const GLASS: CSSProperties = {
   backdropFilter: "blur(8px)",
 };
 
+/** A link said in the call, as a small card; until the preview arrives, or if it never does, the bubble itself. */
+function LinkCard({ url, serverHost, onOpen, children }: { url: string; serverHost: string; onOpen?: () => void; children: ReactNode }) {
+  const { data, failed, pictureSrc } = useLinkPreview(url, serverHost);
+  if (failed || !data?.title) return children;
+  const image = pictureSrc((data as LinkPreviewData & { imageId?: string | null }).imageId, data.image);
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="block cursor-pointer overflow-hidden border-0 p-0 text-left"
+      style={{ width: 230, maxWidth: "100%", background: "#f4f3ff", color: "#16151f", borderRadius: "14px 14px 14px 4px", boxShadow: "0 10px 28px rgba(0,0,0,.4)" }}
+    >
+      {image && <img src={image} alt="" className="block h-[90px] w-full object-cover" />}
+      <div style={{ padding: "8px 12px" }}>
+        <div className="truncate text-[13px] font-extrabold">{data.title}</div>
+        <div className="truncate text-xs" style={{ color: "#4b487c" }}>{hostnameOf(url)} · opens in the chat</div>
+      </div>
+    </button>
+  );
+}
+
 /** What a person in the call just typed, popping from their tile; the newest is the loudest. */
-export function CallBubbles({ bubbles, typing, glass, onAction }: {
+export function CallBubbles({ bubbles, typing, glass, serverHost, onAction }: {
   bubbles: CallBubble[];
+  serverHost: string;
   typing: boolean;
   glass: boolean;
   onAction?: (kind: BubbleAction, messageId: string) => void;
@@ -53,6 +78,32 @@ export function CallBubbles({ bubbles, typing, glass, onAction }: {
       <AnimatePresence initial={false}>
         {bubbles.map((b, i) => {
           const old = i < bubbles.length - 1;
+          const body = (
+            <div style={{ ...BUBBLE, maxWidth: "100%", ...(glass ? GLASS : null) }}>
+              {b.quote && (
+                <div
+                  className="mb-1 truncate pl-1.5 text-[11px] font-bold"
+                  style={{ color: glass ? "rgba(255,255,255,.75)" : "#6360a0", borderLeft: "2px solid var(--gryt-accent)" }}
+                >
+                  <EmojiText text={b.quote} />
+                </div>
+              )}
+              <div style={CLAMP}><EmojiText text={b.text} /></div>
+              {!!b.reactions?.length && (
+                <span
+                  className="absolute flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold"
+                  style={{ right: -8, bottom: -12, background: "#242439", color: "#e3e4ff", border: "1px solid #3c3a64" }}
+                >
+                  {b.reactions.map((r) => (
+                    <span key={r.src} className="flex items-center gap-0.5">
+                      <EmojiText text={r.src} emojiSize={11} disableTooltip />
+                      {r.amount}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
+          );
           return (
             <motion.div
               key={b.id}
@@ -67,30 +118,11 @@ export function CallBubbles({ bubbles, typing, glass, onAction }: {
               onPointerLeave={() => setHovered((h) => (h === b.id ? null : h))}
               onPointerDown={(e) => e.stopPropagation()}
             >
-              <div style={{ ...BUBBLE, maxWidth: "100%", ...(glass ? GLASS : null) }}>
-                {b.quote && (
-                  <div
-                    className="mb-1 truncate pl-1.5 text-[11px] font-bold"
-                    style={{ color: glass ? "rgba(255,255,255,.75)" : "#6360a0", borderLeft: "2px solid var(--gryt-accent)" }}
-                  >
-                    <EmojiText text={b.quote} />
-                  </div>
-                )}
-                <div style={CLAMP}><EmojiText text={b.text} /></div>
-                {!!b.reactions?.length && (
-                  <span
-                    className="absolute flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold"
-                    style={{ right: -8, bottom: -12, background: "#242439", color: "#e3e4ff", border: "1px solid #3c3a64" }}
-                  >
-                    {b.reactions.map((r) => (
-                      <span key={r.src} className="flex items-center gap-0.5">
-                        <EmojiText text={r.src} emojiSize={11} disableTooltip />
-                        {r.amount}
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </div>
+              {b.url ? (
+                <LinkCard url={b.url} serverHost={serverHost} onOpen={onAction && (() => onAction("open", b.id))}>
+                  {body}
+                </LinkCard>
+              ) : body}
               {onAction && hovered === b.id && (
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {ACTS.map((a) => (

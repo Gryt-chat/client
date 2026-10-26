@@ -114,10 +114,10 @@ const limited = (extra: object = {}) => ({ kind: "status", status: 429, ...extra
 
 /* ── the card goes through the module ───────────────────────────────────── */
 {
-  const card = readFileSync(join(root, "src/packages/socket/src/components/LinkPreviewCard.tsx"), "utf8");
+  const card = readFileSync(join(root, "src/packages/socket/src/hooks/useLinkPreview.ts"), "utf8");
   const start = card.indexOf("if (previewRefused.has(url)) { setFailed(true); return; }");
   const end = card.indexOf("}, [url, serverHost, data]);");
-  assert.ok(start !== -1 && end > start, "the fetch effect in LinkPreviewCard moved; update this check");
+  assert.ok(start !== -1 && end > start, "the fetch effect in useLinkPreview moved; update this check");
   const effect = card.slice(start, end);
 
   assert.ok(/nextPreviewStep\(failure, attempt\)/.test(effect), "the card decides retries itself instead of asking nextPreviewStep");
