@@ -1,4 +1,4 @@
-import { Button, IconButton, Tooltip } from "@gryt/ui";
+import { IconButton, Tooltip } from "@gryt/ui";
 import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, SFUConnectionState, useCamera, useScreenShare, type VideoSendSettings } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
@@ -20,7 +20,7 @@ import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { senderStreamId } from "../utils/senderStreamIds";
 import { liftScreenCapture, qualityBox } from "../utils/streamQuality";
-import { CallControlButton, LEAVE_CLASS } from "./CallControlButton";
+import { BAR_BUTTON_STYLE, BAR_SOLO_CLASS, CallControlButton, LEAVE_CLASS, SplitControl } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
 import { controlState } from "./controlState";
 import { ScreenAudioSourcesModal } from "./ScreenAudioSourcesModal";
@@ -91,6 +91,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     screenShareMaxBitrate,
     screenShareScalabilityMode,
     cameraCodec,
+    openSettings,
   } = useSettings();
 
   const prevCameraStreamRef = useRef<MediaStream | null>(null);
@@ -435,7 +436,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     <>
       {isBrowserSupported && (
         // 48px targets (Fitts); below 400px, where Electron windows can go, they wrap and close up.
-        <div className="flex flex-wrap items-center justify-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-1.5">
           {/*
             Every control here is icon-only, so the tooltip text is also the
             accessible name — without aria-label a screen reader announced five
@@ -447,29 +448,36 @@ export function Controls({ onDisconnect }: ControlsProps) {
             an empty bubble on hover and kept it anchored to whichever control
             you hovered previously.
           */}
-          <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
-            <CallControlButton
-              size={BAR_SIZE}
-              state={controlState(isServerMuted, isMuted)}
-              aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
-              onClick={handleMute}
-            >
-              {(isMuted || isServerMuted) ? <PiMicrophoneSlashFill size={BAR_ICON} /> : <PiMicrophoneFill size={BAR_ICON} />}
-            </CallControlButton>
-          </MaybeTooltip>
+          {/* The arrows open Settings → Audio until the mic and speaker menus land (GRYT-1891, GRYT-1904). */}
+          <SplitControl state={controlState(isServerMuted, isMuted)} arrowLabel="Microphone options" onArrow={() => openSettings("audio")}>
+            <MaybeTooltip content={isServerMuted ? "Server muted by admin" : null}>
+              <CallControlButton
+                size={BAR_SIZE}
+                style={BAR_BUTTON_STYLE}
+                state={controlState(isServerMuted, isMuted)}
+                aria-label={(isMuted || isServerMuted) ? "Unmute microphone" : "Mute microphone"}
+                onClick={handleMute}
+              >
+                {(isMuted || isServerMuted) ? <PiMicrophoneSlashFill size={BAR_ICON} /> : <PiMicrophoneFill size={BAR_ICON} />}
+              </CallControlButton>
+            </MaybeTooltip>
+          </SplitControl>
 
-          <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
-            <CallControlButton
-              size={BAR_SIZE}
-              state={controlState(isServerDeafened, isDeafened)}
-              aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
-              onClick={handleDeafen}
-            >
-              {(isDeafened || isServerDeafened) ? <PiSpeakerSlashFill size={BAR_ICON} /> : <PiSpeakerHighFill size={BAR_ICON} />}
-            </CallControlButton>
-          </MaybeTooltip>
+          <SplitControl state={controlState(isServerDeafened, isDeafened)} arrowLabel="Speaker options" onArrow={() => openSettings("audio")}>
+            <MaybeTooltip content={isServerDeafened ? "Server deafened by admin" : null}>
+              <CallControlButton
+                size={BAR_SIZE}
+                style={BAR_BUTTON_STYLE}
+                state={controlState(isServerDeafened, isDeafened)}
+                aria-label={(isDeafened || isServerDeafened) ? "Undeafen" : "Deafen"}
+                onClick={handleDeafen}
+              >
+                {(isDeafened || isServerDeafened) ? <PiSpeakerSlashFill size={BAR_ICON} /> : <PiSpeakerHighFill size={BAR_ICON} />}
+              </CallControlButton>
+            </MaybeTooltip>
+          </SplitControl>
 
-          <CameraControl size={BAR_SIZE} iconSize={BAR_ICON} allowed={canIn(currentChannelConnected, "share_video")} />
+          <CameraControl split size={BAR_SIZE} iconSize={BAR_ICON} allowed={canIn(currentChannelConnected, "share_video")} />
 
           {/* Only while the camera is on, because that is the only time it can
               do anything, and next to the camera button because that is what
@@ -477,7 +485,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
               itself; the button is here so it never has to be found. */}
           {cameraEnabled && (
             <Tooltip title="Center my face">
-              <IconButton tone="neutral" size={BAR_SIZE}
+              <IconButton tone="neutral" size={BAR_SIZE} style={BAR_BUTTON_STYLE} className={BAR_SOLO_CLASS}
                 aria-label="Center my face"
                 disabled={detectingFace}
                 onClick={() => void recentreFace()}
@@ -487,7 +495,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          <ScreenShareControl size={BAR_SIZE} iconSize={BAR_ICON} allowed={canIn(currentChannelConnected, "share_screen")} />
+          <ScreenShareControl size={BAR_SIZE} buttonStyle={BAR_BUTTON_STYLE} idleClassName={BAR_SOLO_CLASS} iconSize={BAR_ICON} allowed={canIn(currentChannelConnected, "share_screen")} />
 
           {/* Next to the share button because that is what it acts on, and
               only while a share is actually carrying audio. */}
@@ -495,6 +503,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
             <Tooltip title={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}>
               <CallControlButton
                 size={BAR_SIZE}
+                style={BAR_BUTTON_STYLE}
                 state={screenAudioMuted ? "off" : "idle"}
                 aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
                 onClick={() => setScreenAudioMuted(!screenAudioMuted)}
@@ -508,7 +517,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
               Windows. Everywhere else the mute above is the whole story. */}
           {canMuteScreenAudio && canPickAudioSources && (
             <Tooltip title="Choose which apps you're sharing audio from">
-              <IconButton tone="neutral" size={BAR_SIZE}
+              <IconButton tone="neutral" size={BAR_SIZE} style={BAR_BUTTON_STYLE} className={BAR_SOLO_CLASS}
                 aria-label="Choose which apps you're sharing audio from"
                 onClick={() => setShowAudioSourcesModal(true)}
               >
@@ -517,12 +526,19 @@ export function Controls({ onDisconnect }: ControlsProps) {
             </Tooltip>
           )}
 
-          {/* Labelled and set apart, so ending the call is never a stray click on an icon. */}
-          <Button tone="danger" size="large" className={`ml-1 min-[400px]:ml-4 ${LEAVE_CLASS}`} aria-label={inACall ? "Hang up" : "Leave voice channel"} onClick={handleDisconnect}
-            startIcon={inACall ? <PiPhoneDisconnectFill size={BAR_ICON} /> : <PiSignOutFill size={BAR_ICON} />}
-          >
-            {inACall ? "Hang up" : "Leave"}
-          </Button>
+          {/* The only solid red in the bar, so it reads as leaving rather than as another toggle. */}
+          <Tooltip title={inACall ? "Hang up" : "Leave"}>
+            <CallControlButton
+              size={BAR_SIZE}
+              style={BAR_BUTTON_STYLE}
+              state="idle"
+              className={LEAVE_CLASS}
+              aria-label={inACall ? "Hang up" : "Leave voice channel"}
+              onClick={handleDisconnect}
+            >
+              {inACall ? <PiPhoneDisconnectFill size={BAR_ICON} /> : <PiSignOutFill size={BAR_ICON} />}
+            </CallControlButton>
+          </Tooltip>
         </div>
       )}
 
