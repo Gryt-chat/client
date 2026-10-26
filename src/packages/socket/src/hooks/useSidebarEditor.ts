@@ -457,6 +457,8 @@ export function useSidebarEditor({
           name: type === "voice" ? "New voice channel" : "New channel",
           type,
           description: null,
+          // Voice channels have their own text chat from the start (GRYT-1897).
+          textInVoice: type === "voice",
         });
         currentConnection.emit("server:sidebar:item:upsert", {
           accessToken,
@@ -507,6 +509,7 @@ export function useSidebarEditor({
         name: opts.name.trim() || (opts.type === "voice" ? "New voice channel" : "New channel"),
         type: opts.type,
         description: opts.description ?? null,
+        textInVoice: opts.type === "voice",
         layout: opts.layout ?? "chat",
         automated: opts.automated ?? false,
         forumTags: opts.forumTags ?? [],
