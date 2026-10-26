@@ -3,7 +3,7 @@ import { expect, test as base } from "@playwright/test";
 import { channelComposer, joinServer, recordFrames } from "../../support/app";
 import { prepare, uniqueName } from "../../support/fixtures";
 import { ProblemLog } from "../../support/problems";
-import { type Guest, leaveVoice, watchSockets } from "./call";
+import { type Guest, leaveVoice, recordAudioSocket, watchSockets } from "./call";
 import { type TestServer, testServer } from "./testServer";
 import { watchPeerConnections } from "./webrtc";
 
@@ -52,7 +52,7 @@ export const test = base.extend<{ problems: ProblemLog; server: TestServer; gues
       await watchSockets(context);
 
       const page = await context.newPage();
-      const guest = { page, name, frames: recordFrames(page) };
+      const guest = { page, name, frames: recordFrames(page), audioSocket: recordAudioSocket(page) };
       joined.push({ guest, close: () => context.close() });
       problems.watch(page, name, server.httpBase);
       await page.goto("/");

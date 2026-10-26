@@ -24,6 +24,9 @@ const ALLOWED: Allowed[] = [
   // while it is out, and Chrome and the app both log every attempt.
   { text: /^WebSocket connection to 'ws:\/\/[^']+' failed: .*net::ERR_INTERNET_DISCONNECTED$/ },
   { text: /^\[Socket\] connect_error for [^\s]+: websocket error$/ },
+  // WebTransport to the SFU's audio port can't get through from CI, and the client then moves to the
+  // audio WebSocket as designed (GRYT-1831). Chrome logs the failed attempt anyway.
+  { text: /^Failed to establish a connection to https:\/\/[^/]+\/audio\?ticket=[^:]+: net::ERR_QUIC_PROTOCOL_ERROR\.QUIC_NETWORK_IDLE_TIMEOUT/ },
   // The test server runs without an SFU, so a call rings and then can't join its room.
   { text: /^Could not start the call: Error: SFU configuration not available/ },
 ];

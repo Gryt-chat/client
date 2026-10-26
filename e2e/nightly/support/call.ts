@@ -8,6 +8,18 @@ export interface Guest {
   name: string;
   /** Every WebSocket frame the page sent or received, as text. */
   frames: string[];
+  /** Bytes received on the SFU's audio WebSocket, the fallback when WebTransport can't connect. */
+  audioSocket: { received: number };
+}
+
+/** Counts what arrives on `/audio-ws`. WebTransport audio isn't visible to Playwright, so a runner that gets QUIC through is not counted. */
+export function recordAudioSocket(page: Page): { received: number } {
+  const audio = { received: 0 };
+  page.on("websocket", (socket) => {
+    if (!new URL(socket.url()).pathname.endsWith("/audio-ws")) return;
+    socket.on("framereceived", ({ payload }) => (audio.received += payload.length));
+  });
+  return audio;
 }
 
 /** The default server's voice channel, which test.gryt.chat still has. */
@@ -122,12 +134,11 @@ export function playedStream(video: Locator): Promise<string | null> {
   return video.evaluate((v: HTMLVideoElement) => (v.srcObject as MediaStream | null)?.id ?? null);
 }
 
-/** Some audio arrives from the SFU, and then more: a connection that stalled after the first packet would pass a single read. */
+/** Some audio arrives from the SFU, and then more. Over WebRTC or the audio WebSocket: once everyone is on Gryt's own transport the WebRTC copy stops (GRYT-1853). */
 export async function expectAudioArriving(guest: Guest): Promise<void> {
-  const start = (await peerStats(guest.page)).audioBytesReceived;
-  await expect
-    .poll(async () => (await peerStats(guest.page)).audioBytesReceived, `${guest.name} received no audio`)
-    .toBeGreaterThan(start + 1500);
+  const received = async () => (await peerStats(guest.page)).audioBytesReceived + guest.audioSocket.received;
+  const start = await received();
+  await expect.poll(received, `${guest.name} received no audio`).toBeGreaterThan(start + 1500);
 }
 
 export async function expectFramesDecoded(guest: Guest, what: string): Promise<void> {
