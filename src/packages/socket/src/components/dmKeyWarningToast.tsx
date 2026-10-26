@@ -52,8 +52,8 @@ export function setDmKeyWarningsOff(off: boolean): void {
 
 const BODY: Record<DmKeyFix, (servers: readonly string[]) => string> = {
   "set-up": (servers) =>
-    `${serversHave(servers)} a message key this device didn't publish. Each device makes its own key, ` +
-    `so signing in somewhere new does this. Approve this device from one you already use, and they share one.`,
+    `${serversHave(servers)} a different key for you than this device has. Approve this device from one ` +
+    `that has your key, and they'll match.`,
   none: (servers) =>
     `${serversHave(servers)} a message key this device didn't publish. If you haven't signed in on ` +
     `another device, treat direct messages there as readable by the server.`,
