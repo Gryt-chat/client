@@ -348,9 +348,15 @@ export const ChannelList = ({
     /* Visible and not enterable has always been expressible; the row never said
        so, and the refusal arrived from the media stack after the press. */
     const locked = channel?.type === "voice" && channel.canJoin === false;
+    const hasVoiceMembers = channel?.type === "voice" && Object.values(clients).some((c) => c.voiceChannelId === channelId);
+    const inThisCall = hasVoiceMembers && channel?.id === currentChannelId && serverHost === currentServerConnected;
 
     return (
       <div className="flex flex-col items-start w-full relative">
+        {/* Fills behind the lower half of the round row, so the members box reads as part of it, not a box under it. */}
+        {inThisCall && (
+          <div aria-hidden style={{ position: "absolute", top: "18px", left: 0, right: 0, height: "18px", background: "var(--gryt-neutral-3)" }} />
+        )}
         {/* Ghost unless it is the one you are in. Every row was a plain
             <Button>, which is the filled accent one, so the whole list read as
             selected and the channel you were actually in was invisible —
@@ -358,6 +364,9 @@ export const ChannelList = ({
         <Button size="small"
           tone={channel?.id === selectedChannelId ? "primary" : "ghost"}
           style={{
+            position: "relative",
+            background: inThisCall ? "var(--gryt-neutral-3)" : undefined,
+            color: inThisCall ? "var(--gryt-text)" : undefined,
             width: "100%",
             justifyContent: "start",
             overflow: "hidden",
@@ -436,7 +445,7 @@ export const ChannelList = ({
 
         {channel?.type === "voice" && (
           <AnimatePresence initial={false}>
-            {Object.values(clients).some((c) => c.voiceChannelId === channelId) && (
+            {hasVoiceMembers && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
@@ -445,7 +454,7 @@ export const ChannelList = ({
                 style={{ overflow: "hidden", width: "100%" }}
               >
                 <div className="flex w-full pt-2 flex-col" style={{
-                    background: "var(--gryt-neutral-3)",
+                    background: inThisCall ? "var(--gryt-neutral-3)" : undefined,
                     borderRadius: "0 0 var(--gryt-radius-lg) var(--gryt-radius-lg)",
                   }}>
                   {Object.keys(clients)?.map(
