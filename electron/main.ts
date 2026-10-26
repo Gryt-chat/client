@@ -1000,6 +1000,8 @@ const defaultRolloutCheck = autoUpdater.isUserWithinRollout;
 /** Only a `beta` identifier means beta, or `-rc.1` puts somebody on the channel
     silently. The variant lives in the update channel, not in the version. */
 function isOnBetaChannel(): boolean {
+  // The stores only carry stable releases, so a beta setting left from an earlier install would offer one they can't install.
+  if (updatesComeFromAStore) return false;
   const identifiers = semver.prerelease(app.getVersion()) ?? [];
   return readBoolConfig("betaChannel", identifiers.includes("beta"));
 }
