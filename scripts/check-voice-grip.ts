@@ -57,4 +57,8 @@ assert.equal(nextVoiceStop("full", narrow), "hidden");
 assert.equal(draggedVoiceStop(100, narrow), "hidden");
 assert.equal(draggedVoiceStop(400, narrow), "full");
 
+// The Narrow board's 820 step: a preset needs 360px of chat beside it, or the call is full or hidden.
+assert.ok(voicePresets(VOICE_PRESET_1 + 16 + 360), "a 360px chat beside preset 1 lost its presets");
+assert.equal(voicePresets(VOICE_PRESET_1 + 16 + 359), null);
+
 console.log("voice grip: ok");
