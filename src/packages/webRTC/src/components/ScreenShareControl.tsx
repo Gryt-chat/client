@@ -1,6 +1,6 @@
 import { Menu, Tooltip } from "@gryt/ui";
 import { type ScreenShareQuality, useScreenShare } from "@gryt/voice";
-import { useCallback, useState } from "react";
+import { type CSSProperties, useCallback, useState } from "react";
 import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
@@ -14,6 +14,9 @@ import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 interface ScreenShareControlProps {
   iconSize?: number;
   size?: CallControlButtonProps["size"];
+  buttonStyle?: CSSProperties;
+  /** Added to the idle button only; live keeps its green. */
+  idleClassName?: string;
   /** Whether the room lets you start one. A share already on keeps its button either way. */
   allowed?: boolean;
   /** Which way the menu opens: up from the call bar, right from the sidebar's column. */
@@ -21,7 +24,7 @@ interface ScreenShareControlProps {
 }
 
 /** Off, it opens the picker. Live, it opens a menu, so a stray click can't end the share. */
-export function ScreenShareControl({ iconSize = 16, size, allowed = true, side = "top" }: ScreenShareControlProps) {
+export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClassName, allowed = true, side = "top" }: ScreenShareControlProps) {
   const {
     screenShareActive, nativeScreenCaptureAvailable, nativeEncodedCodec,
     startScreenShare, stopScreenShare,
@@ -75,7 +78,7 @@ export function ScreenShareControl({ iconSize = 16, size, allowed = true, side =
         <Menu.Root>
           <Menu.Trigger
             render={
-              <CallControlButton size={size} state="live" aria-label="Sharing your screen" />
+              <CallControlButton size={size} style={buttonStyle} state="live" aria-label="Sharing your screen" />
             }
           >
             <PiMonitorArrowUpFill size={iconSize} />
@@ -118,13 +121,13 @@ export function ScreenShareControl({ iconSize = 16, size, allowed = true, side =
       )}
       {!screenShareActive && isStarting && (
         <Tooltip title="Starting screen share…">
-          <CallControlButton size={size} state="idle" aria-label="Starting screen share" disabled>
+          <CallControlButton size={size} style={buttonStyle} className={idleClassName} state="idle" aria-label="Starting screen share" disabled>
             <PiMonitorArrowUpFill size={iconSize} />
           </CallControlButton>
         </Tooltip>
       )}
       {!screenShareActive && !isStarting && (
-        <CallControlButton size={size} state="idle" aria-label="Share your screen" onClick={() => openPicker("start")}>
+        <CallControlButton size={size} style={buttonStyle} className={idleClassName} state="idle" aria-label="Share your screen" onClick={() => openPicker("start")}>
           <PiMonitorArrowUpFill size={iconSize} />
         </CallControlButton>
       )}
