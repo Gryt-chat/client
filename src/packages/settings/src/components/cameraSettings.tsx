@@ -339,8 +339,8 @@ export function CameraSettings() {
       />
 
       <ToggleSetting
-        title="Center my face automatically"
-        description="Cameras get cropped to fit a tile, so a face off to one side gets cut off. This works out where yours is, so everyone else's crop follows you. It runs when your camera comes on, and the button beside the camera control does it any time after that. Detection runs on this machine; only two numbers are sent, never video."
+        title="Keep my face centered"
+        description="Cameras get cropped to fit a tile, so a face off to one side gets cut off. This checks where yours is every few seconds and moves everyone else's crop when you've moved. Detection runs on this machine; only two numbers are sent, never video."
         checked={faceFramingEnabled}
         onCheckedChange={setFaceFramingEnabled}
       />
