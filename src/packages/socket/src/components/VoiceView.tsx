@@ -33,6 +33,7 @@ import { Controls } from "@/webRTC";
 
 import { PiArrowSquareOutFill, PiCameraSlashFill,PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "../../../../lib/icons";
 import { useAloneInCall } from "../hooks/useAloneInCall";
+import { useCallBubbles } from "../hooks/useCallBubbles";
 import { useIdle } from "../hooks/useIdle";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
@@ -55,6 +56,7 @@ import {
 } from "../lib/voiceLayout";
 import type { Client } from "../types/clients";
 import { stopWatchingShare, useWatchedShares } from "../utils/watchedShares";
+import { CallBubbles } from "./CallBubbles";
 import { FocusedVideoView } from "./FocusedVideoView";
 import { FullscreenLabel } from "./FullscreenChrome";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
@@ -241,6 +243,7 @@ function SortableParticipant({
     // against an auto-width box instead of its grid cell.
     width: "100%",
     height: "100%",
+    position: "relative",
   };
 
   return (
@@ -517,7 +520,11 @@ export const VoiceView = ({
   // In fullscreen the label and the bar fade after three still seconds, as on the Fullscreen board.
   const idle = useIdle(isFullscreen, panelRef);
   const { servers } = useServerManagement();
-  const { serverDetailsList } = useSockets();
+  const { serverDetailsList, sockets } = useSockets();
+  const callBubbles = useCallBubbles(
+    currentServerConnected === serverHost ? sockets[serverHost] : null,
+    currentChannelId,
+  );
 
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
@@ -1264,6 +1271,13 @@ export const VoiceView = ({
               streamSources={streamSources}
               tileRadius={radius}
             />
+            {!isScreenTile && !isFocused && serverUserId && (
+              <CallBubbles
+                bubbles={callBubbles.bubbles[serverUserId] ?? []}
+                typing={callBubbles.typing.has(serverUserId)}
+                glass={!!client.cameraEnabled}
+              />
+            )}
           </SortableParticipant>
         </div>
       </motion.div>
