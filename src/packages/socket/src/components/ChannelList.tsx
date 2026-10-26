@@ -51,6 +51,10 @@ type Role = string;
 /** How far a row inside a folder is inset. Matches the caret's own width. */
 const INDENT_PX = 14;
 
+/** The call you're in: the voice row and its people on one accent-tinted card. */
+const CALL_CARD_FILL = "var(--gryt-accent-3)";
+const CALL_CARD_STYLE = { outline: "1px solid var(--gryt-accent-6)", borderRadius: 20 } as const;
+
 const exitVariants = {
   gone: (instant: boolean) => (instant ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -8 }),
 };
@@ -351,22 +355,25 @@ export const ChannelList = ({
     const hasVoiceMembers = channel?.type === "voice" && Object.values(clients).some((c) => c.voiceChannelId === channelId);
     const inThisCall = hasVoiceMembers && channel?.id === currentChannelId && serverHost === currentServerConnected;
 
+    const selected = channel?.id === selectedChannelId;
+
     return (
-      <div className="flex flex-col items-start w-full relative">
+      <div className="flex flex-col items-start w-full relative" style={inThisCall ? CALL_CARD_STYLE : undefined}>
         {/* Fills behind the lower half of the round row, so the members box reads as part of it, not a box under it. */}
         {inThisCall && (
-          <div aria-hidden style={{ position: "absolute", top: "18px", left: 0, right: 0, height: "18px", background: "var(--gryt-neutral-3)" }} />
+          <div aria-hidden style={{ position: "absolute", top: "18px", left: 0, right: 0, height: "18px", background: CALL_CARD_FILL }} />
         )}
         {/* Ghost unless it is the one you are in. Every row was a plain
             <Button>, which is the filled accent one, so the whole list read as
             selected and the channel you were actually in was invisible —
             "you are here" was the one thing the list stopped saying. */}
         <Button size="small"
-          tone={channel?.id === selectedChannelId ? "primary" : "ghost"}
+          tone={selected ? "primary" : "ghost"}
           style={{
             position: "relative",
-            background: inThisCall ? "var(--gryt-neutral-3)" : undefined,
-            color: inThisCall ? "var(--gryt-text)" : undefined,
+            // The accent pill still marks the chat you're reading, so the card's tint doesn't cover it.
+            background: inThisCall && !selected ? CALL_CARD_FILL : undefined,
+            color: inThisCall && !selected ? "var(--gryt-accent-11)" : undefined,
             width: "100%",
             justifyContent: "start",
             overflow: "hidden",
@@ -454,8 +461,8 @@ export const ChannelList = ({
                 style={{ overflow: "hidden", width: "100%" }}
               >
                 <div className="flex w-full pt-2 flex-col" style={{
-                    background: inThisCall ? "var(--gryt-neutral-3)" : undefined,
-                    borderRadius: "0 0 var(--gryt-radius-lg) var(--gryt-radius-lg)",
+                    background: inThisCall ? CALL_CARD_FILL : undefined,
+                    borderRadius: "0 0 18px 18px",
                   }}>
                   {Object.keys(clients)?.map(
                     (id) =>
