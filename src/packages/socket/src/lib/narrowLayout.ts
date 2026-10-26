@@ -81,15 +81,13 @@ export function hasRoomForMemberList({
   return windowWidth >= needed;
 }
 
-export const AVATAR_COLUMN_WIDTH = 56;
+export const AVATAR_COLUMN_WIDTH = 40;
 /** What the chat keeps beside a call before the member list folds: about 60 characters. */
 const MIN_CHAT_BESIDE_CALL = 440;
-/** Between the boards: preset 1 at 1100 leaves 364 (Narrow: button), preset 2 at 1440 leaves 393 (Journey: avatars). */
-const MIN_CHAT_BESIDE_AVATARS = 380;
 
 export type MemberListMode = "full" | "avatars" | "none";
 
-/** Beside a call the list gives way in steps so the chat keeps 440: full, then avatars, then a header button. */
+/** Beside a call the list folds to a slim strip of faces before the chat drops under 440; with no call it's `hasRoomForMemberList`. */
 export function memberListMode({
   windowWidth,
   voicePanelWidth,
@@ -110,7 +108,7 @@ export function memberListMode({
   const row = (chat: number, members: number) =>
     PAGE_PADDING + RAIL_WIDTH + GAP + SIDEBAR_WIDTH + GAP + voicePanelWidth + chat + GAP + members;
   if (row(MIN_CHAT_BESIDE_CALL, SIDEBAR_WIDTH) <= windowWidth) return "full";
-  if (row(MIN_CHAT_BESIDE_AVATARS, AVATAR_COLUMN_WIDTH) <= windowWidth) return "avatars";
+  if (row(MIN_CHAT_WIDTH, AVATAR_COLUMN_WIDTH) <= windowWidth) return "avatars";
   return "none";
 }
 
