@@ -158,7 +158,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
 
   return (
     <div className="flex flex-col h-full gap-4 items-center justify-between" data-gryt="sidebar">
-      <div className="flex flex-col gap-4 pt-2">
+      <div className="flex flex-col gap-4 pt-2 items-center">
         {/* Above the servers, because a conversation is not one of them. The
             count is every unread direct message anywhere (GRYT-1134). */}
         <Tooltip title="Direct messages" side="right">
