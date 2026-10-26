@@ -17,10 +17,15 @@ export const SCREEN_PRESETS: QualityPreset[] = [
 ];
 
 export const CAMERA_PRESETS: QualityPreset[] = [
-  { quality: "native", fps: 30, hint: "Sharpest" },
-  { quality: "720p", fps: 30, hint: "HD" },
-  { quality: "360p", fps: 15, hint: "Uses less data" },
+  { quality: "native", fps: 30, hint: "Sharp" },
+  { quality: "720p", fps: 30, hint: "Normal" },
+  { quality: "360p", fps: 15, hint: "Saves data" },
 ];
+
+/** What a camera preset is, under its name: "full, 30 fps". */
+export function presetDetail(quality: string, fps: number): string {
+  return `${quality === "native" ? "full" : quality}, ${fps} fps`;
+}
 
 export function presetKey(quality: string, fps: number): string {
   return `${quality}@${fps}`;

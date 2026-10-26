@@ -8,10 +8,9 @@ import toast from "react-hot-toast";
 import { useSettings } from "@/settings";
 import { useSockets } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
-import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { getElectronAPI } from "../../../../lib/electron";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiScanSmileyFill, PiSignOutFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSignOutFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
 import { useInACall } from "../adapters/inACall";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
@@ -84,7 +83,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const [micMenuOpen, setMicMenuOpen] = useState(false);
   const [headsetMenuOpen, setHeadsetMenuOpen] = useState(false);
   const { sockets } = useSockets();
-  const { recentre: recentreFace, detecting: detectingFace } = useVideoFraming();
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
     isServerMuted, isServerDeafened,
@@ -490,22 +488,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
           </SplitControl>
 
           <CameraControl split size={BAR_SIZE} iconSize={BAR_ICON} allowed={canIn(currentChannelConnected, "share_video")} />
-
-          {/* Only while the camera is on, because that is the only time it can
-              do anything, and next to the camera button because that is what
-              it acts on. The setting decides whether this also happens by
-              itself; the button is here so it never has to be found. */}
-          {cameraEnabled && (
-            <Tooltip title="Center my face">
-              <IconButton tone="neutral" size={BAR_SIZE} style={BAR_BUTTON_STYLE} className={BAR_SOLO_CLASS}
-                aria-label="Center my face"
-                disabled={detectingFace}
-                onClick={() => void recentreFace()}
-              >
-                <PiScanSmileyFill size={BAR_ICON} />
-              </IconButton>
-            </Tooltip>
-          )}
 
           <ScreenShareControl size={BAR_SIZE} buttonStyle={BAR_BUTTON_STYLE} idleClassName={BAR_SOLO_CLASS} iconSize={BAR_ICON} allowed={canIn(currentChannelConnected, "share_screen")} />
 

@@ -280,14 +280,14 @@ assert.equal(profanityBoxes.length, 2, "expected two profanity filter boxes in S
 for (const box of profanityBoxes) {
   assert.match(box, /minWidth: 0/, "a profanity filter box lost minWidth: 0");
 }
-const cameraPreview = readFileSync(
-  new URL("../src/packages/webRTC/src/components/CameraPreviewModal.tsx", import.meta.url),
+const cameraFields = readFileSync(
+  new URL("../src/packages/webRTC/src/components/cameraFields.tsx", import.meta.url),
   "utf8",
 );
-assert.match(
-  cameraPreview,
-  />Camera<\/span>\s*<Select\s+className="[^"]*\bmin-w-0\b/,
-  "the camera Select in the preview lost min-w-0",
+assert.equal(
+  cameraFields.match(/className="w-\[190px\]"/g)?.length,
+  2,
+  "the camera and quality Selects lost their fixed width, so a long camera name can push the row wider",
 );
 
 /* ── User settings ─────────────────────────────────────────────────── */
