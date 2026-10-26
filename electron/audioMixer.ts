@@ -132,3 +132,13 @@ export class AudioMixer {
     return out;
   }
 }
+
+/**
+ * Whole frames out of one capture's stdout, for sending it on its own (GRYT-1905). A pipe
+ * splits wherever it likes, and Int16Array refuses a buffer that ends mid-sample.
+ */
+export function wholeFrames(carry: Buffer, chunk: Buffer): { frames: Buffer; carry: Buffer } {
+  const all = carry.byteLength ? Buffer.concat([carry, chunk]) : chunk;
+  const cut = all.byteLength - (all.byteLength % BYTES_PER_FRAME);
+  return { frames: all.subarray(0, cut), carry: Buffer.from(all.subarray(cut)) };
+}

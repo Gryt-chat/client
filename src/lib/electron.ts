@@ -341,6 +341,9 @@ export interface ElectronAPI {
   setAudioCaptureApplications(sourceIds: string[]): Promise<AudioCaptureSource[]>;
   listAudioCaptureSources(): Promise<AudioCaptureSource[]>;
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void): () => void;
+  /** Each capture on its own, tagged with the windows it belongs to, instead of the mix (GRYT-1905). */
+  setNativeAudioPerSource(on: boolean): void;
+  onNativeAudioSourceData(callback: (sourceIds: string[], pcm: ArrayBuffer) => void): () => void;
   onNativeAudioStopped(callback: () => void): () => void;
   onNativeAudioDiagnostic(callback: (msg: string) => void): () => void;
   /** A macOS share whose audio is not getting through. Absent on builds before it was added. */
