@@ -2586,10 +2586,9 @@ body {
 }
 
 /* The rail's call capsule (GRYT-1746). Every colour is the theme's own green, so
-   a theme moves it; the live icon and the ring flip in light mode to keep 3:1+. */
+   a theme moves it; the ring flips in light mode to keep 3:1+. */
 .gryt-call-capsule {
   --gryt-call-ring: var(--gryt-success-9);
-  --gryt-call-on-live: var(--gryt-neutral-1);
   background: var(--gryt-success-3);
   box-shadow: inset 0 0 0 1px var(--gryt-success-6);
   border-radius: 9999px;
@@ -2597,7 +2596,6 @@ body {
 }
 .gryt-call-capsule[data-appearance="light"] {
   --gryt-call-ring: var(--gryt-success-11);
-  --gryt-call-on-live: var(--gryt-neutral-12);
 }
 /* Not up yet: amber, so the controls being there isn't read as the call being there. */
 .gryt-call-capsule[data-live="false"] {
@@ -2611,7 +2609,15 @@ body {
 .gryt-call-capsule [data-call-state="idle"]:hover {
   background: var(--gryt-success-4);
 }
+/* Camera and share sit on a neutral circle until they're live, then one green, as on the Rail board. */
+.gryt-call-capsule [data-call-state="idle"][data-media] {
+  background: var(--gryt-neutral-5);
+  color: var(--gryt-neutral-12);
+}
+.gryt-call-capsule [data-call-state="idle"][data-media]:hover {
+  background: var(--gryt-neutral-6);
+}
 .gryt-call-capsule [data-call-state="live"] {
-  background: var(--gryt-success-9);
-  color: var(--gryt-call-on-live);
+  background: var(--gryt-success-6);
+  color: var(--gryt-success-11);
 }

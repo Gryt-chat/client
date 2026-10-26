@@ -11,7 +11,7 @@ import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import type { SidebarItem } from "@/settings/src/types/server";
-import { setInACall } from "@/webRTC";
+import { setInACall, useAnyCallButtonPress } from "@/webRTC";
 
 import { PiCameraFill,PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
@@ -53,6 +53,7 @@ import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
+import { VOICE_PRESET_1 } from "../lib/voiceGrip";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
@@ -181,6 +182,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     voiceContainerRef, attachVoiceContainer, voiceMaxWidth, shownVoiceWidth,
   } = useVoiceLayout({ setShowVoiceView });
   const [voiceResizing, setVoiceResizing] = useState(false);
+  // The rail's camera or share, pressed while off, opens the view at preset 1 for the bar's button to act in.
+  useAnyCallButtonPress(() => setVoiceStop(VOICE_PRESET_1));
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);

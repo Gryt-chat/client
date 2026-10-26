@@ -8,6 +8,7 @@ import { useSettings } from "@/settings";
 import { isElectron } from "../../../../lib/electron";
 import { PiMonitorArrowUpFill } from "../../../../lib/icons";
 import { presetKey, presetLabel, SCREEN_PRESETS } from "../utils/streamQuality";
+import { useCallButtonPress } from "./callButtonPress";
 import { CallControlButton, type CallControlButtonProps } from "./CallControlButton";
 import { ScreenSharePickerModal } from "./ScreenSharePickerModal";
 
@@ -21,10 +22,12 @@ interface ScreenShareControlProps {
   allowed?: boolean;
   /** Which way the menu opens: up from the call bar, right from the sidebar's column. */
   side?: "top" | "right";
+  /** The call bar's button, which opens the picker when the rail's share is pressed. */
+  takesRailPress?: boolean;
 }
 
 /** Off, it opens the picker. Live, it opens a menu, so a stray click can't end the share. */
-export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClassName, allowed = true, side = "top" }: ScreenShareControlProps) {
+export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClassName, allowed = true, side = "top", takesRailPress = false }: ScreenShareControlProps) {
   const {
     screenShareActive, nativeScreenCaptureAvailable, nativeEncodedCodec,
     startScreenShare, stopScreenShare,
@@ -61,6 +64,8 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
     if (isElectron()) setPicker(mode);
     else void start({ withAudio: true }, mode);
   };
+
+  useCallButtonPress("share", () => openPicker("start"), takesRailPress && !screenShareActive);
 
   const current = presetKey(screenShareQuality, screenShareFps);
   const matchesPreset = SCREEN_PRESETS.some((p) => presetKey(p.quality, p.fps) === current);

@@ -6,6 +6,7 @@ import { useSettings } from "@/settings";
 import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 
 import { PiCameraFill, PiCameraSlashFill } from "../../../../lib/icons";
+import { useCallButtonPress } from "./callButtonPress";
 import { BAR_BUTTON_STYLE, CallControlButton, type CallControlButtonProps, SPLIT_BUTTON_CLASS, SplitArrow, SplitControl } from "./CallControlButton";
 import { CameraSelect, FieldRow, QualitySelect, SwitchRow } from "./cameraFields";
 import { CameraPreview } from "./CameraPreview";
@@ -46,8 +47,11 @@ export function CameraControl({ iconSize = 16, size, allowed = true, side = "top
   const { cameraPreviewFirst } = useSettings();
   const [open, setOpen] = useState(false);
   const splitRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => setOpen(false), [cameraEnabled]);
+  // The rail's camera, pressed while off, lands here as if this button was pressed.
+  useCallButtonPress("camera", () => buttonRef.current?.click(), split && !cameraEnabled);
 
   if (!allowed && !cameraEnabled) return null;
 
@@ -61,8 +65,8 @@ export function CameraControl({ iconSize = 16, size, allowed = true, side = "top
   } as const;
   const icon = cameraEnabled ? <PiCameraFill size={iconSize} /> : <PiCameraSlashFill size={iconSize} />;
   const button = cameraEnabled || !cameraPreviewFirst
-    ? <CallControlButton {...buttonProps} onClick={() => setCameraEnabled(!cameraEnabled)}>{icon}</CallControlButton>
-    : <Popover.Trigger render={<CallControlButton {...buttonProps} />}>{icon}</Popover.Trigger>;
+    ? <CallControlButton ref={buttonRef} {...buttonProps} onClick={() => setCameraEnabled(!cameraEnabled)}>{icon}</CallControlButton>
+    : <Popover.Trigger render={<CallControlButton ref={buttonRef} {...buttonProps} />}>{icon}</Popover.Trigger>;
 
   return (
     <Popover.Root key={state} onOpenChange={setOpen}>
