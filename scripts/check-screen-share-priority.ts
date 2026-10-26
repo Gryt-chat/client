@@ -37,14 +37,18 @@ assert.match(
   "camera priority does not update when screen sharing starts or stops",
 );
 
+// Every shared window's settings come from one builder (GRYT-1905), so the rules are read there.
+const quality = readFileSync(join(root, "src/packages/webRTC/src/utils/streamQuality.ts"), "utf8");
+const builder = quality.slice(quality.indexOf("export function screenSendSettings"));
+assert.match(screen, /screenSendSettings\(\{[^}]*gamingMode: screenShareGamingMode/, "the first window's settings stopped coming from screenSendSettings");
 assert.match(
-  screen,
+  builder,
   /priority: "high"/,
   "screen share is not the high-priority video sender",
 );
 assert.match(
-  screen,
-  /degradationPreference: screenShareGamingMode\s*\? "maintain-framerate"\s*: "maintain-resolution"/,
+  builder,
+  /degradationPreference: o\.gamingMode \? "maintain-framerate" : "maintain-resolution"/,
   "desktop sharing does not preserve resolution outside gaming mode",
 );
 
