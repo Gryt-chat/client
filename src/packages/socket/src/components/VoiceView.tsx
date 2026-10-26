@@ -33,8 +33,11 @@ import { Controls } from "@/webRTC";
 
 import { PiCameraSlashFill,PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "../../../../lib/icons";
 import { useAloneInCall } from "../hooks/useAloneInCall";
+import { useIdle } from "../hooks/useIdle";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
+import { useServerManagement } from "../hooks/useServerManagement";
+import { useSockets } from "../hooks/useSockets";
 import { type BentoItem, computeBentoLayout } from "../lib/bentoLayout";
 import { cameraStreamFor, hasLiveVideoTrack } from "../lib/cameraStream";
 import {
@@ -53,6 +56,7 @@ import {
 import type { Client } from "../types/clients";
 import { stopWatchingShare, useWatchedShares } from "../utils/watchedShares";
 import { FocusedVideoView } from "./FocusedVideoView";
+import { FullscreenLabel } from "./FullscreenChrome";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { UserContextMenu } from "./UserContextMenu";
 import type { FocusedStreamInfo } from "./VoiceParticipantCard";
@@ -501,6 +505,11 @@ export const VoiceView = ({
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
 
+  // In fullscreen the label and the bar fade after three still seconds, as on the Fullscreen board.
+  const idle = useIdle(isFullscreen, panelRef);
+  const { servers } = useServerManagement();
+  const { serverDetailsList } = useSockets();
+
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
       void document.exitFullscreen();
@@ -755,8 +764,8 @@ export const VoiceView = ({
   }, []);
 
   const isFocused = !!focusedStream;
-  // The 334px bar and the fullscreen button side by side. Narrower (preset 1) the button waits for a wider view.
-  const fullscreenFits = isFullscreen || gridWidth >= 424;
+  // The corner button needs room beside the 334px bar, so preset 1 goes without; fullscreen moves it to the bar's end.
+  const cornerFullscreen = !isFullscreen && gridWidth >= 424;
 
   useLayoutEffect(() => {
     onFocusChange?.(isFocused);
@@ -1270,6 +1279,7 @@ export const VoiceView = ({
       }}
       style={{
         overflow: "hidden",
+        cursor: idle ? "none" : undefined,
         // The width comes from `voiceWidth` alone: focus used to get its own
         // branch here, so the panel ate the row the moment a tile was clicked.
         ...(isFullscreen
@@ -1280,10 +1290,18 @@ export const VoiceView = ({
             }),
       }}
     >
-      <div className="flex h-full w-full flex-col p-3" style={{
-          background: "var(--gryt-neutral-3)",
-          borderRadius: "var(--gryt-radius-lg)",
+      <div className="relative flex h-full w-full flex-col p-3" style={{
+          background: isFullscreen ? "var(--gryt-neutral-1)" : "var(--gryt-neutral-3)",
+          borderRadius: isFullscreen ? 0 : "var(--gryt-radius-lg)",
         }}>
+        {isFullscreen && (
+          <FullscreenLabel
+            channelName={serverDetailsList[serverHost]?.channels?.find((c) => c.id === currentChannelId)?.name ?? "Voice"}
+            serverName={servers[serverHost]?.name || serverHost}
+            people={visibleClients.length}
+            hidden={idle}
+          />
+        )}
         {secondsLeft === null ? null : (
           <div
             aria-live="polite"
@@ -1632,23 +1650,35 @@ export const VoiceView = ({
                     pointerEvents: "none",
                   }}
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  animate={{ opacity: idle ? 0 : 1 }}
                   exit={{ opacity: 0 }}
                 >
                   {/* Equal spacers either side keep the bar centred; the right one holds the fullscreen button in flow, so it can't overlap. */}
-                  {fullscreenFits && <div style={{ flex: 1 }} />}
-                  <div style={{ pointerEvents: "auto", flex: "0 1 auto", minWidth: 0 }}>
+                  {cornerFullscreen && <div style={{ flex: 1 }} />}
+                  <div className="flex items-center gap-3" style={{ pointerEvents: idle ? "none" : "auto", flex: "0 1 auto", minWidth: 0 }}>
                     <Controls onDisconnect={onDisconnect} />
+                    {isFullscreen && (
+                      <Tooltip title="Leave fullscreen">
+                        <button
+                          type="button"
+                          aria-label="Leave fullscreen"
+                          onClick={toggleFullscreen}
+                          className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border-0 bg-gryt-neutral-5 text-gryt-neutral-12 hover:bg-gryt-neutral-6"
+                        >
+                          <PiCornersInFill size={18} />
+                        </button>
+                      </Tooltip>
+                    )}
                   </div>
-                  {fullscreenFits && (
+                  {cornerFullscreen && (
                     <div className="flex justify-end" style={{ flex: 1, pointerEvents: "none", paddingRight: 12 }}>
                       <div style={{ pointerEvents: "auto", paddingBottom: 8 }}>
-                        <Tooltip title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}>
+                        <Tooltip title="Fullscreen">
                           <IconButton tone="neutral" size="xsmall"
-                            aria-label={isFullscreen ? "Leave fullscreen" : "Fullscreen voice view"}
+                            aria-label="Fullscreen voice view"
                             onClick={toggleFullscreen}
                           >
-                            {isFullscreen ? <PiCornersInFill size={18} /> : <PiCornersOutFill size={18} />}
+                            <PiCornersOutFill size={18} />
                           </IconButton>
                         </Tooltip>
                       </div>
