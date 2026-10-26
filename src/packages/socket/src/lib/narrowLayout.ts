@@ -10,6 +10,15 @@ const VOICE_SIDEBAR_WIDTH = 600;
 const VOICE_PRESET_1 = 352;
 const MIN_CHAT_WIDTH = 200;
 
+/** At or below this the channel list folds to square icons, the Narrow board's step after the member strip. */
+export const CHANNEL_ICONS_MAX_WIDTH = 960;
+export const CHANNEL_ICON_LIST_WIDTH = 56;
+
+/** The channel list's width at this window width: the full list, or the icon column. */
+export function channelListWidth(windowWidth: number): number {
+  return windowWidth <= CHANNEL_ICONS_MAX_WIDTH ? CHANNEL_ICON_LIST_WIDTH : SIDEBAR_WIDTH;
+}
+
 /** The rail, the page padding either side of it, and the gaps between panels. */
 const RAIL_WIDTH = 32;
 const PAGE_PADDING = 16 * 2;
@@ -70,7 +79,7 @@ export function hasRoomForMemberList({
     PAGE_PADDING +
     RAIL_WIDTH +
     GAP +
-    SIDEBAR_WIDTH + // channels
+    channelListWidth(windowWidth) + // channels
     (voicePanelWidth > 0 ? GAP + voicePanelWidth : 0) +
     (threadPanelWidth > 0 ? GAP : 0) +
     chat +
@@ -106,7 +115,7 @@ export function memberListMode({
     return hasRoomForMemberList({ windowWidth, voicePanelWidth, threadPanelWidth }) ? "full" : "none";
   }
   const row = (chat: number, members: number) =>
-    PAGE_PADDING + RAIL_WIDTH + GAP + SIDEBAR_WIDTH + GAP + voicePanelWidth + chat + GAP + members;
+    PAGE_PADDING + RAIL_WIDTH + GAP + channelListWidth(windowWidth) + GAP + voicePanelWidth + chat + GAP + members;
   if (row(MIN_CHAT_BESIDE_CALL, SIDEBAR_WIDTH) <= windowWidth) return "full";
   if (row(MIN_CHAT_WIDTH, AVATAR_COLUMN_WIDTH) <= windowWidth) return "avatars";
   return "none";
@@ -128,7 +137,7 @@ export function hasRoomForThreadBeside({
     PAGE_PADDING +
     RAIL_WIDTH +
     GAP +
-    SIDEBAR_WIDTH + // channels
+    channelListWidth(windowWidth) + // channels
     (voicePanelWidth > 0 ? GAP + voicePanelWidth : 0) +
     GAP +
     MIN_CHAT_BESIDE_THREAD +
@@ -153,7 +162,7 @@ export function hasRoomForVoicePanel(windowWidth: number): boolean {
     PAGE_PADDING +
     RAIL_WIDTH +
     GAP +
-    SIDEBAR_WIDTH + // channels
+    channelListWidth(windowWidth) + // channels
     GAP +
     VOICE_PRESET_1 + 16 + // the smallest the grip sets, and its gap
     MIN_CHAT_WIDTH +

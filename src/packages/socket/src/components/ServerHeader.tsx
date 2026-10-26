@@ -6,6 +6,11 @@ import { NotificationLevelMenu } from "@/common";
 import { PiCopySimpleBold, PiDoorOpenBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 
+/** "Friday LAN" → "FL": the first letter of the first two words. */
+function initialsOf(name = "") {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?";
+}
+
 export const ServerHeader = ({
   serverName,
   serverHost,
@@ -20,8 +25,11 @@ export const ServerHeader = ({
   pendingReportCount,
   updateAvailable,
   statusLine,
+  iconsOnly = false,
 }: {
   serverName?: string;
+  /** The narrow channel list: the server's initials, which open its menu (GRYT-1899). */
+  iconsOnly?: boolean;
   /** Why the server isn't usable right now, under its name (GRYT-1751). */
   statusLine?: string;
   /** For "Copy server address". Absent hides that item rather than copying "". */
@@ -67,8 +75,8 @@ export const ServerHeader = ({
         flexShrink: 0,
       }}
     >
-      <div className="flex justify-between items-center">
-        <span className="flex flex-col min-w-0">
+      <div className={iconsOnly ? "flex justify-center items-center" : "flex justify-between items-center"}>
+        {!iconsOnly && <span className="flex flex-col min-w-0">
           <span>{serverName}</span>
           {statusLine && (
             <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--gryt-warning-11)" }}>
@@ -76,9 +84,9 @@ export const ServerHeader = ({
               {statusLine}
             </span>
           )}
-        </span>
+        </span>}
         <div className="flex items-center gap-2">
-          {canCreate && (
+          {canCreate && !iconsOnly && (
             <Menu.Root>
               <Tooltip title="Create channel or folder">
                 <Menu.Trigger
@@ -110,10 +118,11 @@ export const ServerHeader = ({
                   tone="neutral"
                   size="xsmall"
                   aria-label="Server menu"
+                  className={iconsOnly ? "w-auto px-1 text-base font-semibold" : undefined}
                 />
               }
             >
-              <PiDotsThreeVerticalBold size={14} />
+              {iconsOnly ? initialsOf(serverName) : <PiDotsThreeVerticalBold size={14} />}
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Positioner>
