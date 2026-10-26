@@ -208,7 +208,7 @@ export const ServerLoadingStates = ({
   if (!hasTimedOut) {
     return (
       <div className="flex w-full h-full gap-4">
-        <div className="w-[100%] sm:w-[240px]">
+        <div className="w-[100%] sm:w-[200px]">
           <ServerDetailsSkeleton />
         </div>
       </div>

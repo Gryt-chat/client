@@ -4,7 +4,7 @@
  */
 
 /** `useServerViewLayout`'s numbers, repeated here so this file needs no React. */
-const SIDEBAR_WIDTH = 240;
+const SIDEBAR_WIDTH = 200;
 const VOICE_SIDEBAR_WIDTH = 600;
 /** `voiceGrip.ts`'s preset 1, the smallest stop the grip sets. */
 const VOICE_PRESET_1 = 352;
@@ -124,7 +124,7 @@ export function hasRoomForVoicePanel(windowWidth: number): boolean {
     GAP +
     SIDEBAR_WIDTH + // channels
     GAP +
-    VOICE_PRESET_1 + 8 + // the smallest the grip sets, and its gap
+    VOICE_PRESET_1 + 16 + // the smallest the grip sets, and its gap
     MIN_CHAT_WIDTH +
     GAP +
     MEMBER_STRIP; // the collapsed member panel is still in the row

@@ -43,8 +43,8 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
 
   const stopAt = (clientX: number) => {
     const left = containerRef.current?.getBoundingClientRect().left ?? 0;
-    // The grip's centre is 4px into the gap after the panel.
-    return draggedVoiceStop(clientX - left - 4, room);
+    // The grip sits in the middle of the 16px gap after the panel.
+    return draggedVoiceStop(clientX - left - 8, room);
   };
 
   return (
@@ -90,7 +90,7 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
           style={{
             position: "absolute",
             top: "50%",
-            left: hidden ? -19 : -15,
+            left: -19,
             transform: "translateY(-50%)",
             width: 22,
             height: presets ? 132 : 76,

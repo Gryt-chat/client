@@ -38,18 +38,18 @@ assert.equal(
   false,
 );
 
-// Rail 32, padding 32, three 16px gaps, two 240px sidebars, 600 voice and 200
-// chat is 1392, so the old rule was wrong from 1025 to 1391.
+// Rail 32, padding 32, three 16px gaps, two 200px sidebars, 600 voice and 200
+// chat is 1312, so the old rule was wrong from 1025 to 1311.
 assert.equal(
   hasRoomForMemberList({ windowWidth: 1400, voicePanelWidth: VOICE_PANEL_WIDTH }),
   true,
 );
 assert.equal(
-  hasRoomForMemberList({ windowWidth: 1392, voicePanelWidth: VOICE_PANEL_WIDTH }),
+  hasRoomForMemberList({ windowWidth: 1312, voicePanelWidth: VOICE_PANEL_WIDTH }),
   true,
 );
 assert.equal(
-  hasRoomForMemberList({ windowWidth: 1391, voicePanelWidth: VOICE_PANEL_WIDTH }),
+  hasRoomForMemberList({ windowWidth: 1311, voicePanelWidth: VOICE_PANEL_WIDTH }),
   false,
 );
 
@@ -63,7 +63,7 @@ assert.equal(hasRoomForMemberList({ windowWidth: 1100, voicePanelWidth: 400 }), 
 for (let w = 300; w <= 2000; w += 1) {
   for (const voice of [0, 200, 400, VOICE_PANEL_WIDTH]) {
     if (!hasRoomForMemberList({ windowWidth: w, voicePanelWidth: voice })) continue;
-    const used = 32 + 32 + 16 + 240 + (voice > 0 ? 16 + voice : 0) + 200 + 16 + 240;
+    const used = 32 + 32 + 16 + 200 + (voice > 0 ? 16 + voice : 0) + 200 + 16 + 200;
     assert.ok(
       used <= w,
       `member list allowed at ${w}px with a ${voice}px voice panel, needing ${used}px`,
@@ -73,16 +73,16 @@ for (let w = 300; w <= 2000; w += 1) {
 
 /* ── Room for the voice panel at all ───────────────────────────────── */
 
-// Rail, padding, channel list, preset 1's 352px panel and its 8px gap, a 200px
-// chat, and the 24px the collapsed member strip and its gap still cost: 920.
-assert.equal(hasRoomForVoicePanel(920), true);
-assert.equal(hasRoomForVoicePanel(919), false);
+// Rail, padding, channel list, preset 1's 352px panel and its 16px gap, a 200px
+// chat, and the 24px the collapsed member strip and its gap still cost: 888.
+assert.equal(hasRoomForVoicePanel(888), true);
+assert.equal(hasRoomForVoicePanel(887), false);
 
 // Wherever the panel is allowed, the chat still gets its minimum with the
 // member strip paid for.
 for (let w = 300; w <= 2000; w += 1) {
   if (!hasRoomForVoicePanel(w)) continue;
-  const used = 32 + 32 + 16 + 240 + 16 + 360 + 200 + 16 + 8;
+  const used = 32 + 32 + 16 + 200 + 16 + 368 + 200 + 16 + 8;
   assert.ok(used <= w, `voice panel allowed at ${w}px, needing ${used}px`);
 }
 
@@ -127,10 +127,10 @@ for (let w = 300; w <= TINY_MAX_WIDTH; w += 1) {
 // GRYT-1390: the panel was `position: absolute` at every width, so at 1280 it
 // covered 62% of a message row and a click at the row's centre landed in it.
 
-// Rail 32, padding 32, two gaps, a 240 channel list, 440 of conversation, the
-// 380 panel and the collapsed member strip: 1164.
-assert.equal(hasRoomForThreadBeside({ windowWidth: 1164, voicePanelWidth: 0 }), true);
-assert.equal(hasRoomForThreadBeside({ windowWidth: 1163, voicePanelWidth: 0 }), false);
+// Rail 32, padding 32, two gaps, a 200 channel list, 440 of conversation, the
+// 380 panel and the collapsed member strip: 1124.
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1124, voicePanelWidth: 0 }), true);
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1123, voicePanelWidth: 0 }), false);
 assert.equal(hasRoomForThreadBeside({ windowWidth: 1280, voicePanelWidth: 0 }), true);
 
 // The Electron minimum, a phone and the tiny window are all far below it, so the
@@ -145,8 +145,8 @@ for (const width of [300, 390, 520, 768, 1024]) {
 
 // A voice panel in the row has to be paid for as well, the same way the member
 // list pays for it.
-assert.equal(hasRoomForThreadBeside({ windowWidth: 1780, voicePanelWidth: VOICE_PANEL_WIDTH }), true);
-assert.equal(hasRoomForThreadBeside({ windowWidth: 1779, voicePanelWidth: VOICE_PANEL_WIDTH }), false);
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1740, voicePanelWidth: VOICE_PANEL_WIDTH }), true);
+assert.equal(hasRoomForThreadBeside({ windowWidth: 1739, voicePanelWidth: VOICE_PANEL_WIDTH }), false);
 
 // The member list yields to it, as it yields to the voice panel, and comes back
 // when the row holds a channel list, 440 of conversation, the panel and itself.
@@ -155,11 +155,11 @@ assert.equal(
   false,
 );
 assert.equal(
-  hasRoomForMemberList({ windowWidth: 1412, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH }),
+  hasRoomForMemberList({ windowWidth: 1332, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH }),
   true,
 );
 assert.equal(
-  hasRoomForMemberList({ windowWidth: 1411, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH }),
+  hasRoomForMemberList({ windowWidth: 1331, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH }),
   false,
 );
 
@@ -171,7 +171,7 @@ assert.equal(hasRoomForMemberList({ windowWidth: 1280, voicePanelWidth: 0, threa
 for (let w = 300; w <= 2400; w += 1) {
   if (!hasRoomForThreadBeside({ windowWidth: w, voicePanelWidth: 0 })) continue;
   const members = hasRoomForMemberList({ windowWidth: w, voicePanelWidth: 0, threadPanelWidth: THREAD_PANEL_WIDTH });
-  const used = 32 + 32 + 16 + 240 + 16 + 440 + THREAD_PANEL_WIDTH + (members ? 16 + 240 : 8);
+  const used = 32 + 32 + 16 + 200 + 16 + 440 + THREAD_PANEL_WIDTH + (members ? 16 + 200 : 8);
   assert.ok(used <= w, `the thread panel sits beside the conversation at ${w}px, needing ${used}px`);
 }
 

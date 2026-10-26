@@ -25,7 +25,7 @@ export function UnreachableServer({
 
   return (
     <div className="flex w-full h-full min-w-0 gap-4" data-gryt="server-unreachable">
-      <div className="flex flex-col gap-3" style={{ width: 240, flexShrink: 0 }}>
+      <div className="flex flex-col gap-3" style={{ width: 200, flexShrink: 0 }}>
         <Surface style={{ width: "100%" }}>
           <span className="flex flex-col min-w-0">
             <span>{serverName}</span>
