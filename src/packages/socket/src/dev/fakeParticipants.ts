@@ -49,6 +49,8 @@ export interface FakeParticipantOptions {
   members: number;
   muted: number;
   share: boolean;
+  /** `fakeshare=2` and up: the sharer shows that many windows (GRYT-1905). */
+  shareWindows?: number;
   /** The last participant is deafened, which also mutes them. */
   deafened: boolean;
   /** Everyone who is not muted or deafened talks on and off. See fakeSpeech.ts. */
@@ -114,7 +116,8 @@ export function readFakeParticipantOptions(
     count,
     members: Math.max(0, Math.min(members, MAX_FAKE_MEMBERS)),
     muted: Math.min(Number(params.get("fakemuted")) || 0, count),
-    share: params.get("fakeshare") === "1",
+    share: Number(params.get("fakeshare")) >= 1,
+    shareWindows: Number(params.get("fakeshare")) || undefined,
     deafened: params.get("fakedeaf") === "1",
     // On unless asked otherwise. A grid where nobody talks is the state the
     // query string was already able to produce.
@@ -222,10 +225,14 @@ export function withFakeParticipants(
       isAFK: false,
       screenShareEnabled: sharing,
       screenShareVideoStreamID: sharing ? `${id}-screen` : undefined,
+      screenShares: sharing
+        ? Array.from({ length: Math.max(1, options.shareWindows ?? 1) }, (_, n) => ({ videoStreamID: n ? `${id}-screen-${n}` : `${id}-screen`, audioStreamID: "" }))
+        : undefined,
     };
 
     if (sharing) {
       streams = { ...streams, [`${id}-screen`]: fakeScreenStream() };
+      for (let n = 1; n < (options.shareWindows ?? 1); n++) streams = { ...streams, [`${id}-screen-${n}`]: fakeScreenStream() };
     }
   }
 

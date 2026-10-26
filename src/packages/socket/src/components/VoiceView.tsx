@@ -42,6 +42,7 @@ import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
 import { type BentoItem, computeBentoLayout } from "../lib/bentoLayout";
 import { cameraStreamFor, hasLiveVideoTrack } from "../lib/cameraStream";
+import { parseScreenItem, screenItemId, shareCount, shareOf } from "../lib/screenItems";
 import {
   computeGridLayout,
   computeShareLayout,
@@ -332,7 +333,13 @@ export const VoiceView = ({
   const {
     screenShareActive: localScreenActive,
     screenVideoStream: localScreenStream,
+    extraWindows: localExtraWindows,
   } = useLocalScreenShare();
+  // Your own window `index`: the first is the share's stream, later ones their own (GRYT-1905).
+  const localScreenFor = useCallback(
+    (index: number) => (index === 0 ? localScreenStream : localExtraWindows.find((w) => w.index === index)?.videoStream ?? null),
+    [localScreenStream, localExtraWindows],
+  );
 
   const {
     cameraStream: localCameraStream,
@@ -627,8 +634,10 @@ export const VoiceView = ({
         claimedVideoStreamIds.add(client.cameraStreamID);
       }
 
-      if (client.screenShareVideoStreamID) {
-        claimedVideoStreamIds.add(client.screenShareVideoStreamID);
+      // Every window, or a later one's stream would be handed out as somebody's camera.
+      for (let i = 0; i < Math.max(1, client.screenShares?.length ?? 0); i++) {
+        const shareId = shareOf(client, i).videoStreamID;
+        if (shareId) claimedVideoStreamIds.add(shareId);
       }
     }
 
@@ -692,12 +701,13 @@ export const VoiceView = ({
 
       if (isSelf && localScreenActive && localScreenStream) {
         items.push(`screen:${id}`);
+        for (const w of localExtraWindows) items.push(screenItemId(id, w.index));
       } else if (
         !isSelf &&
         client.screenShareEnabled &&
         client.screenShareVideoStreamID
       ) {
-        items.push(`screen:${id}`);
+        for (let i = 0; i < shareCount(client); i++) items.push(screenItemId(id, i));
 
         console.log(
           `[ScreenShare] gridItems: added screen:${id} (streamID=${
@@ -714,6 +724,7 @@ export const VoiceView = ({
     currentConnectionId,
     localScreenActive,
     localScreenStream,
+    localExtraWindows,
     videoStreams,
   ]);
 
@@ -729,12 +740,13 @@ export const VoiceView = ({
   const heldShareGain = useRef(new Map<string, number>());
   useEffect(() => {
     if (!streamSources) return;
-    for (const [id, client] of Object.entries(clientsForHost)) {
-      if (id === currentConnectionId) continue;
-      const audioId = client.screenShareAudioStreamID;
+    const shares = Object.entries(clientsForHost)
+      .filter(([id]) => id !== currentConnectionId)
+      .flatMap(([, client]) => Array.from({ length: Math.max(1, client.screenShares?.length ?? 0) }, (_, i) => shareOf(client, i)));
+    for (const { videoStreamID, audioStreamID: audioId } of shares) {
       const gain = audioId ? streamSources[audioId]?.gain : undefined;
       if (!audioId || !gain) continue;
-      const watching = !!client.screenShareVideoStreamID && watchedShares.has(client.screenShareVideoStreamID);
+      const watching = !!videoStreamID && watchedShares.has(videoStreamID);
       const held = heldShareGain.current;
       if (!watching && !held.has(audioId)) {
         held.set(audioId, gain.gain.value);
@@ -858,13 +870,11 @@ export const VoiceView = ({
   // dimensions: a shared window is not 16:9.
   const shareAspect = useMemo(() => {
     for (const itemId of screenItems) {
-      const clientId = itemId.slice(7);
+      const { clientId, index } = parseScreenItem(itemId);
       const isSelf = clientId === currentConnectionId;
       const stream = isSelf
-        ? localScreenStream
-        : videoStreams?.[
-            clientsForHost[clientId]?.screenShareVideoStreamID ?? ""
-          ];
+        ? localScreenFor(index)
+        : videoStreams?.[shareOf(clientsForHost[clientId], index).videoStreamID];
       const settings = stream?.getVideoTracks()[0]?.getSettings();
       if (settings?.width && settings?.height)
         return settings.width / settings.height;
@@ -872,8 +882,8 @@ export const VoiceView = ({
     return 16 / 9;
   }, [
     screenItems,
+    localScreenFor,
     currentConnectionId,
-    localScreenStream,
     videoStreams,
     clientsForHost,
   ]);
@@ -976,9 +986,9 @@ export const VoiceView = ({
     if (voiceTileLayout !== "bento") return null;
 
     const items: BentoItem[] = screenItems.map((id) => {
-      const client = clientsForHost[id.slice(7)];
-      const shareId = client?.screenShareVideoStreamID;
-      const watched = id.slice(7) === currentConnectionId || (!!shareId && watchedShares.has(shareId));
+      const { clientId, index } = parseScreenItem(id);
+      const shareId = shareOf(clientsForHost[clientId], index).videoStreamID;
+      const watched = clientId === currentConnectionId || (!!shareId && watchedShares.has(shareId));
       return { id, kind: watched ? "share" : "cam" };
     });
 
@@ -1035,9 +1045,7 @@ export const VoiceView = ({
     if (!focusedStream) return;
 
     const isScreenTile = focusedStream.itemId.startsWith("screen:");
-    const clientId = isScreenTile
-      ? focusedStream.itemId.slice(7)
-      : focusedStream.itemId;
+    const { clientId, index: shareIndex } = parseScreenItem(focusedStream.itemId);
 
     if (clientId === currentConnectionId) return;
 
@@ -1046,7 +1054,8 @@ export const VoiceView = ({
 
     const fallbackCameraStreamID = fallbackCameraStreamIdByClientId[clientId];
 
-    const screenStream = client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] : undefined;
+    const share = shareOf(client, shareIndex);
+    const screenStream = share.videoStreamID ? videoStreams?.[share.videoStreamID] : undefined;
     const currentStream = isScreenTile
       ? screenStream
       : (cameraStreamFor(
@@ -1056,7 +1065,7 @@ export const VoiceView = ({
         ) ?? undefined);
 
     const latestAudioStreamId = isScreenTile
-      ? client.screenShareAudioStreamID || undefined
+      ? share.audioStreamID || undefined
       : focusedStream.audioStreamId;
 
     const streamChanged =
@@ -1087,7 +1096,7 @@ export const VoiceView = ({
 
     for (const itemId of poppedOutItems) {
       const isScreenTile = itemId.startsWith("screen:");
-      const clientId = isScreenTile ? itemId.slice(7) : itemId;
+      const { clientId, index: shareIndex } = parseScreenItem(itemId);
       const isSelf = clientId === currentConnectionId;
       const client = clientsForHost[clientId];
 
@@ -1095,8 +1104,9 @@ export const VoiceView = ({
 
       const fallbackCameraStreamID = fallbackCameraStreamIdByClientId[clientId];
 
-      const remoteScreen = client.screenShareVideoStreamID ? videoStreams?.[client.screenShareVideoStreamID] : null;
-      const screenStream = isSelf ? localScreenStream : remoteScreen;
+      const shareId = shareOf(client, shareIndex).videoStreamID;
+      const remoteScreen = shareId ? videoStreams?.[shareId] : null;
+      const screenStream = isSelf ? localScreenFor(shareIndex) : remoteScreen;
       const cameraStream = isSelf
         ? localCameraStream
         : cameraStreamFor(client.cameraStreamID, fallbackCameraStreamID, videoStreams);
@@ -1108,6 +1118,7 @@ export const VoiceView = ({
     }
   }, [
     poppedOutItems,
+    localScreenFor,
     videoStreams,
     clientsForHost,
     currentConnectionId,
@@ -1130,8 +1141,8 @@ export const VoiceView = ({
 
   useEffect(() => {
     if (!focusedStream?.itemId.startsWith("screen:")) return;
-    const id = focusedStream.itemId.slice(7);
-    const shareId = clientsForHost[id]?.screenShareVideoStreamID;
+    const { clientId: id, index } = parseScreenItem(focusedStream.itemId);
+    const shareId = shareOf(clientsForHost[id], index).videoStreamID;
     if (id !== currentConnectionId && (!shareId || !watchedShares.has(shareId))) setFocusedStream(null);
   }, [focusedStream, clientsForHost, currentConnectionId, watchedShares]);
 
@@ -1218,7 +1229,7 @@ export const VoiceView = ({
     tileSize?: { width: number; height: number },
   ) => {
     const isScreenTile = itemId.startsWith("screen:");
-    const clientId = isScreenTile ? itemId.slice(7) : itemId;
+    const { clientId, index: shareIndex } = parseScreenItem(itemId);
     const client = clientsForHost[clientId];
 
     if (!client) return null;
@@ -1226,7 +1237,7 @@ export const VoiceView = ({
     const isSelf = clientId === currentConnectionId;
     const serverUserId = client?.serverUserId;
     // By person, not socket: a reconnect hands out a new socket id, and a new key remounts the video.
-    const tileKey = serverUserId ? `${isScreenTile ? "screen:" : ""}${serverUserId}` : itemId;
+    const tileKey = serverUserId ? `${isScreenTile ? screenItemId(serverUserId, shareIndex) : serverUserId}` : itemId;
 
     return (
       <motion.div
@@ -1266,7 +1277,7 @@ export const VoiceView = ({
               showPeerLatency={showPeerLatency}
               latencyStats={getLatencyStats(clientId, isSelf)}
               localCameraStream={localCameraStream}
-              localScreenStream={localScreenStream}
+              localScreenStream={localScreenFor(shareIndex)}
               videoStreams={videoStreams}
               fallbackCameraStreamID={
                 fallbackCameraStreamIdByClientId[clientId] || null
@@ -1388,10 +1399,9 @@ export const VoiceView = ({
           {isFocused &&
             (() => {
               const isScreenTile = focusedStream.itemId.startsWith("screen:");
-              const focusClientId = isScreenTile
-                ? focusedStream.itemId.slice(7)
-                : focusedStream.itemId;
+              const { clientId: focusClientId, index: focusShareIndex } = parseScreenItem(focusedStream.itemId);
               const focusClient = clientsForHost[focusClientId];
+              const focusShareId = shareOf(focusClient, focusShareIndex).videoStreamID;
               const focusIsSelf = focusClientId === currentConnectionId;
               const focusServerUserId = focusClient?.serverUserId;
               const focusMember = focusServerUserId
@@ -1409,8 +1419,8 @@ export const VoiceView = ({
                   onClose={handleCloseFocus}
                   onPopout={handleFocusedPopout}
                   onStopWatching={
-                    isScreenTile && !focusIsSelf && focusClient?.screenShareVideoStreamID
-                      ? () => stopWatchingShare(focusClient.screenShareVideoStreamID ?? "")
+                    isScreenTile && !focusIsSelf && focusShareId
+                      ? () => stopWatchingShare(focusShareId)
                       : undefined
                   }
                 />

@@ -22,6 +22,8 @@ export type Client = {
   screenShareEnabled?: boolean;
   screenShareVideoStreamID?: string;
   screenShareAudioStreamID?: string;
+  /** Every shared window; the first is also in the two fields above (GRYT-1905). */
+  screenShares?: { videoStreamID: string; audioStreamID: string }[];
   status?: UserStatus;
   lastSeen?: Date;
 };
