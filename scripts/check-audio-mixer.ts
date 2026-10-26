@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 
-import { AudioMixer, MAX_QUEUED_BYTES, MIX_CHUNK_BYTES } from "../electron/audioMixer.ts";
+import { AudioMixer, MAX_QUEUED_BYTES, MIX_CHUNK_BYTES, wholeFrames } from "../electron/audioMixer.ts";
 
 /** A chunk of `frames` stereo frames where every sample is `value`. */
 function pcm(value: number, frames = MIX_CHUNK_BYTES / 4) {
@@ -104,6 +104,19 @@ function firstSample(buf: Buffer | null) {
 
   mixer.remove("a");
   assert.equal(mixer.pull(), null, "no sources, nothing to send");
+}
+
+// A capture sent on its own is cut on whole frames: a pipe can split mid-sample (GRYT-1905).
+{
+  let carry: Buffer = Buffer.alloc(0);
+  const sent: number[] = [];
+  for (const size of [6, 3, 7]) {
+    const out = wholeFrames(carry, Buffer.alloc(size, 1));
+    carry = out.carry;
+    sent.push(out.frames.byteLength);
+  }
+  assert.deepEqual(sent, [4, 4, 8], "frames were cut mid-sample");
+  assert.equal(carry.byteLength, 0, "bytes were lost or kept");
 }
 
 console.log("audio mixer ok");

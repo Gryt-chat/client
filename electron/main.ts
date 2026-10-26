@@ -58,6 +58,7 @@ import {
   isNativeAudioCaptureAvailable,
   listAudioCaptureSources,
   setAudioCaptureApplications,
+  setPerSourceAudio,
   startNativeAudioCapture,
   stopNativeAudioCapture,
   supportsPerApplicationAudio,
@@ -3863,6 +3864,10 @@ if (!gotSingleInstanceLock) {
           );
         }
       );
+
+      ipcMain.on("native-audio-per-source", (_event, on: unknown) => {
+        setPerSourceAudio(on === true);
+      });
 
       ipcMain.handle(
         "list-audio-capture-sources",

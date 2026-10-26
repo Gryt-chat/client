@@ -416,6 +416,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("native-audio-data", handler);
   },
 
+  /** Each capture on its own instead of the mix, tagged with the windows it is (GRYT-1905). */
+  setNativeAudioPerSource(on: boolean) {
+    ipcRenderer.send("native-audio-per-source", on);
+  },
+
+  onNativeAudioSourceData(callback: (sourceIds: string[], pcm: ArrayBuffer) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, data: { sourceIds: string[]; pcm: ArrayBuffer }) =>
+      callback(data.sourceIds, data.pcm);
+    ipcRenderer.on("native-audio-source-data", handler);
+    return () => ipcRenderer.removeListener("native-audio-source-data", handler);
+  },
+
   onNativeAudioStopped(callback: () => void) {
     const handler = () => callback();
     ipcRenderer.on("native-audio-stopped", handler);
