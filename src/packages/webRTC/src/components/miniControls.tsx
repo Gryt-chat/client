@@ -33,7 +33,8 @@ const buttonAnimations: Variants = {
 export function MiniControls({
   direction = "row",
 }: {
-  direction: "row" | "column";
+  /** "popout" is the pop-out window's hover bar: a left-to-right row on the capsule, without the call's face. */
+  direction: "row" | "column" | "popout";
 }) {
   const inACall = useInACall();
   const {
@@ -67,7 +68,8 @@ export function MiniControls({
 
   const { resolvedAppearance } = useTheme();
   const isColumn = direction === "column";
-  const iconSize = isColumn ? 16 : 12;
+  const capsule = direction !== "row";
+  const iconSize = direction === "row" ? 12 : 16;
 
   return (
     <>
@@ -81,12 +83,12 @@ export function MiniControls({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className={isColumn ? "gryt-call-capsule" : undefined}
-            data-live={isColumn ? String(voice.live) : undefined}
-            data-appearance={isColumn ? resolvedAppearance : undefined}
+            className={capsule ? "gryt-call-capsule" : undefined}
+            data-live={capsule ? String(voice.live) : undefined}
+            data-appearance={capsule ? resolvedAppearance : undefined}
             style={{
               display: "flex",
-              flexDirection: isColumn ? "column" : "row-reverse",
+              flexDirection: ({ column: "column", row: "row-reverse", popout: "row" } as const)[direction],
               alignItems: "center",
               gap: isColumn ? "5px" : "8px",
             }}
