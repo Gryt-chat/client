@@ -1568,7 +1568,8 @@ export const VoiceView = ({
                     left: 0,
                     right: 0,
                     display: "flex",
-                    justifyContent: "center",
+                    alignItems: "flex-end",
+                    gap: 12,
                     padding: "12px",
                     pointerEvents: "none",
                   }}
@@ -1576,17 +1577,14 @@ export const VoiceView = ({
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <div style={{ pointerEvents: "auto" }}>
+                  {/* Equal spacers either side keep the bar centred; the right one holds the view buttons in flow, so they can't overlap. */}
+                  <div style={{ flex: 1 }} />
+                  <div style={{ pointerEvents: "auto", flex: "0 1 auto", minWidth: 0 }}>
                     <Controls onDisconnect={onDisconnect} />
                   </div>
-
+                  <div className="flex gap-2 justify-end" style={{ flex: 1, pointerEvents: "none" }}>
                   {onToggleMaximize && (
-                    <div className="flex gap-2" style={{
-                        position: "absolute",
-                        right: 12,
-                        bottom: 12,
-                        pointerEvents: "auto",
-                      }}>
+                    <div className="flex gap-2" style={{ pointerEvents: "auto", paddingBottom: 8 }}>
                       <Tooltip
                         title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
                       >
@@ -1631,6 +1629,7 @@ export const VoiceView = ({
                       )}
                     </div>
                   )}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

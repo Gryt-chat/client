@@ -6,18 +6,19 @@ import { useSettings } from "@/settings";
 
 import { PiCameraFill, PiCameraSlashFill } from "../../../../lib/icons";
 import { CAMERA_PRESETS, presetKey, presetLabel } from "../utils/streamQuality";
-import { CallControlButton } from "./CallControlButton";
+import { CallControlButton, type CallControlButtonProps } from "./CallControlButton";
 import { CameraPreviewModal } from "./CameraPreviewModal";
 
 interface CameraControlProps {
   iconSize?: number;
+  size?: CallControlButtonProps["size"];
   /** Whether the room lets you start one. A camera already on keeps its button either way. */
   allowed?: boolean;
   side?: "top" | "right";
 }
 
 /** Off, it opens the preview. Live, a menu: the engine reopens the camera on a new setting. */
-export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: CameraControlProps) {
+export function CameraControl({ iconSize = 16, size, allowed = true, side = "top" }: CameraControlProps) {
   const { cameraEnabled, setCameraEnabled, devices } = useCamera();
   const {
     cameraID, setCameraID, cameraQuality, setCameraQuality,
@@ -42,7 +43,7 @@ export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: C
     <>
       {cameraEnabled ? (
         <Menu.Root>
-          <Menu.Trigger render={<CallControlButton state="live" aria-label="Camera is on" />}>
+          <Menu.Trigger render={<CallControlButton size={size} state="live" aria-label="Camera is on" />}>
             <PiCameraFill size={iconSize} />
           </Menu.Trigger>
           <Menu.Portal>
@@ -87,7 +88,7 @@ export function CameraControl({ iconSize = 16, allowed = true, side = "top" }: C
           </Menu.Portal>
         </Menu.Root>
       ) : (
-        <CallControlButton state="idle" aria-label="Turn camera on" onClick={() => setShowPreview(true)}>
+        <CallControlButton size={size} state="idle" aria-label="Turn camera on" onClick={() => setShowPreview(true)}>
           <PiCameraSlashFill size={iconSize} />
         </CallControlButton>
       )}
