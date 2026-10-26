@@ -31,7 +31,7 @@ import toast from "react-hot-toast";
 import { useSettings } from "@/settings";
 import { Controls } from "@/webRTC";
 
-import { PiArrowLineLeftFill, PiArrowLineRightFill, PiCameraSlashFill,PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "../../../../lib/icons";
+import { PiCameraSlashFill,PiChatTeardropTextFill, PiCornersInFill, PiCornersOutFill, PiMicrophoneSlashFill } from "../../../../lib/icons";
 import { useAloneInCall } from "../hooks/useAloneInCall";
 import type { PeerLatencyStats } from "../hooks/usePeerLatency";
 import { usePopoutStreams } from "../hooks/usePopoutStreams";
@@ -270,8 +270,6 @@ export const VoiceView = ({
   onFocusChange,
   chatHidden,
   onToggleChat,
-  isMaximized,
-  onToggleMaximize,
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
@@ -298,8 +296,6 @@ export const VoiceView = ({
   onFocusChange?: (focused: boolean) => void;
   chatHidden?: boolean;
   onToggleChat?: () => void;
-  isMaximized?: boolean;
-  onToggleMaximize?: () => void;
 }) => {
   const {
     showPeerLatency,
@@ -759,6 +755,8 @@ export const VoiceView = ({
   }, []);
 
   const isFocused = !!focusedStream;
+  // The 334px bar and the fullscreen button side by side. Narrower (preset 1) the button waits for a wider view.
+  const fullscreenFits = isFullscreen || gridWidth >= 424;
 
   useLayoutEffect(() => {
     onFocusChange?.(isFocused);
@@ -1621,71 +1619,39 @@ export const VoiceView = ({
                   style={{
                     position: "absolute",
                     bottom: 0,
-                    left: 0,
-                    right: 0,
+                    // Out over the panel's padding: at preset 1 the bar needs 334 of its 352px.
+                    left: -12,
+                    right: -12,
                     display: "flex",
                     alignItems: "flex-end",
+                    justifyContent: "center",
                     gap: 12,
-                    padding: "12px",
+                    padding: "12px 0",
                     pointerEvents: "none",
                   }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  {/* Equal spacers either side keep the bar centred; the right one holds the view buttons in flow, so they can't overlap. */}
-                  <div style={{ flex: 1 }} />
+                  {/* Equal spacers either side keep the bar centred; the right one holds the fullscreen button in flow, so it can't overlap. */}
+                  {fullscreenFits && <div style={{ flex: 1 }} />}
                   <div style={{ pointerEvents: "auto", flex: "0 1 auto", minWidth: 0 }}>
                     <Controls onDisconnect={onDisconnect} />
                   </div>
-                  <div className="flex gap-2 justify-end" style={{ flex: 1, pointerEvents: "none" }}>
-                  {onToggleMaximize && (
-                    <div className="flex gap-2" style={{ pointerEvents: "auto", paddingBottom: 8 }}>
-                      <Tooltip
-                        title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}
-                      >
-                        <IconButton tone="neutral" size="xsmall"
-                          aria-label={
-                            isFullscreen
-                              ? "Leave fullscreen"
-                              : "Fullscreen voice view"
-                          }
-                          onClick={toggleFullscreen}
-                        >
-                          {isFullscreen ? (
-                            <PiCornersInFill size={18} />
-                          ) : (
-                            <PiCornersOutFill size={18} />
-                          )}
-                        </IconButton>
-                      </Tooltip>
-
-                      {/* Nothing to maximise into while the voice view already
-                          covers the screen, so the control goes rather than
-                          sitting there doing nothing. */}
-                      {!isFullscreen && (
-                        <Tooltip
-                          title={isMaximized ? "Restore" : "Maximize"}
-                        >
+                  {fullscreenFits && (
+                    <div className="flex justify-end" style={{ flex: 1, pointerEvents: "none", paddingRight: 12 }}>
+                      <div style={{ pointerEvents: "auto", paddingBottom: 8 }}>
+                        <Tooltip title={isFullscreen ? "Leave fullscreen" : "Fullscreen"}>
                           <IconButton tone="neutral" size="xsmall"
-                            aria-label={
-                              isMaximized
-                                ? "Restore voice view"
-                                : "Maximize voice view"
-                            }
-                            onClick={onToggleMaximize}
+                            aria-label={isFullscreen ? "Leave fullscreen" : "Fullscreen voice view"}
+                            onClick={toggleFullscreen}
                           >
-                            {isMaximized ? (
-                              <PiArrowLineLeftFill size={16} />
-                            ) : (
-                              <PiArrowLineRightFill size={16} />
-                            )}
+                            {isFullscreen ? <PiCornersInFill size={18} /> : <PiCornersOutFill size={18} />}
                           </IconButton>
                         </Tooltip>
-                      )}
+                      </div>
                     </div>
                   )}
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

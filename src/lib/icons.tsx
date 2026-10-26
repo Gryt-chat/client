@@ -12,6 +12,7 @@ import {
   ArrowLineRight,
   ArrowsClockwise,
   ArrowsLeftRight,
+  ArrowsOut,
   ArrowSquareOut,
   ArrowUp,
   At,
@@ -168,6 +169,7 @@ export const PiArrowLineRightFill: Icon = weighted(ArrowLineRight, "fill", "PiAr
 export const PiArrowsClockwiseBold: Icon = weighted(ArrowsClockwise, "bold", "PiArrowsClockwiseBold");
 export const PiArrowsClockwiseFill: Icon = weighted(ArrowsClockwise, "fill", "PiArrowsClockwiseFill");
 export const PiArrowsLeftRightFill: Icon = weighted(ArrowsLeftRight, "fill", "PiArrowsLeftRightFill");
+export const PiArrowsOutBold: Icon = weighted(ArrowsOut, "bold", "PiArrowsOutBold");
 export const PiArrowSquareOutBold: Icon = weighted(ArrowSquareOut, "bold", "PiArrowSquareOutBold");
 export const PiArrowSquareOutFill: Icon = weighted(ArrowSquareOut, "fill", "PiArrowSquareOutFill");
 export const PiAtFill: Icon = weighted(At, "fill", "PiAtFill");
@@ -210,6 +212,7 @@ export const PiDotsThreeVerticalBold: Icon = weighted(DotsThreeVertical, "bold",
 export const PiDownloadSimpleFill: Icon = weighted(DownloadSimple, "fill", "PiDownloadSimpleFill");
 export const PiEnvelopeFill: Icon = weighted(Envelope, "fill", "PiEnvelopeFill");
 export const PiEyeFill: Icon = weighted(Eye, "fill", "PiEyeFill");
+export const PiEyeSlashBold: Icon = weighted(EyeSlash, "bold", "PiEyeSlashBold");
 export const PiEyeSlashFill: Icon = weighted(EyeSlash, "fill", "PiEyeSlashFill");
 export const PiFadersHorizontalFill: Icon = weighted(FadersHorizontal, "fill", "PiFadersHorizontalFill");
 export const PiFileAudioFill: Icon = weighted(FileAudio, "fill", "PiFileAudioFill");

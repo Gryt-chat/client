@@ -221,6 +221,7 @@ jobs:
       - run: yarn test:fake-participants
       - run: yarn test:narrow-layout
       - run: yarn test:bento-layout
+      - run: yarn test:voice-grip
       - run: yarn test:permission-grid
       - run: yarn test:channel-answer
       - run: yarn test:call-controls
