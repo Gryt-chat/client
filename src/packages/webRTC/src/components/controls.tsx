@@ -1,5 +1,5 @@
 import { IconButton, Tooltip } from "@gryt/ui";
-import { estimateBitrate, getIsBrowserSupported, type ScreenShareQuality, SFUConnectionState, useCamera, useScreenShare, type VideoSendSettings } from "@gryt/voice";
+import { getIsBrowserSupported, SFUConnectionState, useCamera, useScreenShare } from "@gryt/voice";
 import { useSFU } from "@gryt/voice";
 import { voiceLog } from "@gryt/voice";
 import { useEffect, useRef, useState } from "react";
@@ -13,12 +13,13 @@ import { getElectronAPI } from "../../../../lib/electron";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSignOutFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
 import { useInACall } from "../adapters/inACall";
+import { type AnnouncedShare, useExtraScreenWindows } from "../adapters/useExtraScreenWindows";
 import { useScreenAudioMute } from "../adapters/useScreenAudioMute";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 import { useVoiceSounds } from "../adapters/useVoiceSounds";
 import { attachEncodedTransform, type EncodedTransformHandle, isEncodedTransformSupported } from "../utils/encodedTransform";
 import { senderStreamId } from "../utils/senderStreamIds";
-import { liftScreenCapture, qualityBox } from "../utils/streamQuality";
+import { liftScreenCapture, screenSendSettings } from "../utils/streamQuality";
 import { BAR_BUTTON_STYLE, BAR_SOLO_CLASS, CallControlButton, LEAVE_CLASS, SPLIT_BUTTON_CLASS, SplitControl } from "./CallControlButton";
 import { CameraControl } from "./CameraControl";
 import { controlState } from "./controlState";
@@ -79,6 +80,8 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeEncodedCodec, subscribeEncodedFrames, stopScreenShare } = useScreenShare();
   const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
   const { supported: canPickAudioSources } = useScreenAudioSources();
+  const extraShares = useExtraScreenWindows();
+  const extraSharesKey = JSON.stringify(extraShares);
   const [showAudioSourcesModal, setShowAudioSourcesModal] = useState(false);
   const [micMenuOpen, setMicMenuOpen] = useState(false);
   const [headsetMenuOpen, setHeadsetMenuOpen] = useState(false);
@@ -162,29 +165,13 @@ export function Controls({ onDisconnect }: ControlsProps) {
         webrtcScreenVideoStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "screenVideo", screenVideoStream.id);
         prevScreenVideoRef.current = screenVideoStream;
 
-        let bitrate: number | null;
-        if (screenShareMaxBitrate > 0) {
-          bitrate = screenShareMaxBitrate;
-        } else {
-          bitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, screenShareFps);
-          if (bitrate && screenShareGamingMode) {
-            bitrate = Math.min(Math.round(bitrate * 1.5), 50_000_000);
-          }
-        }
         const quality = screenShareQuality;
         const fps = screenShareFps;
-        const box = qualityBox(quality);
-        const isH264 = screenShareCodec === "h264" || (!screenShareCodec || screenShareCodec === "auto");
-        const settings: VideoSendSettings = {
-          priority: "high",
-          maxBitrate: bitrate ?? 50_000_000,
-          maxFramerate: fps,
-          maxSize: box ? { width: box.maxWidth, height: box.maxHeight } : null,
-          degradationPreference: screenShareGamingMode ? "maintain-framerate" : "maintain-resolution",
-          scalabilityMode: !isH264 && screenShareScalabilityMode !== "L1T1" ? screenShareScalabilityMode : undefined,
-          // Frames the native encoder made are injected past the encoder, so viewers can't size them (GRYT-1436).
-          followDemand: nativeEncodedCodec !== "h264",
-        };
+        const settings = screenSendSettings({
+          quality, fps, gamingMode: screenShareGamingMode, codec: screenShareCodec,
+          maxBitrate: screenShareMaxBitrate, scalabilityMode: screenShareScalabilityMode,
+          nativeH264: nativeEncodedCodec === "h264",
+        });
         voiceLog.info("SCREEN", `settings: maxBitrate=${settings.maxBitrate} maxFramerate=${fps} ceiling=${quality} scalabilityMode=${settings.scalabilityMode ?? "none"} degradationPreference=${settings.degradationPreference}`);
         // In order, so a quick second pick can't land before the first.
         screenLiftChain.current = screenLiftChain.current
@@ -303,7 +290,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   /* The last camera and screen payloads this client sent, readable from a listener
      wired once that would otherwise close over whatever they were then. */
   const lastCameraStateRef = useRef<{ enabled: boolean; streamId: string } | null>(null);
-  const lastScreenStateRef = useRef<{ enabled: boolean; videoStreamId: string; audioStreamId: string } | null>(null);
+  const lastScreenStateRef = useRef<{ enabled: boolean; videoStreamId: string; audioStreamId: string; shares?: AnnouncedShare[] } | null>(null);
 
   // Emit camera state to server
   useEffect(() => {
@@ -326,11 +313,13 @@ export function Controls({ onDisconnect }: ControlsProps) {
     if (!isConnected || !currentServerConnected) return;
     const socket = sockets[currentServerConnected];
     if (socket) {
-      const payload = {
-        enabled: screenShareActive,
+      const first = {
         videoStreamId: (screenShareActive && webrtcScreenVideoStreamId.current) || screenVideoStream?.id || "",
         audioStreamId: screenAudioStreamId(screenShareActive, screenAudioStream, webrtcScreenAudioStreamId.current),
       };
+      const extra: AnnouncedShare[] = JSON.parse(extraSharesKey);
+      // Older servers read the single pair; `shares` carries every window (GRYT-1905).
+      const payload = { enabled: screenShareActive, ...first, ...(extra.length ? { shares: [first, ...extra] } : {}) };
       lastScreenStateRef.current = payload;
       voiceLog.info("SCREEN", `controls: emitting voice:screen:state`, payload);
       if (screenShareActive && !payload.audioStreamId) {
@@ -338,7 +327,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       }
       socket.emit("voice:screen:state", payload);
     }
-  }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets]);
+  }, [screenShareActive, screenVideoStream, screenAudioStream, isConnected, currentServerConnected, sockets, extraSharesKey]);
 
   /* Re-announce camera and screen after a reconnect, on `voice:room:granted` and
      not on the reconnect itself: permissions are not cached yet (GRYT-612). */
