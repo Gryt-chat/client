@@ -406,7 +406,7 @@ export const settingsInit: Settings = {
   setCameraQuality: noop,
   cameraMirrored: true,
   setCameraMirrored: noop,
-  faceFramingEnabled: false,
+  faceFramingEnabled: true,
   setFaceFramingEnabled: noop,
   voiceTileLayout: "meet",
   setVoiceTileLayout: noop,

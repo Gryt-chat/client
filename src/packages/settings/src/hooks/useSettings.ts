@@ -87,7 +87,7 @@ function useSettingsHook() {
   const [cameraID, setCameraID] = useState("");
   const [cameraQuality, setCameraQuality] = useState("native");
   const [cameraMirrored, setCameraMirrored] = useState(true);
-  const [faceFramingEnabled, setFaceFramingEnabled] = useState(false);
+  const [faceFramingEnabled, setFaceFramingEnabled] = useState(true);
   const [voiceTileLayout, setVoiceTileLayout] =
     useState<VoiceTileLayout>("meet");
   const [voiceTwoPersonLayout, setVoiceTwoPersonLayout] =
@@ -160,7 +160,7 @@ function useSettingsHook() {
       setCameraID(getUserValue("cameraID", ""));
       setCameraQuality(getUserValue("cameraQuality", "native"));
       setCameraMirrored(getUserValue("cameraMirrored", true));
-      setFaceFramingEnabled(getUserValue("faceFramingEnabled", false));
+      setFaceFramingEnabled(getUserValue("faceFramingEnabled", true));
       setVoiceTileLayout(
         getUserValue<VoiceTileLayout>("voiceTileLayout", "meet"),
       );
