@@ -191,7 +191,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
 
           <div className="mt-4 flex items-center justify-between gap-4">
             <span className="text-[13px] leading-snug text-gryt-muted">{hint}</span>
-            <div className="flex flex-none gap-2">
+            <div className="flex flex-none flex-wrap gap-2">
               <Button tone="ghost" size="small" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button
                 size="small"
