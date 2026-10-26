@@ -1476,6 +1476,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               threadUnreadCounts={threadUnreadCounts}
               mentionCounts={mentionCounts}
               streamSources={voiceStreamSources}
+              videoStreams={voiceVideoStreams}
             />
             )}
             <div className="flex grow" ref={attachVoiceContainer} style={{ position: "relative", minWidth: 0 }}>

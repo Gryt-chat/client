@@ -1,6 +1,6 @@
 import { Button, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
-import { useMicrophone } from "@gryt/voice";
+import { useCamera, useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import toast from "react-hot-toast";
@@ -25,6 +25,7 @@ import { channelHref } from "@/lib/mentionTokens";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiChatTeardropTextFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { cameraStreamFor } from "../lib/cameraStream";
 import type { Client } from "../types/clients";
 import { ConnectedUser } from "./connectedUser";
 import { EmojiText } from "./EmojiText";
@@ -121,12 +122,14 @@ export const ChannelList = ({
   members,
   currentChannelId,
   currentServerConnected,
+  showVoiceView,
   isConnecting,
   currentConnectionId,
   selectedChannelId,
   onChannelClick,
   clientsSpeaking,
   streamSources,
+  videoStreams,
   canManage,
   onEditItem,
   onDeleteItem,
@@ -155,6 +158,8 @@ export const ChannelList = ({
   onChannelClick: (channel: Channel) => void;
   clientsSpeaking: Record<string, boolean>;
   streamSources?: StreamSources;
+  /** Remote cameras, drawn in the rows of the call you're in while its view is hidden. */
+  videoStreams?: Record<string, MediaStream>;
   canManage?: boolean;
   onEditItem?: (item: SidebarItem) => void;
   onDeleteItem?: (item: SidebarItem) => void;
@@ -178,6 +183,7 @@ export const ChannelList = ({
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
   const { microphoneBuffer } = useMicrophone(false);
+  const { cameraStream: localCamera } = useCamera();
 
   const memberByServerUserId = new Map(
     (members || []).map((m) => [m.serverUserId, m])
@@ -354,6 +360,11 @@ export const ChannelList = ({
     const locked = channel?.type === "voice" && channel.canJoin === false;
     const hasVoiceMembers = channel?.type === "voice" && Object.values(clients).some((c) => c.voiceChannelId === channelId);
     const inThisCall = hasVoiceMembers && channel?.id === currentChannelId && serverHost === currentServerConnected;
+    // Only in the call you're in, and only while its view is hidden: the tiles already show the cameras.
+    const liveCameraFor = (id: string) => {
+      if (!inThisCall || showVoiceView || !clients[id].cameraEnabled) return null;
+      return id === currentConnectionId ? localCamera : cameraStreamFor(clients[id].cameraStreamID, null, videoStreams);
+    };
 
     const selected = channel?.id === selectedChannelId;
 
@@ -508,6 +519,7 @@ export const ChannelList = ({
                           }
                           screenShareEnabled={clients[id].screenShareEnabled}
                           cameraEnabled={clients[id].cameraEnabled}
+                          liveCamera={liveCameraFor(id)}
                           canDisconnect={!!onDisconnectUser}
                           onDisconnectFromVoice={onDisconnectUser && clients[id].serverUserId ? () => onDisconnectUser(clients[id].serverUserId ?? "") : undefined}
                           role={currentUserRole}

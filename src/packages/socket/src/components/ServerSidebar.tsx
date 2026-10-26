@@ -54,6 +54,7 @@ interface ServerSidebarProps {
   onChannelClick: (channel: Channel) => void;
   clientsSpeaking: Record<string, boolean>;
   streamSources?: StreamSources;
+  videoStreams?: Record<string, MediaStream>;
   canManage: boolean;
   onEditItem: (item: SidebarItem) => void;
   onDeleteItem: (item: SidebarItem) => void;
@@ -80,7 +81,7 @@ export const ServerSidebar = ({
   channels, sidebarItems, serverHost, clients, members,
   currentChannelId, currentServerConnected, showVoiceView,
   isConnecting, currentConnectionId, selectedChannelId,
-  onChannelClick, clientsSpeaking, streamSources,
+  onChannelClick, clientsSpeaking, streamSources, videoStreams,
   canManage, onEditItem, onDeleteItem, onMoveItem, onReorder, orderResetKey, onAddItem,
   onDisconnectUser, currentUserRole, adminActions, unreadCounts, threadUnreadCounts, mentionCounts,
 }: ServerSidebarProps) => (
@@ -175,6 +176,7 @@ export const ServerSidebar = ({
                 onChannelClick={onChannelClick}
                 clientsSpeaking={clientsSpeaking}
                 streamSources={streamSources}
+                videoStreams={videoStreams}
                 canManage={canManage}
                 onEditItem={onEditItem}
                 onDeleteItem={onDeleteItem}
