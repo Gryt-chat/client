@@ -1,7 +1,7 @@
 /** Tile ids for shared windows (GRYT-1905): the first keeps today's id, later ones are numbered. */
 import assert from "node:assert/strict";
 
-import { parseScreenItem, screenItemId, shareCount, shareOf } from "../src/packages/socket/src/lib/screenItems.ts";
+import { parseScreenItem, screenItemId, shareCount, shareOf, withSharing } from "../src/packages/socket/src/lib/screenItems.ts";
 
 assert.equal(screenItemId("sock-a", 0), "screen:sock-a");
 assert.equal(screenItemId("sock-a", 2), "screen:sock-a#2");
@@ -18,5 +18,9 @@ const two = { ...legacy, screenShares: [{ videoStreamID: "v0", audioStreamID: "a
 assert.equal(shareCount(two), 2);
 assert.deepEqual(shareOf(two, 1), { videoStreamID: "v1", audioStreamID: "" });
 assert.equal(shareCount({ ...two, screenShareEnabled: false }), 0);
+
+const members = [{ serverUserId: "u1" }, { serverUserId: "u2" }];
+assert.equal(withSharing(members, { a: { serverUserId: "u1" } }), members, "nobody sharing keeps the array");
+assert.deepEqual(withSharing(members, { a: { ...two, serverUserId: "u2" } }), [{ serverUserId: "u1" }, { serverUserId: "u2", sharing: 2 }]);
 
 console.log("screen items ok: the first window keeps its id, later ones are numbered, older servers show one");
