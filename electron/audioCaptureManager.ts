@@ -8,7 +8,7 @@ import { app, type BrowserWindow } from "electron";
 import { existsSync } from "fs";
 import { join } from "path";
 
-import { AudioMixer } from "./audioMixer";
+import { AudioMixer, wholeFrames } from "./audioMixer";
 import { type CaptureProblem, NO_AUDIO_TIMEOUT_MS, problemFromExit, problemFromSilence } from "./captureHealth";
 import { type CapturePlan, planCaptureChange, SYSTEM_AUDIO_SOURCE_ID } from "./captureSet";
 
@@ -25,6 +25,15 @@ function pidKey(pid: number): string {
 
 const captures = new Map<string, Capture>();
 const mixer = new AudioMixer();
+
+/* A renderer that keeps each window's sound apart opts in, and then gets every capture on its
+   own, tagged with the windows it belongs to, instead of the mix (GRYT-1905). */
+let perSource = false;
+const sourcesByKey = new Map<string, string[]>();
+
+export function setPerSourceAudio(on: boolean): void {
+  perSource = on;
+}
 
 /**
  * The window source ids the renderer last asked for, which is what it gets back.
@@ -177,6 +186,7 @@ function spawnCapture(
   startStats();
 
   let firstDataLogged = false;
+  let carry: Buffer = Buffer.alloc(0);
   let stderr = "";
   const startedAt = Date.now();
 
@@ -200,6 +210,15 @@ function spawnCapture(
       firstDataLogged = true;
     }
 
+    if (perSource) {
+      const out = wholeFrames(carry, chunk);
+      carry = out.carry;
+      if (out.frames.byteLength) {
+        const ab = out.frames.buffer.slice(out.frames.byteOffset, out.frames.byteOffset + out.frames.byteLength);
+        window.webContents.send("native-audio-source-data", { sourceIds: sourcesByKey.get(id) ?? [], pcm: ab });
+      }
+      return;
+    }
     mixer.push(id, chunk);
     drain(window);
   });
@@ -301,6 +320,7 @@ export function startNativeAudioCapture(
 
   sendDiag(`start requested sourceId=${sourceId ?? "none"}`);
 
+  sourcesByKey.set(SYSTEM_AUDIO_SOURCE_ID, sourceId ? [sourceId] : []);
   return spawnCapture(window, SYSTEM_AUDIO_SOURCE_ID, mode, targetPid);
 }
 
@@ -362,6 +382,8 @@ export function setAudioCaptureApplications(
   requestedSources = resolved
     .filter((r) => captures.has(r.key))
     .map((r) => r.sourceId);
+  for (const key of [...sourcesByKey.keys()]) if (key !== SYSTEM_AUDIO_SOURCE_ID) sourcesByKey.delete(key);
+  for (const r of resolved) sourcesByKey.set(r.key, [...(sourcesByKey.get(r.key) ?? []), r.sourceId]);
 
   return listAudioCaptureSources();
 }
