@@ -170,7 +170,7 @@ export function useEmoteImport({
     const toImportRaw = selectedEmotes.filter((e) => !e.nameError);
     if (toImportRaw.length === 0) return;
     if (!effectiveAccessToken) {
-      toast.error("Not authenticated. Join the server first.");
+      toast.error("You're not signed in to this server. Join it first.");
       return;
     }
 
@@ -220,7 +220,7 @@ export function useEmoteImport({
           )));
 
           const token = await getFreshServerAccessToken(host, socket);
-          if (!token) throw new Error("Not authenticated. Join the server first.");
+          if (!token) throw new Error("You're not signed in to this server. Join it first.");
 
           let result = await stageEmojiViaXhr({
             base,

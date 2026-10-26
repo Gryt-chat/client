@@ -336,7 +336,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       if (data.error === 'rate_limited') {
         handleRateLimitError({ error: data.error, message: data.message }, "Server details");
       } else {
-        toast.error(`Access denied: ${data.message}`);
+        toast.error(data.message || `${host} wouldn't share its details with you.`);
       }
       return;
     }
@@ -870,7 +870,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("error", (msg: unknown) => {
-    const text = typeof msg === "string" ? msg : ((msg as Record<string, unknown>)?.message || "Unknown socket error");
-    toast.error(`[${host}] ${text}`);
+    console.error(`[${host}] socket error:`, msg);
+    toast.error(`Something went wrong talking to ${host}. Try again in a moment.`, { id: `socket-error:${host}` });
   });
 }

@@ -69,7 +69,7 @@ export function ServerEmojisTab({
       setCustomEmojis(list, host);
     } catch (err) {
       console.error("[EmojiUpload] refresh: failed to fetch emojis:", err);
-      toast.error("Failed to fetch emojis.");
+      toast.error("Couldn't load the emoji. Try again in a moment.");
     } finally {
       setLoading(false);
     }

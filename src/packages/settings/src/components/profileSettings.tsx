@@ -483,7 +483,7 @@ export function ProfileSettings() {
       if (hosts.length === 0) {
         await setAvatarFile(uploadFile);
         setStoredWorn(worn);
-        toast("Avatar updated locally (no servers connected).");
+        toast("Avatar saved. Your servers get it next time you connect.");
         return;
       }
 
@@ -534,10 +534,11 @@ export function ProfileSettings() {
       }
 
       if (failed.length > 0) {
+        console.warn("[Avatar] upload failed:", failed);
         if (hosts.length === 1) {
-          toast.error(`Avatar upload failed: ${failed[0].reason}`);
+          toast.error("Your avatar didn't upload. Try again in a moment.");
         } else {
-          toast.error(`Avatar upload failed for ${failed.length}/${hosts.length} servers`);
+          toast.error(`Your avatar didn't upload to ${failed.length} of your ${hosts.length} servers. Try again in a moment.`);
         }
       } else if (anySuccess && isVideo) {
         toast("Your video is uploaded. It shows on your card once the server has converted it.");
@@ -559,7 +560,7 @@ export function ProfileSettings() {
       if (hosts.length === 0) {
         await setAvatarFile(null);
         setAvatarDataUrl(null);
-        toast("Avatar removed locally.");
+        toast("Avatar removed. Your servers catch up next time you connect.");
         return;
       }
 
@@ -595,7 +596,8 @@ export function ProfileSettings() {
       });
 
       if (!anySuccess) {
-        toast.error(failed.length === 1 ? `Remove avatar failed: ${failed[0].reason}` : "Remove avatar failed");
+        console.warn("[Avatar] remove failed:", failed);
+        toast.error("Your avatar couldn't be removed. Try again in a moment.");
         return;
       }
 
@@ -605,7 +607,7 @@ export function ProfileSettings() {
       }
 
       if (failed.length > 0) {
-        toast.error(`Removed avatar, but failed on ${failed.length}/${hosts.length} servers`);
+        toast.error(`Avatar removed, but ${failed.length} of your ${hosts.length} servers still show the old one.`);
       } else {
         toast.success("Avatar removed");
       }

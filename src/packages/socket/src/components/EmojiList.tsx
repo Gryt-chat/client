@@ -41,7 +41,7 @@ export function EmojiList({
 
   const handleDelete = async (emojiName: string) => {
     if (!effectiveAccessToken) {
-      toast.error("Not authenticated.");
+      toast.error("You're not signed in to this server. Join it first.");
       return;
     }
 
@@ -72,7 +72,7 @@ export function EmojiList({
 
   const handleDeleteAll = async () => {
     if (!effectiveAccessToken) {
-      toast.error("Not authenticated.");
+      toast.error("You're not signed in to this server. Join it first.");
       return;
     }
 

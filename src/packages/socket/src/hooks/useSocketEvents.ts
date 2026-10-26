@@ -425,7 +425,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
       socket.on("token:invalid", (message: string) => {
         removeServerAccessToken(host);
         removeServerRefreshToken(host);
-        toast.error(`Session expired: ${message}`);
+        console.warn(`[Auth:Socket] token:invalid for ${host}:`, message);
+        toast.error(`You were signed out of ${host}. Reloading to sign you back in…`);
         setTimeout(() => window.location.reload(), 2000);
       });
 
@@ -454,8 +455,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           socket.emit("token:refresh", { refreshToken });
         } else {
           removeServerRefreshToken(host);
-          const msg = errorInfo.message || errorInfo.error;
-          toast.error(`Auth failed for ${host}: ${msg}`);
+          toast.error(errorInfo.message || `Couldn't sign you in to ${host}. Try joining it again.`);
         }
       });
 
