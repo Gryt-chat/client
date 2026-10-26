@@ -184,6 +184,7 @@ function ThemedApp() {
         position="bottom-right"
         containerStyle={{ zIndex: "var(--gryt-z-toast)" }}
         toastOptions={{
+          className: "gryt-toast",
           style: {
             background: "var(--gryt-neutral-2)",
             color: "var(--gryt-neutral-12)",

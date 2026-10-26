@@ -2607,3 +2607,8 @@ body {
 [data-channel-icons] .gryt-member-row > div {
   flex: none !important;
 }
+
+/* A toast's own icon sits in the bar as a flex child, and long text squeezed it to 0px wide. */
+.gryt-toast > svg {
+  flex-shrink: 0;
+}
