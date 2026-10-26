@@ -1,7 +1,9 @@
-import { Avatar, Skeleton, Tooltip } from "@gryt/ui";
+import { Avatar, PreviewCard, Skeleton, Tooltip } from "@gryt/ui";
 import { useSFU } from "@gryt/voice";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useRef } from "react";
+import { type CSSProperties, type RefObject, useCallback, useEffect, useRef } from "react";
+
+import { useSettings } from "@/settings";
 
 import { PiCameraFill,PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
@@ -86,6 +88,7 @@ export function ConnectedUser({
   liveCamera?: MediaStream | null;
 }) {
   const hue = tileHue(nickname, avatarColor, { nickname, worn: avatarWorn });
+  const rowRef = useRef<HTMLDivElement>(null);
   // Own-transport voice has no analyser; the transport reports its level, as on the tile (GRYT-1830).
   const { getTransportLevels } = useSFU();
   const transportDb = useCallback(
@@ -120,7 +123,7 @@ export function ConnectedUser({
       transition={{ duration: 0.25 }}
       style={{ width: "100%", overflow: "hidden" }}
     >
-      <div className="flex gap-2 items-center px-3 py-2 w-full" style={{
+      <div ref={rowRef} className="flex gap-2 items-center px-3 py-2 w-full" style={{
           opacity: 1,
           transition: "opacity 0.3s ease",
         }}>
@@ -132,7 +135,7 @@ export function ConnectedUser({
               hue={hue}
               size={SIDEBAR_AVATAR_PX}
             />
-            {liveCamera ? <LiveDot stream={liveCamera} nickname={nickname} /> : <Avatar
+            {liveCamera ? <LiveDot stream={liveCamera} nickname={nickname} row={rowRef} /> : <Avatar
               size="small"
               className="h-6 w-6 text-[10px]"
               fallback={nickname[0]}
@@ -181,21 +184,59 @@ export function ConnectedUser({
 }
 
 /** 28px of their camera. Its drawn size is reported, so the sender only needs its lowest layer. */
-function LiveDot({ stream, nickname }: { stream: MediaStream; nickname: string }) {
+function LiveDot({ stream, nickname, row }: { stream: MediaStream; nickname: string; row: RefObject<HTMLDivElement | null> }) {
+  const { setShowVoiceView } = useSettings();
+  return (
+    <PreviewCard.Root>
+      <PreviewCard.Trigger
+        render={
+          <button
+            type="button"
+            aria-label={`${nickname}'s camera`}
+            className="cursor-pointer rounded-full border-0 bg-transparent p-0"
+            onClick={() => setShowVoiceView(true)}
+          />
+        }
+      >
+        <CameraVideo
+          stream={stream}
+          className="h-7 w-7 shrink-0 rounded-full object-cover"
+          style={{ boxShadow: "0 0 0 2px var(--gryt-success-11)", background: "var(--gryt-accent-4)" }}
+        />
+      </PreviewCard.Trigger>
+      <PreviewCard.Portal>
+        {/* Against the whole row, so the peek sits beside the channel list as on the board, not over it. */}
+        <PreviewCard.Positioner anchor={row} side="right" align="center" sideOffset={16}>
+          <PreviewCard.Popup
+            className="flex flex-col gap-2"
+            style={{ width: 208, padding: 8, borderRadius: 16, background: "var(--gryt-neutral-2)", border: "1px solid var(--gryt-neutral-6)" }}
+          >
+            <div className="relative overflow-hidden rounded-xl" style={{ height: 108, background: "var(--gryt-accent-4)" }}>
+              <CameraVideo stream={stream} className="h-full w-full object-cover" />
+              <span className="absolute bottom-1.5 left-2 rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: "rgba(17,19,24,.8)" }}>
+                {nickname}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="h-8 cursor-pointer rounded-full border-0 bg-gryt-neutral-5 text-[13px] font-bold text-gryt-neutral-12 hover:bg-gryt-neutral-6"
+              onClick={() => setShowVoiceView(true)}
+            >
+              Open the call
+            </button>
+          </PreviewCard.Popup>
+        </PreviewCard.Positioner>
+      </PreviewCard.Portal>
+    </PreviewCard.Root>
+  );
+}
+
+/** A camera stream at whatever size it's drawn, reported so the sender sends no more than that. */
+function CameraVideo({ stream, className, style }: { stream: MediaStream; className: string; style?: CSSProperties }) {
   const ref = useRef<HTMLVideoElement>(null);
   useDrawnVideoSize(ref, stream, "cover");
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
-  return (
-    <video
-      ref={ref}
-      autoPlay
-      playsInline
-      muted
-      aria-label={`${nickname}'s camera`}
-      className="h-7 w-7 shrink-0 rounded-full object-cover"
-      style={{ boxShadow: "0 0 0 2px var(--gryt-success-11)", background: "var(--gryt-accent-4)" }}
-    />
-  );
+  return <video ref={ref} autoPlay playsInline muted className={className} style={style} />;
 }
