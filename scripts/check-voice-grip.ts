@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import {
   draggedVoiceStop,
   nextVoiceStop,
-  VOICE_MIN_WIDTH,
   VOICE_PRESET_1,
+  voiceDragWidth,
   voicePresets,
   voiceStopWidth,
 } from "../src/packages/socket/src/lib/voiceGrip.ts";
@@ -34,19 +34,16 @@ assert.equal(nextVoiceStop(800, room), "full");
 
 /* ── A drag snaps within 8px of a stop, and stays put between ──────── */
 
-assert.equal(draggedVoiceStop(p1 + 8, room), p1);
-assert.equal(draggedVoiceStop(p1 - 8, room), p1);
-assert.equal(draggedVoiceStop(p1 + 9, room), p1 + 9);
-assert.equal(draggedVoiceStop(p2 - 5, room), "preset2");
-assert.equal(draggedVoiceStop(4, room), "hidden");
-assert.equal(draggedVoiceStop(VOICE_MIN_WIDTH / 2 + 1, room), VOICE_MIN_WIDTH);
-assert.equal(draggedVoiceStop(room - 4, room), "full");
-
-// Never a width that leaves the chat under 200px.
-for (let x = 0; x <= room; x++) {
-  const stop = draggedVoiceStop(x, room);
-  if (typeof stop === "number") assert.ok(stop >= VOICE_MIN_WIDTH && stop <= room - 200, `${x} → ${stop}`);
-}
+// A release lands on the nearest stop; there is no free width any more (Sivert, 2026-10-27).
+assert.equal(draggedVoiceStop(p1 + 40, room), p1);
+assert.equal(draggedVoiceStop(p1 - 100, room), p1);
+assert.equal(draggedVoiceStop(p2 - 30, room), "preset2");
+assert.equal(draggedVoiceStop(60, room), "hidden");
+assert.equal(draggedVoiceStop(room - 100, room), "full");
+// While dragging the width is free, all the way to closed.
+assert.equal(voiceDragWidth(-20, room), 0);
+assert.equal(voiceDragWidth(123.4, room), 123);
+assert.equal(voiceDragWidth(room + 50, room), room);
 
 /* ── Too narrow for both: hidden and full only ─────────────────────── */
 
