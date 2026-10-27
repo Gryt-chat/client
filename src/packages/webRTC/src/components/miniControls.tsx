@@ -55,7 +55,7 @@ export function MiniControls({
   const voice = useVoicePresence();
 
   const { cameraEnabled, setCameraEnabled } = useCamera();
-  const { screenShareActive, stopScreenShare } = useScreenShare();
+  const { screenShareActive, stopScreenShare, extraWindows } = useScreenShare();
   const backToCall = useBackToCall();
   const openAndPress = (button: CallButton) => {
     backToCall(voice.host, voice.channelId);
@@ -158,6 +158,14 @@ export function MiniControls({
                   onClick={() => (screenShareActive ? stopScreenShare() : openAndPress("share"))}
                 >
                   <PiMonitorArrowUpFill size={iconSize} />
+                  {screenShareActive && extraWindows.length > 0 && (
+                    <span
+                      className="absolute -right-1 -top-1 flex h-[16px] w-[16px] items-center justify-center rounded-full bg-gryt-success-9 text-[10px] font-extrabold text-gryt-success-1"
+                      aria-hidden
+                    >
+                      {extraWindows.length + 1}
+                    </span>
+                  )}
                 </CallControlButton>
               </motion.div>
             )}
