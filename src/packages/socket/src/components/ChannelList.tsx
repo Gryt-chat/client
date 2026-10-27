@@ -67,8 +67,6 @@ const INDENT_PX = 14;
 /** The call you're in: the voice row and its people on one accent-tinted card. */
 const CALL_CARD_FILL = "var(--gryt-accent-3)";
 const CALL_CARD_STYLE = { outline: "1px solid var(--gryt-accent-6)", borderRadius: 20 } as const;
-/** The call you're viewing, its chat or the call itself: the whole card goes solid accent. */
-const VIEWED_CARD_STYLE = { outline: "1px solid var(--gryt-accent)", borderRadius: 20, background: "var(--gryt-accent)", color: "var(--color-gryt-on-accent)" } as const;
 
 const exitVariants = {
   gone: (instant: boolean) => (instant ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -8 }),
@@ -392,14 +390,12 @@ export const ChannelList = ({
     };
 
     const selected = channel?.id === selectedChannelId;
-    const cardFill = selected ? "var(--gryt-accent)" : CALL_CARD_FILL;
-    const cardStyle = selected ? VIEWED_CARD_STYLE : CALL_CARD_STYLE;
 
     return (
-      <div className="flex flex-col items-start w-full relative" style={inThisCall ? cardStyle : undefined}>
+      <div className="flex flex-col items-start w-full relative" style={inThisCall ? CALL_CARD_STYLE : undefined}>
         {/* Fills behind the lower half of the round row, so the members box reads as part of it, not a box under it. */}
         {inThisCall && (
-          <div aria-hidden style={{ position: "absolute", top: "18px", left: 0, right: 0, height: "22px", background: cardFill }} />
+          <div aria-hidden style={{ position: "absolute", top: "18px", left: 0, right: 0, height: "22px", background: CALL_CARD_FILL }} />
         )}
         {/* Ghost unless it is the one you are in. Every row was a plain
             <Button>, which is the filled accent one, so the whole list read as
@@ -513,7 +509,7 @@ export const ChannelList = ({
                 style={{ overflow: "hidden", width: "100%" }}
               >
                 <div className="flex w-full pt-2 flex-col" style={{
-                    background: inThisCall ? cardFill : undefined,
+                    background: inThisCall ? CALL_CARD_FILL : undefined,
                     borderRadius: "0 0 18px 18px",
                   }}>
                   {Object.keys(clients)?.map(

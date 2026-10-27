@@ -1519,8 +1519,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               showVoiceView={showVoiceView}
               isConnecting={isConnecting}
               currentConnectionId={selfClientId}
-              // The call filling the middle is what you're viewing, so its card is the selected one.
-              selectedChannelId={chatPaneHidden && isVoiceOnThisServer ? currentChannelId : visibleChannelId}
+              // The open text chat keeps the accent even while the call fills the middle and hides it.
+              selectedChannelId={dmSpace ? null : selectedChannelId}
               onChannelClick={handleChannelClickAndCloseDm}
               clientsSpeaking={voiceClientsSpeaking}
               canManage={canManage}
