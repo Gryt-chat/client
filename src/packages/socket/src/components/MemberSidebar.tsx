@@ -222,12 +222,13 @@ const MemberItem = ({
       <Popover.Root open={cardOpen} onOpenChange={(open) => onCardOpenChange(open)}>
         {/* Clicking opens the card; in the slim strip hovering does too, since there's no name to read. */}
         <Popover.Trigger nativeButton={false} openOnHover={avatarOnly} delay={250} render={<div />}>
+          {/* In the slim strip a face is the whole row: no card behind it, no padding round it. */}
           <div
-            className="member-row member-row-clickable member-row-card"
+            className={avatarOnly ? "member-row-clickable rounded-full" : "member-row member-row-clickable member-row-card"}
             aria-label={avatarOnly ? member.nickname : undefined}
             data-card-open={cardOpen || undefined}
-            data-row-card={rowCard.kind}
-            style={rowCard.style}
+            data-row-card={avatarOnly ? undefined : rowCard.kind}
+            style={avatarOnly ? undefined : rowCard.style}
           >
         <div className={avatarOnly ? "flex items-center justify-center w-full" : "flex items-center gap-2 w-full"}>
           <Avatar
@@ -391,7 +392,7 @@ export const MemberSidebar = ({
         height: "100%",
         overflow: "hidden",
       }}>
-      <div className={avatarsOnly ? "flex flex-col h-full py-3 px-1 gap-1" : "flex flex-col h-full p-3 gap-1"}>
+      <div className={avatarsOnly ? "flex flex-col h-full py-3 px-1 gap-1.5" : "flex flex-col h-full p-3 gap-1"}>
         {avatarsOnly && (
           <div className="flex justify-center text-gryt-muted" style={{ padding: "2px 0 6px" }}>
             <PiUsersBold size={18} aria-hidden />
