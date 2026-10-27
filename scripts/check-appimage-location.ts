@@ -81,7 +81,8 @@ try {
     assert.ok(existsSync(restored), "the restored file is not there");
     /* Not executable is the same symptom we are fixing: a desktop entry whose
        Exec cannot run. */
-    assert.ok(statSync(restored).mode & 0o111, "restored file is not executable");
+    if (process.platform === "win32") console.log("  skip  the execute bit, which NTFS does not carry");
+    else assert.ok(statSync(restored).mode & 0o111, "restored file is not executable");
   });
 
   check("and takes it out of the Trash, sidecar included", () => {

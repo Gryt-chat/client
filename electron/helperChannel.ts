@@ -7,7 +7,7 @@ import { createHash } from "crypto";
 import { lstatSync } from "fs";
 import { createConnection, type Socket } from "net";
 import { homedir } from "os";
-import { dirname, join } from "path";
+import { dirname, posix } from "path";
 
 import type { ActivityEvent } from "./discordIpc";
 
@@ -24,9 +24,11 @@ export function helperPath(
     const hash = createHash("sha256").update(account).digest("hex").slice(0, 16);
     return `\\\\.\\pipe\\gryt-helper-${hash}`;
   }
-  if (platform === "darwin") return join(home, "Library", "Application Support", "chat.gryt.helper", "helper.sock");
-  if (env.XDG_RUNTIME_DIR) return join(env.XDG_RUNTIME_DIR, "gryt-helper", "helper.sock");
-  return join(home, ".cache", "gryt-helper", "helper.sock");
+  /* posix.join, not join: these are Unix socket paths, and `join` would use the
+     host's separator whenever `platform` is not the host's own. */
+  if (platform === "darwin") return posix.join(home, "Library", "Application Support", "chat.gryt.helper", "helper.sock");
+  if (env.XDG_RUNTIME_DIR) return posix.join(env.XDG_RUNTIME_DIR, "gryt-helper", "helper.sock");
+  return posix.join(home, ".cache", "gryt-helper", "helper.sock");
 }
 
 /** Only a folder this user owns and nobody else can enter, so nobody else can have put a socket there. */
