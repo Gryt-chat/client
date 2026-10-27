@@ -46,9 +46,9 @@ function usePointerFine() {
  * Whether the member list fits, given what the voice and thread panels have
  * taken. Pass the widths they are drawing at, not the ones they would like.
  */
-export function useMemberListMode(voicePanelWidth: number, voiceFull: boolean, threadPanelWidth = 0): MemberListMode {
+export function useMemberListMode(voicePanelWidth: number, voiceFull: boolean, threadPanelWidth = 0, channelListShown = true): MemberListMode {
   const windowWidth = useWindowWidth();
-  return memberListMode({ windowWidth, voicePanelWidth, voiceFull, threadPanelWidth });
+  return memberListMode({ windowWidth, voicePanelWidth, voiceFull, threadPanelWidth, channelListShown });
 }
 
 /**
