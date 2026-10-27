@@ -36,7 +36,9 @@ try {
 
   /* ── Prereleases among themselves ────────────────────────────────── */
 
-  git("git tag -d v1.6.15 >/dev/null 2>&1 || true");
+  /* No shell redirect: execSync goes through cmd.exe on Windows, where
+     `>/dev/null 2>&1 || true` is neither a path nor a command, so this never ran. */
+  git("git tag -d v1.6.15");
   git("git tag v1.6.15-beta.2");
   git("git tag v1.6.15-rc.1");
 

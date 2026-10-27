@@ -318,6 +318,53 @@ jobs:
       - run: go vet ./...
       - run: go test -count=1 ./...
 
+  # verify runs the check scripts on ubuntu only, so twenty of them were failing on a
+  # Windows checkout with nothing anywhere to notice. Globbed, because a second list drifts.
+  checks-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      # The .gitattributes is what makes this hold. Thirteen scripts match on a literal
+      # "\n", so a CRLF working tree fails them and nothing else here would catch it.
+      - name: Line endings are LF
+        run: |
+          crlf=$(git ls-files --eol scripts electron src | grep -E 'w/(crlf|mixed)' || true)
+          if [ -n "$crlf" ]; then
+            echo "::error::the working tree is not LF, so the check scripts will fail:"
+            echo "$crlf" | head -20
+            exit 1
+          fi
+      - name: Every check script
+        run: |
+          failed=()
+          for file in scripts/check-*.ts; do
+            if node "$file" > "$RUNNER_TEMP/check.log" 2>&1; then
+              echo "ok    $file"
+            else
+              failed+=("$file")
+              echo "::group::FAIL  $file"
+              cat "$RUNNER_TEMP/check.log"
+              echo "::endgroup::"
+            fi
+          done
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::${#failed[@]} check scripts failed on Windows"
+            printf '  %s\n' "${failed[@]}"
+            exit 1
+          fi
+          echo "all check scripts pass on Windows"
+
   # Whether a pull request can change what the web client does. A skipped job still
   # reports, so a required check doesn't wait on it. Pushes to main always run.
   changes:

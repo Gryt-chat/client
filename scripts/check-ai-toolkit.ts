@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -43,7 +43,7 @@ const importers = [];
 for (const file of walk(join(root, "src"))) {
   if (file.endsWith("aiToolkit.ts")) continue;
   if (/from "[^"]*devtools\/aiToolkit"/.test(readFileSync(file, "utf8"))) {
-    importers.push(file.slice(root.length + 1));
+    importers.push(file.slice(root.length + 1).replaceAll(sep, "/"));
   }
 }
 assert.deepEqual(importers, [MAIN], `only ${MAIN} may import the toolkit`);

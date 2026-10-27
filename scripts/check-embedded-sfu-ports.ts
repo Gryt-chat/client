@@ -150,12 +150,31 @@ function fakeSfu(env: NodeJS.ProcessEnv) {
   return proc;
 }
 
+type Spawned = { sfu: FakeSfu[]; server: FakeProcess[]; worker: FakeProcess[] };
+
+/** Windows' kill path: the manager names a pid, and whichever fake holds it dies. */
+function taskkill(spawned: Spawned, args: string[]): FakeProcess {
+  const pid = Number(args[args.indexOf("/pid") + 1]);
+  /* The fakes share one pid per kind and /t kills the tree, so every match goes. */
+  for (const proc of [...spawned.sfu, ...spawned.server, ...spawned.worker]) {
+    if (proc.pid === pid && !proc.killed) proc.kill();
+  }
+  const done = Object.assign(new EventEmitter(), { pid: 0, killed: false, env: {} }) as FakeProcess;
+  done.stdout = new EventEmitter();
+  done.stderr = new EventEmitter();
+  done.kill = () => true;
+  return done;
+}
+
 /* The manager as written, with only process creation faked. */
 function loadManager(app: App, { onSpawn = () => {} }: { onSpawn?: (proc: FakeSfu) => void } = {}) {
   const config = loadConfigModule(app);
-  const spawned = { sfu: [] as FakeSfu[], server: [] as FakeProcess[], worker: [] as FakeProcess[] };
+  const spawned: Spawned = { sfu: [], server: [], worker: [] };
 
-  const spawn = (_binary: string, _args: string[], opts: { env: NodeJS.ProcessEnv }) => {
+  const spawn = (binary: string, args: string[], opts: { env: NodeJS.ProcessEnv }) => {
+    /* killProcess goes through taskkill by pid on Windows rather than proc.kill,
+       so without this the fake never hears it died and holds its ports open. */
+    if (/taskkill/i.test(binary)) return taskkill(spawned, args);
     const proc = fakeSfu(opts.env);
     spawned.sfu.push(proc);
     onSpawn(proc);
@@ -214,8 +233,6 @@ const recorded = (path: string) => {
   const line = (key: string) => Number(text.match(new RegExp(`^${key}=(.*)$`, "m"))?.[1]);
   return { control: line("SFU_CONTROL_PORT"), metrics: line("SFU_METRICS_PORT") };
 };
-
-type Spawned = ReturnType<typeof loadManager>["spawned"];
 
 async function serverStarted(spawned: Spawned, count: number) {
   for (let i = 0; i < 40 && spawned.server.length < count; i++) await settle(50);

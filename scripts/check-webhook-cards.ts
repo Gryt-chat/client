@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -145,7 +145,7 @@ function files(dir: string): string[] {
 }
 const readers = files(join(root, "src"))
   .filter((file) => /\.cards\b/.test(readFileSync(file, "utf8")))
-  .map((file) => relative(root, file))
+  .map((file) => relative(root, file).replaceAll(sep, "/"))
   .sort();
 assert.deepEqual(readers, [ROW], "something other than MessageRow reads a message's cards");
 

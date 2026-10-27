@@ -91,12 +91,18 @@ await check("the path is the one helper/ listens on", () => {
   assert.equal(helperPath("win32", { USERDOMAIN: "GRYT-PC", USERNAME: "Sivert" }), "\\\\.\\pipe\\gryt-helper-1e8dc84c3fa88525");
 });
 
-await check("only a folder nobody else can enter counts", () => {
-  assert.equal(isPrivateDir(privateDir(0o700)), true);
-  assert.equal(isPrivateDir(privateDir(0o755)), false);
-  assert.equal(isPrivateDir(privateDir(0o700), 12345), false, "somebody else's folder");
-  assert.equal(isPrivateDir("/does/not/exist"), false);
-});
+/* chmod is a no-op on NTFS, so the 0o755 folder reads back the same mode as the
+   0o700 one. Windows gets this from the pipe name instead, asserted above. */
+if (process.platform === "win32") {
+  console.log("  skip  the private-folder checks, which need POSIX modes");
+} else {
+  await check("only a folder nobody else can enter counts", () => {
+    assert.equal(isPrivateDir(privateDir(0o700)), true);
+    assert.equal(isPrivateDir(privateDir(0o755)), false);
+    assert.equal(isPrivateDir(privateDir(0o700), 12345), false, "somebody else's folder");
+    assert.equal(isPrivateDir("/does/not/exist"), false);
+  });
+}
 
 /* ── The protocol ────────────────────────────────────────────────────── */
 
@@ -115,6 +121,14 @@ await check("lines are checked before anything uses them", () => {
     activity: null,
   });
 });
+
+/* fakeHelper listens on a filesystem socket path. Node on Windows only listens
+   on \\.\pipe\ names, so the EACCES takes the whole script down with it. */
+if (process.platform === "win32") {
+  console.log("  skip  the protocol and fallback checks, which need a Unix socket");
+  for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+  process.exit(failures === 0 ? 0 : 1);
+}
 
 await check("reads the hello, what's showing, and updates, and can tell it to quit", async () => {
   const helper = await fakeHelper(privateDir(), { replay: [activity(3, "100", "Ranked")] });

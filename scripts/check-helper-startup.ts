@@ -185,21 +185,31 @@ await check("macOS: an SMAppService agent, and approval is passed on", async () 
   assert.equal(await register(approval.deps, approval.binary), "needs-approval");
 });
 
-await check("Linux: an XDG autostart entry with TryExec, and an AppImage's helper copied somewhere that stays", async () => {
-  const m = machine("linux", { env: { XDG_CONFIG_HOME: "" } });
-  await register(m.deps, m.binary);
-  const entry = readFileSync(join(m.home, ".config", "autostart", "chat.gryt.helper.desktop"), "utf8");
-  assert.match(entry, new RegExp(`^TryExec=${m.binary}$`, "m"));
-  assert.match(entry, /^NoDisplay=true$/m);
-  await unregister(m.deps);
-  assert.deepEqual(m.entries(), []);
+/* machine() joins with the host separator, so on Windows this fake Linux install
+   sits at C:\…\gryt-helper and autostartEntry rightly escapes the backslashes. */
+if (process.platform === "win32") {
+  console.log("  skip  Linux: the autostart entry, whose fixture builds win32 paths");
+} else {
+  await check("Linux: an XDG autostart entry with TryExec, and an AppImage's helper copied somewhere that stays", async () => {
+    const m = machine("linux", { env: { XDG_CONFIG_HOME: "" } });
+    await register(m.deps, m.binary);
+    const entry = readFileSync(join(m.home, ".config", "autostart", "chat.gryt.helper.desktop"), "utf8");
+    assert.match(entry, new RegExp(`^TryExec=${m.binary}$`, "m"));
+    assert.match(entry, /^NoDisplay=true$/m);
+    await unregister(m.deps);
+    assert.deepEqual(m.entries(), []);
 
-  const image = machine("linux", { env: { APPIMAGE: "/home/x/Gryt.AppImage" } });
-  await register(image.deps, image.binary);
-  const copied = join(image.home, ".local", "share", "gryt-helper", "gryt-helper");
-  assert.equal(existsSync(copied), true);
-  assert.match(readFileSync(autostartPath(image.deps), "utf8"), new RegExp(`^Exec=${copied}$`, "m"));
+    const image = machine("linux", { env: { APPIMAGE: "/home/x/Gryt.AppImage" } });
+    await register(image.deps, image.binary);
+    const copied = join(image.home, ".local", "share", "gryt-helper", "gryt-helper");
+    assert.equal(existsSync(copied), true);
+    assert.match(readFileSync(autostartPath(image.deps), "utf8"), new RegExp(`^Exec=${copied}$`, "m"));
+  });
+}
 
+/* Taken out of the check above so it still runs on Windows: a literal path, so
+   nothing about it depends on which separator the host joins with. */
+await check("Linux: a path with a space in it is quoted", () => {
   assert.match(autostartEntry("/opt/Gryt Chat/gryt-helper"), /^Exec="\/opt\/Gryt Chat\/gryt-helper"$/m);
 });
 
