@@ -8,7 +8,7 @@ import { useVideoFraming } from "@/socket/src/hooks/useVideoFraming";
 import { PiCameraFill, PiCameraSlashFill } from "../../../../lib/icons";
 import { useCallButtonPress } from "./callButtonPress";
 import { BAR_BUTTON_STYLE, CallControlButton, type CallControlButtonProps, SPLIT_BUTTON_CLASS, SplitArrow, SplitControl } from "./CallControlButton";
-import { CameraSelect, FieldRow, QualitySelect, SwitchRow } from "./cameraFields";
+import { CameraSelect, FieldRow, QualityFields, SwitchRow } from "./cameraFields";
 import { CameraPreview } from "./CameraPreview";
 import { CALL_MENU_STYLE } from "./MicMenu";
 
@@ -102,7 +102,7 @@ export function CameraControl({ iconSize = 16, size, allowed = true, side = "top
 
 /** The arrow's menu while the camera is on. Every change applies straight away. */
 function CameraMenu() {
-  const { setCameraEnabled, devices } = useCamera();
+  const { setCameraEnabled, devices, cameraStream } = useCamera();
   const {
     cameraID, setCameraID, cameraQuality, setCameraQuality, cameraFps, setCameraFps,
     cameraMirrored, setCameraMirrored, faceFramingEnabled, setFaceFramingEnabled,
@@ -116,9 +116,13 @@ function CameraMenu() {
         <FieldRow label="Camera">
           <CameraSelect value={cameraID} onChange={setCameraID} devices={devices} />
         </FieldRow>
-        <FieldRow label="Quality">
-          <QualitySelect quality={cameraQuality} fps={cameraFps} onChange={(q, f) => { setCameraQuality(q); setCameraFps(f); }} />
-        </FieldRow>
+        <QualityFields
+          quality={cameraQuality}
+          fps={cameraFps}
+          onChange={(q, f) => { setCameraQuality(q); setCameraFps(f); }}
+          track={cameraStream?.getVideoTracks()[0] ?? null}
+          deviceId={cameraID}
+        />
         <SwitchRow label="Keep my face centered" checked={faceFramingEnabled} onCheckedChange={setFaceFramingEnabled} />
         <SwitchRow label="Mirror my own view" checked={cameraMirrored} onCheckedChange={setCameraMirrored} />
       </div>

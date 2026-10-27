@@ -1,4 +1,4 @@
-import { type CaptureQuality, estimateBitrate, QUALITY_CONSTRAINTS, type ScreenShareQuality, type VideoSendSettings } from "@gryt/voice";
+import { CAMERA_FPS_OPTIONS, type CaptureQuality, estimateBitrate, QUALITY_CONSTRAINTS, type ScreenShareQuality, type VideoSendSettings } from "@gryt/voice";
 
 /**
  * The in-call quality choices. Each one is a ceiling, not a fixed size: GRYT-1321's
@@ -29,6 +29,89 @@ export const CAMERA_PRESETS: QualityPreset[] = [
   { quality: "360p", fps: 15, hint: "Saves data" },
 ];
 
+/** The value the Custom row carries. Not a `quality@fps` pair, because Custom is not one. */
+export const CUSTOM_KEY = "custom";
+
+/** Every size the capture can be pinned to, widest first, as the Custom row lists them. */
+export const CAMERA_QUALITY_ORDER: CaptureQuality[] = [
+  "native", "4k", "1440p", "1080p", "720p", "480p", "360p", "240p",
+  "144p", "96p", "64p", "48p", "32p", "24p", "16p", "8p", "4p",
+];
+
+export interface CameraCapabilities {
+  /* Three separate maxima, not one mode: a camera listing 1920x1080 and 60 fps may well
+     only manage both one at a time. Good enough to advertise the Native row with, not
+     good enough to promise. */
+  ceiling: { width: number; height: number; fps: number } | null;
+  /** What the open track is producing. The truth, once Native is what opened it. */
+  live: { width: number; height: number; fps: number } | null;
+}
+
+const NO_CAPABILITIES: CameraCapabilities = { ceiling: null, live: null };
+
+/* Ceilings don't change while a camera stays plugged in, and the only track they can be read
+   off is a raw device one. The flipped camera isn't: `createFlippedStream` hands back a canvas
+   capture, whose getCapabilities describes the canvas. So the preview, which always opens its
+   own unflipped track, fills this in and the menu reads it back by device. */
+const ceilings = new Map<string, CameraCapabilities["ceiling"]>();
+
+/**
+ * Read off the live track rather than off the preset that opened it: `getCapabilities` reports
+ * the device's own ceiling whatever the current constraints are, so the Native row can still
+ * say what the camera does while some other preset is selected. Firefox has shipped without
+ * `getCapabilities` on and off, hence the guard.
+ */
+export function cameraCapabilities(
+  track: MediaStreamTrack | null | undefined,
+  deviceId?: string,
+): CameraCapabilities {
+  if (!track) return NO_CAPABILITIES;
+  try {
+    const s = track.getSettings();
+    const live = s.width && s.height && s.frameRate
+      ? { width: s.width, height: s.height, fps: s.frameRate }
+      : null;
+    // A canvas capture carries no deviceId. A camera does, and that is what makes it readable.
+    if (s.deviceId && typeof track.getCapabilities === "function") {
+      const c = track.getCapabilities();
+      if (c.width?.max && c.height?.max && c.frameRate?.max) {
+        const ceiling = { width: c.width.max, height: c.height.max, fps: c.frameRate.max };
+        ceilings.set(s.deviceId, ceiling);
+        return { ceiling, live };
+      }
+    }
+    return { ceiling: (deviceId ? ceilings.get(deviceId) : null) ?? null, live };
+  } catch {
+    return NO_CAPABILITIES;
+  }
+}
+
+/**
+ * The fastest rate on CAMERA_FPS_OPTIONS this camera can hold. Snapped to that list rather
+ * than passed through, because `CameraFps` and the Frame Rate select in Settings each only
+ * know those six, and an off-list number renders as an empty box in the second one. The
+ * half-frame slack is so 29.97 and 59.94 count as 30 and 60.
+ */
+export function nativeFps(caps: CameraCapabilities): number {
+  const max = caps.ceiling?.fps ?? caps.live?.fps;
+  if (!max) return 30;
+  const fits = CAMERA_FPS_OPTIONS.filter((f) => f <= max + 0.5);
+  return fits[fits.length - 1] ?? CAMERA_FPS_OPTIONS[0];
+}
+
+/**
+ * What Native is giving you, or would give you. Measured off the track once Native is what
+ * opened it. Before that it is the camera's size and the rate `nativeFps` will ask for, which
+ * is not always the rate the camera reports: a camera topping out at 50 is asked for 30, and
+ * the row has to say 30 or it promises a rate picking it will not produce. Null while no
+ * camera is open.
+ */
+export function nativeDetail(caps: CameraCapabilities, isLive: boolean): string | null {
+  if (isLive && caps.live) return `${caps.live.width}\u00d7${caps.live.height}, ${Math.round(caps.live.fps)} fps`;
+  const size = caps.ceiling ?? caps.live;
+  return size ? `${size.width}\u00d7${size.height}, ${nativeFps(caps)} fps` : null;
+}
+
 /** What a camera preset is, under its name: "full, 30 fps". */
 export function presetDetail(quality: string, fps: number): string {
   return `${quality === "native" ? "full" : quality}, ${fps} fps`;
@@ -38,10 +121,6 @@ export function presetKey(quality: string, fps: number): string {
   return `${quality}@${fps}`;
 }
 
-export function presetLabel(quality: string, fps: number): string {
-  const name = ({ native: "Native", "4k": "4K" } as Record<string, string>)[quality] ?? quality;
-  return `${name} · ${fps} fps`;
-}
 
 /** The size box a quality caps at, or null for native, which has none. */
 export function qualityBox(quality: string): { maxWidth: number; maxHeight: number } | null {

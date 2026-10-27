@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSettings } from "@/settings";
 
 import { PiArrowsClockwiseFill } from "../../../../lib/icons";
-import { CameraSelect, FieldRow, QualitySelect, SwitchRow } from "./cameraFields";
+import { CameraSelect, FieldRow, QualityFields, SwitchRow } from "./cameraFields";
 
 async function openPreview(deviceId: string, quality: string, fps: number): Promise<MediaStream> {
   const qc = QUALITY_CONSTRAINTS[quality as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
@@ -115,9 +115,13 @@ export function CameraPreview({ onStart }: { onStart: () => void }) {
         <FieldRow label="Camera">
           <CameraSelect value={deviceId} onChange={setDeviceId} devices={devices} />
         </FieldRow>
-        <FieldRow label="Quality">
-          <QualitySelect quality={quality} fps={fps} onChange={(q, f) => { setQuality(q); setFps(f); }} />
-        </FieldRow>
+        <QualityFields
+          quality={quality}
+          fps={fps}
+          onChange={(q, f) => { setQuality(q); setFps(f); }}
+          track={stream?.getVideoTracks()[0] ?? null}
+          deviceId={deviceId}
+        />
         <SwitchRow label="Keep my face centered" checked={faceFramingEnabled} onCheckedChange={setFaceFramingEnabled} />
         <SwitchRow label="Mirror my own view" checked={cameraMirrored} onCheckedChange={setCameraMirrored} />
         <SwitchRow label="Show this preview first" checked={cameraPreviewFirst} onCheckedChange={setCameraPreviewFirst} />
