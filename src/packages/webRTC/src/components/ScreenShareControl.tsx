@@ -7,7 +7,7 @@ import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 import { PiMonitorArrowUpFill, PiPlus, PiSpeakerHighFill, PiSpeakerSlashFill, PiX } from "../../../../lib/icons";
-import { firstShareKey, setFirstShareKey, setShareMeta, shareMeta, useShareWindowsVersion, windowKey } from "../adapters/shareWindows";
+import { firstShareKey, setFirstShareKey, setShareMeta, setSoundOff, shareMeta, useShareWindowsVersion, windowKey } from "../adapters/shareWindows";
 import { presetKey, SCREEN_PRESETS, screenPresetName } from "../utils/streamQuality";
 import { useCallButtonPress } from "./callButtonPress";
 import { CallControlButton, type CallControlButtonProps } from "./CallControlButton";
@@ -36,6 +36,7 @@ interface ShareRow {
   quality: string;
   fps: number;
   audio: MediaStreamTrack | undefined;
+  audioStreamId: string | undefined;
   setQuality: ((quality: string, fps: number) => void) | null;
   remove: (() => void) | null;
   /** Shared without sound: restarts this window with it. Null where it can't be (a Gryt window, the browser). */
@@ -105,7 +106,10 @@ function ShareRowItem({ row, num }: { row: ShareRow; num: number }) {
           checked={sound}
           disabled={!row.audio && !row.addSound}
           onCheckedChange={(on) => {
-            if (row.audio) row.audio.enabled = on;
+            if (row.audio) {
+              row.audio.enabled = on;
+              if (row.audioStreamId) setSoundOff(row.audioStreamId, !on);
+            }
             else if (on) row.addSound?.();
             rerender();
           }}
@@ -200,6 +204,7 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
       quality: screenShareQuality,
       fps: screenShareFps,
       audio: screenAudioStream?.getAudioTracks()[0],
+      audioStreamId: screenAudioStream?.id,
       // The native encoder picks its own size and rate, so a quality would do nothing there.
       setQuality: nativeEncodedCodec ? null : setFirstQuality,
       remove: next ? promoteNext : stopScreenShare,
@@ -216,6 +221,7 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
         quality: m?.quality ?? screenShareQuality,
         fps: m?.fps ?? screenShareFps,
         audio: w.audioStream?.getAudioTracks()[0],
+        audioStreamId: w.audioStream?.id,
         setQuality: (quality, fps) => setShareMeta(key, { quality, fps }),
         remove: () => removeScreenWindow(w.index),
         addSound: w.sourceId && !m?.own

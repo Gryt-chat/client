@@ -41,6 +41,19 @@ export function setFirstShareKey(key: string) {
   changed();
 }
 
+/** Shares whose sound is switched off in the menu, by audio stream id. The track keeps running, so nothing else knows. */
+const soundOff = new Set<string>();
+
+export function setSoundOff(audioStreamId: string, off: boolean) {
+  if (off) soundOff.add(audioStreamId);
+  else soundOff.delete(audioStreamId);
+  changed();
+}
+
+export function isSoundOff(audioStreamId: string): boolean {
+  return soundOff.has(audioStreamId);
+}
+
 export function shareMeta(key: string): ShareMeta | undefined {
   return metas.get(key);
 }

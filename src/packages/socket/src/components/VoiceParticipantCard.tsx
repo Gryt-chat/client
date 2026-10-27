@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { isSoundOff, useShareWindowsVersion } from "@/webRTC/src/adapters/shareWindows";
 
 import { PiCameraFill, PiMicrophoneSlashFill, PiMonitorArrowUpFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { useDrawnVideoSize } from "../hooks/useDrawnVideoSize";
@@ -405,6 +406,8 @@ export function VoiceParticipantCard({
   // this only reads what the voice connection already set up.
   const { microphoneBuffer } = useMicrophone(false);
   const watchedShares = useWatchedShares();
+  // Your own share's badge follows the menu's sound switch, which only flips the track.
+  useShareWindowsVersion();
   // Own-transport voice has no analyser to draw a halo from; the transport reports its level (GRYT-1830).
   const { getTransportLevels } = useSFU();
   const transportDb = useCallback(
@@ -545,7 +548,7 @@ export function VoiceParticipantCard({
                   : undefined
               }
             />
-            {share.audioStreamID && (
+            {share.audioStreamID && !(isSelf && isSoundOff(share.audioStreamID)) && (
               <span
                 className="pointer-events-none absolute bottom-2.5 right-2.5 rounded-full px-2 py-0.5 text-xs"
                 style={{ background: "rgba(17,19,24,.8)", color: "var(--gryt-success-11)" }}
