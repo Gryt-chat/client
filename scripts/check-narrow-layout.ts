@@ -297,10 +297,17 @@ const cameraFields = readFileSync(
   new URL("../src/packages/webRTC/src/components/cameraFields.tsx", import.meta.url),
   "utf8",
 );
+// Every Select on the camera rows takes its width from one shared SELECT, so counting
+// literals here would just break each time a row is added — Custom brought two more.
+assert.match(
+  cameraFields,
+  /const SELECT = \{[^}]*className: "w-\[190px\]"/,
+  "the shared camera Select width is no longer 190px, so a long camera name can push the row wider",
+);
 assert.equal(
-  cameraFields.match(/className="w-\[190px\]"/g)?.length,
-  2,
-  "the camera and quality Selects lost their fixed width, so a long camera name can push the row wider",
+  cameraFields.match(/\{\.\.\.SELECT\}/g)?.length,
+  cameraFields.match(/<Select\b/g)?.length,
+  "a camera Select stopped spreading SELECT, so it lost its fixed width",
 );
 
 /* ── User settings ─────────────────────────────────────────────────── */
