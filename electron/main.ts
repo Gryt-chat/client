@@ -4401,6 +4401,7 @@ if (!gotSingleInstanceLock) {
                   width: 320,
                   height: 180,
                 },
+                fetchWindowIcons: true,
               }
             );
 
@@ -4452,8 +4453,9 @@ if (!gotSingleInstanceLock) {
                 name: source.name,
                 thumbnail:
                   source.thumbnail.toDataURL(),
+                // macOS hands back an empty 0×0 image for every window, even with fetchWindowIcons.
                 appIcon:
-                  source.appIcon
+                  source.appIcon && !source.appIcon.isEmpty()
                     ? source.appIcon.toDataURL()
                     : "",
                 sourceType:
