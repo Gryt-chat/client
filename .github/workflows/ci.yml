@@ -51,6 +51,8 @@ jobs:
       # Hiding never leaves the device, so nothing else would notice it breaking.
       - run: yarn test:hidden-conversations
       - run: yarn test:new-message
+      # One notice, not three: two blocks shared a condition and the placeholder repeated it.
+      - run: yarn test:voice-text-notice
       - run: yarn test:voice-preset
       - run: yarn test:main-identity
       - run: yarn test:voice-helper-lines
