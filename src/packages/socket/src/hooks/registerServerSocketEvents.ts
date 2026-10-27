@@ -22,6 +22,7 @@ import {
   setServerFileAccess,
   setServerNotice,
   setServerRefreshToken,
+  setServerUnread,
   setThreadMentionCounts,
   subscribeToPrefs,
 } from "@/common";
@@ -215,6 +216,22 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     socket.emit("mentions:list");
   }
 
+  /* Read markers, asked for on the same moments as mentions and for the same reason: a
+     reload, a reconnect and a rejoin are each a point the counts have gone stale. */
+  let askedForRead = false;
+  socket.on("disconnect", () => { askedForRead = false; });
+
+  function askForRead() {
+    askedForRead = true;
+    socket.emit("read:list");
+  }
+
+  /* One name for the question and the answer, as mentions does, so a second window
+     cannot end up disagreeing about what is left. */
+  socket.on("read:list", (payload: { counts?: Record<string, number>; markers?: { conversation_id: string }[] }) => {
+    setServerUnread(host, payload?.counts ?? {}, (payload?.markers ?? []).map((m) => m.conversation_id));
+  });
+
   const { nickname, userIdRef, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
   const { setServers, setNewServerInfo, setServerDetailsList, setFailedServerDetails } = ctx;
   const { setClients, setMemberLists, setMemberKeyStates, setServerProfiles, setIsServerMuted, setIsServerDeafened } = ctx;
@@ -347,6 +364,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     /* A reload never gets `server:joined`, so this was the only event left that
        says the session is back and the member is known (GRYT-1388). */
     if (!askedForMentions) askForMentions();
+    if (!askedForRead) askForRead();
 
     // Not awaited: a key that never arrives means no encrypted messages rather
     // than a connection that failed.
@@ -436,6 +454,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // Every join, not just the first: being away is when this accumulates, and it
     // is how a mention read on a phone stops showing here.
     askForMentions();
+    askForRead();
 
     // Read when the event fires, not at registration: the socket exists before
     // `useUserId` resolves, so a captured value was usually null.

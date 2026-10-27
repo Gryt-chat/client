@@ -1,8 +1,8 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * How many messages have arrived in a conversation that nobody has looked at.
- * **Counted from when this window connected**, not from a server-side marker.
+ * How many messages have arrived in a conversation that nobody has looked at. Seeded from
+ * the server's read markers when a connection opens, then counted here as more arrive.
  */
 type UnreadMap = Map<string, Map<string, number>>;
 
@@ -52,6 +52,25 @@ export function markChannelRead(host: string, channelId: string) {
   } else {
     next.set(host, counts);
   }
+  unreadMap = next;
+  emitChange();
+}
+
+/**
+ * What the server says, for every conversation it holds a marker for. One with no marker
+ * keeps what this window counted, since the server has nothing to say about it.
+ */
+export function setServerUnread(host: string, counts: Record<string, number>, marked: Iterable<string>) {
+  const fresh = new Map(unreadMap.get(host));
+  for (const channelId of marked) fresh.delete(channelId);
+  for (const [channelId, n] of Object.entries(counts)) {
+    if (n > 0) fresh.set(channelId, n);
+  }
+
+  /* Dropped rather than left empty, so serverHasUnread stays a size check. */
+  const next = new Map(unreadMap);
+  if (fresh.size === 0) next.delete(host);
+  else next.set(host, fresh);
   unreadMap = next;
   emitChange();
 }

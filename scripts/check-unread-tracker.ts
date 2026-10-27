@@ -12,6 +12,7 @@ const {
   markChannelRead,
   markChannelUnread,
   markServerRead,
+  setServerUnread,
 } = await import("../src/packages/common/src/hooks/useUnreadTracker.ts");
 
 const counts = (host: string) => getUnreadSnapshot().get(host) ?? new Map();
@@ -64,5 +65,21 @@ markServerRead(HOST);
 assert.equal(total(HOST), 0);
 // And leaves the other server alone.
 assert.equal(total(OTHER), 1);
+
+// The server's counts replace this window's for each conversation it has a marker for,
+// and leave the rest alone.
+markServerRead(OTHER);
+markChannelUnread(HOST, "local-only");
+markChannelUnread(HOST, "marked");
+setServerUnread(HOST, { marked: 4 }, ["marked", "caught-up"]);
+assert.equal(counts(HOST).get("marked"), 4);
+assert.equal(counts(HOST).get("local-only"), 1);
+assert.equal(counts(HOST).get("caught-up"), undefined);
+
+// A marker with no count means caught up, and the last one leaves no empty map behind.
+markServerRead(HOST);
+markChannelUnread(HOST, "marked");
+setServerUnread(HOST, {}, ["marked"]);
+assert.equal(getUnreadSnapshot().has(HOST), false);
 
 console.log("unread tracker: ok");

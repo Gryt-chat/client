@@ -260,8 +260,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   useEffect(() => {
     if (!currentlyViewingServer) return;
     const opened = visibleDmId || visibleChannelId;
-    if (opened) markChannelRead(currentlyViewingServer.host, opened);
-  }, [currentlyViewingServer, visibleChannelId, visibleDmId]);
+    if (!opened) return;
+    markChannelRead(currentlyViewingServer.host, opened);
+    // No message id: the server reads up to its newest. It ignores a DM.
+    sockets[currentlyViewingServer.host]?.emit("read:set", { conversationId: opened });
+  }, [currentlyViewingServer, visibleChannelId, visibleDmId, sockets]);
 
   useEffect(() => {
     setOnScreenConversation(currentlyViewingServer?.host ?? null, visibleDmId || visibleChannelId);

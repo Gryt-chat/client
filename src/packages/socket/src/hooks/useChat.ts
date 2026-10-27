@@ -494,6 +494,9 @@ export function useChat({
           warnUnreadOnScreen("useChat chat:new", { serverHost, activeConversationId });
         }
         markChannelUnread(serverHost, msg.conversation_id);
+      } else if (msg.conversation_id === activeConversationId && msg.sender_server_id !== currentUserId) {
+        // Read as it arrives, so the server's marker keeps up with the screen. The server ignores a DM.
+        currentConnection.emit("read:set", { conversationId: msg.conversation_id, messageId: msg.message_id });
       }
       /* The same question `useSocketEvents` asks for a background server, so the
          two cannot disagree about focus, a mention, the channel default or a mute. */

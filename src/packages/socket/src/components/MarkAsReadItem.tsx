@@ -6,6 +6,7 @@ import {
   clearServerMentions,
   clearServerThreadMentions,
   clearServerThreadUnread,
+  getUnreadSnapshot,
   markChannelRead,
   markConversationThreadsRead,
   markServerRead,
@@ -57,10 +58,12 @@ export function MarkAsReadItem({ host, scope }: { host: string; scope: MarkReadS
     /* Threads and all, which opening the channel deliberately does not do
        (GRYT-1014). This is somebody saying they are finished with it. */
     sockets[host]?.emit("mentions:seen", { conversationId: id, includeThreads: true });
+    sockets[host]?.emit("read:set", { conversationId: id });
   };
 
   const onClick = () => {
     if (scope.kind === "server") {
+      for (const id of getUnreadSnapshot().get(host)?.keys() ?? []) sockets[host]?.emit("read:set", { conversationId: id });
       markServerRead(host);
       clearServerMentions(host);
       clearServerThreadUnread(host);
