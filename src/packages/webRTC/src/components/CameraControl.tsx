@@ -22,8 +22,8 @@ interface CameraControlProps {
   split?: boolean;
 }
 
-/** Above the split button, at the voice view's left edge plus `inset`, where the boards put both popups. */
-function atPanelEdge(split: RefObject<HTMLDivElement | null>, inset: number) {
+/** Centred over the split button, but no further left than the voice view's edge plus `inset`, where the narrow board puts it. */
+function atPanelEdge(split: RefObject<HTMLDivElement | null>, inset: number, width: number) {
   return () => {
     const el = split.current;
     const panel = el?.closest('[data-gryt="voice-view"]')?.firstElementChild;
@@ -31,7 +31,8 @@ function atPanelEdge(split: RefObject<HTMLDivElement | null>, inset: number) {
     return {
       getBoundingClientRect: () => {
         const s = el.getBoundingClientRect();
-        return DOMRect.fromRect({ x: panel.getBoundingClientRect().left + inset, y: s.top, width: s.width, height: s.height });
+        const x = Math.max(panel.getBoundingClientRect().left + inset, s.left + s.width / 2 - width / 2);
+        return DOMRect.fromRect({ x, y: s.top, width: s.width, height: s.height });
       },
     };
   };
@@ -85,7 +86,7 @@ export function CameraControl({ iconSize = 16, size, allowed = true, side = "top
           side={split ? "top" : side}
           align="start"
           sideOffset={12}
-          anchor={split ? atPanelEdge(splitRef, cameraEnabled ? 12 : 0) : undefined}
+          anchor={split ? atPanelEdge(splitRef, cameraEnabled ? 12 : 0, cameraEnabled ? MENU_STYLE.width : PREVIEW_STYLE.width) : undefined}
         >
           <Popover.Popup
             aria-label={cameraEnabled ? "Camera" : "Turn your camera on"}
@@ -127,9 +128,12 @@ function CameraMenu() {
         <SwitchRow label="Mirror my own view" checked={cameraMirrored} onCheckedChange={setCameraMirrored} />
       </div>
       <div className="mx-1 my-1.5 h-px bg-gryt-neutral-6" />
-      <button type="button" className={`${item} text-gryt-accent-10`} disabled={detecting} onClick={() => void recentre()}>
-        Center it again now
-      </button>
+      {/* With following on the crop is already on your face, so a one-off look would move nothing. */}
+      {!faceFramingEnabled && (
+        <button type="button" className={`${item} text-gryt-accent-10`} disabled={detecting} onClick={() => void recentre()}>
+          Center it now
+        </button>
+      )}
       <Popover.Close render={<button type="button" className={`${item} text-gryt-danger`} />} onClick={() => setCameraEnabled(false)}>
         Turn camera off
       </Popover.Close>

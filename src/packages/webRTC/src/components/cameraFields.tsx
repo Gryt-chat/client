@@ -1,6 +1,6 @@
 import { Select, Switch } from "@gryt/ui";
 import { CAMERA_FPS_OPTIONS, QUALITY_CONSTRAINTS } from "@gryt/voice";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import {
   CAMERA_PRESETS,
@@ -45,7 +45,15 @@ export function CameraSelect({ value, onChange, devices }: {
   onChange: (deviceId: string) => void;
   devices: { deviceId: string; label: string }[];
 }) {
-  const cameras = devices.filter((d) => d.deviceId);
+  // The engine's list is read once, so a camera plugged in later only shows up through this.
+  const [plugged, setPlugged] = useState<MediaDeviceInfo[] | null>(null);
+  useEffect(() => {
+    const md = navigator.mediaDevices;
+    const read = () => void md.enumerateDevices().then((all) => setPlugged(all.filter((d) => d.kind === "videoinput")));
+    md.addEventListener("devicechange", read);
+    return () => md.removeEventListener("devicechange", read);
+  }, []);
+  const cameras = (plugged ?? devices).filter((d) => d.deviceId);
   return (
     <Select
       {...SELECT}
