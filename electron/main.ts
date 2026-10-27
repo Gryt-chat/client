@@ -4408,6 +4408,10 @@ if (!gotSingleInstanceLock) {
           const displays =
             screen.getAllDisplays();
 
+          const ownSourceIds = new Set(
+            BrowserWindow.getAllWindows().map((w) => w.getMediaSourceId())
+          );
+
           return sources.map(
             (source) => {
               const isScreen =
@@ -4458,6 +4462,8 @@ if (!gotSingleInstanceLock) {
                   source.appIcon && !source.appIcon.isEmpty()
                     ? source.appIcon.toDataURL()
                     : "",
+                // Gryt's own windows, so the picker can keep their sound off.
+                own: ownSourceIds.has(source.id),
                 sourceType:
                   isScreen
                     ? ("screen" as const)
