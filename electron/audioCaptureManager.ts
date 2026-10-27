@@ -103,6 +103,11 @@ function resolveWindowPid(sourceId: string): number | null {
   }
 }
 
+/** Gryt's own processes. A Gryt window shared with its sound would send the call back into itself. */
+function isGrytPid(pid: number): boolean {
+  return pid === process.pid || app.getAppMetrics().some((m) => m.pid === pid);
+}
+
 export function isNativeAudioCaptureAvailable(): boolean {
   const path = getNativeBinaryPath();
   console.log(`[NativeAudioCapture] available check: binary=${path ?? "NOT FOUND"}`);
@@ -305,6 +310,10 @@ export function startNativeAudioCapture(
 
   if (sourceId && sourceId.startsWith("window:")) {
     const windowPid = resolveWindowPid(sourceId);
+    if (windowPid && isGrytPid(windowPid)) {
+      sendDiag(`${sourceId} is a Gryt window, not capturing its sound`);
+      return false;
+    }
     if (!windowPid) {
       sendDiag(`could not resolve PID for ${sourceId}, falling back to exclude mode`);
       mode = "exclude";
@@ -341,6 +350,7 @@ export function setAudioCaptureApplications(
   // Windows that cannot be resolved to a process are dropped rather than reported
   // as captured, so the UI does not tick something that is not being sent.
   const resolved: { sourceId: string; key: string }[] = [];
+  let skippedGryt = false;
 
   for (const sourceId of sourceIds) {
     const pid = resolveWindowPid(sourceId);
@@ -348,8 +358,19 @@ export function setAudioCaptureApplications(
       sendDiag(`could not resolve PID for ${sourceId}, not capturing it`);
       continue;
     }
+    if (isGrytPid(pid)) {
+      sendDiag(`${sourceId} is a Gryt window, not capturing its sound`);
+      skippedGryt = true;
+      continue;
+    }
 
     resolved.push({ sourceId, key: pidKey(pid) });
+  }
+
+  // Only Gryt's own windows asked for sound: send none, rather than everything else on the machine.
+  if (resolved.length === 0 && skippedGryt) {
+    stopNativeAudioCapture();
+    return [];
   }
 
   const plan: CapturePlan = planCaptureChange(

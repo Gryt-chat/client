@@ -174,7 +174,9 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
       if (m?.quality && m.fps) setFirstQuality(m.quality, m.fps);
       setFirstShareKey(key);
       const withAudio = !!next.audioStream?.getAudioTracks()[0]?.enabled;
-      void startScreenShare(withAudio, next.sourceId).then(() => removeScreenWindow(next.index));
+      // Drop window 2 before window 1 takes its source: two captures of one window, one then stopped, ended the whole share on Windows.
+      removeScreenWindow(next.index);
+      void startScreenShare(withAudio, next.sourceId);
     }
     : null;
 

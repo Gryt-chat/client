@@ -377,6 +377,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
       name: string;
       thumbnail: string;
       appIcon: string;
+      own?: boolean;
       sourceType: "screen" | "window";
       width?: number;
       height?: number;

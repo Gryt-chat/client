@@ -59,6 +59,8 @@ export interface DesktopSource {
   name: string;
   thumbnail: string;
   appIcon: string;
+  /** One of Gryt's own windows: its sound is never shared. */
+  own?: boolean;
   sourceType: "screen" | "window";
   width?: number;
   height?: number;

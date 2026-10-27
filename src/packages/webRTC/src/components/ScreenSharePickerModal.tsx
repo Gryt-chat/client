@@ -65,11 +65,11 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
   const savedKey = presetKey(quality, fps);
   if (!presets.some((p) => p.value === savedKey)) presets.push({ value: savedKey, label: screenPresetName(quality, fps) });
 
-  const toggle = ({ id: sourceId, name, appIcon }: DesktopSource) => setPicks((p) => {
+  const toggle = ({ id: sourceId, name, appIcon, own }: DesktopSource) => setPicks((p) => {
     if (p.some((x) => x.sourceId === sourceId)) return p.filter((x) => x.sourceId !== sourceId);
     const remembered = rememberedPreset(appIcon, name);
     const [q, f] = (remembered && presets.some((x) => x.value === remembered) ? remembered : savedKey).split("@");
-    return [...p, { sourceId, name, quality: q, fps: Number(f), withAudio: true }];
+    return [...p, { sourceId, name, quality: q, fps: Number(f), withAudio: !own }];
   });
   const update = (sourceId: string, change: Partial<SharePick>) =>
     setPicks((p) => p.map((x) => (x.sourceId === sourceId ? { ...x, ...change } : x)));
@@ -171,14 +171,27 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                           }}
                           options={presets}
                         />
-                        {pick.withAudio
-                          ? <PiSpeakerHighFill size={16} className="flex-none" color="var(--gryt-accent-11)" aria-label="Friends hear this window" />
-                          : <PiSpeakerSlashFill size={16} className="flex-none" color="var(--gryt-muted)" aria-label="This window is muted for friends" />}
-                        <Switch
-                          aria-label={`Sound from ${src.name}`}
-                          checked={pick.withAudio}
-                          onCheckedChange={(on) => update(src.id, { withAudio: on })}
-                        />
+                        {src.own ? (
+                          <span
+                            className="flex flex-none items-center gap-1 pr-1 text-xs"
+                            style={{ color: "var(--gryt-muted)" }}
+                            title="Gryt can't share its own sound. Everyone would hear the call played back to them."
+                          >
+                            <PiSpeakerSlashFill size={16} aria-hidden />
+                            Would echo
+                          </span>
+                        ) : (
+                          <>
+                            {pick.withAudio
+                              ? <PiSpeakerHighFill size={16} className="flex-none" color="var(--gryt-accent-11)" aria-label="Friends hear this window" />
+                              : <PiSpeakerSlashFill size={16} className="flex-none" color="var(--gryt-muted)" aria-label="This window is muted for friends" />}
+                            <Switch
+                              aria-label={`Sound from ${src.name}`}
+                              checked={pick.withAudio}
+                              onCheckedChange={(on) => update(src.id, { withAudio: on })}
+                            />
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
