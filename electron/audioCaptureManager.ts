@@ -314,14 +314,13 @@ export function startNativeAudioCapture(
       sendDiag(`${sourceId} is a Gryt window, not capturing its sound`);
       return false;
     }
+    // Never everything-but-Gryt for one window: that would send audio the sharer didn't pick.
     if (!windowPid) {
-      sendDiag(`could not resolve PID for ${sourceId}, falling back to exclude mode`);
-      mode = "exclude";
-      targetPid = process.pid;
-    } else {
-      mode = "include";
-      targetPid = windowPid;
+      sendDiag(`could not resolve PID for ${sourceId}, not capturing its sound`);
+      return false;
     }
+    mode = "include";
+    targetPid = windowPid;
   } else {
     mode = "exclude";
     targetPid = process.pid;
@@ -350,7 +349,6 @@ export function setAudioCaptureApplications(
   // Windows that cannot be resolved to a process are dropped rather than reported
   // as captured, so the UI does not tick something that is not being sent.
   const resolved: { sourceId: string; key: string }[] = [];
-  let skippedGryt = false;
 
   for (const sourceId of sourceIds) {
     const pid = resolveWindowPid(sourceId);
@@ -360,15 +358,14 @@ export function setAudioCaptureApplications(
     }
     if (isGrytPid(pid)) {
       sendDiag(`${sourceId} is a Gryt window, not capturing its sound`);
-      skippedGryt = true;
       continue;
     }
 
     resolved.push({ sourceId, key: pidKey(pid) });
   }
 
-  // Only Gryt's own windows asked for sound: send none, rather than everything else on the machine.
-  if (resolved.length === 0 && skippedGryt) {
+  // Windows were asked for and none can be captured: send none, never everything else on the machine.
+  if (sourceIds.length > 0 && resolved.length === 0) {
     stopNativeAudioCapture();
     return [];
   }
@@ -391,13 +388,10 @@ export function setAudioCaptureApplications(
     spawnCapture(window, key, "include", pid);
   }
 
-  // Nothing could be started and the machine-wide capture is already gone.
-  // Falling back beats ending the share's audio without saying so.
   if (captures.size === 0) {
-    sendDiag("no application capture could be started, falling back to the machine");
-    requestedSources = [];
-    startNativeAudioCapture(window);
-    return listAudioCaptureSources();
+    sendDiag("no application capture could be started, sending no sound");
+    stopNativeAudioCapture();
+    return [];
   }
 
   requestedSources = resolved
