@@ -90,7 +90,9 @@ export function cameraCapabilities(
  * The fastest rate on CAMERA_FPS_OPTIONS this camera can hold. Snapped to that list rather
  * than passed through, because `CameraFps` and the Frame Rate select in Settings each only
  * know those six, and an off-list number renders as an empty box in the second one. The
- * half-frame slack is so 29.97 and 59.94 count as 30 and 60.
+ * half-frame slack is so 29.97 and 59.94 count as 30 and 60, and it is load-bearing rather
+ * than defensive: an Elgato Cam Link 4K reports frameRate.max as 59.94017791748047, which
+ * without the slack snaps to 30 and gives back the 30 fps cap this whole row exists to lift.
  */
 export function nativeFps(caps: CameraCapabilities): number {
   const max = caps.ceiling?.fps ?? caps.live?.fps;
