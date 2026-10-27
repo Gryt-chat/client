@@ -7,18 +7,27 @@ import { useSettings } from "@/settings";
 import { PiArrowsClockwiseFill } from "../../../../lib/icons";
 import { CameraSelect, FieldRow, QualityFields, SwitchRow } from "./cameraFields";
 
+// The sender's first two rungs (@gryt/voice useCamera): capped first, so the preview shows the rate that goes out.
 async function openPreview(deviceId: string, quality: string, fps: number): Promise<MediaStream> {
   const qc = QUALITY_CONSTRAINTS[quality as CameraQuality] ?? QUALITY_CONSTRAINTS.native;
-  const video: MediaTrackConstraints = {
-    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-    frameRate: { ideal: fps || 30 },
-    ...(qc.width ? { width: { ideal: qc.width }, height: { ideal: qc.height } } : {}),
-  };
-  try {
-    return await navigator.mediaDevices.getUserMedia({ video, audio: false });
-  } catch {
-    return navigator.mediaDevices.getUserMedia({ video: deviceId ? { deviceId: { ideal: deviceId } } : true, audio: false });
+  const rate = fps || 30;
+  const device = deviceId ? { deviceId: { exact: deviceId } } : {};
+  const rungs: MediaTrackConstraints[] = [
+    {
+      ...device,
+      frameRate: { ideal: rate, max: rate },
+      ...(qc.width ? { width: { ideal: qc.width, max: qc.width }, height: { ideal: qc.height, max: qc.height } } : {}),
+    },
+    { ...device, frameRate: { ideal: rate }, ...(qc.width ? { width: { ideal: qc.width }, height: { ideal: qc.height } } : {}) },
+  ];
+  for (const video of rungs) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video, audio: false });
+    } catch {
+      // A camera that can't land under the cap gets the next rung, as the sender does.
+    }
   }
+  return navigator.mediaDevices.getUserMedia({ video: deviceId ? { deviceId: { ideal: deviceId } } : true, audio: false });
 }
 
 function friendlyPreviewError(errorName: string): string {
