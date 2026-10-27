@@ -8,7 +8,9 @@ import { openUserSettings } from "./dmKeyWarningToast";
     One toast per device: the same install turning up on each server redraws it rather than stacking. */
 export function showLinkedDeviceToast(notice: LinkedDeviceNotice): void {
   const group = groupLinkedDeviceNotices(linkedDeviceNotices.get()).find((g) => g.notices.some((n) => n.deviceId === notice.deviceId));
-  const id = `linked-device-${group?.key ?? notice.deviceId}`;
+  // The group's key follows the server's addedAt, which can put a later notice first, so drop the others by id.
+  for (const n of group?.notices ?? []) if (n.deviceId !== notice.deviceId) toast.dismiss(`linked-device-${n.deviceId}`);
+  const id = `linked-device-${notice.deviceId}`;
   const servers = group?.notices.length ?? 1;
   toast(
     () => (
