@@ -234,8 +234,6 @@ const recorded = (path: string) => {
   return { control: line("SFU_CONTROL_PORT"), metrics: line("SFU_METRICS_PORT") };
 };
 
-type Spawned = ReturnType<typeof loadManager>["spawned"];
-
 async function serverStarted(spawned: Spawned, count: number) {
   for (let i = 0; i < 40 && spawned.server.length < count; i++) await settle(50);
   assert.equal(spawned.server.length, count, "the embedded server was never started");
