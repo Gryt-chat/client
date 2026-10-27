@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useSettings } from "@/settings";
 
+import { PiArrowRightBold } from "../../../../lib/icons";
 import { type CallControlState, SplitArrow } from "./CallControlButton";
 
 /** The popup the call bar's arrows open, as on the Mic board. */
@@ -89,13 +90,14 @@ export function MicMenu({ state, open, onOpenChange }: {
             </label>
             <button
               type="button"
-              className="flex w-full cursor-pointer items-center rounded-[10px] border-0 bg-transparent px-2.5 py-2 text-left text-sm text-gryt-muted hover:bg-gryt-neutral-4"
+              className="flex w-full cursor-pointer items-center justify-between rounded-[10px] border-0 bg-transparent px-2.5 py-2 text-left text-sm text-gryt-muted hover:bg-gryt-neutral-4 hover:text-gryt-text"
               onClick={() => {
                 onOpenChange(false);
                 openSettings("audio");
               }}
             >
-              More audio settings…
+              Open audio settings
+              <PiArrowRightBold size={12} />
             </button>
           </Popover.Popup>
         </Popover.Positioner>
