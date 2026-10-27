@@ -32,6 +32,8 @@
 #include <combaseapi.h>
 #include <fcntl.h>
 #include <io.h>
+#include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <tlhelp32.h>
@@ -91,6 +93,12 @@ static PFN_ActivateAudioInterfaceAsync resolveActivateAudioInterfaceAsync() {
 }
 
 // ── Diagnostics ────────────────────────────────────────────────────────
+
+/* Full scale for 16-bit is 32768, so a sample at the rail is 0 dBFS and one LSB is -90.3.
+   Nothing at all gives -inf, which reads plainer than an invented floor. */
+static double dbfs(double magnitude) {
+    return magnitude > 0.0 ? 20.0 * log10(magnitude / 32768.0) : -INFINITY;
+}
 
 typedef LONG(WINAPI *RtlGetVersionPtr)(OSVERSIONINFOEXW *);
 
@@ -325,6 +333,12 @@ int wmain(int argc, wchar_t *argv[]) {
     UINT64 packetCount = 0;
     DWORD lastReportTick = GetTickCount();
 
+    /* Loudness over the report window, not the whole run: the question is whether sound is
+       flowing now, and a cumulative figure is dragged down by every quiet stretch. */
+    int32_t windowPeak = 0;
+    double windowSumSquares = 0.0;
+    UINT64 windowSamples = 0;
+
     for (;;) {
         DWORD waitResult = WaitForMultipleObjects(2, waits, FALSE, 2000);
         if (waitResult == WAIT_OBJECT_0 + 1)
@@ -342,6 +356,10 @@ int wmain(int argc, wchar_t *argv[]) {
             totalFrames += framesAvailable;
             DWORD bytes = framesAvailable * fmt.nBlockAlign;
 
+            /* Counted either way, so a window that is half flagged silence reads quiet
+               rather than reading as loud as whatever little did arrive. */
+            windowSamples += UINT64(framesAvailable) * fmt.nChannels;
+
             if (flags & AUDCLNT_BUFFERFLAGS_SILENT) {
                 silentFrames += framesAvailable;
                 static const BYTE silence[4096] = {};
@@ -352,6 +370,15 @@ int wmain(int argc, wchar_t *argv[]) {
                     remaining -= chunk;
                 }
             } else {
+                /* Initialize() fixes the format at 16-bit stereo and AUTOCONVERTPCM makes
+                   WASAPI honour it, so the buffer is int16 whatever the app played. */
+                const int16_t *samples = reinterpret_cast<const int16_t *>(data);
+                const UINT32 count = framesAvailable * fmt.nChannels;
+                for (UINT32 i = 0; i < count; i++) {
+                    int32_t v = samples[i] < 0 ? -int32_t(samples[i]) : int32_t(samples[i]);
+                    if (v > windowPeak) windowPeak = v;
+                    windowSumSquares += double(v) * double(v);
+                }
                 fwrite(data, 1, bytes, stdout);
             }
             fflush(stdout);
@@ -361,16 +388,29 @@ int wmain(int argc, wchar_t *argv[]) {
 
         DWORD now = GetTickCount();
         if (now - lastReportTick >= 5000) {
-            fprintf(stderr, "[diag] packets=%llu  totalFrames=%llu  silentFrames=%llu (%.1f%%)\n",
+            fprintf(stderr,
+                    "[diag] packets=%llu  totalFrames=%llu  silentFrames=%llu (%.1f%%)"
+                    "  peak=%.1f dBFS  rms=%.1f dBFS\n",
                     packetCount, totalFrames, silentFrames,
-                    totalFrames > 0 ? 100.0 * silentFrames / totalFrames : 0.0);
+                    totalFrames > 0 ? 100.0 * silentFrames / totalFrames : 0.0,
+                    dbfs(double(windowPeak)),
+                    windowSamples > 0 ? dbfs(sqrt(windowSumSquares / double(windowSamples))) : -INFINITY);
+            windowPeak = 0;
+            windowSumSquares = 0.0;
+            windowSamples = 0;
             lastReportTick = now;
         }
     }
 
-    fprintf(stderr, "[diag] capture stopped. total packets=%llu frames=%llu silent=%.1f%%\n",
+    /* The last window as well, so a share stopped inside five seconds still says how loud
+       it was rather than reporting nothing at all. */
+    fprintf(stderr,
+            "[diag] capture stopped. total packets=%llu frames=%llu silent=%.1f%%"
+            "  last window peak=%.1f dBFS  rms=%.1f dBFS\n",
             packetCount, totalFrames,
-            totalFrames > 0 ? 100.0 * silentFrames / totalFrames : 0.0);
+            totalFrames > 0 ? 100.0 * silentFrames / totalFrames : 0.0,
+            dbfs(double(windowPeak)),
+            windowSamples > 0 ? dbfs(sqrt(windowSumSquares / double(windowSamples))) : -INFINITY);
 
     g_audioClient->Stop();
     captureClient->Release();
