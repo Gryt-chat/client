@@ -1,3 +1,5 @@
+import { IS_BETA_BUILD } from "@/common";
+
 import type { RichActivity } from "../../../../lib/richActivity";
 import { AUDIO_DEFAULTS } from "./useAudioSettings";
 
@@ -442,7 +444,7 @@ export const settingsInit: Settings = {
   setScreenShareQuality: noop,
   screenShareFps: 30,
   setScreenShareFps: noop,
-  experimentalScreenShare: false,
+  experimentalScreenShare: IS_BETA_BUILD,
   setExperimentalScreenShare: noop,
 
   screenShareGamingMode: true,
