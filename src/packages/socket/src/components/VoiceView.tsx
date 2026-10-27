@@ -259,6 +259,7 @@ function SortableParticipant({
 export const VoiceView = ({
   showVoiceView,
   voiceWidth,
+  fullWidth,
   maxWidth,
   serverHost,
   currentServerConnected,
@@ -287,6 +288,8 @@ export const VoiceView = ({
 }: {
   showVoiceView: boolean;
   voiceWidth: string;
+  /** The middle area's width in px. "100%" springs to this, since motion can't spring from px to a percentage. */
+  fullWidth?: number;
   maxWidth?: number;
   serverHost: string;
   currentServerConnected: string | null;
@@ -1310,7 +1313,8 @@ export const VoiceView = ({
     );
   };
 
-  const openWidth = showVoiceView ? voiceWidth : 0;
+  const target = voiceWidth === "100%" && fullWidth ? fullWidth : voiceWidth;
+  const openWidth = showVoiceView ? target : 0;
 
   return (
     <motion.div

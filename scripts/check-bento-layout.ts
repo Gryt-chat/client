@@ -42,7 +42,10 @@ for (const code of ["aaaa", "ccaa", "saaa", "scaaa", "sscccaaa", "ccccaaaaaaaa",
       }
     }
 
-    // No empty space: the tiles reach every edge, and only the gaps are left over.
+    const ratios = rects.map((r) => r.width / r.height);
+    assert.ok(ratios.every((q) => q <= 16 / 9 + 1e-6 && q >= 9 / 16 - 1e-6), `${where}: no tile past 16:9 or 9:16`);
+    // No empty space unless a tile hit that limit: the tiles reach every edge, and only the gaps are left over.
+    if (ratios.some((q) => Math.abs(q - 16 / 9) < 1e-6 || Math.abs(q - 9 / 16) < 1e-6)) continue;
     assert.ok(Math.abs(Math.min(...rects.map((r) => r.x))) < 0.5, `${where}: reaches the left edge`);
     assert.ok(Math.abs(Math.max(...rects.map((r) => r.x + r.width)) - W) < 0.5, `${where}: reaches the right edge`);
     assert.ok(Math.abs(Math.min(...rects.map((r) => r.y))) < 0.5, `${where}: reaches the top`);
@@ -78,6 +81,11 @@ assert.ok(phone && phone.height > phone.width, "a 9:16 camera is drawn portrait"
 // Two cameras and two people with room to spare: an even 2x2, as Sivert asked.
 const even = computeBentoLayout(call("ccaa"), 1408, 768, GAP);
 assert.equal(new Set(even.map((r) => Math.round(r.width))).size, 1, "two cameras and two people at fullscreen share one tile size");
+
+// One person in a tall preset 1 is a 9:16 tile in the middle, not a strip (Sivert's screenshot, 2026-10-27).
+const [lone] = computeBentoLayout(call("a"), 370, 1240, GAP);
+assert.ok(Math.abs(lone.width / lone.height - 9 / 16) < 1e-6, "a lone person stops at 9:16");
+assert.ok(Math.abs(lone.y + lone.height / 2 - 620) < 0.5, "and sits in the middle");
 
 assert.deepEqual(computeBentoLayout([], 800, 600, GAP), []);
 assert.deepEqual(computeBentoLayout(call("aa"), 0, 600, GAP), []);

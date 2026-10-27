@@ -5,7 +5,6 @@ export type VoiceStop = "hidden" | "full" | "preset2" | number;
 
 /** Preset 1: one webcam wide. */
 export const VOICE_PRESET_1 = 352;
-export const VOICE_MIN_WIDTH = 200;
 const MIN_CHAT_WIDTH = 200;
 /** The chat a preset leaves must still read (the Narrow board's 820 step): under this the call is full or hidden. */
 const MIN_CHAT_BESIDE_PRESET = 360;
@@ -37,13 +36,15 @@ export function nextVoiceStop(current: VoiceStop, room: number): VoiceStop {
   return presets[1] > current + SNAP_PX ? "preset2" : "full";
 }
 
-/** A drag to `x` px from the left of the middle area. Each stop pulls within 8px. */
+/** Where a drag released at `x` px lands: the nearest stop, hidden at 0 and full at the far edge included. */
 export function draggedVoiceStop(x: number, room: number): VoiceStop {
   const presets = voicePresets(room);
-  if (!presets) return x < room / 2 ? "hidden" : "full";
-  if (x < VOICE_MIN_WIDTH / 2) return "hidden";
-  if (x > room - MIN_CHAT_WIDTH) return "full";
-  if (Math.abs(x - presets[0]) <= SNAP_PX) return presets[0];
-  if (Math.abs(x - presets[1]) <= SNAP_PX) return "preset2";
-  return Math.max(VOICE_MIN_WIDTH, Math.round(x));
+  const stops: Array<[VoiceStop, number]> = [["hidden", 0], ["full", room]];
+  if (presets) stops.push([presets[0], presets[0]], ["preset2", presets[1]]);
+  return stops.reduce((best, s) => (Math.abs(x - s[1]) < Math.abs(x - best[1]) ? s : best))[0];
+}
+
+/** The width while a drag is still going: free, from closed to the far edge. */
+export function voiceDragWidth(x: number, room: number): number {
+  return Math.max(0, Math.min(room, Math.round(x)));
 }

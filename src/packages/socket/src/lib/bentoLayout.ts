@@ -1,6 +1,6 @@
 /**
- * The bento rule for voice tiles: they fill the whole area. Screen shares get the
- * most room, then cameras, then people without one, who stretch to fill the gaps.
+ * The bento rule for voice tiles: they fill the area, but never past 16:9 or 9:16.
+ * Screen shares get the most room, then cameras, then people without one.
  */
 
 export type BentoKind = "share" | "cam" | "avatar";
@@ -24,6 +24,9 @@ export interface BentoRect {
 const TARGET: Record<BentoKind, number> = { share: 16 / 9, cam: 16 / 9, avatar: 1 };
 const WEIGHT: Record<BentoKind, number> = { share: 6, cam: 3, avatar: 1 };
 const MIN_SIDE = 72;
+/** No tile wider than 16:9 or taller than 9:16, whatever room is left over. */
+const MAX_RATIO = 16 / 9;
+const MIN_RATIO = 9 / 16;
 
 const shapeOf = (item: BentoItem) => item.ratio || TARGET[item.kind];
 const offBy = (a: number, b: number) => Math.abs(Math.log(a / b));
@@ -147,5 +150,41 @@ export function computeBentoLayout(
     if (c.rects.some((r) => Math.min(r.width, r.height) < MIN_SIDE)) c.cost += 200;
   }
 
-  return candidates.reduce((a, b) => (b.cost < a.cost ? b : a)).rects;
+  return clampShapes(candidates.reduce((a, b) => (b.cost < a.cost ? b : a)).rects, width, height, gap);
+}
+
+/** Shrinks tiles past 16:9 or 9:16 to the limit; a lone column or row is packed and centred again. */
+function clampShapes(rects: BentoRect[], width: number, height: number, gap: number): BentoRect[] {
+  const clamped = rects.map((r) => {
+    if (r.width / r.height > MAX_RATIO) {
+      const w = r.height * MAX_RATIO;
+      return { ...r, x: r.x + (r.width - w) / 2, width: w };
+    }
+    if (r.width / r.height < MIN_RATIO) {
+      const h = r.width / MIN_RATIO;
+      return { ...r, y: r.y + (r.height - h) / 2, height: h };
+    }
+    return r;
+  });
+  const oneColumn = rects.every((r) => r.x === rects[0].x && r.width === rects[0].width);
+  const oneRow = rects.every((r) => r.y === rects[0].y && r.height === rects[0].height);
+  if (oneColumn) {
+    const total = clamped.reduce((a, r) => a + r.height, 0) + gap * (clamped.length - 1);
+    let y = (height - total) / 2;
+    return clamped.map((r) => {
+      const placed = { ...r, y };
+      y += r.height + gap;
+      return placed;
+    });
+  }
+  if (oneRow) {
+    const total = clamped.reduce((a, r) => a + r.width, 0) + gap * (clamped.length - 1);
+    let x = (width - total) / 2;
+    return clamped.map((r) => {
+      const placed = { ...r, x };
+      x += r.width + gap;
+      return placed;
+    });
+  }
+  return clamped;
 }
