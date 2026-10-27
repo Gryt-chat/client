@@ -197,6 +197,8 @@ function useVoiceLayout({ setShowVoiceView }: UseVoiceLayoutParams) {
 
   const setVoiceStop = useCallback((stop: VoiceStop) => {
     if (stop === "hidden") {
+      // Whatever opens it next (the grip, the channel, a peek) brings preset 1 back, as on the Journey board.
+      setVoiceSize(VOICE_PRESET_1);
       setShowVoiceView(false);
       return;
     }
