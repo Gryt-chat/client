@@ -35,7 +35,7 @@ export function setShareMeta(key: string, meta: ShareMeta) {
   changed();
 }
 
-/** The first window has no ScreenWindow of its own, so its key is kept here. Its quality is the saved setting. */
+/** The first window has no ScreenWindow of its own, so its key is kept here. */
 export function setFirstShareKey(key: string) {
   firstKey = key;
   changed();
