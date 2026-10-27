@@ -160,7 +160,7 @@ export function VideoCard({
             objectPosition,
             // Eased rather than jumped: the published value is smoothed, but the
             // first after a reconnect can land far from centre.
-            transition: "object-position 400ms ease-out",
+            transition: "object-position 1s ease-in-out",
             transform: mirrored ? "scaleX(-1)" : undefined,
             pointerEvents: "none",
           }}
