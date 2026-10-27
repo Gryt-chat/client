@@ -57,11 +57,12 @@ export function markChannelRead(host: string, channelId: string) {
 }
 
 /**
- * What the server says, which replaces what this window had counted. A conversation it
- * leaves out has no marker, and reads as caught up rather than as everything unread.
+ * What the server says, for every conversation it holds a marker for. One with no marker
+ * keeps what this window counted, since the server has nothing to say about it.
  */
-export function setServerUnread(host: string, counts: Record<string, number>) {
-  const fresh = new Map<string, number>();
+export function setServerUnread(host: string, counts: Record<string, number>, marked: Iterable<string>) {
+  const fresh = new Map(unreadMap.get(host));
+  for (const channelId of marked) fresh.delete(channelId);
   for (const [channelId, n] of Object.entries(counts)) {
     if (n > 0) fresh.set(channelId, n);
   }

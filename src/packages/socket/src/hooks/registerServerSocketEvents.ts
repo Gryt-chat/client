@@ -228,8 +228,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   /* One name for the question and the answer, as mentions does, so a second window
      cannot end up disagreeing about what is left. */
-  socket.on("read:list", (payload: { counts?: Record<string, number> }) => {
-    setServerUnread(host, payload?.counts ?? {});
+  socket.on("read:list", (payload: { counts?: Record<string, number>; markers?: { conversation_id: string }[] }) => {
+    setServerUnread(host, payload?.counts ?? {}, (payload?.markers ?? []).map((m) => m.conversation_id));
   });
 
   const { nickname, userIdRef, servers, serversRef, lastInviteJoinAttemptRef, myVoiceStateByHostRef } = ctx;
