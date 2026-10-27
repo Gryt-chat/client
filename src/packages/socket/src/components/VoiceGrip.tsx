@@ -1,5 +1,5 @@
 import { Tooltip } from "@gryt/ui";
-import { type RefObject, useRef } from "react";
+import { type RefObject, useRef, useState } from "react";
 
 import { PiArrowsOutBold, PiEyeSlashBold } from "../../../../lib/icons";
 import { draggedVoiceStop, nextVoiceStop, voicePresets, type VoiceStop } from "../lib/voiceGrip";
@@ -40,6 +40,13 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
   const presets = voicePresets(room);
   const hidden = stop === "hidden";
   const iconColor = (on: boolean) => (on ? "var(--gryt-accent-9)" : "var(--gryt-accent-8)");
+  const [dragging, setDragging] = useState(false);
+  const gripLeft = stop === "full" ? -3 : -19;
+  let snapLabel: string | null = null;
+  if (stop === "hidden") snapLabel = "Hidden";
+  else if (stop === "full") snapLabel = "Full";
+  else if (stop === "preset2") snapLabel = "Preset 2";
+  else if (presets && stop === presets[0]) snapLabel = "Preset 1";
 
   const stopAt = (clientX: number) => {
     const left = containerRef.current?.getBoundingClientRect().left ?? 0;
@@ -49,6 +56,16 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
 
   return (
     <div style={{ position: "relative", width: 0, flexShrink: 0, zIndex: 2 }}>
+      {dragging && snapLabel && (
+        <div aria-hidden style={{ position: "absolute", top: 0, bottom: 0, left: gripLeft + 10, width: 2, borderRadius: 1, background: "var(--gryt-accent)", opacity: 0.9, pointerEvents: "none" }}>
+          <span
+            className="absolute whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-extrabold"
+            style={{ top: "calc(50% - 120px)", ...(stop === "full" ? { right: 8 } : { left: 8 }), background: "var(--gryt-accent)", color: "var(--color-gryt-on-accent)" }}
+          >
+            {snapLabel}
+          </span>
+        </div>
+      )}
       <Tooltip title="Drag to resize, click to cycle sizes">
         <button
           type="button"
@@ -63,7 +80,10 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
             const d = drag.current;
             if (!d) return;
             if (!d.moved && Math.abs(e.clientX - d.startX) < DRAG_THRESHOLD_PX) return;
-            if (!d.moved) onResizing(true);
+            if (!d.moved) {
+              onResizing(true);
+              setDragging(true);
+            }
             d.moved = true;
             onStop(stopAt(e.clientX));
           }}
@@ -74,10 +94,12 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
             if (d?.moved) {
               onStop(stopAt(e.clientX));
               onResizing(false);
+              setDragging(false);
             }
           }}
           onPointerCancel={() => {
             if (drag.current?.moved) onResizing(false);
+            setDragging(false);
             drag.current = null;
           }}
           onClick={() => {
@@ -90,7 +112,7 @@ export function VoiceGrip({ containerRef, room, stop, onStop, onResizing }: Voic
           style={{
             position: "absolute",
             top: "50%",
-            left: stop === "full" ? -3 : -19,
+            left: gripLeft,
             transform: "translateY(-50%)",
             width: 22,
             height: presets ? 132 : 76,
