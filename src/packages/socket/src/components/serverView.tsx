@@ -1546,6 +1546,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 /* Focusing a stream makes it the big one inside the panel and
                    leaves the app where it was. Hiding the chat is its own press. */
                 voiceWidth={callWindow ? "100%" : voiceWidthFor({ chatTakenOver, voiceWidth, isMaximized, shownVoiceWidth })}
+                fullWidth={callWindow ? undefined : voiceContainerWidth}
                 maxWidth={
                   // Both of these hide the chat, so the width reserved for a
                   // minimum chat column would otherwise cap the panel.
