@@ -62,7 +62,8 @@ function placeholderFor(s: {
   inClear: boolean | undefined;
 }): string {
   if (s.offlineLine) return s.offlineLine;
-  if (s.voiceTextHidden) return "Text chat is not available in this voice channel";
+  /* A placeholder, so short. The notice in the body says why. */
+  if (s.voiceTextHidden) return "Can't chat here right now";
   if (!s.mayRead) return "This channel is not readable with your role.";
   if (!s.maySend) return READ_ONLY_LINE;
   if (s.waitSeconds) return `Please wait ${s.waitSeconds} seconds...`;
@@ -979,18 +980,13 @@ export const ChatView = memo(({
           {/* Not when it's unencrypted: the header, the box and the dots say that now (board 5). */}
           {conversationKind === "dm" && sealing?.kind !== "plaintext" && <DirectMessagePrivacyNotice decision={sealing} peerInClear={peerInClear} />}
 
-          {isVoiceChannelTextChat && !canViewVoiceChannelText && (
-            <div className="flex items-center justify-center" style={{ padding: "24px", textAlign: "center" }}>
-              <span className="text-base text-gryt-muted" style={{ maxWidth: "300px" }}>
-                Text chat is not available in this voice channel
-              </span>
-            </div>
-          )}
-
+          {/* One notice. There were two blocks on this same condition, so both drew, and the
+              editor placeholder said it a third time. */}
           {showVoiceDisabled && (
             <div className="flex grow items-center justify-center">
-              <span className="text-sm text-gryt-muted" style={{ textAlign: "center", padding: "16px" }}>
-                Text chat is disabled in this voice channel
+              <span className="text-sm text-gryt-muted" style={{ textAlign: "center", padding: "16px", maxWidth: "300px" }}>
+                There&rsquo;s no text chat here right now. It&rsquo;s either switched off for this
+                channel, or you need to join the call first.
               </span>
             </div>
           )}

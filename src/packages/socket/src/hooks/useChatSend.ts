@@ -299,9 +299,9 @@ export function useChatSend({
       // say something: a message that vanishes silently reads as one that sent.
       if (isRateLimitedRef.current) return;
       if (isVoiceChannelTextChatRef.current && !textInVoiceEnabledRef.current) {
-        toast.error("Text chat is disabled in this voice channel");
+        toast.error("Text chat is switched off in this channel");
       } else if (isVoiceChannelTextChatRef.current && !isConnectedRef.current) {
-        toast.error("You must be connected to this voice channel to send messages");
+        toast.error("Join the call to chat here");
       } else if (!isConnectedRef.current) {
         toast.error("Not connected to this server");
       } else {

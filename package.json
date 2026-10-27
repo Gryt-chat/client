@@ -197,6 +197,7 @@
     "test:dm-directory": "node scripts/check-dm-directory.ts",
     "test:hidden-conversations": "node --disable-warning=ExperimentalWarning scripts/check-hidden-conversations.ts",
     "test:new-message": "node scripts/check-new-message.ts",
+    "test:voice-text-notice": "node scripts/check-voice-text-notice.ts",
     "test:voice-preset": "node scripts/check-voice-preset.ts",
     "test:main-identity": "node scripts/check-main-identity.ts",
     "test:voice-helper-lines": "node scripts/check-voice-helper-lines.ts",
