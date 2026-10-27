@@ -10,7 +10,7 @@ import { useSockets } from "@/socket";
 import { useServerPermissions } from "@/socket/src/hooks/usePermissions";
 
 import { getElectronAPI } from "../../../../lib/electron";
-import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSignOutFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSimpleHighFill, PiSpeakerSimpleSlashFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { PiMicrophoneFill, PiMicrophoneSlashFill, PiPhoneDisconnectFill, PiSignOutFill, PiSlidersHorizontalFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
 import { screenAudioProblemMessage, screenAudioStreamId } from "../../../../lib/screenShareAudio";
 import { useInACall } from "../adapters/inACall";
 import { firstShareKey, shareMeta, useShareWindowsVersion } from "../adapters/shareWindows";
@@ -79,7 +79,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
   const { screenVideoStream, screenAudioStream, screenShareActive, nativeAudioActive, nativeEncodedCodec, subscribeEncodedFrames, stopScreenShare } = useScreenShare();
-  const { muted: screenAudioMuted, available: canMuteScreenAudio, setMuted: setScreenAudioMuted } = useScreenAudioMute();
+  const { available: canMuteScreenAudio } = useScreenAudioMute();
   const { supported: canPickAudioSources } = useScreenAudioSources();
   const extraShares = useExtraScreenWindows();
   const extraSharesKey = JSON.stringify(extraShares);
@@ -483,24 +483,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
 
           <ScreenShareControl size={BAR_SIZE} buttonStyle={BAR_BUTTON_STYLE} idleClassName={BAR_SOLO_CLASS} iconSize={BAR_ICON} allowed={canIn(currentChannelConnected, "share_screen")} takesRailPress />
 
-          {/* Next to the share button because that is what it acts on, and
-              only while a share is actually carrying audio. */}
-          {canMuteScreenAudio && (
-            <Tooltip title={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}>
-              <CallControlButton
-                size={BAR_SIZE}
-                style={BAR_BUTTON_STYLE}
-                state={screenAudioMuted ? "off" : "idle"}
-                aria-label={screenAudioMuted ? "Unmute the audio you're sharing" : "Mute the audio you're sharing"}
-                onClick={() => setScreenAudioMuted(!screenAudioMuted)}
-              >
-                {screenAudioMuted ? <PiSpeakerSimpleSlashFill size={BAR_ICON} /> : <PiSpeakerSimpleHighFill size={BAR_ICON} />}
-              </CallControlButton>
-            </Tooltip>
-          )}
-
-          {/* Only where the OS can take audio per application, which is
-              Windows. Everywhere else the mute above is the whole story. */}
+          {/* Only where the OS can take audio per application, which is Windows. */}
           {canMuteScreenAudio && canPickAudioSources && (
             <Tooltip title="Choose which apps you're sharing audio from">
               <IconButton tone="neutral" size={BAR_SIZE} style={BAR_BUTTON_STYLE} className={BAR_SOLO_CLASS}
