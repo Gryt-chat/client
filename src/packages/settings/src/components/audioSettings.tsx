@@ -429,7 +429,7 @@ export function AudioSettings() {
           placeholder="Select microphone device"
           options={dedupeByValue(
             devices.map((device, index) => ({
-              label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
+              label: device.label || `Microphone ${index + 1}`,
               // Before the permission prompt is answered every device comes back
               // with an empty id and label, so the label is no better a key.
               value: device.deviceId || `microphone-${index}`,
@@ -454,7 +454,7 @@ export function AudioSettings() {
           options={dedupeByValue([
             { label: "Default", value: "default" },
             ...outputDevices.map((device, index) => ({
-              label: device.label || `Speaker ${device.deviceId.slice(0, 8)}`,
+              label: device.label || `Speaker ${index + 1}`,
               value: device.deviceId || `speaker-${index}`,
             })),
           ])}

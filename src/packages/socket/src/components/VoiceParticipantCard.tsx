@@ -700,22 +700,6 @@ export function VoiceParticipantCard({
           }}
         />
 
-        {(client.cameraEnabled || fallbackCameraStreamID) && (
-          <div className="flex absolute" style={{ top: "-4px", right: "-4px", background: "var(--gryt-success-9)",
-              borderRadius: "50%",
-              padding: "2px" }}>
-            <PiCameraFill size={10} color="white" />
-          </div>
-        )}
-
-        {client.screenShareEnabled && (
-          <div className="flex absolute" style={{ top: "-4px", left: "-4px", background: "var(--gryt-secondary-9)",
-              borderRadius: "50%",
-              padding: "2px" }}>
-            <PiMonitorArrowUpFill size={10} color="white" />
-          </div>
-        )}
-
         {isUserConnecting && (
           <div className="flex absolute items-center justify-center" style={{
               top: 0,

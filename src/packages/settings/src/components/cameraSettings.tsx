@@ -299,8 +299,8 @@ export function CameraSettings() {
           options={
             devices.length === 0
               ? [{ label: "No cameras found", value: "__none__", disabled: true }]
-              : devices.map((device) => ({
-                  label: device.label || `Camera ${device.deviceId.slice(0, 8)}`,
+              : devices.map((device, index) => ({
+                  label: device.label || `Camera ${index + 1}`,
                   value: device.deviceId || `device-${device.label}`,
                 }))
           }
