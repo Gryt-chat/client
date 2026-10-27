@@ -1,0 +1,10 @@
+# Check out text files with LF everywhere, including Windows.
+#
+# Without this, a Windows clone with core.autocrlf=true gets CRLF in the working
+# tree while the index stays LF. Thirteen of the scripts/check-*.ts read source
+# files and match on literal "\n", so they fail on Windows and nowhere else. CI
+# runs on ubuntu-latest, so it never sees it.
+* text=auto eol=lf
+
+# Batch files are the exception: cmd.exe wants CRLF.
+*.bat text eol=crlf
