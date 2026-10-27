@@ -5,6 +5,8 @@ export interface ShareMeta {
   name?: string;
   quality?: string;
   fps?: number;
+  /** One of Gryt's own windows: its sound can't be turned on. */
+  own?: boolean;
 }
 
 /** What the picker and the share menu know about each shared window, keyed by `windowKey`. */

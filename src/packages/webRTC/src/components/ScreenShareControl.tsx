@@ -38,6 +38,15 @@ interface ShareRow {
   audio: MediaStreamTrack | undefined;
   setQuality: ((quality: string, fps: number) => void) | null;
   remove: (() => void) | null;
+  /** Shared without sound: restarts this window with it. Null where it can't be (a Gryt window, the browser). */
+  addSound: (() => void) | null;
+  own: boolean;
+}
+
+function soundTitle(row: ShareRow): string | undefined {
+  if (row.own) return "Gryt can't share its own sound. Everyone would hear the call played back to them.";
+  if (!row.audio && !row.addSound) return "Shared without sound";
+  return undefined;
 }
 
 /** One shared window in the menu: its number, name, quality, sound and ✕. */
@@ -90,13 +99,14 @@ function ShareRowItem({ row, num }: { row: ShareRow; num: number }) {
       {sound
         ? <PiSpeakerHighFill size={14} className="flex-none" color="var(--gryt-accent-11)" aria-hidden />
         : <PiSpeakerSlashFill size={14} className="flex-none" color="var(--gryt-muted)" aria-hidden />}
-      <span title={row.audio ? undefined : "Shared without sound"} className="flex flex-none">
+      <span title={soundTitle(row)} className="flex flex-none">
         <Switch
           aria-label={`Sound from ${row.name}`}
           checked={sound}
-          disabled={!row.audio}
+          disabled={!row.audio && !row.addSound}
           onCheckedChange={(on) => {
             if (row.audio) row.audio.enabled = on;
+            else if (on) row.addSound?.();
             rerender();
           }}
         />
@@ -134,14 +144,14 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
         if (mode === "start") {
           const [first] = picks;
           rest = picks.slice(1);
-          setShareMeta(first.sourceId, { name: first.name });
+          setShareMeta(first.sourceId, { name: first.name, own: first.own });
           setFirstShareKey(first.sourceId);
           setScreenShareQuality(first.quality);
           setScreenShareFps(first.fps);
           await startScreenShare(first.withAudio, first.sourceId || undefined);
         }
         for (const p of rest) {
-          setShareMeta(p.sourceId, { name: p.name, quality: p.quality, fps: p.fps });
+          setShareMeta(p.sourceId, { name: p.name, quality: p.quality, fps: p.fps, own: p.own });
           await addScreenWindow(p.withAudio, p.sourceId || undefined);
         }
       } finally {
@@ -193,6 +203,9 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
       // The native encoder picks its own size and rate, so a quality would do nothing there.
       setQuality: nativeEncodedCodec ? null : setFirstQuality,
       remove: next ? promoteNext : stopScreenShare,
+      // Restarting window 1 keeps the others; with it silent they had no sound to lose (addSource needs it).
+      addSound: firstKey.startsWith("window:") && !shareMeta(firstKey)?.own ? () => void startScreenShare(true, firstKey) : null,
+      own: !!shareMeta(firstKey)?.own,
     },
     ...extraWindows.map((w, i): ShareRow => {
       const key = windowKey(w);
@@ -205,6 +218,13 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
         audio: w.audioStream?.getAudioTracks()[0],
         setQuality: (quality, fps) => setShareMeta(key, { quality, fps }),
         remove: () => removeScreenWindow(w.index),
+        addSound: w.sourceId && !m?.own
+          ? () => {
+            removeScreenWindow(w.index);
+            void addScreenWindow(true, w.sourceId);
+          }
+          : null,
+        own: !!m?.own,
       };
     }),
   ];

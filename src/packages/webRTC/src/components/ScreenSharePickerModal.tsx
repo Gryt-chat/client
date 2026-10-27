@@ -13,6 +13,8 @@ export interface SharePick {
   quality: string;
   fps: number;
   withAudio: boolean;
+  /** One of Gryt's own windows, whose sound is never shared. */
+  own?: boolean;
 }
 
 interface ScreenSharePickerModalProps {
@@ -69,7 +71,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
     if (p.some((x) => x.sourceId === sourceId)) return p.filter((x) => x.sourceId !== sourceId);
     const remembered = rememberedPreset(appIcon, name);
     const [q, f] = (remembered && presets.some((x) => x.value === remembered) ? remembered : savedKey).split("@");
-    return [...p, { sourceId, name, quality: q, fps: Number(f), withAudio: !own }];
+    return [...p, { sourceId, name, quality: q, fps: Number(f), withAudio: !own, own }];
   });
   const update = (sourceId: string, change: Partial<SharePick>) =>
     setPicks((p) => p.map((x) => (x.sourceId === sourceId ? { ...x, ...change } : x)));
