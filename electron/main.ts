@@ -4427,34 +4427,21 @@ if (!gotSingleInstanceLock) {
                 | number
                 | undefined;
 
-              if (isScreen) {
-                const displayIndex =
-                  parseInt(
-                    source.id.split(
-                      ":"
-                    )[1],
-                    10
-                  );
+              // display_id, not the id's number: on macOS that number is a CGDirectDisplayID, not an index.
+              const display = isScreen
+                ? displays.find((d) => String(d.id) === source.display_id) ?? displays[parseInt(source.id.split(":")[1], 10)]
+                : undefined;
 
-                const display =
-                  displays[
-                    displayIndex
-                  ];
-
-                if (display) {
-                  width =
-                    display.size.width *
-                    display.scaleFactor;
-
-                  height =
-                    display.size.height *
-                    display.scaleFactor;
-                }
+              if (display) {
+                width = Math.round(display.size.width * display.scaleFactor);
+                height = Math.round(display.size.height * display.scaleFactor);
               }
 
               return {
                 id: source.id,
-                name: source.name,
+                name: display
+                  ? `Screen ${displays.indexOf(display) + 1} · ${width}×${height}`
+                  : source.name,
                 thumbnail:
                   source.thumbnail.toDataURL(),
                 // macOS hands back an empty 0×0 image for every window, even with fetchWindowIcons.
