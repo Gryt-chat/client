@@ -408,6 +408,7 @@ export const ChannelList = ({
         <MaybeNameTip name={iconsOnly ? channel?.name : undefined}>
         <Button size="small"
           data-gryt="channel-row"
+          aria-label={iconsOnly ? channel?.name : undefined}
           tone={selected ? "primary" : "ghost"}
           style={{
             position: "relative",
