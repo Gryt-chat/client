@@ -37,6 +37,9 @@ export function SwitchRow({ label, checked, onCheckedChange }: {
   );
 }
 
+/** Every Select on these rows is the same width, so a long device name cannot widen the row. */
+const SELECT = { size: "small", className: "w-[190px]" } as const;
+
 export function CameraSelect({ value, onChange, devices }: {
   value: string;
   onChange: (deviceId: string) => void;
@@ -45,9 +48,8 @@ export function CameraSelect({ value, onChange, devices }: {
   const cameras = devices.filter((d) => d.deviceId);
   return (
     <Select
+      {...SELECT}
       aria-label="Camera"
-      size="small"
-      className="w-[190px]"
       value={value || cameras[0]?.deviceId || ""}
       onValueChange={(v) => onChange(String(v))}
       options={cameras.length === 0
@@ -66,8 +68,6 @@ function Row({ name, detail }: { name: string; detail: string | null }) {
     </span>
   );
 }
-
-const SELECT = { size: "small", className: "w-[190px]" } as const;
 
 /**
  * Native, the three presets, then Custom. Native is a `quality@fps` pair like the rest, so
