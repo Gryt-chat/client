@@ -102,6 +102,8 @@ assert.equal(hasRoomForVoicePanel(960), true);
 // The board at 1440: preset 1 (352 + its 16px gap) keeps the full list, preset 2 folds it.
 assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 368 }), "full");
 assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 680 }), "avatars");
+// Hiding the channel list frees its 216px, so a call that folded the members beside it doesn't any more.
+assert.equal(memberListMode({ windowWidth: 1440, voicePanelWidth: 680, channelListShown: false }), "full");
 // Picked option A (2026-10-26): at 1280 and at 1100, preset 1, the list is the slim strip of faces.
 assert.equal(memberListMode({ windowWidth: 1280, voicePanelWidth: 368 }), "avatars");
 assert.equal(memberListMode({ windowWidth: 1100, voicePanelWidth: 368 }), "avatars");

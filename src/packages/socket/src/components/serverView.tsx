@@ -348,6 +348,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     drawnVoicePanelWidth,
     showVoiceView && voiceWidth !== "0px" && isMaximized && !chatTakenOver,
     threadBeside && threadOpen ? THREAD_PANEL_WIDTH : 0,
+    pinChannelsSidebar,
   );
   const roomForMembers = membersMode !== "none";
   const roomForVoice = useRoomForVoicePanel();

@@ -102,6 +102,7 @@ export function memberListMode({
   voicePanelWidth,
   voiceFull = false,
   threadPanelWidth = 0,
+  channelListShown = true,
 }: {
   windowWidth: number;
   /** 0 when the voice view is hidden, full, or the user is not in a call. */
@@ -109,13 +110,15 @@ export function memberListMode({
   /** The call takes the whole middle and the chat is hidden. */
   voiceFull?: boolean;
   threadPanelWidth?: number;
+  /** False with "Keep channels open" off: the list folds to its hover strip and takes no row. */
+  channelListShown?: boolean;
 }): MemberListMode {
   if (voiceFull) return windowWidth > COMPACT_MAX_WIDTH ? "avatars" : "none";
   if (voicePanelWidth <= 0 || threadPanelWidth > 0) {
     return hasRoomForMemberList({ windowWidth, voicePanelWidth, threadPanelWidth }) ? "full" : "none";
   }
   const row = (chat: number, members: number) =>
-    PAGE_PADDING + RAIL_WIDTH + GAP + channelListWidth(windowWidth) + GAP + voicePanelWidth + chat + GAP + members;
+    PAGE_PADDING + RAIL_WIDTH + GAP + (channelListShown ? channelListWidth(windowWidth) + GAP : 0) + voicePanelWidth + chat + GAP + members;
   if (row(MIN_CHAT_BESIDE_CALL, SIDEBAR_WIDTH) <= windowWidth) return "full";
   if (row(MIN_CHAT_WIDTH, AVATAR_COLUMN_WIDTH) <= windowWidth) return "avatars";
   return "none";
