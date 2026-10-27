@@ -25,7 +25,7 @@ export function CallPopout({ callWindow, onReturn, children }: {
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
     >
-      <div className="flex h-8 shrink-0 items-center gap-2 px-2.5 text-xs font-bold">
+      <div className="flex h-[34px] shrink-0 items-center gap-2 border-b border-gryt-neutral-5 pl-3 pr-2 text-[13px] font-extrabold">
         <span className="h-2 w-2 rounded-full" style={{ background: "var(--gryt-success-9)" }} />
         <span className="flex-1 truncate">{title}</span>
         {electron && (
@@ -55,10 +55,10 @@ export function CallPopout({ callWindow, onReturn, children }: {
       <div className="relative min-h-0 flex-1">
         {children}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200"
-          style={{ opacity: hover ? 1 : 0 }}
+          className="pointer-events-none absolute inset-x-0 bottom-3.5 flex justify-center transition-[opacity,transform] duration-200"
+          style={{ opacity: hover ? 1 : 0, transform: hover ? "none" : "translateY(10px)" }}
         >
-          <div className="pointer-events-auto">
+          <div className={hover ? "pointer-events-auto" : undefined}>
             <MiniControls direction="popout" />
           </div>
         </div>

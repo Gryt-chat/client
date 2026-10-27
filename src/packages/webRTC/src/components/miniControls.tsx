@@ -86,6 +86,7 @@ export function MiniControls({
             className={capsule ? "gryt-call-capsule" : undefined}
             data-live={capsule ? String(voice.live) : undefined}
             data-appearance={capsule ? resolvedAppearance : undefined}
+            data-direction={direction}
             style={{
               display: "flex",
               flexDirection: ({ column: "column", row: "row-reverse", popout: "row" } as const)[direction],

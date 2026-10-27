@@ -2581,6 +2581,16 @@ body {
   background: var(--gryt-success-6);
   color: var(--gryt-success-11);
 }
+/* The pop-out's hover bar is neutral, as on the Popout board: it floats over the tiles, not in the rail. */
+.gryt-call-capsule[data-direction="popout"] {
+  background: color-mix(in oklch, var(--gryt-neutral-1) 88%, transparent);
+  box-shadow: inset 0 0 0 1px var(--gryt-neutral-6);
+  padding: 6px;
+}
+.gryt-call-capsule[data-direction="popout"] [data-call-state="idle"] {
+  background: var(--gryt-neutral-5);
+  color: var(--gryt-neutral-12);
+}
 
 /* The narrow channel list (GRYT-1899): square icons, names on hover, people as dots. */
 [data-channel-icons] .gryt-hide-in-icons {

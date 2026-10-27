@@ -857,14 +857,15 @@ export const VoiceView = ({
     screenItems.length === 0 &&
     peopleItems.length === 2;
 
-  // The pop-out has no bar under the tiles; its toggles float over them on hover, as on the board.
-  const controlsHeight = inPopout ? GRID_PADDING : CONTROLS_HEIGHT;
+  // The pop-out has no bar under the tiles and sits 8px from its window's edge; its toggles float on hover.
+  const gridPadding = inPopout ? 8 : GRID_PADDING;
+  const controlsHeight = inPopout ? gridPadding : CONTROLS_HEIGHT;
   const channelName = serverDetailsList[serverHost]?.channels?.find((c) => c.id === currentChannelId)?.name ?? "Voice";
   const availableHeight = Math.max(
     0,
-    gridHeight - controlsHeight - GRID_PADDING,
+    gridHeight - controlsHeight - gridPadding,
   );
-  const usableWidth = Math.max(0, gridWidth - 2 * GRID_PADDING);
+  const usableWidth = Math.max(0, gridWidth - 2 * gridPadding);
 
   // A share is fitted to its own shape, so the layout needs the stream's real
   // dimensions: a shared window is not 16:9.
@@ -923,9 +924,9 @@ export const VoiceView = ({
     prioritisedPeople.length,
   ]);
 
-  // When everyone does not fit, the last slot becomes the "+N" tile rather
-  // than a person, so the count sits inside the layout instead of over it.
-  const overflows = prioritisedPeople.length > capacity;
+  // When everyone does not fit, the last slot becomes a "+N" tile. Not in the
+  // pop-out: there everyone is laid out, as on the Popout board.
+  const overflows = !inPopout && prioritisedPeople.length > capacity;
 
   const visiblePeople = useMemo(
     () =>
@@ -1342,10 +1343,11 @@ export const VoiceView = ({
             }),
       }}
     >
-      <div className="relative flex h-full w-full flex-col p-3" style={{
-          background: isFullscreen ? "var(--gryt-neutral-1)" : "var(--gryt-neutral-3)",
-          borderRadius: isFullscreen ? 0 : "var(--gryt-radius-lg)",
-        }}>
+      <div className={`relative flex h-full w-full flex-col ${inPopout ? "" : "p-3"}`} style={
+          isFullscreen || inPopout
+            ? { background: isFullscreen ? "var(--gryt-neutral-1)" : "transparent", borderRadius: 0 }
+            : { background: "var(--gryt-neutral-3)", borderRadius: "var(--gryt-radius-lg)" }
+        }>
         {isFullscreen ? (
           <FullscreenLabel
             channelName={channelName}
@@ -1514,7 +1516,7 @@ export const VoiceView = ({
                         gap: `${GRID_GAP}px`,
                         // The controls float over this area, so a full-height tile
                         // puts the name behind the mute button.
-                        padding: `${GRID_PADDING}px ${GRID_PADDING}px ${controlsHeight}px`,
+                        padding: `${gridPadding}px ${gridPadding}px ${controlsHeight}px`,
                         height: "100%",
                         overflow: "hidden",
                       }
