@@ -59,6 +59,9 @@ jobs:
       - run: yarn test:desktop-away
       - run: yarn test:server-hover-address
       - run: yarn test:server-voice-line
+      # A camera pick did not stick: the engine reports its fallback before the stored
+      # settings have been read, and it was written over the choice.
+      - run: yarn test:device-adoption
       - run: yarn test:ui-scale
       - run: yarn test:peer-in-clear
       - run: yarn test:ai-toolkit

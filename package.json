@@ -204,6 +204,7 @@
     "test:desktop-away": "node --disable-warning=ExperimentalWarning scripts/check-desktop-away.ts",
     "test:server-hover-address": "node scripts/check-server-hover-address.ts",
     "test:server-voice-line": "node --disable-warning=ExperimentalWarning scripts/check-server-voice-line.ts",
+    "test:device-adoption": "node scripts/check-device-adoption.ts",
     "test:ui-scale": "node scripts/check-ui-scale.ts",
     "test:peer-in-clear": "node scripts/check-peer-in-clear.ts",
     "test:ai-toolkit": "node scripts/check-ai-toolkit.ts",

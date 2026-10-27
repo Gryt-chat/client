@@ -1,10 +1,11 @@
 import type { VoiceConfigCallbacks } from "@gryt/voice";
 import { setVoiceHost,VoiceConfigProvider, VoiceSingletonHooks } from "@gryt/voice";
-import { type ReactNode,useMemo, useRef } from "react";
+import { type ReactNode,useEffect, useMemo, useRef } from "react";
 
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
+import { adoptDevice } from "./deviceAdoption";
 import { createRoomCoordinator } from "./roomCoordinator";
 import { useVoiceLifecycle } from "./useVoiceLifecycle";
 import { useVoiceConfigFromSettings } from "./voiceConfig";
@@ -35,15 +36,32 @@ function useDeviceCallbacks(): VoiceConfigCallbacks {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
+  /* Held until the stored settings are read: `loadForUser` is awaited, so before it
+     resolves the engine's fallback was being written over a saved choice. */
+  const held = useRef<{ mic?: string; camera?: string }>({});
+
+  useEffect(() => {
+    if (!settings.settingsLoaded) return;
+    const waiting = held.current;
+    held.current = {};
+    const s = settingsRef.current;
+    if (waiting.mic && adoptDevice(true, s.micID) === "write") s.setMicID(waiting.mic);
+    if (waiting.camera && adoptDevice(true, s.cameraID) === "write") s.setCameraID(waiting.camera);
+  }, [settings.settingsLoaded]);
+
   return useMemo(
     () => ({
       onAudioDeviceChanged: (deviceId: string) => {
-        if (settingsRef.current.micID) return;
-        settingsRef.current.setMicID(deviceId);
+        const s = settingsRef.current;
+        const what = adoptDevice(s.settingsLoaded, s.micID);
+        if (what === "hold") held.current.mic = deviceId;
+        if (what === "write") s.setMicID(deviceId);
       },
       onCameraDeviceChanged: (deviceId: string) => {
-        if (settingsRef.current.cameraID) return;
-        settingsRef.current.setCameraID(deviceId);
+        const s = settingsRef.current;
+        const what = adoptDevice(s.settingsLoaded, s.cameraID);
+        if (what === "hold") held.current.camera = deviceId;
+        if (what === "write") s.setCameraID(deviceId);
       },
     }),
     [],
