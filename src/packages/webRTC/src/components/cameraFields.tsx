@@ -69,11 +69,8 @@ function Row({ name, detail }: { name: string; detail: string | null }) {
   );
 }
 
-/**
- * Native, the three presets, then Custom. Native is a `quality@fps` pair like the rest, so
- * picking it needs nothing new in settings — it is "native" at the fastest rate this camera
- * reports. Custom is not a pair, so it carries a sentinel and opens two selects of its own.
- */
+/** Native, the three presets, then Custom. Native is a `quality@fps` pair like the rest;
+    Custom is not, so it carries a sentinel and opens two selects of its own. */
 export function QualityFields({ quality, fps, onChange, track, deviceId }: {
   quality: string;
   fps: number;

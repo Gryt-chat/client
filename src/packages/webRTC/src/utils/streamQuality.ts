@@ -39,9 +39,8 @@ export const CAMERA_QUALITY_ORDER: CaptureQuality[] = [
 ];
 
 export interface CameraCapabilities {
-  /* Three separate maxima, not one mode: a camera listing 1920x1080 and 60 fps may well
-     only manage both one at a time. Good enough to advertise the Native row with, not
-     good enough to promise. */
+  /* Three separate maxima, not one mode: a camera listing both may manage only one at a
+     time. Enough to advertise Native with, not to promise. */
   ceiling: { width: number; height: number; fps: number } | null;
   /** What the open track is producing. The truth, once Native is what opened it. */
   live: { width: number; height: number; fps: number } | null;
@@ -49,18 +48,12 @@ export interface CameraCapabilities {
 
 const NO_CAPABILITIES: CameraCapabilities = { ceiling: null, live: null };
 
-/* Ceilings don't change while a camera stays plugged in, and the only track they can be read
-   off is a raw device one. The flipped camera isn't: `createFlippedStream` hands back a canvas
-   capture, whose getCapabilities describes the canvas. So the preview, which always opens its
-   own unflipped track, fills this in and the menu reads it back by device. */
+/* Only a raw device track can be read; the flipped one is a canvas capture. The preview fills
+   this in and the menu reads it back by device. */
 const ceilings = new Map<string, CameraCapabilities["ceiling"]>();
 
-/**
- * Read off the live track rather than off the preset that opened it: `getCapabilities` reports
- * the device's own ceiling whatever the current constraints are, so the Native row can still
- * say what the camera does while some other preset is selected. Firefox has shipped without
- * `getCapabilities` on and off, hence the guard.
- */
+/** The device ceiling whatever the current constraints are, so Native can speak while another
+    preset is selected. Guarded: Firefox has shipped without `getCapabilities`. */
 export function cameraCapabilities(
   track: MediaStreamTrack | null | undefined,
   deviceId?: string,
@@ -86,14 +79,8 @@ export function cameraCapabilities(
   }
 }
 
-/**
- * The fastest rate on CAMERA_FPS_OPTIONS this camera can hold. Snapped to that list rather
- * than passed through, because `CameraFps` and the Frame Rate select in Settings each only
- * know those six, and an off-list number renders as an empty box in the second one. The
- * half-frame slack is so 29.97 and 59.94 count as 30 and 60, and it is load-bearing rather
- * than defensive: an Elgato Cam Link 4K reports frameRate.max as 59.94017791748047, which
- * without the slack snaps to 30 and gives back the 30 fps cap this whole row exists to lift.
- */
+/** Snapped to CAMERA_FPS_OPTIONS, the only six `CameraFps` and Settings know. The half frame
+    matters: a Cam Link reports 59.94017791748047, and 30 without it (GRYT-1956). */
 export function nativeFps(caps: CameraCapabilities): number {
   const max = caps.ceiling?.fps ?? caps.live?.fps;
   if (!max) return 30;
@@ -101,13 +88,8 @@ export function nativeFps(caps: CameraCapabilities): number {
   return fits[fits.length - 1] ?? CAMERA_FPS_OPTIONS[0];
 }
 
-/**
- * What Native is giving you, or would give you. Measured off the track once Native is what
- * opened it. Before that it is the camera's size and the rate `nativeFps` will ask for, which
- * is not always the rate the camera reports: a camera topping out at 50 is asked for 30, and
- * the row has to say 30 or it promises a rate picking it will not produce. Null while no
- * camera is open.
- */
+/** Measured once Native opened the track; before that, the size and the rate `nativeFps` will
+    ask for, which is not always the one reported. Null while no camera is open. */
 export function nativeDetail(caps: CameraCapabilities, isLive: boolean): string | null {
   if (isLive && caps.live) return `${caps.live.width}\u00d7${caps.live.height}, ${Math.round(caps.live.fps)} fps`;
   const size = caps.ceiling ?? caps.live;
