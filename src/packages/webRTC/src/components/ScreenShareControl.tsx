@@ -131,8 +131,7 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
     startScreenShare, stopScreenShare, addScreenWindow, extraWindows, removeScreenWindow,
   } = useScreenShare();
   const {
-    screenShareQuality, setScreenShareQuality,
-    screenShareFps, setScreenShareFps,
+    screenShareQuality, screenShareFps,
   } = useSettings();
   const [picker, setPicker] = useState<"start" | "add" | null>(null);
   useShareWindowsVersion();
@@ -148,10 +147,8 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
         if (mode === "start") {
           const [first] = picks;
           rest = picks.slice(1);
-          setShareMeta(first.sourceId, { name: first.name, own: first.own });
+          setShareMeta(first.sourceId, { name: first.name, quality: first.quality, fps: first.fps, own: first.own });
           setFirstShareKey(first.sourceId);
-          setScreenShareQuality(first.quality);
-          setScreenShareFps(first.fps);
           await startScreenShare(first.withAudio, first.sourceId || undefined);
         }
         for (const p of rest) {
@@ -163,7 +160,7 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
         toast.dismiss(toastId);
       }
     },
-    [startScreenShare, addScreenWindow, setScreenShareQuality, setScreenShareFps],
+    [startScreenShare, addScreenWindow],
   );
 
   // The browser brings its own picker, so the app's one is only for the desktop app.
@@ -174,18 +171,11 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
 
   useCallButtonPress("share", () => openPicker("start"), takesRailPress && !screenShareActive);
 
-  const setFirstQuality = (quality: string, fps: number) => {
-    setScreenShareQuality(quality);
-    setScreenShareFps(fps);
-  };
-
   // The engine can't drop its first window alone, so the next one takes its place.
   const next = extraWindows[0];
   const promoteNext = next?.sourceId
     ? () => {
       const key = windowKey(next);
-      const m = shareMeta(key);
-      if (m?.quality && m.fps) setFirstQuality(m.quality, m.fps);
       setFirstShareKey(key);
       const withAudio = !!next.audioStream?.getAudioTracks()[0]?.enabled;
       // Drop window 2 before window 1 takes its source: two captures of one window, one then stopped, ended the whole share on Windows.
@@ -201,12 +191,12 @@ export function ScreenShareControl({ iconSize = 16, size, buttonStyle, idleClass
     {
       key: firstKey,
       name: nameOf(firstKey, screenVideoStream?.getVideoTracks()[0], 1),
-      quality: screenShareQuality,
-      fps: screenShareFps,
+      quality: shareMeta(firstKey)?.quality ?? screenShareQuality,
+      fps: shareMeta(firstKey)?.fps ?? screenShareFps,
       audio: screenAudioStream?.getAudioTracks()[0],
       audioStreamId: screenAudioStream?.id,
       // The native encoder picks its own size and rate, so a quality would do nothing there.
-      setQuality: nativeEncodedCodec ? null : setFirstQuality,
+      setQuality: nativeEncodedCodec ? null : (quality, fps) => setShareMeta(firstKey, { quality, fps }),
       remove: next ? promoteNext : stopScreenShare,
       // Restarting window 1 keeps the others; with it silent they had no sound to lose (addSource needs it).
       addSound: firstKey.startsWith("window:") && !shareMeta(firstKey)?.own ? () => void startScreenShare(true, firstKey) : null,

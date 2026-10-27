@@ -14,6 +14,7 @@ import { useSettings } from "@/settings";
 
 import { isMacAppStoreBuild, isMacDesktop } from "../../../../lib/electron";
 import { startDesktopNativeAudio } from "./desktopNativeVoice";
+import { firstShareKey, shareMeta, useShareWindowsVersion } from "./shareWindows";
 
 /** The own voice transport (GRYT-1818): on in beta builds on the way to dropping WebRTC audio (GRYT-1831), off in stable.
     `localStorage["gryt.ownAudioTransport"]` = "1" or "0" overrides either way. */
@@ -77,6 +78,10 @@ const loadOpusWasm = (): Promise<ArrayBuffer> => fetch(opusWasmUrl()).then((r) =
 export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
   const s = useSettings();
   const on = useNewVoice();
+  useShareWindowsVersion();
+  const first = shareMeta(firstShareKey());
+  const screenQuality = first?.quality ?? s.screenShareQuality;
+  const screenFps = first?.fps ?? s.screenShareFps;
 
   return useMemo(
     () => ({
@@ -105,8 +110,8 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
         mirrored: s.cameraFlipped,
       },
       screen: {
-        quality: s.screenShareQuality as CaptureQuality,
-        fps: s.screenShareFps as ScreenShareFps,
+        quality: screenQuality as CaptureQuality,
+        fps: screenFps as ScreenShareFps,
         codec: s.screenShareCodec,
         gamingMode: s.screenShareGamingMode,
       },
@@ -122,7 +127,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
       s.inputMode, s.micVolume, s.outputVolume, s.loopbackEnabled, s.rnnoiseEnabled,
       s.noiseGate, s.noiseGateRelease, s.autoGainEnabled, s.autoGainTargetDb,
       s.compressorEnabled, s.compressorAmount, s.voiceBitrateKbps, s.cameraID, s.cameraQuality,
-      s.cameraFps, s.cameraFlipped, s.screenShareQuality, s.screenShareFps,
+      s.cameraFps, s.cameraFlipped, screenQuality, screenFps,
       s.screenShareCodec, s.screenShareGamingMode, s.eSportsModeEnabled,
       stunHosts, on,
     ],
