@@ -42,6 +42,7 @@ import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
 import { type BentoItem, computeBentoLayout } from "../lib/bentoLayout";
 import { cameraStreamFor, hasLiveVideoTrack } from "../lib/cameraStream";
+import { heldShareGain } from "../lib/heldShareGain";
 import { parseScreenItem, screenItemId, shareCount, shareOf } from "../lib/screenItems";
 import {
   computeGridLayout,
@@ -737,7 +738,6 @@ export const VoiceView = ({
   /* A share you aren't watching stays silent (GRYT-1681). The volume it had is kept, so
      watching again picks up where the slider was rather than at full. */
   const watchedShares = useWatchedShares();
-  const heldShareGain = useRef(new Map<string, number>());
   useEffect(() => {
     if (!streamSources) return;
     const shares = Object.entries(clientsForHost)
@@ -747,15 +747,14 @@ export const VoiceView = ({
       const gain = audioId ? streamSources[audioId]?.gain : undefined;
       if (!audioId || !gain) continue;
       const watching = !!videoStreamID && watchedShares.has(videoStreamID);
-      const held = heldShareGain.current;
-      if (!watching && !held.has(audioId)) {
-        held.set(audioId, gain.gain.value);
+      if (!watching && !heldShareGain.has(audioId)) {
+        heldShareGain.set(audioId, gain.gain.value);
         gain.gain.setValueAtTime(0, gain.context.currentTime);
       } else if (watching) {
-        const level = held.get(audioId);
+        const level = heldShareGain.get(audioId);
         if (level === undefined) continue;
         gain.gain.setValueAtTime(level, gain.context.currentTime);
-        held.delete(audioId);
+        heldShareGain.delete(audioId);
       }
     }
   }, [clientsForHost, currentConnectionId, streamSources, watchedShares]);

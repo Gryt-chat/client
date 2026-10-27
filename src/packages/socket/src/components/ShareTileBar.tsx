@@ -5,6 +5,7 @@ import { useState } from "react";
 import { gainToSlider, sliderToGain } from "@/lib/audioVolume";
 
 import { PiCornersOutFill, PiSpeakerHighFill, PiX } from "../../../../lib/icons";
+import { heldShareGain } from "../lib/heldShareGain";
 
 const CHIP = { background: "rgba(17,19,24,.85)", color: "#fff" };
 
@@ -16,7 +17,9 @@ export function ShareTileBar({ name, audioStreamId, streamSources, onStop }: {
   onStop: () => void;
 }) {
   const gain = audioStreamId ? streamSources?.[audioStreamId]?.gain : undefined;
-  const [volume, setVolume] = useState(() => (gain ? gainToSlider(gain.gain.value, 200) : 100));
+  // The tile mounts before VoiceView puts the held level back, so the gain itself still reads 0 here.
+  const held = audioStreamId ? heldShareGain.get(audioStreamId) : undefined;
+  const [volume, setVolume] = useState(() => (gain ? gainToSlider(held ?? gain.gain.value, 200) : 100));
   return (
     <>
       <Tooltip title="Stop watching">
