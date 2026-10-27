@@ -193,10 +193,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [voiceResizing, setVoiceResizing] = useState(false);
   const [callWindow, setCallWindow] = useState<CallWindow | null>(null);
   const popIn = useCallback(() => {
-    callWindow?.close();
     setCallWindow(null);
     setShowVoiceView(true);
-  }, [callWindow, setShowVoiceView]);
+  }, [setShowVoiceView]);
+  // Closed after the call has left it, and never inside the click: closing a window from its own
+  // input handler kills the main process on Windows (0xc000041d).
+  useEffect(() => () => void (callWindow && setTimeout(callWindow.close)), [callWindow]);
   // Opening the view any other way (a channel, the rail) brings the call back. On the change only:
   // popping out sets two stores, and for a render the call is out while the view still reads shown.
   const viewShownBefore = useRef(showVoiceView);
@@ -206,10 +208,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     if (callWindow && showVoiceView && !was) popIn();
   }, [callWindow, showVoiceView, popIn]);
   useEffect(() => {
-    if (isConnected || !callWindow) return;
-    callWindow.close();
-    setCallWindow(null);
-  }, [isConnected, callWindow]);
+    if (!isConnected) setCallWindow(null);
+  }, [isConnected]);
   // Hidden for its chat because the window was too narrow, the call comes back when it widens.
   const hiddenForChat = useRef(false);
   useEffect(() => {
