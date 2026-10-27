@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
 import { PiMonitorFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiSquaresFourFill } from "../../../../lib/icons";
 import { currentPlatform, shareSoundHint } from "../../../../lib/screenShareAudio";
+import { rememberedPreset, rememberPreset } from "../utils/shareQualityByApp";
 import { presetKey, SCREEN_PRESETS, screenPresetName } from "../utils/streamQuality";
 
 export interface SharePick {
@@ -64,10 +65,11 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
   const savedKey = presetKey(quality, fps);
   if (!presets.some((p) => p.value === savedKey)) presets.push({ value: savedKey, label: screenPresetName(quality, fps) });
 
-  const toggle = (sourceId: string, name: string) => setPicks((p) => {
+  const toggle = ({ id: sourceId, name, appIcon }: DesktopSource) => setPicks((p) => {
     if (p.some((x) => x.sourceId === sourceId)) return p.filter((x) => x.sourceId !== sourceId);
-    const pick = { sourceId, name, quality, fps, withAudio: true };
-    return [...p, pick];
+    const remembered = rememberedPreset(appIcon, name);
+    const [q, f] = (remembered && presets.some((x) => x.value === remembered) ? remembered : savedKey).split("@");
+    return [...p, { sourceId, name, quality: q, fps: Number(f), withAudio: true }];
   });
   const update = (sourceId: string, change: Partial<SharePick>) =>
     setPicks((p) => p.map((x) => (x.sourceId === sourceId ? { ...x, ...change } : x)));
@@ -133,11 +135,11 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                   style={pick
                     ? { borderColor: "var(--gryt-accent-9)", background: "var(--gryt-accent-3)" }
                     : { borderColor: "var(--gryt-neutral-6)", background: "var(--gryt-neutral-2)" }}
-                  onClick={() => toggle(src.id, src.name)}
+                  onClick={() => toggle(src)}
                   onKeyDown={(e) => {
                     if (e.target !== e.currentTarget || (e.key !== " " && e.key !== "Enter")) return;
                     e.preventDefault();
-                    toggle(src.id, src.name);
+                    toggle(src);
                   }}
                 >
                   <div className="relative flex h-[108px] items-center justify-center overflow-hidden bg-black">
@@ -197,6 +199,10 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                 size="small"
                 disabled={!n}
                 onClick={() => {
+                  for (const pick of picks) {
+                    const appIcon = sources.find((src) => src.id === pick.sourceId)?.appIcon ?? "";
+                    rememberPreset(appIcon, pick.name ?? "", presetKey(pick.quality, pick.fps));
+                  }
                   onStart(picks);
                   onOpenChange(false);
                 }}
