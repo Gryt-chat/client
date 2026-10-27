@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { singletonHook } from "@/common";
+import { IS_BETA_BUILD, singletonHook } from "@/common";
 import {
   clearStoredAvatar,
   getStoredAvatar,
@@ -106,7 +106,9 @@ function useSettingsHook() {
 
   const [screenShareQuality, setScreenShareQuality] = useState("native");
   const [screenShareFps, setScreenShareFps] = useState(30);
-  const [experimentalScreenShare, setExperimentalScreenShare] = useState(false);
+  /* On in beta, as the own voice transport and the native engine already are: the
+     options are there to be tried, and a stored choice still wins over this. */
+  const [experimentalScreenShare, setExperimentalScreenShare] = useState(IS_BETA_BUILD);
   const [screenShareGamingMode, setScreenShareGamingModeState] = useState(true);
   const [screenShareCodec, setScreenShareCodecState] = useState<ScreenShareCodec>("auto");
   const [screenShareMaxBitrate, setScreenShareMaxBitrateState] = useState(0);
@@ -181,7 +183,7 @@ function useSettingsHook() {
       setCameraCodecState(getUserValue<VideoCodec>("cameraCodec", "auto"));
       setScreenShareQuality(getUserValue("screenShareQuality", "native"));
       setScreenShareFps(getUserValue("screenShareFps", 30));
-      setExperimentalScreenShare(getUserValue("experimentalScreenShare", false));
+      setExperimentalScreenShare(getUserValue("experimentalScreenShare", IS_BETA_BUILD));
       setScreenShareGamingModeState(getUserValue("screenShareGamingMode", true));
       setScreenShareCodecState(getUserValue<ScreenShareCodec>("screenShareCodec", "auto"));
       setScreenShareMaxBitrateState(getUserValue("screenShareMaxBitrate", 0));
