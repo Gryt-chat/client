@@ -91,14 +91,11 @@ async function seedFolder(owner: Page, server: GrytServer, positions: number[]) 
   return { folder, names };
 }
 
-test("the + in the server header makes a channel or a folder", async ({ owner }) => {
+test("the server menu makes a channel or a folder", async ({ owner }) => {
   const page = owner.page;
-  const plus = channelsNav(page).getByRole("button", { name: "Create channel or folder" });
-  await expect(plus).toBeVisible();
-
-  await plus.click();
-  await expect(page.getByRole("menuitem")).toHaveText(["Channel", "Folder"]);
-  await page.getByRole("menuitem", { name: "Channel", exact: true }).click();
+  const menu = channelsNav(page).getByRole("button", { name: "Server menu" });
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Create channel", exact: true }).click();
   const name = uniqueName("plus");
   const dialog = page.getByRole("dialog", { name: "Create channel" });
   await dialog.getByPlaceholder("support").fill(name);
@@ -113,33 +110,29 @@ test("the + in the server header makes a channel or a folder", async ({ owner })
   const folderName = `Folder ${Date.now().toString(36)}`;
   const folder = channelsNav(page).getByRole("button", { name: folderName, exact: true });
   const newFolder = page.getByRole("dialog", { name: "New folder" });
-  await plus.click();
-  await page.getByRole("menuitem", { name: "Folder", exact: true }).click();
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Create folder", exact: true }).click();
   await newFolder.getByRole("textbox", { name: "Folder name" }).fill(folderName);
   await newFolder.getByRole("button", { name: "Cancel" }).click();
   await expect(newFolder).toBeHidden();
   await expect(folder).toHaveCount(0);
 
-  await plus.click();
-  await page.getByRole("menuitem", { name: "Folder", exact: true }).click();
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Create folder", exact: true }).click();
   await expect(newFolder.getByRole("button", { name: "Create folder" })).toBeDisabled();
   await newFolder.getByRole("textbox", { name: "Folder name" }).fill(folderName);
   await newFolder.getByRole("button", { name: "Create folder" }).click();
   await expect(folder).toHaveCount(1);
 
-  // Both used to be in the server menu. They are only under the + now.
-  await channelsNav(page).getByRole("button", { name: "Server menu" }).click();
+});
+
+test("the pin is in the channel's ⋯ menu, and a member who can't manage channels can't create one", async ({ newMember }) => {
+  const { page } = await newMember();
+  const nav = channelsNav(page);
+  await nav.getByRole("button", { name: "Server menu" }).click();
   await expect(page.getByRole("menuitem", { name: "Plugins" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: /^Create/ })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("menuitem", { name: "Plugins" })).toBeHidden();
-});
-
-test("the pin is in the channel's ⋯ menu, and a member who can't manage channels gets no +", async ({ newMember }) => {
-  const { page } = await newMember();
-  const nav = channelsNav(page);
-  await expect(nav.getByRole("button", { name: "Server menu" })).toBeVisible();
-  await expect(nav.getByRole("button", { name: "Create channel or folder" })).toHaveCount(0);
   await expect(nav.getByRole("button", { name: /pin sidebar/i })).toHaveCount(0);
 
   // Beside Hide members, since both are about this view rather than the server (GRYT-1781).

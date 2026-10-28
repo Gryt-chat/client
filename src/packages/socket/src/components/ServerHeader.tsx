@@ -93,7 +93,7 @@ export const ServerHeader = ({
           </div>
         ) : (
           <Menu.Trigger
-            aria-label={`${serverName ?? "Server"} menu`}
+            aria-label="Server menu"
             className="flex w-full items-center gap-2 min-w-0 rounded-lg px-2 py-1 -mx-2 text-left hover:bg-gryt-neutral-3"
           >
             <span className="flex flex-col flex-1 min-w-0">
@@ -111,10 +111,10 @@ export const ServerHeader = ({
         <Menu.Portal>
           <Menu.Positioner>
             <Menu.Popup>
-              {/* Getting people in. The invite dialog has the open link too, so managers only need the one row. */}
-              {canManage && onOpenInvites ? (
+              {canManage && onOpenInvites && (
                 <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />Invite people</Menu.Item>
-              ) : openInvite.available && (
+              )}
+              {openInvite.available && (
                 <Menu.Item onClick={() => void openInvite.copy()}><PiLinkSimpleBold size={16} />Copy invite link</Menu.Item>
               )}
               {/* The address is what identifies a Gryt server and what somebody else needs to reach it. */}
