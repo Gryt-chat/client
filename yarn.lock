@@ -4469,10 +4469,10 @@ react-markdown@^10.1.0:
     unist-util-visit "^5.0.0"
     vfile "^6.0.0"
 
-react-motion-lightbox@0.9.0:
-  version "0.9.0"
-  resolved "https://registry.yarnpkg.com/react-motion-lightbox/-/react-motion-lightbox-0.9.0.tgz#9831784e55855838844befe976f9c67f4a763b74"
-  integrity sha512-6tHVfCRRMhtZreZTM3Ge+CuNiGYQF0sR57FJiq1InkXCry28m3Y0Qml+5O7r+U61cmdMdBoUioOKY/MkLOTN5w==
+react-motion-lightbox@0.9.1:
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/react-motion-lightbox/-/react-motion-lightbox-0.9.1.tgz#40b22f054b268917ce55781a9a1b2a475dfc507d"
+  integrity sha512-iYgeKPvg/NbR5OKiwE+CoDRvuW2lKUJr/Y0Bam1Kq4xiZLGGpdp2Px0mtpO8OO+9mC4jakwyuToVxsH6c+SEYw==
 
 react-refresh@^0.17.0:
   version "0.17.0"
