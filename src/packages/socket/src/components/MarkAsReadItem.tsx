@@ -1,4 +1,4 @@
-import { ContextMenu } from "@gryt/ui";
+import { ContextMenu, Menu } from "@gryt/ui";
 
 import {
   clearConversationThreadMentions,
@@ -15,6 +15,7 @@ import {
   useUnreadTracker,
 } from "@/common";
 
+import { PiChecksBold } from "../../../../lib/icons";
 import { useSockets } from "../hooks/useSockets";
 
 /**
@@ -30,7 +31,8 @@ export type MarkReadScope =
  * Say you are done with a server, folder, channel or DM. Four counts sit behind
  * one badge, two the client's and two the server's, so each scope clears both.
  */
-export function MarkAsReadItem({ host, scope }: { host: string; scope: MarkReadScope }) {
+export function MarkAsReadItem({ host, scope, inMenu = false }: { host: string; scope: MarkReadScope; inMenu?: boolean }) {
+  const M = (inMenu ? Menu : ContextMenu) as typeof ContextMenu;
   const { sockets } = useSockets();
   const { serverUnreadCount, channelUnreadCount } = useUnreadTracker();
   const { serverMentionCount, conversationMentionCount } = useMentionTracker();
@@ -83,8 +85,9 @@ export function MarkAsReadItem({ host, scope }: { host: string; scope: MarkReadS
   };
 
   return (
-    <ContextMenu.Item disabled={waiting === 0} onClick={onClick}>
+    <M.Item disabled={waiting === 0} onClick={onClick}>
+      {inMenu && <PiChecksBold size={16} />}
       Mark as read
-    </ContextMenu.Item>
+    </M.Item>
   );
 }

@@ -34,6 +34,7 @@ import {
   ChatTeardropText,
   Check,
   CheckCircle,
+  Checks,
   Circle,
   Clock,
   ClockClockwise,
@@ -76,6 +77,7 @@ import {
   GlobeSimple,
   HandWaving,
   HardDrives,
+  Hash,
   Heart,
   House,
   HouseLine,
@@ -192,6 +194,7 @@ export const PiChatTeardropTextFill: Icon = weighted(ChatTeardropText, "fill", "
 export const PiChatsTeardropFill: Icon = weighted(ChatsTeardrop, "fill", "PiChatsTeardropFill");
 export const PiChartBarFill: Icon = weighted(ChartBar, "fill", "PiChartBarFill");
 export const PiCheck: Icon = Check;
+export const PiChecksBold: Icon = weighted(Checks, "bold", "PiChecksBold");
 export const PiCheckBold: Icon = weighted(Check, "bold", "PiCheckBold");
 export const PiCheckCircleFill: Icon = weighted(CheckCircle, "fill", "PiCheckCircleFill");
 export const PiClockClockwiseFill: Icon = weighted(ClockClockwise, "fill", "PiClockClockwiseFill");
@@ -215,6 +218,7 @@ export const PiDotsThreeCircleFill: Icon = weighted(DotsThreeCircle, "fill", "Pi
 export const PiDotsThreeVerticalBold: Icon = weighted(DotsThreeVertical, "bold", "PiDotsThreeVerticalBold");
 export const PiDownloadSimpleFill: Icon = weighted(DownloadSimple, "fill", "PiDownloadSimpleFill");
 export const PiEnvelopeFill: Icon = weighted(Envelope, "fill", "PiEnvelopeFill");
+export const PiHashBold: Icon = weighted(Hash, "bold", "PiHashBold");
 export const PiEyeFill: Icon = weighted(Eye, "fill", "PiEyeFill");
 export const PiEyeSlashBold: Icon = weighted(EyeSlash, "bold", "PiEyeSlashBold");
 export const PiEyeSlashFill: Icon = weighted(EyeSlash, "fill", "PiEyeSlashFill");

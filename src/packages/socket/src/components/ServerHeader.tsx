@@ -1,10 +1,11 @@
-import { Chip, IconButton, Menu, Surface, Tooltip } from "@gryt/ui";
+import { Chip, IconButton, Menu, Surface } from "@gryt/ui";
 import toast from "react-hot-toast";
 
 import { NotificationLevelMenu } from "@/common";
 
-import { PiCopySimpleBold, PiDoorOpenBold, PiDotsThreeVerticalBold, PiGearSixFill, PiHardDrivesFill, PiLinkSimpleBold, PiMinusCircleFill, PiPlusBold, PiPuzzlePieceFill, PiUserPlusFill } from "../../../../lib/icons";
+import { PiBellFill, PiCaretDownFill, PiCopySimpleBold, PiDoorOpenBold, PiFolderFill, PiGearSixFill, PiHardDrivesFill, PiHashBold, PiLinkSimpleBold, PiMinusCircleFill, PiPuzzlePieceFill, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
+import { MarkAsReadItem } from "./MarkAsReadItem";
 
 /** "Friday LAN" → "FL": the first letter of the first two words. */
 function initialsOf(name = "") {
@@ -46,7 +47,7 @@ export const ServerHeader = ({
   /** This app's controls for the server. Only passed when this app hosts it. Server settings has them too. */
   onManageServer?: () => void;
   role?: string;
-  /** `manage_channels`, which the + is for. `role` gates the server's own settings. */
+  /** `manage_channels`, for creating channels and folders. `role` gates the server's own settings. */
   canManageChannels?: boolean;
   pendingReportCount?: number;
   updateAvailable?: boolean;
@@ -54,7 +55,6 @@ export const ServerHeader = ({
   const canManage = role === "owner" || role === "admin";
   /* Everyone's, not just managers': on a server anyone can join, sharing it gives nothing away. */
   const openInvite = useOpenInviteLink(serverHost);
-  const canCreate = Boolean(canManageChannels && (onCreateChannel || onCreateFolder));
 
   const copyHost = async () => {
     if (!serverHost) return;
@@ -68,6 +68,9 @@ export const ServerHeader = ({
     }
   };
 
+  const createItems = canManageChannels && (onCreateChannel || onCreateFolder);
+  const adminItems = createItems || (canManage && onOpenSettings) || onManageServer;
+
   return (
     <Surface
       style={{
@@ -75,68 +78,67 @@ export const ServerHeader = ({
         flexShrink: 0,
       }}
     >
-      <div className={iconsOnly ? "flex justify-center items-center" : "flex justify-between items-center"}>
-        {!iconsOnly && <span className="flex flex-col min-w-0">
-          <span>{serverName}</span>
-          {statusLine && (
-            <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--gryt-warning-11)" }}>
-              <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--gryt-warning-9)" }} />
-              {statusLine}
-            </span>
-          )}
-        </span>}
-        <div className="flex items-center gap-2">
-          {canCreate && !iconsOnly && (
-            <Menu.Root>
-              <Tooltip title="Create channel or folder">
-                <Menu.Trigger
-                  render={
-                    <IconButton tone="neutral" size="xsmall" aria-label="Create channel or folder" />
-                  }
-                >
-                  <PiPlusBold size={14} />
-                </Menu.Trigger>
-              </Tooltip>
-              <Menu.Portal>
-                <Menu.Positioner>
-                  <Menu.Popup>
-                    {onCreateChannel && <Menu.Item onClick={onCreateChannel}>Channel</Menu.Item>}
-                    {/* Discord calls it a category. The sidebar already says folder, so this does too. */}
-                    {onCreateFolder && <Menu.Item onClick={onCreateFolder}>Folder</Menu.Item>}
-                  </Menu.Popup>
-                </Menu.Positioner>
-              </Menu.Portal>
-            </Menu.Root>
-          )}
-
-          <Menu.Root>
-            {/* render, not children: Menu.Trigger is a button already, and a
-                button inside a button is invalid HTML. */}
+      <Menu.Root>
+        {/* render, not children: Menu.Trigger is a button already, and a
+            button inside a button is invalid HTML. */}
+        {iconsOnly ? (
+          <div className="flex justify-center items-center">
             <Menu.Trigger
               render={
-                <IconButton
-                  tone="neutral"
-                  size="xsmall"
-                  aria-label="Server menu"
-                  className={iconsOnly ? "w-auto px-1 text-base font-semibold" : undefined}
-                />
+                <IconButton tone="neutral" size="xsmall" aria-label="Server menu" className="w-auto px-1 text-base font-semibold" />
               }
             >
-              {iconsOnly ? initialsOf(serverName) : <PiDotsThreeVerticalBold size={14} />}
+              {initialsOf(serverName)}
             </Menu.Trigger>
-            <Menu.Portal>
-              <Menu.Positioner>
-                <Menu.Popup>
-              {/* Invite and settings (reports and hosting live there), the address, then leaving. Nothing is greyed
-                  out for a feature Gryt lacks. Per-channel levels are on the channel's right-click. */}
-              {canManage && onOpenInvites && (
-                <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />Invite to server</Menu.Item>
+          </div>
+        ) : (
+          <Menu.Trigger
+            aria-label={`${serverName ?? "Server"} menu`}
+            className="flex w-full items-center gap-2 min-w-0 rounded-lg px-2 py-1 -mx-2 text-left hover:bg-gryt-neutral-3"
+          >
+            <span className="flex flex-col flex-1 min-w-0">
+              <span className="truncate font-semibold">{serverName}</span>
+              {statusLine && (
+                <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--gryt-warning-11)" }}>
+                  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--gryt-warning-9)" }} />
+                  {statusLine}
+                </span>
               )}
-              {openInvite.available && (
+            </span>
+            <PiCaretDownFill size={12} className="shrink-0 opacity-70" />
+          </Menu.Trigger>
+        )}
+        <Menu.Portal>
+          <Menu.Positioner>
+            <Menu.Popup>
+              {/* Getting people in. The invite dialog has the open link too, so managers only need the one row. */}
+              {canManage && onOpenInvites ? (
+                <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />Invite people</Menu.Item>
+              ) : openInvite.available && (
                 <Menu.Item onClick={() => void openInvite.copy()}><PiLinkSimpleBold size={16} />Copy invite link</Menu.Item>
               )}
-              {/* The same control as the rail's right-click and a channel's ⋯ (GRYT-1771). */}
-              {serverHost && <NotificationLevelMenu host={serverHost} scope={{ kind: "server" }} inMenu />}
+              {/* The address is what identifies a Gryt server and what somebody else needs to reach it. */}
+              {serverHost && (
+                <Menu.Item onClick={copyHost}><PiCopySimpleBold size={16} />Copy server address</Menu.Item>
+              )}
+
+              {serverHost && (
+                <>
+                  <Menu.Separator />
+                  {/* The same control as the rail's right-click and a channel's ⋯ (GRYT-1771). */}
+                  <NotificationLevelMenu host={serverHost} scope={{ kind: "server" }} inMenu icon={<PiBellFill size={16} />} />
+                  <MarkAsReadItem host={serverHost} scope={{ kind: "server" }} inMenu />
+                </>
+              )}
+
+              {adminItems && <Menu.Separator />}
+              {/* Discord calls it a category. The sidebar already says folder, so this does too. */}
+              {canManageChannels && onCreateChannel && (
+                <Menu.Item onClick={onCreateChannel}><PiHashBold size={16} />Create channel</Menu.Item>
+              )}
+              {canManageChannels && onCreateFolder && (
+                <Menu.Item onClick={onCreateFolder}><PiFolderFill size={16} />Create folder</Menu.Item>
+              )}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
                   <div className="flex items-center gap-2">
@@ -151,29 +153,13 @@ export const ServerHeader = ({
                   </div>
                 </Menu.Item>
               )}
-              {/* Not gated on role. It is this machine's process, which the server's
-                  roles have no say over. */}
+              {/* Not gated on role. It is this machine's process, which the server's roles have no say over. */}
               {onManageServer && !(canManage && onOpenSettings) && (
                 <Menu.Item onClick={onManageServer}><PiHardDrivesFill size={16} />Manage server</Menu.Item>
               )}
 
-              {/* The address, not an id. It is what identifies a Gryt server,
-                  it is what somebody else needs to reach it, and unlike a
-                  snowflake it is worth pasting to a person. Everyone gets it:
-                  anybody who is here already knows it. */}
-              {serverHost && <Menu.Separator />}
-              {serverHost && (
-                <Menu.Item onClick={copyHost}><PiCopySimpleBold size={16} />Copy server address</Menu.Item>
-              )}
-
-              {/* Everyone, not just whoever can manage the place (GRYT-942).
-                  A server plugin reads what goes through the server, and the
-                  people sending it are who the list is for — a safety net only
-                  the operator can see is not one.
-
-                  Next to Leave on purpose. Leaving is what somebody does about
-                  what they read here, and putting the two together is the
-                  honest arrangement rather than an accident of ordering. */}
+              <Menu.Separator />
+              {/* Everyone's, and next to Leave on purpose (GRYT-942): a server plugin reads what goes through it. */}
               {serverHost && (
                 <Menu.Item
                   onClick={() =>
@@ -186,8 +172,6 @@ export const ServerHeader = ({
                   Plugins
                 </Menu.Item>
               )}
-
-              <Menu.Separator />
               <Menu.Item onClick={() => onLeave("remove")}>
                 <PiMinusCircleFill size={16} />
                 Remove from sidebar
@@ -197,11 +181,9 @@ export const ServerHeader = ({
                 Leave server
               </Menu.Item>
             </Menu.Popup>
-              </Menu.Positioner>
-            </Menu.Portal>
-          </Menu.Root>
-        </div>
-      </div>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
     </Surface>
   );
 };
