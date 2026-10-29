@@ -1,4 +1,4 @@
-import { applyMlsReaction, type MlsDmContent } from "@gryt/core";
+import { acceptImport, applyMlsReaction, type MlsDmContent } from "@gryt/core";
 
 import type { ArchivedMessage, MessageArchive } from "@/common";
 
@@ -25,6 +25,16 @@ export async function applyMlsContent(
     at: number;
   },
 ): Promise<void> {
+  if (content.type === "import") {
+    // Every entry is filed under whoever sent the batch, never a sender it claims.
+    const fresh: ArchivedMessage[] = [];
+    for (const e of acceptImport(content, { senderId, at })) {
+      if (await messages.get(scope, conversationId, e.id)) continue;
+      fresh.push({ scope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId, text: e.text, attachments: e.attachments ?? {}, importedFrom: content.source });
+    }
+    if (fresh.length) await messages.put(fresh);
+    return;
+  }
   if (content.type === "history") {
     // Their record, kept as theirs: it never replaces a message this device already has.
     const fresh: ArchivedMessage[] = [];

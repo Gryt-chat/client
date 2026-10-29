@@ -56,7 +56,8 @@ import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
-import { sampleRunning, useDiscordImportPreview } from "../utils/discordImport";
+import { useMlsSource } from "../mls/serverMls";
+import { type DiscordImportState, useDiscordImport } from "../utils/discordImport";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
@@ -714,8 +715,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       : undefined),
     [dmSpace, selectedDmId, directConversations],
   );
-  const discordImport = useDiscordImportPreview(activeDm?.conversation_id);
+  const mlsSource = useMlsSource(viewingHost);
+  const discordImport = useDiscordImport({
+    host: viewingHost,
+    conversationId: activeDm?.conversation_id,
+    peer: activeDm?.kind === "dm" ? activeDm.other.server_user_id : undefined,
+    source: mlsSource,
+  });
   const setImportOpen = discordImport.setDialogOpen;
+  const [askDismissed, setAskDismissed] = useState<Set<string>>(() => new Set());
   const dmPeer = activeDm?.kind === "dm" ? activeDm.other : undefined;
   const dmPeerAvatar = dmPeer && viewingHost
     ? resolveAvatarSrc(dmPeer.avatar_file_id ? getUploadsFileUrl(viewingHost, dmPeer.avatar_file_id, { thumb: true }) : undefined, dmPeer.nickname, dmPeer.avatar_worn)
@@ -1342,6 +1350,13 @@ forumTags={activeDm ? [] : activeChannelForumTags}
     );
   }
 
+  // D6: their imported messages are arriving and none of yours are, so offer to add your side.
+  const peerImported = activeDm?.kind === "dm" && !askDismissed.has(activeDm.conversation_id)
+    && visibleChatMessages.some((m) => m.imported_from && m.sender_server_id === activeDm.other.server_user_id)
+    && !visibleChatMessages.some((m) => m.imported_from && m.sender_server_id === currentServerUserId);
+  const importState: DiscordImportState | null = discordImport.state
+    ?? (peerImported && activeDm?.kind === "dm" ? { kind: "asked", by: activeDm.other.nickname } : null);
+
   return (
     <MemberCardActionsContext.Provider value={memberCardActions}>
       {/* min-w-0, or a header's one-line name sets the narrowest this can get. */}
@@ -1716,14 +1731,17 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   }}
                   onSearch={openDmSearch}
                   onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
-                  importSection={discordImport.state && (
+                  importSection={importState && (
                     <DiscordImportCard
-                      state={discordImport.state}
+                      state={importState}
                       peerName={activeDm.other.nickname}
                       peerAvatar={dmPeerAvatar}
-                      onPause={(paused) => discordImport.state?.kind === "running" && discordImport.setState({ ...discordImport.state, paused })}
+                      onPause={discordImport.pause}
                       onAddMine={() => setImportOpen(true)}
-                      onDismiss={() => discordImport.setState(null)}
+                      onDismiss={() => {
+                        if (importState.kind === "asked") setAskDismissed((prev) => new Set(prev).add(activeDm.conversation_id));
+                        else discordImport.dismiss();
+                      }}
                     />
                   )}
                 />
@@ -1825,7 +1843,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           onOpenChange={discordImport.setDialogOpen}
           peerName={activeDm.other.nickname}
           peerAvatar={dmPeerAvatar}
-          onStart={(plan) => discordImport.setState(sampleRunning(plan))}
+          onStart={(plan) => void discordImport.start(plan)}
         />
       )}
       <ConfirmDialog

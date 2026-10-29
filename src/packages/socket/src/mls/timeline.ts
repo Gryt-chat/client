@@ -30,6 +30,7 @@ export function archivedRow(m: ArchivedMessage, nameFor: (id: string) => string 
     reactions: m.reactions?.length ? m.reactions : null,
     mls: true,
     ...(m.sharedBy ? { shared_by: nameFor(m.sharedBy) ?? "them" } : {}),
+    ...(m.importedFrom ? { imported_from: m.importedFrom } : {}),
   };
 }
 
