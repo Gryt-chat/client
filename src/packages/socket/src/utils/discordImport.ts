@@ -39,6 +39,7 @@ export type DiscordImportState =
     }
   | { kind: "asked"; by: string }
   | { kind: "missing"; files: number; imported: number; linksUntil: number | null }
+  | { kind: "stopped"; name: string; done: number; total: number }
   | { kind: "done"; mine: number; theirs: number | null; files: number; firstAt: number; lastAt: number };
 
 export const fmtCount = (n: number) => n.toLocaleString("en-US");
@@ -90,7 +91,29 @@ function running(p: ImportProgress, plan: DiscordImportPlan, paused: boolean, pe
   };
 }
 
-/** One DM's import, while this window is open (GRYT-1965). Re-running is safe: ids come from Discord's. */
+type Saved = Omit<Extract<DiscordImportState, { kind: "stopped" }>, "kind">;
+const savedKey = (conversationId: string) => `gryt.discordImport.${conversationId}`;
+
+/** How far an import got, so a restart can say so. The package itself can't be kept. */
+function readSaved(conversationId: string): Saved | null {
+  try {
+    const raw = localStorage.getItem(savedKey(conversationId));
+    return raw ? (JSON.parse(raw) as Saved) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSaved(conversationId: string, saved: Saved | null): void {
+  try {
+    if (saved) localStorage.setItem(savedKey(conversationId), JSON.stringify(saved));
+    else localStorage.removeItem(savedKey(conversationId));
+  } catch {
+    // Private mode or full storage: the import still runs, a restart just won't mention it.
+  }
+}
+
+/** One DM's import (GRYT-1965). Re-running is safe: ids come from Discord's, and downloads stay cached. */
 export function useDiscordImport({ host, conversationId, peer, source }: { host: string | undefined; conversationId: string | undefined; peer: string | undefined; source: MlsSource | null }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [state, setState] = useState<DiscordImportState | null>(null);
@@ -104,7 +127,10 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
     stopped.current = false;
     setOwner(conversationId);
     const cache = await caches.open("gryt-discord-import");
-    const report = (p: ImportProgress) => setState(running(p, plan, paused.current, false));
+    const report = (p: ImportProgress) => {
+      setState(running(p, plan, paused.current, false));
+      writeSaved(conversationId, { name: plan.dm.name, done: p.messages.done, total: p.messages.total });
+    };
     const done = await runDiscordImport(plan.messages, {
       send: async (content) => { await source.send(conversationId, peer, content); },
       upload: async (file) => {
@@ -119,7 +145,13 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
       toast.error(e instanceof Error ? `The import stopped: ${e.message}` : "The import stopped.");
       return null;
     });
-    if (!done || stopped.current) return;
+    if (stopped.current) return;
+    if (!done) {
+      const saved = readSaved(conversationId);
+      setState(saved ? { kind: "stopped", ...saved } : null);
+      return;
+    }
+    writeSaved(conversationId, null);
     setState(done.missing
       ? { kind: "missing", files: done.downloaded.total, imported: done.downloaded.total - done.missing, linksUntil: plan.linksUntil }
       : { kind: "done", mine: plan.messages.length, theirs: null, files: done.sent.total, firstAt: plan.dm.firstAt, lastAt: plan.dm.lastAt });
@@ -132,8 +164,12 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
 
   const dismiss = useCallback(() => {
     stopped.current = true;
+    if (conversationId) writeSaved(conversationId, null);
     setState(null);
-  }, []);
+  }, [conversationId]);
 
-  return { dialogOpen, setDialogOpen, state: owner === conversationId ? state : null, start, pause, dismiss };
+  // After a restart there's no job here, only the record of how far the last one got.
+  const saved = conversationId ? readSaved(conversationId) : null;
+  const live = owner === conversationId ? state : null;
+  return { dialogOpen, setDialogOpen, state: live ?? (saved ? { kind: "stopped" as const, ...saved } : null), start, pause, dismiss };
 }
