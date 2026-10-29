@@ -276,6 +276,23 @@ assert.ok(
   `${HOOK} a retry can sign somebody back in after they signed out`,
 );
 
+/* At launch, keycloak.init forces a refresh. When that fails, the stored session is kept
+   unless the grant was rejected: the same rule as the proactive refresh. */
+class RefreshRejectedError extends Error {}
+const keepBody = block(kc, "async function sessionToKeep(stored: ElectronTokens): Promise<ElectronTokens | null> {", "sessionToKeep");
+type Tokens = { refresh_token: string };
+const sessionToKeep = new Function("refreshTokens", "RefreshRejectedError", "stored", `return (async () => ${keepBody})();`) as (
+  refresh: () => Promise<Tokens>, rejected: typeof RefreshRejectedError, stored: Tokens,
+) => Promise<Tokens | null>;
+const stored = { refresh_token: "r" };
+assert.equal(await sessionToKeep(async () => { throw new TypeError("fetch failed"); }, RefreshRejectedError, stored), stored, `${KC} an offline launch drops the session`);
+assert.equal(await sessionToKeep(async () => { throw new Error("502"); }, RefreshRejectedError, stored), stored, `${KC} a 5xx at launch drops the session`);
+assert.equal(await sessionToKeep(async () => { throw new RefreshRejectedError(); }, RefreshRejectedError, stored), null, `${KC} a rejected grant at launch keeps a dead session`);
+const fresh = { refresh_token: "new" };
+assert.equal(await sessionToKeep(async () => fresh, RefreshRejectedError, stored), fresh, `${KC} a working refresh at launch isn't used`);
+const electronInit = block(kc, "async function initKeycloakForElectron(): Promise<KeycloakInitResult> {", "initKeycloakForElectron");
+assert.match(electronInit, /const kept = await sessionToKeep\(stored\);[\s\S]{0,200}?applyTokens\(keycloak, kept\);[\s\S]{0,120}?return \{ keycloak, authenticated: true \};/, `${KC} a failed launch no longer keeps the session`);
+
 console.log(
-  `auth outage: ok, only a rejected grant clears tokens, ${attempts} attempts over an hour of downtime, sign-in retried once accounts are back`,
+  `auth outage: ok, a launch during an outage stays signed in, only a rejected grant clears tokens, ${attempts} attempts over an hour of downtime, sign-in retried once accounts are back`,
 );
