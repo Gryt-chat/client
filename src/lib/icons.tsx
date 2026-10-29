@@ -5,6 +5,7 @@
 
 import type { Icon, IconProps } from "@phosphor-icons/react";
 import {
+  Archive,
   ArrowBendUpLeft,
   ArrowCircleUp,
   ArrowDown,
@@ -102,6 +103,7 @@ import {
   Monitor,
   MonitorArrowUp,
   Palette,
+  Pause,
   PencilSimple,
   Phone,
   PhoneCall,
@@ -165,6 +167,7 @@ function weighted(Base: Icon, weight: IconProps["weight"], name: string): Icon {
   return Fixed as Icon;
 }
 
+export const PiArchiveFill: Icon = weighted(Archive, "fill", "PiArchiveFill");
 export const PiArrowBendUpLeftFill: Icon = weighted(ArrowBendUpLeft, "fill", "PiArrowBendUpLeftFill");
 export const PiArrowBendUpLeftBold: Icon = weighted(ArrowBendUpLeft, "bold", "PiArrowBendUpLeftBold");
 export const PiArrowDownBold: Icon = weighted(ArrowDown, "bold", "PiArrowDownBold");
@@ -268,6 +271,7 @@ export const PiPhoneCallFill: Icon = weighted(PhoneCall, "fill", "PiPhoneCallFil
 export const PiPhoneDisconnectFill: Icon = weighted(PhoneDisconnect, "fill", "PiPhoneDisconnectFill");
 export const PiPhoneFill: Icon = weighted(Phone, "fill", "PiPhoneFill");
 export const PiPhoneXFill: Icon = weighted(PhoneX, "fill", "PiPhoneXFill");
+export const PiPauseFill: Icon = weighted(Pause, "fill", "PiPauseFill");
 export const PiPlayFill: Icon = weighted(Play, "fill", "PiPlayFill");
 export const PiPlus: Icon = Plus;
 export const PiPlusBold: Icon = weighted(Plus, "bold", "PiPlusBold");

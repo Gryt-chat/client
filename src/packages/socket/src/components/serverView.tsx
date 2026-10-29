@@ -56,6 +56,7 @@ import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
+import { sampleRunning, useDiscordImportPreview } from "../utils/discordImport";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
@@ -65,6 +66,8 @@ import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CreateChannelDialog } from "./CreateChannelDialog";
+import { DiscordImportCard } from "./DiscordImportCard";
+import { DiscordImportDialog } from "./DiscordImportDialog";
 import { DmGroupPanel, DmPersonPanel, PANEL_WIDTH as DM_PANEL_WIDTH } from "./DmInfoPanel";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
@@ -711,6 +714,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       : undefined),
     [dmSpace, selectedDmId, directConversations],
   );
+  const discordImport = useDiscordImportPreview(activeDm?.conversation_id);
+  const setImportOpen = discordImport.setDialogOpen;
+  const dmPeer = activeDm?.kind === "dm" ? activeDm.other : undefined;
+  const dmPeerAvatar = dmPeer && viewingHost
+    ? resolveAvatarSrc(dmPeer.avatar_file_id ? getUploadsFileUrl(viewingHost, dmPeer.avatar_file_id, { thumb: true }) : undefined, dmPeer.nickname, dmPeer.avatar_worn)
+    : undefined;
   // While you're in this conversation's call its header says so, and brings the call back (board 11).
   const inThisCall = !!activeDm && isConnected && currentServerConnected === currentlyViewingServer?.host && currentChannelConnected === activeDm?.conversation_id;
   const callSeconds = useCallClock(inThisCall, activeDm?.conversation_id ?? "");
@@ -1705,6 +1714,18 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                       forgetHiddenDm(dm.conversation_id);
                     });
                   }}
+                  onSearch={openDmSearch}
+                  onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
+                  importSection={discordImport.state && (
+                    <DiscordImportCard
+                      state={discordImport.state}
+                      peerName={activeDm.other.nickname}
+                      peerAvatar={dmPeerAvatar}
+                      onPause={(paused) => discordImport.state?.kind === "running" && discordImport.setState({ ...discordImport.state, paused })}
+                      onAddMine={() => setImportOpen(true)}
+                      onDismiss={() => discordImport.setState(null)}
+                    />
+                  )}
                 />
               )}
               </motion.div>
@@ -1798,6 +1819,15 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
 
       {hideDialog}
+      {activeDm?.kind === "dm" && (
+        <DiscordImportDialog
+          open={discordImport.dialogOpen}
+          onOpenChange={discordImport.setDialogOpen}
+          peerName={activeDm.other.nickname}
+          peerAvatar={dmPeerAvatar}
+          onStart={(plan) => discordImport.setState(sampleRunning(plan))}
+        />
+      )}
       <ConfirmDialog
         open={!!pendingLeave}
         onOpenChange={(open) => {

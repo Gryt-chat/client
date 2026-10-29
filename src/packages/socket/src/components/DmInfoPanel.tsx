@@ -1,10 +1,10 @@
 import type { DirectConversation } from "@gryt/core";
 import { Avatar, Button } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { getUploadsFileUrl, identityScopeFor, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey } from "@/common";
 
-import { PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiPlus } from "../../../../lib/icons";
+import { PiArchiveFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
 import { EmojiText } from "./EmojiText";
@@ -144,9 +144,19 @@ function Pinned({ pins, memberList, onJump }: { pins: ReturnType<typeof usePins>
 
 const footerButton = "mt-auto flex cursor-pointer items-center gap-2 border-0 bg-transparent px-1 py-2 text-left text-sm";
 
-/** Board 1: their real member card on top, then what this conversation holds. */
+function Option({ icon, label, detail, onClick }: { icon: ReactNode; label: string; detail?: string; onClick?: () => void }) {
+  return (
+    <button type="button" onClick={onClick} disabled={!onClick} className="flex h-[38px] w-full cursor-pointer items-center gap-2.5 rounded-(--gryt-radius-full) border-0 bg-transparent px-2.5 text-left text-sm text-gryt-neutral-11 hover:bg-gryt-neutral-3 hover:text-gryt-text disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-gryt-neutral-11">
+      <span className="flex text-gryt-muted">{icon}</span>
+      <span className="flex-1">{label}</span>
+      {detail && <span className="text-xs text-gryt-muted">{detail}</span>}
+    </button>
+  );
+}
+
+/** Board D1: their card as one row, then the options laid out bare, then what this conversation holds. */
 export function DmPersonPanel({
-  host, member, conversation, pins, memberList, onJump, onHide,
+  host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection,
 }: {
   host: string;
   member?: MemberInfo;
@@ -155,23 +165,59 @@ export function DmPersonPanel({
   memberList?: Record<string, MemberInfo>;
   onJump: (messageId: string) => void;
   onHide: () => void;
+  onSearch: () => void;
+  onImport?: () => void;
+  importSection?: ReactNode;
 }) {
+  const [fullCard, setFullCard] = useState(false);
+  const name = member?.nickname || conversation.other.nickname;
+  const status = member?.status;
+  const where = [status && statusConfig[status].label, member?.activity].filter(Boolean).join(" · ");
   return (
     <aside
       aria-label={`About ${conversation.other.nickname}`}
       data-gryt="dm-info"
-      className="flex h-full shrink-0 flex-col gap-5 overflow-y-auto p-2"
+      className="flex h-full shrink-0 flex-col gap-3 overflow-y-auto p-2"
       style={{ width: PANEL_WIDTH, background: "var(--gryt-neutral-2)", borderRadius: "var(--gryt-radius-lg)" }}
     >
-      {member ? (
+      {fullCard && member ? (
         <MemberIdentityCard member={member} serverHost={host} inline />
       ) : (
-        <div className="flex items-center gap-3 p-3">
-          <Avatar size="large" fallback={conversation.other.nickname[0]} src={resolveAvatarSrc(conversation.other.avatar_file_id ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true }) : undefined, conversation.other.nickname, conversation.other.avatar_worn)} />
-          <span className="text-base font-bold"><EmojiText text={conversation.other.nickname} /></span>
+        <div
+          className="flex items-center gap-3 p-3"
+          style={{ borderRadius: 20, background: `linear-gradient(135deg, color-mix(in oklab, ${member?.avatarColor ?? "var(--gryt-accent-9)"} 22%, var(--gryt-neutral-3)), var(--gryt-neutral-3) 70%)` }}
+        >
+          <span className="relative inline-flex shrink-0">
+            <Avatar size="large" fallback={name[0]} src={resolveAvatarSrc(conversation.other.avatar_file_id ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true }) : undefined, conversation.other.nickname, conversation.other.avatar_worn)} />
+            {status && (
+              <span className="absolute rounded-(--gryt-radius-full)" style={{ bottom: -1, right: -1, padding: 2, background: "var(--gryt-neutral-3)" }}>
+                <PresenceDot status={status} size={11} />
+              </span>
+            )}
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate text-[17px] font-bold"><EmojiText text={name} /></span>
+            {where && <span className="truncate text-xs text-gryt-muted">{where}</span>}
+          </span>
+          {member && (
+            <button type="button" onClick={() => setFullCard(true)} className="gryt-link shrink-0 cursor-pointer border-0 bg-transparent p-0 text-xs">
+              Full card
+            </button>
+          )}
         </div>
       )}
-      <div className="flex flex-col gap-5 px-2">
+      {fullCard && member && (
+        <button type="button" onClick={() => setFullCard(false)} className="gryt-link -mt-1 cursor-pointer self-end border-0 bg-transparent px-2 text-xs">
+          Show less
+        </button>
+      )}
+      <div className="flex flex-col gap-4 px-1.5">
+        <div className="flex flex-col gap-0.5">
+          <Option icon={<PiMagnifyingGlassBold size={16} />} label="Search in this chat" onClick={onSearch} />
+          {/* Greyed out until the import is built (GRYT-1965); dev builds pass onImport. */}
+          <Option icon={<PiArchiveFill size={16} />} label="Import from Discord" detail={onImport ? undefined : "Soon"} onClick={onImport} />
+        </div>
+        {importSection}
         <Pinned pins={pins} memberList={memberList} onJump={onJump} />
         <SharedFiles host={host} conversationId={conversation.conversation_id} />
       </div>
