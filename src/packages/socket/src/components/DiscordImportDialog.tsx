@@ -120,7 +120,7 @@ export function DiscordImportDialog({ open, onOpenChange, peerName, peerAvatar, 
                     );
                   })}
                 </div>
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   <Button tone="neutral" size="small" onClick={() => setStep(1)}>Back</Button>
                   <Button size="small" disabled={!picked} onClick={() => setStep(3)}>Next</Button>
                 </div>
@@ -146,7 +146,7 @@ export function DiscordImportDialog({ open, onOpenChange, peerName, peerAvatar, 
                 <p className="discord-import-hint">
                   Files download to this computer first, a few at a time, so they&rsquo;re safe before the links stop working. Then they go up to the server encrypted, as fast as your upload allows. You can pause and pick up later.
                 </p>
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   <Button tone="neutral" size="small" onClick={() => setStep(2)}>Back</Button>
                   <Button size="small" disabled={tooBig} onClick={() => { onStart(plan); onOpenChange(false); }}>Start import</Button>
                 </div>

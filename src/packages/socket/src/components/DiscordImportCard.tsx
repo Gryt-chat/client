@@ -58,7 +58,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
         <p className="discord-import-text">
           Their {fmtCount(state.messages)} messages are coming in. Yours aren&rsquo;t in their package, so add them from your own Discord data.
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="small" onClick={onAddMine}>Add my side</Button>
           <Button size="small" tone="neutral" onClick={onDismiss}>Not now</Button>
         </div>
