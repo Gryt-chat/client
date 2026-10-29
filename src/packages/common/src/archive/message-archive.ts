@@ -219,6 +219,7 @@ export class MessageArchive {
     if (m.reactions?.length) body.reactions = m.reactions;
     if (m.copy) body.copy = true;
     if (m.sharedBy !== undefined) body.sharedBy = m.sharedBy;
+    if (m.importedFrom !== undefined) body.importedFrom = m.importedFrom;
 
     if (!this.key) {
       row.plain = body;

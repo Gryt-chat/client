@@ -57,6 +57,7 @@ export async function runDiscordImport(
     startedAt: Date.now(),
   };
   const tick = () => report({ ...p, messages: { ...p.messages }, downloaded: { ...p.downloaded }, sent: { ...p.sent } });
+  tick();
   const hold = async () => {
     while (control.paused() && !control.stopped()) await deps.sleep(500);
   };

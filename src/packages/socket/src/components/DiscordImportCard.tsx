@@ -75,7 +75,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
           <span className="font-bold">{fmtCount(left)} files couldn&rsquo;t be downloaded</span>
         </div>
         <p className="discord-import-text">
-          {state.linksUntil ? `The links stopped working ${fmtWhen(state.linksUntil)}.` : "Discord\u2019s links for them didn\u2019t work."} All messages are in, and {fmtCount(state.imported)} files are too.
+          {state.linksUntil && state.linksUntil < Date.now() ? `The links stopped working ${fmtWhen(state.linksUntil)}.` : "Discord didn\u2019t hand them over."} All messages are in, and {fmtCount(state.imported)} files are too.
         </p>
         <ImportSteps steps={[
           <>Request your data from Discord again, with <b>Messages</b> ticked.</>,
