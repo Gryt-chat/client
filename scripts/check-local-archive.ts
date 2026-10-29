@@ -175,6 +175,18 @@ test("with a keychain, records on disk hold no plaintext and reopen with the sam
   again.close();
 });
 
+test("an imported message keeps its mark, sealed or in the clear (GRYT-1965)", async () => {
+  for (const sealed of [false, true]) {
+    const db = await freshDb();
+    const archive = new MessageArchive(db, sealed ? await keyFor(db, keychain) : null);
+    await archive.put([msg({ messageId: "discord-1", sentAt: 1, importedFrom: "discord", sharedBy: "kari" })]);
+    const got = await archive.get("srv:a", "c1", "discord-1");
+    assert.equal(got?.importedFrom, "discord", sealed ? "sealed" : "in the clear");
+    assert.equal(got?.sharedBy, "kari");
+    archive.close();
+  }
+});
+
 async function sealedArchiveWithHistory() {
   const db = await freshDb();
   const archive = new MessageArchive(db, await keyFor(db, keychain));

@@ -31,6 +31,13 @@ import { type AckSocket, asBytes, socketMlsTransport } from "./transport.ts";
  * into the archive. The app decides nothing about MLS here; the driver does.
  */
 
+/** The uploads a send carries, so the server lets the other side fetch them. */
+function attachmentIdsOf(content: MlsDmContent): string[] {
+  if (content.type === "message") return Object.keys(content.attachments ?? {});
+  if (content.type === "import") return content.entries.flatMap((e) => Object.keys(e.attachments ?? {}));
+  return [];
+}
+
 export interface SessionSocket extends AckSocket {
   on(event: string, listener: (...args: never[]) => void): unknown;
   off(event: string, listener: (...args: never[]) => void): unknown;
@@ -327,7 +334,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       const job = previous.catch(() => undefined).then(async () => {
         // Only a new message leaves a line for apps from before MLS (GRYT-1517).
         placeholders.set(conversationId, content.type === "message");
-        const attachmentIds = content.type === "message" ? Object.keys(content.attachments ?? {}) : [];
+        const attachmentIds = attachmentIdsOf(content);
         let seq: number;
         try {
           ({ seq } = await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds }));
