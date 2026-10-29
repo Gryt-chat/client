@@ -1,21 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { type DiscordPackageDm, type DiscordPackageMessage, isDiscordPackage, linksExpireAt, listDiscordDms, readDiscordDm } from "@gryt/core";
+import { useCallback, useRef, useState } from "react";
+import toast from "react-hot-toast";
 
-/** One DM found in somebody's Discord data package (GRYT-1965). Only their own messages are in it. */
-export interface DiscordDm {
-  channelId: string;
-  name: string;
-  messages: number;
-  files: number;
-  bytes: number;
-  firstAt: number;
-  lastAt: number;
-}
+import { sealAttachment } from "@/common";
+
+import { uploadChatFile } from "../hooks/uploadChatFile";
+import type { MlsSource } from "../mls/serverMls";
+import { type ImportProgress, runDiscordImport } from "./discordImportJob";
+import { getMediaDimensions } from "./imageUtils";
+import { openZip, type ZipFiles } from "./zipReader";
+
+export type DiscordDm = DiscordPackageDm;
 
 export interface DiscordImportPlan {
   dm: DiscordDm;
+  messages: DiscordPackageMessage[];
   /** When Discord's file links stop working, from the `ex` in them. Null when they carry none. */
   linksUntil: number | null;
-  freeBytes: number | null;
 }
 
 export interface Count {
@@ -31,43 +32,14 @@ export type DiscordImportState =
       downloaded: Count;
       sent: Count;
       bytesPerSecond: number;
-      downloadsDoneAt: number;
-      sendingLeftMs: number;
+      downloadsDoneAt: number | null;
+      sendingLeftMs: number | null;
       linksUntil: number | null;
       peerAdded: boolean;
     }
-  | { kind: "asked"; by: string; messages: number }
-  | { kind: "missing"; files: number; imported: number; linksUntil: number }
+  | { kind: "asked"; by: string }
+  | { kind: "missing"; files: number; imported: number; linksUntil: number | null }
   | { kind: "done"; mine: number; theirs: number | null; files: number; firstAt: number; lastAt: number };
-
-const day = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);
-
-/** shortcut: fake data until the package reader exists; replace once a real package has been read. */
-export const SAMPLE_DMS: DiscordDm[] = [
-  { channelId: "1", name: "mira.k", messages: 48_213, files: 3_912, bytes: 14.2e9, firstAt: day(2019, 3, 3), lastAt: day(2026, 10, 1) },
-  { channelId: "2", name: "carlo_dev", messages: 2_104, files: 61, bytes: 0.31e9, firstAt: day(2023, 2, 9), lastAt: day(2026, 9, 20) },
-  { channelId: "3", name: "al.b", messages: 812, files: 9, bytes: 0.02e9, firstAt: day(2024, 6, 1), lastAt: day(2026, 8, 30) },
-];
-
-export function samplePlan(dm: DiscordDm, now = Date.now()): DiscordImportPlan {
-  return { dm, linksUntil: now + 22 * 3_600_000, freeBytes: 212e9 };
-}
-
-export function sampleRunning(plan: DiscordImportPlan, now = Date.now()): Extract<DiscordImportState, { kind: "running" }> {
-  const { dm } = plan;
-  return {
-    kind: "running",
-    paused: false,
-    messages: { done: Math.round(dm.messages * 0.65), total: dm.messages },
-    downloaded: { done: Math.round(dm.files * 0.67), total: dm.files },
-    sent: { done: Math.round(dm.files * 0.21), total: dm.files },
-    bytesPerSecond: 9.8e6,
-    downloadsDoneAt: now + 40 * 60_000,
-    sendingLeftMs: 160 * 60_000,
-    linksUntil: plan.linksUntil,
-    peerAdded: false,
-  };
-}
 
 export const fmtCount = (n: number) => n.toLocaleString("en-US");
 
@@ -85,40 +57,83 @@ export function fmtDuration(ms: number): string {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
-declare global {
-  interface Window {
-    discordImportPreview?: (kind: "asked" | "missing" | "done") => void;
-  }
+/** Reads a dropped file as a Discord package and lists its DMs. Throws a sentence for anything else. */
+export async function readPackage(file: File): Promise<{ files: ZipFiles; dms: DiscordDm[] }> {
+  const files = await openZip(file);
+  if (!isDiscordPackage(files.names)) throw new Error("That zip isn’t a Discord data package. It should have a Messages folder in it.");
+  const dms = await listDiscordDms(files);
+  if (!dms.length) throw new Error("There are no DMs with messages in that package. Was Messages ticked when you asked for it?");
+  return { files, dms };
 }
 
-const PREVIEWS: Record<"asked" | "missing" | "done", () => DiscordImportState> = {
-  asked: () => ({ kind: "asked", by: "Sivert", messages: 48_213 }),
-  missing: () => ({ kind: "missing", files: 3_912, imported: 2_708, linksUntil: Date.now() - 3_600_000 }),
-  done: () => ({ kind: "done", mine: 48_213, theirs: 31_880, files: 3_912, firstAt: day(2019, 3, 3), lastAt: day(2026, 10, 1) }),
-};
+export async function planImport(files: ZipFiles, dm: DiscordDm): Promise<DiscordImportPlan> {
+  const messages = await readDiscordDm(files, dm.channelId);
+  return { dm, messages, linksUntil: linksExpireAt(messages.flatMap((m) => m.attachments)) };
+}
 
-/** shortcut: preview state for the import UI, kept in memory per conversation until the import job exists. */
-export function useDiscordImportPreview(conversationId: string | undefined) {
+function running(p: ImportProgress, plan: DiscordImportPlan, paused: boolean, peerAdded: boolean): Extract<DiscordImportState, { kind: "running" }> {
+  const seconds = Math.max(1, (Date.now() - p.startedAt) / 1000);
+  const bytesPerSecond = p.bytes / seconds;
+  const perFile = p.downloaded.done ? (Date.now() - p.startedAt) / p.downloaded.done : null;
+  const perSent = p.sent.done ? (Date.now() - p.startedAt) / p.sent.done : null;
+  return {
+    kind: "running",
+    paused,
+    messages: p.messages,
+    downloaded: p.downloaded,
+    sent: p.sent,
+    bytesPerSecond,
+    downloadsDoneAt: perFile === null ? null : Date.now() + perFile * (p.downloaded.total - p.downloaded.done),
+    sendingLeftMs: perSent === null ? null : perSent * (p.sent.total - p.sent.done),
+    linksUntil: plan.linksUntil,
+    peerAdded,
+  };
+}
+
+/** One DM's import, while this window is open (GRYT-1965). Re-running is safe: ids come from Discord's. */
+export function useDiscordImport({ host, conversationId, peer, source }: { host: string | undefined; conversationId: string | undefined; peer: string | undefined; source: MlsSource | null }) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [states, setStates] = useState<Record<string, DiscordImportState>>({});
-  const state = conversationId ? states[conversationId] ?? null : null;
+  const [state, setState] = useState<DiscordImportState | null>(null);
+  const [owner, setOwner] = useState<string | null>(null);
+  const paused = useRef(false);
+  const stopped = useRef(false);
 
-  const setState = useCallback((next: DiscordImportState | null) => {
-    if (!conversationId) return;
-    setStates((prev) => {
-      const out = { ...prev };
-      if (next) out[conversationId] = next;
-      else delete out[conversationId];
-      return out;
+  const start = useCallback(async (plan: DiscordImportPlan) => {
+    if (!host || !conversationId || !peer || !source) return;
+    paused.current = false;
+    stopped.current = false;
+    setOwner(conversationId);
+    const cache = await caches.open("gryt-discord-import");
+    const report = (p: ImportProgress) => setState(running(p, plan, paused.current, false));
+    const done = await runDiscordImport(plan.messages, {
+      send: async (content) => { await source.send(conversationId, peer, content); },
+      upload: async (file) => {
+        const up = await uploadChatFile(file, host, await getMediaDimensions(file), (bytes, about) => sealAttachment({ bytes, conversationId, ...about }));
+        if (!up.meta) throw new Error("The file was uploaded without its key.");
+        return { id: up.fileId, key: up.meta };
+      },
+      fetchFile: (url) => fetch(url),
+      cache,
+      sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    }, { paused: () => paused.current, stopped: () => stopped.current }, report).catch((e: Error) => {
+      toast.error(e instanceof Error ? `The import stopped: ${e.message}` : "The import stopped.");
+      return null;
     });
-  }, [conversationId]);
+    if (!done || stopped.current) return;
+    setState(done.missing
+      ? { kind: "missing", files: done.downloaded.total, imported: done.downloaded.total - done.missing, linksUntil: plan.linksUntil }
+      : { kind: "done", mine: plan.messages.length, theirs: null, files: done.sent.total, firstAt: plan.dm.firstAt, lastAt: plan.dm.lastAt });
+  }, [host, conversationId, peer, source]);
 
-  // Dev builds: `discordImportPreview("asked" | "missing" | "done")` in the console shows the other cards.
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    window.discordImportPreview = (kind) => setState(PREVIEWS[kind]());
-    return () => { delete window.discordImportPreview; };
-  }, [setState]);
+  const pause = useCallback((next: boolean) => {
+    paused.current = next;
+    setState((s) => (s?.kind === "running" ? { ...s, paused: next } : s));
+  }, []);
 
-  return { dialogOpen, setDialogOpen, state, setState };
+  const dismiss = useCallback(() => {
+    stopped.current = true;
+    setState(null);
+  }, []);
+
+  return { dialogOpen, setDialogOpen, state: owner === conversationId ? state : null, start, pause, dismiss };
 }

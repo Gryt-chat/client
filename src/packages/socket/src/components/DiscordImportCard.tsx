@@ -56,7 +56,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
           <span className="font-bold">{state.by} is bringing your Discord chat over</span>
         </div>
         <p className="discord-import-text">
-          Their {fmtCount(state.messages)} messages are coming in. Yours aren&rsquo;t in their package, so add them from your own Discord data.
+          Their messages from Discord are coming in. Yours aren&rsquo;t in their package, so add them from your own Discord data.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button size="small" onClick={onAddMine}>Add my side</Button>
@@ -75,7 +75,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
           <span className="font-bold">{fmtCount(left)} files couldn&rsquo;t be downloaded</span>
         </div>
         <p className="discord-import-text">
-          The links stopped working {fmtWhen(state.linksUntil)}. All messages are in, and {fmtCount(state.imported)} files are too.
+          {state.linksUntil ? `The links stopped working ${fmtWhen(state.linksUntil)}.` : "Discord\u2019s links for them didn\u2019t work."} All messages are in, and {fmtCount(state.imported)} files are too.
         </p>
         <ImportSteps steps={[
           <>Request your data from Discord again, with <b>Messages</b> ticked.</>,
@@ -105,7 +105,9 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
       <Bar label="Sent to server" count={state.sent} />
       {!state.paused && (
         <p className="discord-import-hint">
-          4 at a time, {formatFileSize(state.bytesPerSecond)}/s. Downloads done by {fmtTime(state.downloadsDoneAt)}{links}. Sending takes about {fmtDuration(state.sendingLeftMs)} more.
+          4 at a time, {formatFileSize(Math.round(state.bytesPerSecond))}/s.
+          {state.downloadsDoneAt !== null && <> Downloads done by {fmtTime(state.downloadsDoneAt)}{links}.</>}
+          {state.sendingLeftMs !== null && <> Sending takes about {fmtDuration(state.sendingLeftMs)} more.</>}
         </p>
       )}
       {!state.peerAdded && <p className="discord-import-hint">Waiting for {peerName} to add their side.</p>}

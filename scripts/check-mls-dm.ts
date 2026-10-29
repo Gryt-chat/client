@@ -193,6 +193,34 @@ test("history from the other person fills gaps, marked as theirs, and never over
   assert.equal(archivedRow(old, (id) => ({ sable: "Sable" })[id]).shared_by, "Sable");
 });
 
+test("an import is filed under whoever sent it, tagged, and never overwrites (GRYT-1965)", async () => {
+  const db = memoryArchive();
+  const t = Date.UTC(2023, 3, 12);
+  await applyMlsContent(db, { ...base, senderId: "kari", content: { type: "message", id: "discord-1", text: "already here" } });
+  await applyMlsContent(db, {
+    ...base,
+    at: t + 60_000,
+    senderId: "kari",
+    content: {
+      type: "import",
+      id: "i1",
+      source: "discord",
+      entries: [
+        { id: "discord-1", sentAt: t, text: "overwrite?" },
+        { id: "discord-2", sentAt: t + 1, text: "nordlys" },
+        { id: "discord-3", sentAt: t + 120_000, text: "from the future" },
+      ],
+    },
+  });
+  const imported = stored(db, "discord-2");
+  assert.equal(imported.senderId, "kari");
+  assert.equal(imported.importedFrom, "discord");
+  assert.equal(imported.sentAt, t + 1);
+  assert.equal(stored(db, "discord-1").text, "already here");
+  assert.equal(db.rows.has("discord-3"), false, "dated after the server got it");
+  assert.equal(archivedRow(imported, () => undefined).imported_from, "discord");
+});
+
 test("sending your copy pages the whole DM and leaves server copies out (GRYT-1875)", async () => {
   const { shareHistory } = await import("../src/packages/socket/src/mls/shareHistory.ts");
   const all: ArchivedMessage[] = Array.from({ length: 1200 }, (_, i) => ({

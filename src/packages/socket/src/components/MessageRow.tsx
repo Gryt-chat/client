@@ -378,6 +378,11 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   </span>
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} />
+                {m.imported_from && (
+                  <Tooltip title="Imported from Discord">
+                    <span className="discord-import-tag">Discord</span>
+                  </Tooltip>
+                )}
                 {m.shared_by && (
                   <Tooltip title={`From ${m.shared_by}\u2019s copy of this conversation`}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>

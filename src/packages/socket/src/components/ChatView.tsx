@@ -7,7 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
-import { PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArchiveFill, PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { draftKey, returnDraft, type ReturnedDraft, saveDraftToDisk, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -1035,6 +1035,7 @@ export const ChatView = memo(({
                   const prev = chatMessages[i - 1];
                   const encryptedHere = sealedFrom !== null && !!prev && !prev.sealed && !prev.mls
                     && new Date(prev.created_at).getTime() < sealedFrom && new Date(m.created_at).getTime() >= sealedFrom;
+                  const discordEnds = !!prev?.imported_from && !m.imported_from;
 
                   return (
                     <Fragment key={rowKey}>
@@ -1042,6 +1043,13 @@ export const ChatView = memo(({
                       <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
                         <span className="flex items-center gap-1.5"><PiShieldCheckFill size={11} aria-hidden /> Encrypted from here on</span>
+                        <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
+                      </div>
+                    )}
+                    {discordEnds && (
+                      <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
+                        <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
+                        <span className="flex items-center gap-1.5"><PiArchiveFill size={11} aria-hidden /> Discord history ends here</span>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
                       </div>
                     )}

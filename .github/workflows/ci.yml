@@ -156,6 +156,7 @@ jobs:
       # Save As on an encrypted file used the server copy, which is ciphertext.
       - run: yarn test:sealed-save
       - run: yarn test:local-archive
+      - run: yarn test:discord-import
       - run: yarn test:mls-dm
       - run: yarn test:mls-restart
       - run: yarn test:clear-local-history

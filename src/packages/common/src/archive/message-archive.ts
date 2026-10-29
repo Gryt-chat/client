@@ -24,11 +24,13 @@ export interface ArchivedMessage {
   copy?: true;
   /** Came from the other person's copy of the DM, sent once they'd checked it's you (GRYT-1875). */
   sharedBy?: string;
+  /** Brought over by the sender from their own Discord data (GRYT-1965). */
+  importedFrom?: "discord";
 }
 
 type MessageBody = Pick<
   ArchivedMessage,
-  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "copy" | "sharedBy"
+  "senderId" | "senderDeviceId" | "text" | "attachments" | "editedAt" | "replyTo" | "reactions" | "copy" | "sharedBy" | "importedFrom"
 >;
 
 /** Ids and time stay readable for the indexes; the server already knows all four. */

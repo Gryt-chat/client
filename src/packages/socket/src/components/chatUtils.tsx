@@ -101,6 +101,7 @@ export type ChatMessage = {
   mls?: boolean;
   /** Who sent this from their copy of the DM (GRYT-1875). */
   shared_by?: string;
+  imported_from?: "discord";
   /** Why a failed send failed, when there's more to say than that it did. */
   failure?: string;
   /** The line the server writes for apps from before MLS. This app hides it (GRYT-1517). */

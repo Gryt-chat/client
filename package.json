@@ -147,6 +147,7 @@
     "test:sealed-attachments": "node scripts/check-sealed-attachments.ts",
     "test:sealed-save": "node --disable-warning=ExperimentalWarning scripts/check-sealed-save.ts",
     "test:local-archive": "node --disable-warning=ExperimentalWarning scripts/check-local-archive.ts",
+    "test:discord-import": "node --disable-warning=ExperimentalWarning scripts/check-discord-import.ts",
     "test:mls-dm": "node --disable-warning=ExperimentalWarning scripts/check-mls-dm.ts",
     "test:mls-restart": "node --disable-warning=ExperimentalWarning scripts/check-mls-restart.ts",
     "test:clear-local-history": "node --disable-warning=ExperimentalWarning scripts/check-clear-local-history.ts",
