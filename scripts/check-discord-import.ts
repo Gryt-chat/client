@@ -38,7 +38,7 @@ function zip(files: Record<string, string>): Blob {
   end.setUint16(10, Object.keys(files).length, true);
   end.setUint32(12, size, true);
   end.setUint32(16, offset, true);
-  return new Blob([...parts, ...central, new Uint8Array(end.buffer)]);
+  return new Blob([new Uint8Array(Buffer.concat([...parts, ...central, new Uint8Array(end.buffer)]))]);
 }
 
 const z = await openZip(zip({ "Messages/index.json": '{"1":"Direct Message with kari#0"}', "README.txt": "hei ".repeat(500) }));
