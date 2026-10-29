@@ -169,7 +169,9 @@ export function DmPersonPanel({
   onImport?: () => void;
   importSection?: ReactNode;
 }) {
-  const [fullCard, setFullCard] = useState(false);
+  // shortcut: D1 is dev-only until the Discord import ships with it (GRYT-1965).
+  const redesign = import.meta.env.DEV;
+  const [fullCard, setFullCard] = useState(!redesign);
   const name = member?.nickname || conversation.other.nickname;
   const status = member?.status;
   const where = [status && statusConfig[status].label, member?.activity].filter(Boolean).join(" · ");
@@ -199,23 +201,23 @@ export function DmPersonPanel({
             <span className="truncate text-[17px] font-bold"><EmojiText text={name} /></span>
             {where && <span className="truncate text-xs text-gryt-muted">{where}</span>}
           </span>
-          {member && (
+          {member && redesign && (
             <button type="button" onClick={() => setFullCard(true)} className="gryt-link shrink-0 cursor-pointer border-0 bg-transparent p-0 text-xs">
               Full card
             </button>
           )}
         </div>
       )}
-      {fullCard && member && (
+      {fullCard && member && redesign && (
         <button type="button" onClick={() => setFullCard(false)} className="gryt-link -mt-1 cursor-pointer self-end border-0 bg-transparent px-2 text-xs">
           Show less
         </button>
       )}
       <div className="flex flex-col gap-4 px-1.5">
-        <div className="flex flex-col gap-0.5">
+        {redesign && <div className="flex flex-col gap-0.5">
           <Option icon={<PiMagnifyingGlassBold size={16} />} label="Search in this chat" onClick={onSearch} />
           {onImport && <Option icon={<PiArchiveFill size={16} />} label="Import from Discord" onClick={onImport} />}
-        </div>
+        </div>}
         {importSection}
         <Pinned pins={pins} memberList={memberList} onJump={onJump} />
         <SharedFiles host={host} conversationId={conversation.conversation_id} />
