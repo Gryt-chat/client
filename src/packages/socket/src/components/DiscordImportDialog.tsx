@@ -1,5 +1,5 @@
-import { Button, Dialog, IconButton, TextField } from "@gryt/ui";
-import { useEffect, useRef, useState } from "react";
+import { Avatar, Button, Dialog, IconButton, TextField } from "@gryt/ui";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { PiCheck, PiUploadSimple, PiX } from "../../../../lib/icons";
 import { type DiscordDm, type DiscordImportPlan, fmtCount, fmtWhen, SAMPLE_DMS, samplePlan } from "../utils/discordImport";
@@ -9,13 +9,24 @@ interface DiscordImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   peerName: string;
+  peerAvatar?: string;
   onStart: (plan: DiscordImportPlan) => void;
 }
 
 const year = (at: number) => new Date(at).getUTCFullYear();
 
+export function ImportSteps({ steps }: { steps: ReactNode[] }) {
+  return (
+    <ol className="discord-import-steps-list">
+      {steps.map((step, i) => (
+        <li key={i}><span className="discord-import-num" aria-hidden="true">{i + 1}</span><span>{step}</span></li>
+      ))}
+    </ol>
+  );
+}
+
 /** Boards I2 to I4 (GRYT-1965): get the package, pick the chat, confirm. */
-export function DiscordImportDialog({ open, onOpenChange, peerName, onStart }: DiscordImportDialogProps) {
+export function DiscordImportDialog({ open, onOpenChange, peerName, peerAvatar, onStart }: DiscordImportDialogProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [dms, setDms] = useState<DiscordDm[]>([]);
   const [picked, setPicked] = useState<DiscordDm | null>(null);
@@ -61,13 +72,13 @@ export function DiscordImportDialog({ open, onOpenChange, peerName, onStart }: D
 
             {step === 1 && (
               <>
-                <Dialog.Title style={{ margin: 0 }}>Bring your Discord chat with {peerName} over</Dialog.Title>
+                <Dialog.Title className="discord-import-title">Bring your Discord chat with {peerName} over</Dialog.Title>
                 <p className="discord-import-hint">Gryt doesn&rsquo;t log in to Discord. You ask Discord for a copy of your data, and this computer reads it.</p>
-                <ol className="discord-import-list">
-                  <li>In Discord, open <b>Settings → Data &amp; Privacy → Request all of my data</b>.</li>
-                  <li>Tick <b>Account</b>, <b>Messages</b> and <b>Servers</b>. Discord emails you a .zip, usually within a few days.</li>
-                  <li>Drop the .zip here <b>the day the email comes</b>. The file links in it stop working soon after.</li>
-                </ol>
+                <ImportSteps steps={[
+                  <>In Discord, open <b>Settings → Data &amp; Privacy → Request all of my data</b>.</>,
+                  <>Tick <b>Account</b>, <b>Messages</b> and <b>Servers</b>. Discord emails you a .zip, usually within a few days.</>,
+                  <>Drop the .zip here <b>the day the email comes</b>. The file links in it stop working soon after.</>,
+                ]} />
                 <button
                   type="button"
                   className="discord-import-drop"
@@ -89,7 +100,7 @@ export function DiscordImportDialog({ open, onOpenChange, peerName, onStart }: D
 
             {step === 2 && (
               <>
-                <Dialog.Title style={{ margin: 0 }}>Which chat is this?</Dialog.Title>
+                <Dialog.Title className="discord-import-title">Which chat is this?</Dialog.Title>
                 <p className="discord-import-hint">Your package has {fmtCount(dms.length)} DMs. The one you talk most in is first.</p>
                 <TextField value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by Discord name" autoFocus />
                 <div className="discord-import-dms" role="radiogroup" aria-label="Discord DMs">
@@ -118,10 +129,10 @@ export function DiscordImportDialog({ open, onOpenChange, peerName, onStart }: D
 
             {step === 3 && plan && (
               <>
-                <Dialog.Title style={{ margin: 0 }}>Import into your chat with {peerName}</Dialog.Title>
+                <Dialog.Title className="discord-import-title">Import into your chat with {peerName}</Dialog.Title>
                 <dl className="discord-import-facts">
                   <dt>From</dt><dd>{plan.dm.name} on Discord</dd>
-                  <dt>Your messages</dt><dd>{fmtCount(plan.dm.messages)}, from {new Date(plan.dm.firstAt).toLocaleDateString()}</dd>
+                  <dt>Your messages</dt><dd>{fmtCount(plan.dm.messages)}, from {new Date(plan.dm.firstAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</dd>
                   <dt>Files</dt><dd>{fmtCount(plan.dm.files)} · about {formatFileSize(plan.dm.bytes)}</dd>
                   {plan.linksUntil && (<><dt>Discord&rsquo;s file links work until</dt><dd>{fmtWhen(plan.linksUntil)}</dd></>)}
                   {plan.freeBytes !== null && (
@@ -129,7 +140,8 @@ export function DiscordImportDialog({ open, onOpenChange, peerName, onStart }: D
                   )}
                 </dl>
                 <p className="discord-import-note">
-                  Only your side is in your package. Gryt will ask {peerName} to add theirs from their own package. Until they do, you&rsquo;ll see your messages only.
+                  <Avatar size="small" fallback={peerName[0]} src={peerAvatar} />
+                  <span>Only your side is in your package. Gryt will ask {peerName} to add theirs from their own package. Until they do, you&rsquo;ll see your messages only.</span>
                 </p>
                 <p className="discord-import-hint">
                   Files download to this computer first, a few at a time, so they&rsquo;re safe before the links stop working. Then they go up to the server encrypted, as fast as your upload allows. You can pause and pick up later.
