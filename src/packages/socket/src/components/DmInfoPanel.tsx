@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { getUploadsFileUrl, identityScopeFor, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey } from "@/common";
 
-import { PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiPlus } from "../../../../lib/icons";
+import { PiArchiveFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
 import { EmojiText } from "./EmojiText";
@@ -146,7 +146,7 @@ const footerButton = "mt-auto flex cursor-pointer items-center gap-2 border-0 bg
 
 /** Board 1: their real member card on top, then what this conversation holds. */
 export function DmPersonPanel({
-  host, member, conversation, pins, memberList, onJump, onHide,
+  host, member, conversation, pins, memberList, onJump, onHide, onImport,
 }: {
   host: string;
   member?: MemberInfo;
@@ -155,6 +155,7 @@ export function DmPersonPanel({
   memberList?: Record<string, MemberInfo>;
   onJump: (messageId: string) => void;
   onHide: () => void;
+  onImport?: () => void;
 }) {
   return (
     <aside
@@ -175,7 +176,12 @@ export function DmPersonPanel({
         <Pinned pins={pins} memberList={memberList} onJump={onJump} />
         <SharedFiles host={host} conversationId={conversation.conversation_id} />
       </div>
-      <button type="button" onClick={onHide} className={`${footerButton} mx-2 text-gryt-neutral-11 hover:text-gryt-text`}>
+      {onImport && (
+        <button type="button" onClick={onImport} className={`${footerButton} mx-2 text-gryt-neutral-11 hover:text-gryt-text`}>
+          <PiArchiveFill size={16} /> Import from Discord
+        </button>
+      )}
+      <button type="button" onClick={onHide} className={`${footerButton} mx-2 text-gryt-neutral-11 hover:text-gryt-text`} style={onImport ? { marginTop: 0 } : undefined}>
         <PiEyeSlashFill size={16} /> Hide conversation
       </button>
     </aside>

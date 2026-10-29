@@ -2514,6 +2514,31 @@ body {
 .poll-count { width: 60px; text-align: right; font-size: 13px; color: var(--gryt-neutral-11); }
 .poll-link { padding: 0; border: 0; background: none; color: var(--gryt-accent-11); font: inherit; cursor: pointer; }
 .poll-link:hover { text-decoration: underline; }
+.discord-import { display: flex; flex-direction: column; gap: 14px; width: 520px; max-width: 100%; }
+.discord-import-steps { display: flex; gap: 6px; }
+.discord-import-steps > span { width: 8px; height: 8px; border-radius: 999px; background: var(--gryt-neutral-6); }
+.discord-import-steps > span[data-on] { background: var(--gryt-accent-9); }
+.discord-import-steps > span[data-current] { width: 22px; }
+.discord-import-hint { margin: 0; font-size: 13px; color: var(--gryt-neutral-11); line-height: 1.45; }
+.discord-import-text { margin: 0; font-size: 14px; color: var(--gryt-neutral-12); line-height: 1.45; }
+.discord-import-list { margin: 0; padding-left: 20px; list-style: decimal; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; }
+.discord-import-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 120px; border-radius: 16px; border: 1.5px dashed var(--gryt-neutral-7); background: transparent; color: var(--gryt-neutral-11); font: inherit; font-size: 14px; cursor: pointer; }
+.discord-import-drop[data-dragging], .discord-import-drop:hover { border-color: var(--gryt-accent-9); color: var(--gryt-neutral-12); }
+.discord-import-dms { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+.discord-import-dm { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px; border-radius: 14px; border: 0; background: var(--gryt-neutral-3); color: var(--gryt-neutral-12); font: inherit; text-align: left; cursor: pointer; }
+.discord-import-dm[aria-checked="true"] { background: var(--gryt-accent-3); box-shadow: inset 0 0 0 1.5px var(--gryt-accent-9); }
+.discord-import-letter { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gryt-neutral-5); font-size: 14px; font-weight: 800; color: var(--gryt-neutral-11); }
+.discord-import-facts { margin: 0; display: grid; grid-template-columns: 1fr auto; font-size: 14px; }
+.discord-import-facts > dt, .discord-import-facts > dd { margin: 0; padding: 9px 0; border-top: 1px solid var(--gryt-neutral-6); }
+.discord-import-facts > dt { color: var(--gryt-neutral-11); }
+.discord-import-facts > dd { font-weight: 700; text-align: right; }
+.discord-import-facts > dd[data-error] { color: var(--gryt-danger-11); }
+.discord-import-note { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--gryt-neutral-3); font-size: 13px; line-height: 1.45; color: var(--gryt-neutral-12); }
+.discord-import-card { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; padding: 14px 16px; border-radius: 16px; background: var(--gryt-accent-3); }
+.discord-import-card[data-tone="warning"] { background: var(--gryt-warning-3); box-shadow: inset 0 0 0 1px var(--gryt-warning-7); }
+.discord-import-bars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.discord-import-bar { height: 6px; border-radius: 999px; background: var(--gryt-neutral-5); overflow: hidden; }
+.discord-import-bar > span { display: block; height: 100%; background: var(--gryt-accent-9); }
 .poll-dialog { display: flex; flex-direction: column; gap: 14px; width: 440px; max-width: 100%; }
 .poll-dialog-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gryt-accent-9); color: var(--gryt-accent-contrast, #14161d); }
 .poll-dialog-field { display: flex; flex-direction: column; gap: 6px; }

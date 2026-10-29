@@ -56,6 +56,7 @@ import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
+import { sampleRunning, useDiscordImportPreview } from "../utils/discordImport";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
 import { setOnScreenConversation } from "../utils/onScreenConversation";
@@ -65,6 +66,8 @@ import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CreateChannelDialog } from "./CreateChannelDialog";
+import { DiscordImportCard } from "./DiscordImportCard";
+import { DiscordImportDialog } from "./DiscordImportDialog";
 import { DmGroupPanel, DmPersonPanel, PANEL_WIDTH as DM_PANEL_WIDTH } from "./DmInfoPanel";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
@@ -711,6 +714,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       : undefined),
     [dmSpace, selectedDmId, directConversations],
   );
+  const discordImport = useDiscordImportPreview(activeDm?.conversation_id);
   // While you're in this conversation's call its header says so, and brings the call back (board 11).
   const inThisCall = !!activeDm && isConnected && currentServerConnected === currentlyViewingServer?.host && currentChannelConnected === activeDm?.conversation_id;
   const callSeconds = useCallClock(inThisCall, activeDm?.conversation_id ?? "");
@@ -1262,12 +1266,23 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={
-          <ServerNoticePanel
-            host={currentlyViewingServer?.host}
-            serverName={
-              currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"
-            }
-          />
+          <>
+            <ServerNoticePanel
+              host={currentlyViewingServer?.host}
+              serverName={
+                currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"
+              }
+            />
+            {activeDm?.kind === "dm" && discordImport.state && (
+              <DiscordImportCard
+                state={discordImport.state}
+                peerName={activeDm.other.nickname}
+                onPause={(paused) => discordImport.state?.kind === "running" && discordImport.setState({ ...discordImport.state, paused })}
+                onAddMine={() => discordImport.setDialogOpen(true)}
+                onDismiss={() => discordImport.setState(null)}
+              />
+            )}
+          </>
         }
         chatMessages={visibleChatMessages}
         isBlocked={isBlocked}
@@ -1705,6 +1720,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                       forgetHiddenDm(dm.conversation_id);
                     });
                   }}
+                  onImport={import.meta.env.DEV ? () => discordImport.setDialogOpen(true) : undefined}
                 />
               )}
               </motion.div>
@@ -1798,6 +1814,14 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
 
       {hideDialog}
+      {activeDm?.kind === "dm" && (
+        <DiscordImportDialog
+          open={discordImport.dialogOpen}
+          onOpenChange={discordImport.setDialogOpen}
+          peerName={activeDm.other.nickname}
+          onStart={(plan) => discordImport.setState(sampleRunning(plan))}
+        />
+      )}
       <ConfirmDialog
         open={!!pendingLeave}
         onOpenChange={(open) => {
