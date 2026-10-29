@@ -37,7 +37,8 @@ export type DiscordImportState =
       peerAdded: boolean;
     }
   | { kind: "asked"; by: string; messages: number }
-  | { kind: "missing"; files: number; imported: number; linksUntil: number };
+  | { kind: "missing"; files: number; imported: number; linksUntil: number }
+  | { kind: "done"; mine: number; theirs: number | null; files: number; firstAt: number; lastAt: number };
 
 const day = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);
 
@@ -86,9 +87,15 @@ export function fmtDuration(ms: number): string {
 
 declare global {
   interface Window {
-    discordImportPreview?: (kind: "asked" | "missing") => void;
+    discordImportPreview?: (kind: "asked" | "missing" | "done") => void;
   }
 }
+
+const PREVIEWS: Record<"asked" | "missing" | "done", () => DiscordImportState> = {
+  asked: () => ({ kind: "asked", by: "Sivert", messages: 48_213 }),
+  missing: () => ({ kind: "missing", files: 3_912, imported: 2_708, linksUntil: Date.now() - 3_600_000 }),
+  done: () => ({ kind: "done", mine: 48_213, theirs: 31_880, files: 3_912, firstAt: day(2019, 3, 3), lastAt: day(2026, 10, 1) }),
+};
 
 /** shortcut: preview state for the import UI, kept in memory per conversation until the import job exists. */
 export function useDiscordImportPreview(conversationId: string | undefined) {
@@ -106,13 +113,10 @@ export function useDiscordImportPreview(conversationId: string | undefined) {
     });
   }, [conversationId]);
 
-  // Dev builds: `discordImportPreview("asked" | "missing")` in the console shows the other two cards.
+  // Dev builds: `discordImportPreview("asked" | "missing" | "done")` in the console shows the other cards.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    window.discordImportPreview = (kind) =>
-      setState(kind === "asked"
-        ? { kind, by: "Sivert", messages: 48_213 }
-        : { kind, files: 3_912, imported: 2_708, linksUntil: Date.now() - 3_600_000 });
+    window.discordImportPreview = (kind) => setState(PREVIEWS[kind]());
     return () => { delete window.discordImportPreview; };
   }, [setState]);
 

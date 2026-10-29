@@ -1,4 +1,4 @@
-import { Avatar, Button } from "@gryt/ui";
+import { Avatar, Button, IconButton } from "@gryt/ui";
 
 import { PiArchiveFill, PiPauseFill, PiPlayFill, PiWarningFill } from "../../../../lib/icons";
 import { type Count, type DiscordImportState, fmtCount, fmtDuration, fmtTime, fmtWhen } from "../utils/discordImport";
@@ -18,7 +18,10 @@ function Bar({ label, count }: { label: string; count: Count }) {
   const pct = count.total ? Math.round((count.done / count.total) * 100) : 0;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="discord-import-hint">{label} · {fmtCount(count.done)} of {fmtCount(count.total)}</span>
+      <span className="discord-import-hint flex">
+        <span>{label}</span>
+        <span className="ml-auto">{fmtCount(count.done)} of {fmtCount(count.total)}</span>
+      </span>
       <div className="discord-import-bar" role="progressbar" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <span style={{ width: `${pct}%` }} />
       </div>
@@ -26,21 +29,38 @@ function Bar({ label, count }: { label: string; count: Count }) {
   );
 }
 
-/** The import's card at the top of the chat: I5 while it runs, I6 for the other person, I9 for files left behind. */
+const monthYear = (at: number) => new Date(at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+
+/** The import in the DM sidebar: D5 while it runs, D6 for the other person, D8 once done, D9 for files left behind. */
 export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddMine, onDismiss }: DiscordImportCardProps) {
+  if (state.kind === "done") {
+    return (
+      <section className="flex flex-col gap-2" data-gryt="discord-import-card">
+        <div className="flex items-baseline px-0.5">
+          <h3 className="m-0 text-[13px] font-bold text-gryt-neutral-11">From Discord</h3>
+          <span className="ml-auto text-xs text-gryt-muted">{state.theirs === null ? "your side" : "both sides"}</span>
+        </div>
+        <div className="flex flex-col gap-1 rounded-(--gryt-radius-md) bg-gryt-neutral-3 px-3 py-2.5 text-[13px]">
+          <span>{fmtCount(state.mine)} from you{state.theirs !== null && `, ${fmtCount(state.theirs)} from ${peerName}`}</span>
+          <span className="text-gryt-muted">{fmtCount(state.files)} files · {monthYear(state.firstAt)} to {monthYear(state.lastAt)}</span>
+        </div>
+      </section>
+    );
+  }
+
   if (state.kind === "asked") {
     return (
-      <div className="discord-import-card" data-layout="row" data-gryt="discord-import-card">
-        <Avatar size="small" fallback={state.by[0]} src={peerAvatar} />
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="discord-import-card" data-gryt="discord-import-card">
+        <div className="flex items-center gap-2.5">
+          <Avatar size="small" fallback={state.by[0]} src={peerAvatar} />
           <span className="font-bold">{state.by} is bringing your Discord chat over</span>
-          <p className="discord-import-text">
-            Their {fmtCount(state.messages)} messages are coming in. Yours aren&rsquo;t in their package, so add them from your own Discord data and the chat fills in on both sides.
-          </p>
-          <div className="flex gap-2" style={{ marginTop: 4 }}>
-            <Button size="small" onClick={onAddMine}>Add my side</Button>
-            <Button size="small" tone="neutral" onClick={onDismiss}>Not now</Button>
-          </div>
+        </div>
+        <p className="discord-import-text">
+          Their {fmtCount(state.messages)} messages are coming in. Yours aren&rsquo;t in their package, so add them from your own Discord data.
+        </p>
+        <div className="flex gap-2">
+          <Button size="small" onClick={onAddMine}>Add my side</Button>
+          <Button size="small" tone="neutral" onClick={onDismiss}>Not now</Button>
         </div>
       </div>
     );
@@ -50,19 +70,19 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
     const left = state.files - state.imported;
     return (
       <div className="discord-import-card" data-tone="warning" data-gryt="discord-import-card">
-        <div className="flex items-center gap-2.5">
-          <PiWarningFill size={18} style={{ color: "var(--gryt-warning-11)" }} />
-          <span className="flex-1 font-bold">{fmtCount(left)} files couldn&rsquo;t be downloaded</span>
+        <div className="flex items-center gap-2">
+          <PiWarningFill size={16} style={{ color: "var(--gryt-warning-11)" }} />
+          <span className="font-bold">{fmtCount(left)} files couldn&rsquo;t be downloaded</span>
         </div>
         <p className="discord-import-text">
-          The links in this package stopped working on {fmtWhen(state.linksUntil)}. All your messages are in, and {fmtCount(state.imported)} files are too. To get the rest:
+          The links stopped working {fmtWhen(state.linksUntil)}. All messages are in, and {fmtCount(state.imported)} files are too.
         </p>
         <ImportSteps steps={[
-          <>Request your data from Discord again: <b>Settings → Data &amp; Privacy</b>, with <b>Messages</b> ticked.</>,
-          <>When the email comes, drop the new .zip in here the same day.</>,
-          <>Gryt fetches only the {fmtCount(left)} missing files.</>,
+          <>Request your data from Discord again, with <b>Messages</b> ticked.</>,
+          <>Drop the new .zip in here the day the email comes.</>,
+          <>Gryt fetches only the missing files.</>,
         ]} />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="small" onClick={onAddMine}>Drop the new package</Button>
           <Button size="small" tone="neutral" onClick={onDismiss}>Dismiss</Button>
         </div>
@@ -70,28 +90,22 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
     );
   }
 
-  let linksLine = "";
-  if (state.linksUntil) {
-    const when = fmtWhen(state.linksUntil);
-    linksLine = state.downloadsDoneAt < state.linksUntil ? `, well before the links stop working on ${when}` : `, but the links stop working on ${when}`;
-  }
+  const links = state.linksUntil ? `, links work until ${fmtWhen(state.linksUntil)}` : "";
   return (
     <div className="discord-import-card" data-gryt="discord-import-card">
-      <div className="flex items-center gap-2.5">
-        <PiArchiveFill size={18} style={{ color: "var(--gryt-accent-11)" }} />
+      <div className="flex items-center gap-2">
+        <PiArchiveFill size={16} style={{ color: "var(--gryt-accent-11)" }} />
         <span className="flex-1 font-bold">{state.paused ? "Import paused" : "Importing from Discord"}</span>
-        <Button size="small" tone="neutral" onClick={() => onPause(!state.paused)}>
-          {state.paused ? <PiPlayFill size={14} /> : <PiPauseFill size={14} />} {state.paused ? "Resume" : "Pause"}
-        </Button>
+        <IconButton size="xsmall" tone="neutral" aria-label={state.paused ? "Resume" : "Pause"} onClick={() => onPause(!state.paused)}>
+          {state.paused ? <PiPlayFill size={14} /> : <PiPauseFill size={14} />}
+        </IconButton>
       </div>
-      <div className="discord-import-bars">
-        <Bar label="Messages" count={state.messages} />
-        <Bar label="Downloaded" count={state.downloaded} />
-        <Bar label="Sent to server" count={state.sent} />
-      </div>
+      <Bar label="Messages" count={state.messages} />
+      <Bar label="Downloaded" count={state.downloaded} />
+      <Bar label="Sent to server" count={state.sent} />
       {!state.paused && (
         <p className="discord-import-hint">
-          Downloading 4 at a time, {formatFileSize(state.bytesPerSecond)}/s. Done by {fmtTime(state.downloadsDoneAt)}{linksLine}. Sending to the server takes about {fmtDuration(state.sendingLeftMs)} more.
+          4 at a time, {formatFileSize(state.bytesPerSecond)}/s. Downloads done by {fmtTime(state.downloadsDoneAt)}{links}. Sending takes about {fmtDuration(state.sendingLeftMs)} more.
         </p>
       )}
       {!state.peerAdded && <p className="discord-import-hint">Waiting for {peerName} to add their side.</p>}

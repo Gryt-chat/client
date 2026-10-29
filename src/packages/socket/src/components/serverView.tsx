@@ -13,7 +13,7 @@ import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import type { SidebarItem } from "@/settings/src/types/server";
 import { setInACall, useAnyCallButtonPress } from "@/webRTC";
 
-import { PiArchiveFill, PiCameraFill,PiCaretLeftBold, PiDotsThreeBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiPushPinFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
+import { PiCameraFill,PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import { fakeConversations, fakeDmsOn, fakeHostNow } from "../dev/fakeDms";
@@ -859,25 +859,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
           </IconButton>
         </Tooltip>
       );
-      // Board I1 (GRYT-1965). Dev builds only until the import is hooked up.
-      const more = import.meta.env.DEV && (
-        <Menu.Root>
-          <Tooltip title="More">
-            <Menu.Trigger aria-label="More" data-gryt="dm-more" render={<IconButton size="small" tone="ghost" />}>
-              <PiDotsThreeBold size={17} />
-            </Menu.Trigger>
-          </Tooltip>
-          <Menu.Portal>
-            <Menu.Positioner align="end">
-              <Menu.Popup className="min-w-60">
-                <Menu.Item onClick={openDmSearch}><PiMagnifyingGlassBold size={16} /> Search in this chat</Menu.Item>
-                <Menu.Item onClick={() => { setDmInfoOpen(true); setDmSearchOpen(false); }}><PiPushPinFill size={16} /> Pinned messages</Menu.Item>
-                <Menu.Item onClick={() => setImportOpen(true)}><PiArchiveFill size={16} /> Import from Discord</Menu.Item>
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.Root>
-      );
       if (inThisCall) {
         return (
           <div className="flex items-center gap-0.5">
@@ -895,7 +876,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
               setDmInfoOpen(!dmInfoOpen || dmSearchOpen);
               setDmSearchOpen(false);
             }, <PiSidebarSimpleFill size={17} style={{ transform: "scaleX(-1)" }} />, dmInfoOpen && !dmSearchOpen, "dm-info-toggle")}
-            {more}
           </div>
         );
       }
@@ -913,7 +893,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
             setDmInfoOpen(!dmInfoOpen || dmSearchOpen);
             setDmSearchOpen(false);
           }, <PiSidebarSimpleFill size={17} style={{ transform: "scaleX(-1)" }} />, dmInfoOpen && !dmSearchOpen, "dm-info-toggle")}
-          {more}
         </div>
       );
     }
@@ -941,7 +920,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost, isTiny, isMobile, dmSearchOpen, dmInfoOpen, openDmSearch, setCameraEnabled, inThisCall, callSeconds, setShowVoiceView, setImportOpen]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost, isTiny, isMobile, dmSearchOpen, dmInfoOpen, openDmSearch, setCameraEnabled, inThisCall, callSeconds, setShowVoiceView]);
 
   /* The same member list the sidebar reads presence off — someone it hides
      from this viewer has no entry here either (GRYT-1467). */
@@ -1292,24 +1271,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={
-          <>
-            <ServerNoticePanel
-              host={currentlyViewingServer?.host}
-              serverName={
-                currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"
-              }
-            />
-            {activeDm?.kind === "dm" && discordImport.state && (
-              <DiscordImportCard
-                state={discordImport.state}
-                peerName={activeDm.other.nickname}
-                peerAvatar={dmPeerAvatar}
-                onPause={(paused) => discordImport.state?.kind === "running" && discordImport.setState({ ...discordImport.state, paused })}
-                onAddMine={() => discordImport.setDialogOpen(true)}
-                onDismiss={() => discordImport.setState(null)}
-              />
-            )}
-          </>
+          <ServerNoticePanel
+            host={currentlyViewingServer?.host}
+            serverName={
+              currentlyViewingServer?.name || currentlyViewingServer?.host || "this server"
+            }
+          />
         }
         chatMessages={visibleChatMessages}
         isBlocked={isBlocked}
@@ -1747,6 +1714,18 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                       forgetHiddenDm(dm.conversation_id);
                     });
                   }}
+                  onSearch={openDmSearch}
+                  onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
+                  importSection={discordImport.state && (
+                    <DiscordImportCard
+                      state={discordImport.state}
+                      peerName={activeDm.other.nickname}
+                      peerAvatar={dmPeerAvatar}
+                      onPause={(paused) => discordImport.state?.kind === "running" && discordImport.setState({ ...discordImport.state, paused })}
+                      onAddMine={() => setImportOpen(true)}
+                      onDismiss={() => discordImport.setState(null)}
+                    />
+                  )}
                 />
               )}
               </motion.div>
