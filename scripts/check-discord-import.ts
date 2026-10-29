@@ -1,11 +1,10 @@
-// The Discord import (GRYT-1965): our zip reader against a real deflated zip, and the job
-// against fakes: text first, files cached then sent, a dead link left as a note, never twice.
+// The Discord import (GRYT-1965): our zip reader against a real deflated zip. The job itself is
+// @gryt/core's and tested there.
 
 import assert from "node:assert/strict";
 import { deflateRawSync } from "node:zlib";
 
 const { openZip } = await import("../src/packages/socket/src/utils/zipReader.ts");
-const { importId, runDiscordImport } = await import("../src/packages/socket/src/utils/discordImportJob.ts");
 
 function zip(files: Record<string, string>): Blob {
   const parts: Uint8Array[] = [];
@@ -46,41 +45,4 @@ assert.deepEqual(z.names.sort(), ["Messages/index.json", "README.txt"]);
 assert.equal(await z.read("Messages/index.json"), '{"1":"Direct Message with kari#0"}');
 assert.equal((await z.read("README.txt")).length, 2000);
 await assert.rejects(openZip(new Blob(["not a zip"])), /isn't a zip/);
-
-const sent: { type: string; entries: { id: string; text: string; attachments?: object }[] }[] = [];
-const store = new Map<string, Response>();
-const fetched: string[] = [];
-let uploads = 0;
-const result = await runDiscordImport(
-  [
-    { discordId: "1", sentAt: 1, text: "hei", attachments: [] },
-    { discordId: "2", sentAt: 2, text: "pics", attachments: ["https://cdn.discordapp.com/a.png", "https://cdn.discordapp.com/gone.png"] },
-    { discordId: "3", sentAt: 3, text: "", attachments: ["https://cdn.discordapp.com/a.png"] },
-  ],
-  {
-    send: async (c) => void sent.push(c as never),
-    upload: async (f) => ({ id: `up-${++uploads}`, key: { id: "k", key: Buffer.alloc(32).toString("base64url"), iv: Buffer.alloc(12).toString("base64url"), name: f.name } }),
-    fetchFile: async (url) => {
-      fetched.push(url);
-      return url.endsWith("gone.png") ? new Response(null, { status: 404 }) : new Response(new Blob(["png"], { type: "image/png" }));
-    },
-    cache: {
-      match: async (u) => store.get(String(u)) ?? undefined,
-      put: async (u, r) => void store.set(String(u), r),
-      delete: async (u) => store.delete(String(u)),
-    },
-    sleep: async () => {},
-  },
-  { paused: () => false, stopped: () => false },
-  () => {},
-);
-
-assert.equal(sent[0].entries[0].id, importId("1"), "text-only messages go first");
-const withFiles = sent.slice(1).flatMap((b) => b.entries);
-assert.deepEqual(withFiles.map((e) => e.id), [importId("2"), importId("3")]);
-assert.equal(Object.keys(withFiles[0].attachments ?? {}).length, 1, "the dead link isn't attached");
-assert.match(withFiles[0].text, /^pics\nA file from Discord couldn.t be downloaded\.$/);
-assert.equal(fetched.filter((u) => u.endsWith("a.png")).length, 1, "a link two messages share downloads once");
-assert.equal(result.missing, 1);
-assert.equal(result.messages.done, 3);
 console.log("discord-import: ok");

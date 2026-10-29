@@ -1,4 +1,4 @@
-import { type DiscordPackageDm, type DiscordPackageMessage, isDiscordPackage, linksExpireAt, listDiscordDms, readDiscordDm } from "@gryt/core";
+import { type DiscordPackageDm, type DiscordPackageMessage, type ImportFileStore, type ImportProgress, isDiscordPackage, linksExpireAt, listDiscordDms, readDiscordDm, runDiscordImport } from "@gryt/core";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -6,7 +6,6 @@ import { sealAttachment } from "@/common";
 
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import type { MlsSource } from "../mls/serverMls";
-import { type ImportProgress, runDiscordImport } from "./discordImportJob";
 import { getMediaDimensions } from "./imageUtils";
 import { openZip, type ZipFiles } from "./zipReader";
 
@@ -91,6 +90,19 @@ function running(p: ImportProgress, plan: DiscordImportPlan, paused: boolean, pe
   };
 }
 
+/** Downloads wait in Cache Storage, which is on disk and survives a restart. */
+function cacheStore(cache: Cache): ImportFileStore {
+  return {
+    has: async (url) => !!(await cache.match(url)),
+    put: async (url, { type, bytes }) => cache.put(url, new Response(bytes as Uint8Array<ArrayBuffer>, { headers: { "content-type": type } })),
+    take: async (url) => {
+      const hit = await cache.match(url);
+      return hit ? { type: hit.headers.get("content-type") ?? "", bytes: new Uint8Array(await hit.arrayBuffer()) } : null;
+    },
+    drop: async (url) => void (await cache.delete(url)),
+  };
+}
+
 type Saved = Omit<Extract<DiscordImportState, { kind: "stopped" }>, "kind">;
 const savedKey = (conversationId: string) => `gryt.discordImport.${conversationId}`;
 
@@ -133,14 +145,19 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
     };
     const done = await runDiscordImport(plan.messages, {
       send: async (content) => { await source.send(conversationId, peer, content); },
-      upload: async (file) => {
-        const up = await uploadChatFile(file, host, await getMediaDimensions(file), (bytes, about) => sealAttachment({ bytes, conversationId, ...about }));
+      upload: async ({ name, type, bytes }) => {
+        const file = new File([bytes as Uint8Array<ArrayBuffer>], name, { type });
+        const up = await uploadChatFile(file, host, await getMediaDimensions(file), (b, about) => sealAttachment({ bytes: b, conversationId, ...about }));
         if (!up.meta) throw new Error("The file was uploaded without its key.");
         return { id: up.fileId, key: up.meta };
       },
-      fetchFile: (url) => fetch(url),
-      cache,
+      download: async (url) => {
+        const res = await fetch(url);
+        return res.ok ? { type: res.headers.get("content-type") ?? "", bytes: new Uint8Array(await res.arrayBuffer()) } : null;
+      },
+      store: cacheStore(cache),
       sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+      newId: () => crypto.randomUUID(),
     }, { paused: () => paused.current, stopped: () => stopped.current }, report).catch((e: Error) => {
       toast.error(e instanceof Error ? `The import stopped: ${e.message}` : "The import stopped.");
       return null;
