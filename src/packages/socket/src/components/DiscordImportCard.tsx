@@ -48,6 +48,24 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
     );
   }
 
+  if (state.kind === "stopped") {
+    return (
+      <div className="discord-import-card" data-gryt="discord-import-card">
+        <div className="flex items-center gap-2">
+          <PiArchiveFill size={16} style={{ color: "var(--gryt-accent-11)" }} />
+          <span className="font-bold">Import stopped</span>
+        </div>
+        <p className="discord-import-text">
+          {fmtCount(state.done)} of {fmtCount(state.total)} messages from {state.name} are in. Drop the same package again to carry on. Anything already here is skipped, and files that finished downloading aren&rsquo;t fetched twice.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="small" onClick={onAddMine}>Continue</Button>
+          <Button size="small" tone="neutral" onClick={onDismiss}>Dismiss</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (state.kind === "asked") {
     return (
       <div className="discord-import-card" data-gryt="discord-import-card">
