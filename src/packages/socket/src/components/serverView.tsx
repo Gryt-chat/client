@@ -1351,10 +1351,12 @@ forumTags={activeDm ? [] : activeChannelForumTags}
   }
 
   // D6: their imported messages are arriving and none of yours are, so offer to add your side.
-  const peerImported = activeDm?.kind === "dm" && !askDismissed.has(activeDm.conversation_id)
-    && visibleChatMessages.some((m) => m.imported_from && m.sender_server_id === activeDm.other.server_user_id)
+  const peerHasImported = activeDm?.kind === "dm"
+    && visibleChatMessages.some((m) => m.imported_from && m.sender_server_id === activeDm.other.server_user_id);
+  const peerImported = peerHasImported && activeDm?.kind === "dm" && !askDismissed.has(activeDm.conversation_id)
     && !visibleChatMessages.some((m) => m.imported_from && m.sender_server_id === currentServerUserId);
-  const importState: DiscordImportState | null = discordImport.state
+  const job = discordImport.state;
+  const importState: DiscordImportState | null = (job?.kind === "running" ? { ...job, peerAdded: peerHasImported } : job)
     ?? (peerImported && activeDm?.kind === "dm" ? { kind: "asked", by: activeDm.other.nickname } : null);
 
   return (
