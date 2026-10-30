@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 
 import { useSettings } from "@/settings";
 
-import { PiAtFill, PiChatTeardropTextFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill, PiUserPlusFill } from "../../../../lib/icons";
+import { PiAtBold, PiChatTeardropTextFill, PiCheckBold, PiCopyFill, PiFlagFill, PiProhibitFill, PiUserPlusFill } from "../../../../lib/icons";
 import { friendAction, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { makeRankOf } from "../lib/memberFacts";
@@ -233,7 +233,7 @@ export function UserContextMenu({
         )}
         <ContextMenu.Item onClick={handleMention}>
           <div className="flex items-center gap-2">
-            <PiAtFill size={14} /> Mention
+            <PiAtBold size={14} /> Mention
           </div>
         </ContextMenu.Item>
         <ContextMenu.Item onClick={handleCopyId}>
