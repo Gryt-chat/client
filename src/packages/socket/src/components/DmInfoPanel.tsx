@@ -1,14 +1,16 @@
 import type { DirectConversation } from "@gryt/core";
 import { Avatar, Button } from "@gryt/ui";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
-import { getUploadsFileUrl, identityScopeFor, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey } from "@/common";
+import { generatedAvatarColor, getUploadsFileUrl, identityScopeFor, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey, useTheme } from "@/common";
 
 import { PiArchiveFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
+import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { EmojiText } from "./EmojiText";
 import { GroupFace } from "./GroupFace";
+import { MemberCardView } from "./memberCard/MemberCardView";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import type { MemberInfo } from "./MemberSidebar";
 import { statusConfig } from "./memberStatus";
@@ -154,6 +156,40 @@ function Option({ icon, label, detail, onClick }: { icon: ReactNode; label: stri
   );
 }
 
+function MiniCard({ member, host, statusText, onFullCard }: { member: MemberInfo; host: string; statusText?: string; onFullCard: () => void }) {
+  const { resolvedAppearance } = useTheme();
+  const profile = useMemo(
+    () => cardProfileFor(member, member.nickname),
+    // The fields, not the member object, which is new on every list update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [member.cardStyle, member.bio, member.pronouns, member.statusLine, member.nickname],
+  );
+  const video = member.avatarVideo && !member.avatarWorn;
+  return (
+    <MemberCardView
+      compact
+      name={member.nickname}
+      avatarSrc={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId) : undefined, member.nickname, member.avatarWorn)}
+      avatarType={video ? "video" : "image"}
+      avatarPoster={video && member.avatarFileId ? getUploadsFileUrl(host, member.avatarFileId, { thumb: true }) : null}
+      status={member.status}
+      statusText={statusText}
+      profile={profile}
+      owlHex={generatedAvatarColor(member.nickname, member.avatarWorn) ?? member.avatarColor ?? "#7c5cff"}
+      bannerType={member.bannerVideo ? "video" : "image"}
+      bannerUrl={member.bannerFileId ? getUploadsFileUrl(host, member.bannerFileId) : null}
+      appearance={resolvedAppearance}
+      seedKey={member.serverUserId}
+      worn={member.avatarWorn}
+      isBot={member.isBot}
+    >
+      <button type="button" onClick={onFullCard} className="shrink-0 cursor-pointer border-0 bg-transparent p-0 text-xs text-inherit underline">
+        Full card
+      </button>
+    </MemberCardView>
+  );
+}
+
 /** Board D1: their card as one row, then the options laid out bare, then what this conversation holds. */
 export function DmPersonPanel({
   host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection,
@@ -182,28 +218,17 @@ export function DmPersonPanel({
     >
       {fullCard && member ? (
         <MemberIdentityCard member={member} serverHost={host} inline />
+      ) : member ? (
+        <MiniCard member={member} host={host} statusText={where || undefined} onFullCard={() => setFullCard(true)} />
       ) : (
         <div
           className="flex items-center gap-3 p-3"
-          style={{ borderRadius: 20, background: `linear-gradient(135deg, color-mix(in oklab, ${member?.avatarColor ?? "var(--gryt-accent-9)"} 22%, var(--gryt-neutral-3)), var(--gryt-neutral-3) 70%)` }}
+          style={{ borderRadius: 20, background: "linear-gradient(135deg, color-mix(in oklab, var(--gryt-accent-9) 22%, var(--gryt-neutral-3)), var(--gryt-neutral-3) 70%)" }}
         >
-          <span className="relative inline-flex shrink-0">
-            <Avatar size="large" fallback={name[0]} src={resolveAvatarSrc(conversation.other.avatar_file_id ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true }) : undefined, conversation.other.nickname, conversation.other.avatar_worn)} />
-            {status && (
-              <span className="absolute rounded-(--gryt-radius-full)" style={{ bottom: -1, right: -1, padding: 2, background: "var(--gryt-neutral-3)" }}>
-                <PresenceDot status={status} size={11} />
-              </span>
-            )}
-          </span>
+          <Avatar size="large" fallback={name[0]} src={resolveAvatarSrc(conversation.other.avatar_file_id ? getUploadsFileUrl(host, conversation.other.avatar_file_id, { thumb: true }) : undefined, conversation.other.nickname, conversation.other.avatar_worn)} />
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-[17px] font-bold"><EmojiText text={name} /></span>
-            {where && <span className="truncate text-xs text-gryt-muted">{where}</span>}
           </span>
-          {member && (
-            <button type="button" onClick={() => setFullCard(true)} className="gryt-link shrink-0 cursor-pointer border-0 bg-transparent p-0 text-xs">
-              Full card
-            </button>
-          )}
         </div>
       )}
       {fullCard && member && (
