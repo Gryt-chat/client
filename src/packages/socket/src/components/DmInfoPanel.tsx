@@ -6,8 +6,8 @@ import { generatedAvatarColor, getUploadsFileUrl, identityScopeFor, openAttachme
 
 import { PiArchiveFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
-import { fetchSealedAttachment } from "../utils/sealedAttachments";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
+import { fetchSealedAttachment } from "../utils/sealedAttachments";
 import { EmojiText } from "./EmojiText";
 import { GroupFace } from "./GroupFace";
 import { MemberCardView } from "./memberCard/MemberCardView";
@@ -216,11 +216,9 @@ export function DmPersonPanel({
       className="flex h-full shrink-0 flex-col gap-3 overflow-y-auto p-2"
       style={{ width: PANEL_WIDTH, background: "var(--gryt-neutral-2)", borderRadius: "var(--gryt-radius-lg)" }}
     >
-      {fullCard && member ? (
-        <MemberIdentityCard member={member} serverHost={host} inline />
-      ) : member ? (
-        <MiniCard member={member} host={host} statusText={where || undefined} onFullCard={() => setFullCard(true)} />
-      ) : (
+      {fullCard && member && <MemberIdentityCard member={member} serverHost={host} inline />}
+      {!fullCard && member && <MiniCard member={member} host={host} statusText={where || undefined} onFullCard={() => setFullCard(true)} />}
+      {!member && (
         <div
           className="flex items-center gap-3 p-3"
           style={{ borderRadius: 20, background: "linear-gradient(135deg, color-mix(in oklab, var(--gryt-accent-9) 22%, var(--gryt-neutral-3)), var(--gryt-neutral-3) 70%)" }}

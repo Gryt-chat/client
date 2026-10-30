@@ -397,6 +397,7 @@ export function CardSettings() {
                   seed={seed}
                   appearance={stage}
                   bannerUrl={bannerUrl}
+                  avatarUrl={resolveAvatarSrc(avatarDataUrl, nickname, worn)}
                   emojiGroups={emojiGroups}
                   panes={[{ value: "about", label: "About you", icon: <UserCircle weight="fill" size={16} />, content: about }]}
                 />
