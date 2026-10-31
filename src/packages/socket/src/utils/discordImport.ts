@@ -1,4 +1,4 @@
-import { type DiscordPackageDm, type DiscordPackageMessage, type ImportFileStore, type ImportProgress, isDiscordPackage, linksExpireAt, listDiscordDms, readDiscordDm, runDiscordImport } from "@gryt/core";
+import { type DiscordPackageDm, type DiscordPackageMessage, type ImportFileStore, type ImportProgress, isDiscordPackage, linksExpireAt, listDiscordDms, readDiscordDm, retryAfterMs, runDiscordImport } from "@gryt/core";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -153,6 +153,7 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
       },
       download: async (url) => {
         const res = await fetch(url);
+        if (res.status === 429) return { retryAfterMs: retryAfterMs(res.headers.get("retry-after")) };
         return res.ok ? { type: res.headers.get("content-type") ?? "", bytes: new Uint8Array(await res.arrayBuffer()) } : null;
       },
       store: cacheStore(cache),
