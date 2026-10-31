@@ -1,17 +1,17 @@
+import { type ReencryptCandidate,reencryptMine } from "@gryt/core";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken, openLocalArchive } from "@/common";
 
-import { reencryptMine } from "../mls/reencrypt";
 import type { MlsSource } from "../mls/serverMls";
 import type { HistoryPayload } from "./chatEventHandlers";
 
 const FETCH_TIMEOUT_MS = 15_000;
 const PAGE = 100;
 
-function fetchOlder(socket: Socket, conversationId: string, before: string | undefined): Promise<{ items: HistoryPayload["items"]; hasMore: boolean }> {
+function fetchOlder(socket: Socket, conversationId: string, before: string | undefined): Promise<{ items: ReencryptCandidate[]; hasMore: boolean }> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => {
       socket.off("chat:history", onHistory);
@@ -21,7 +21,7 @@ function fetchOlder(socket: Socket, conversationId: string, before: string | und
       if (payload?.conversation_id !== conversationId || (payload.before ?? undefined) !== before) return;
       window.clearTimeout(timer);
       socket.off("chat:history", onHistory);
-      resolve({ items: payload.items ?? [], hasMore: !!payload.hasMore });
+      resolve({ items: (payload.items ?? []) as ReencryptCandidate[], hasMore: !!payload.hasMore });
     }
     socket.on("chat:history", onHistory);
     socket.emit("chat:fetch", { conversationId, limit: PAGE, ...(before ? { before } : {}) });
@@ -67,17 +67,23 @@ export function useReencrypt({ host, socket, source, me, conversationId, peer, r
     let stopped = false;
     void (async () => {
       try {
+        const { messages } = await openLocalArchive();
         const moved = await reencryptMine({
-          source,
-          archive: (await openLocalArchive()).messages,
           fetchOlder: (before) => fetchOlder(socket, conversationId, before),
+          send: async (content) => { await source.send(conversationId, peer, content); },
+          keep: (entries, receivedAt) => messages.put(entries.map((e) => ({
+            scope: source.storeScope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId: me,
+            text: e.text, attachments: {}, sharedBy: me, receivedAt, ...(e.replyTo ? { replyTo: e.replyTo } : {}),
+          }))),
+          now: () => Date.now(),
+          newId: () => crypto.randomUUID(),
           remove: (messageId) => socket.emit("chat:delete", { conversationId, messageId, accessToken: token }),
           sleep: (ms) => new Promise((r) => window.setTimeout(r, ms)),
           stopped: () => stopped,
           report: (done, total) => {
             if (!stopped && total) setProgress({ done, total });
           },
-        }, me, conversationId, peer);
+        }, me);
         if (stopped) return;
         markDone(id);
         if (moved) toast.success(`Encrypted ${moved} of your older messages`);
