@@ -5,6 +5,7 @@ import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken, openLocalArchive } from "@/common";
 
+import { archivedReactions } from "../mls/applyContent";
 import type { MlsSource } from "../mls/serverMls";
 import type { HistoryPayload } from "./chatEventHandlers";
 
@@ -74,6 +75,7 @@ export function useReencrypt({ host, socket, source, me, conversationId, peer, r
           keep: (entries, receivedAt) => messages.put(entries.map((e) => ({
             scope: source.storeScope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId: me,
             text: e.text, attachments: {}, sharedBy: me, receivedAt, ...(e.replyTo ? { replyTo: e.replyTo } : {}),
+            ...(e.reactions ? { reactions: archivedReactions(e.reactions) } : {}),
           }))),
           now: () => Date.now(),
           newId: () => crypto.randomUUID(),

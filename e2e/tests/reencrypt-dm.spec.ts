@@ -55,7 +55,7 @@ test("old plaintext moves by itself once the key has worked, keeps its sent date
   const reply = unique("old reply");
   const theirs = unique("old theirs");
   await sql(container, `const i=db.prepare("INSERT INTO messages (conversation_id,message_id,sender_server_id,text,created_at,reply_to_message_id) VALUES (?,?,?,?,?,?)");
-    i.run(a[0],"p-mine",a[1],a[3],a[6],null);i.run(a[0],"p-reply",a[1],a[4],a[6],"p-mine");i.run(a[0],"p-reacted",a[1],a[7],"2023-06-02T10:00:00.000Z",null);db.prepare("UPDATE messages SET reactions=? WHERE message_id='p-reacted'").run(JSON.stringify([{src:"👍",amount:1,users:[a[2]]}]));i.run(a[0],"p-theirs",a[2],a[5],"2023-01-02T10:00:00.000Z",null);`, dm, aliceId, bobId, mine, reply, theirs, OLD_DATE, unique("old reacted"));
+    i.run(a[0],"p-mine",a[1],a[3],a[6],null);i.run(a[0],"p-reply",a[1],a[4],a[6],"p-mine");i.run(a[0],"p-reacted",a[1],a[7],"2023-06-02T10:00:00.000Z",null);db.prepare("UPDATE messages SET reactions=? WHERE message_id='p-reacted'").run(JSON.stringify([{src:"👍",amount:1,users:[a[2]]}]));i.run(a[0],"p-theirs",a[2],a[5],"2024-03-13T10:00:00.000Z","p-mine");`, dm, aliceId, bobId, mine, reply, theirs, OLD_DATE, unique("old reacted"));
   await alice.page.reload();
   await openFromList(alice.page, bob.name);
 
@@ -64,10 +64,10 @@ test("old plaintext moves by itself once the key has worked, keeps its sent date
   expect(alice.frames.some((f) => f.includes('"chat:delete"'))).toBe(false);
 
   await say(bob.page, alice.name, unique("hello"));
-  await expect(alice.page.getByText("Encrypted 2 of your older messages")).toBeVisible({ timeout: 60_000 });
+  await expect(alice.page.getByText("Encrypted 3 of your older messages")).toBeVisible({ timeout: 60_000 });
 
   const left = await sql<{ message_id: string }[]>(container, `return db.prepare("SELECT message_id FROM messages WHERE conversation_id=? AND message_id LIKE 'p-%' ORDER BY message_id").all(a[0])`, dm);
-  expect(left.map((r) => r.message_id)).toEqual(["p-reacted", "p-theirs"]);
+  expect(left.map((r) => r.message_id)).toEqual(["p-theirs"]);
 
   for (const member of [alice, bob]) {
     await expect(member.page.locator('[data-message-id="re-p-mine"]')).toContainText(mine);
@@ -80,5 +80,6 @@ test("old plaintext moves by itself once the key has worked, keeps its sent date
     await expect(tip).toContainText("2024");
     await expect(tip).toContainText(String(new Date().getFullYear()));
   }
-  await expect(messageRow(alice.page, theirs)).toBeVisible();
+  await expect(messageRow(alice.page, theirs)).toContainText(mine);
+  await expect(alice.page.locator('[data-message-id="re-p-reacted"]')).toContainText("👍");
 });

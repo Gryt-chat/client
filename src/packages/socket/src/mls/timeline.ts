@@ -1,4 +1,5 @@
 import type { DmSealingMode, MlsDmContent } from "@gryt/core";
+import { reencryptedId } from "@gryt/core";
 import type { SealedAttachmentKey } from "@gryt/crypto";
 
 import type { ArchivedMessage } from "@/common";
@@ -100,11 +101,16 @@ export function mergeTimeline({
   const floor = Math.max(floorOf(shown, serverHasMore), floorOf(archived, archiveHasMore));
 
   const ids = new Set<string>();
-  return [...shown, ...archived]
-    .filter((m) => {
-      if (ids.has(m.message_id)) return false;
-      ids.add(m.message_id);
-      return m.pending || m.failed || at(m) >= floor;
+  const kept = [...shown, ...archived].filter((m) => {
+    if (ids.has(m.message_id)) return false;
+    ids.add(m.message_id);
+    return m.pending || m.failed || at(m) >= floor;
+  });
+  // A reply can name a message that has since moved onto MLS under a new id.
+  return kept
+    .map((m) => {
+      const reply = m.reply_to_message_id;
+      return reply && !ids.has(reply) && ids.has(reencryptedId(reply)) ? { ...m, reply_to_message_id: reencryptedId(reply) } : m;
     })
     .sort((a, b) => at(a) - at(b));
 }
