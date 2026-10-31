@@ -244,10 +244,6 @@ export function useChat({
     nameFor: (id) => (id === currentUserId ? nickname : undefined),
   });
   const mlsMode = mls.mode?.kind ?? null;
-  /* A message from them that opened here proves both ends share a working key.
-     Without one, re-encrypting could delete the only readable copy. */
-  const reencryptReady = mlsMode === "mls" && !mls.problems.undecryptable && !mls.problems.lost && !mls.lostHistory
-    && mls.rows.some((m) => m.mls && m.sender_server_id === dmPeer && !m.shared_by && !m.imported_from);
   useArchiveReadCopies({
     host: serverHost,
     conversationId: activeConversationId,
@@ -798,6 +794,10 @@ export function useChat({
   const peerKeyResetAt = dmPeer ? memberLists[serverHost]?.find((m) => m.serverUserId === dmPeer)?.keyResetAt ?? null : null;
   const peerKey = dmPeer ? memberKeyStates[serverHost]?.[dmPeer] : undefined;
   const peerKeyChanged = peerKey?.decision.kind === "changed" || peerKey?.personKey.kind === "changed";
+  /* A message from them that opened here proves both ends share a working key.
+     Without one, re-encrypting could delete the only readable copy. */
+  const reencryptReady = mlsMode === "mls" && !mls.problems.undecryptable && !mls.problems.lost && !mls.lostHistory && !peerKeyChanged
+    && mls.rows.some((m) => m.mls && m.sender_server_id === dmPeer && !m.shared_by && !m.imported_from);
   const shownSealing = useMemo<SealDecision>(
     () => (onMlsPath && !peerKeyChanged ? { kind: "seal", recipients: [] } : sealing.decision),
     [onMlsPath, peerKeyChanged, sealing.decision],

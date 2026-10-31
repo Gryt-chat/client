@@ -224,7 +224,7 @@ test("an import is filed under whoever sent it, tagged, and never overwrites (GR
 test("re-encrypting removes only what went, keeps the sent date and marks when it arrived (GRYT-1969)", async () => {
   const { reencryptMine, reencryptedId } = await import("../src/packages/socket/src/mls/reencrypt.ts");
   const row = (id: string, extra: object = {}) => ({ conversation_id: "dm_1", message_id: id, sender_server_id: "kari", text: id, created_at: "2024-03-12T10:00:00.000Z", attachments: null, reactions: null, ...extra });
-  const items = [row("a"), row("b", { reply_to_message_id: "a" }), row("file", { attachments: ["f"] }), row("theirs", { sender_server_id: "sable" }), row("sealed", { sealed: "x", text: null })];
+  const items = [row("a"), row("b", { reply_to_message_id: "a" }), row("file", { attachments: ["f"] }), row("reacted", { reactions: [{ src: "x", amount: 1, users: ["sable"] }] }), row("theirs", { sender_server_id: "sable" }), row("sealed", { sealed: "x", text: null })];
   const removed: string[] = [];
   const put: ArchivedMessage[] = [];
   const sent: MlsDmContent[] = [];

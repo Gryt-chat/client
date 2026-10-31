@@ -34,9 +34,9 @@ async function say(page: Page, name: string, text: string) {
   await expect(messageRow(page, text)).toBeVisible();
 }
 
-test("old plaintext moves onto a working key, keeps its sent date and shows when it arrived", async ({ newMember, freshServer }) => {
+test("old plaintext moves by itself once the key has worked, keeps its sent date and shows when it arrived", async ({ newMember, freshServer }) => {
   test.setTimeout(180_000);
-  const server = await freshServer({ instanceId: `reencrypt-${Date.now()}` });
+  const server = await freshServer({ instanceId: `reencrypt-${Date.now()}`, messageCacheTtlMs: 0 });
   const container = server.containerId as string;
   const alice = await newMember({ server, label: "alice" });
   const bob = await newMember({ server, label: "bob" });
@@ -55,29 +55,19 @@ test("old plaintext moves onto a working key, keeps its sent date and shows when
   const reply = unique("old reply");
   const theirs = unique("old theirs");
   await sql(container, `const i=db.prepare("INSERT INTO messages (conversation_id,message_id,sender_server_id,text,created_at,reply_to_message_id) VALUES (?,?,?,?,?,?)");
-    i.run(a[0],"p-mine",a[1],a[3],a[6],null);i.run(a[0],"p-reply",a[1],a[4],a[6],"p-mine");i.run(a[0],"p-theirs",a[2],a[5],"2023-01-02T10:00:00.000Z",null);`, dm, aliceId, bobId, mine, reply, theirs, OLD_DATE);
+    i.run(a[0],"p-mine",a[1],a[3],a[6],null);i.run(a[0],"p-reply",a[1],a[4],a[6],"p-mine");i.run(a[0],"p-reacted",a[1],a[7],"2023-06-02T10:00:00.000Z",null);db.prepare("UPDATE messages SET reactions=? WHERE message_id='p-reacted'").run(JSON.stringify([{src:"👍",amount:1,users:[a[2]]}]));i.run(a[0],"p-theirs",a[2],a[5],"2023-01-02T10:00:00.000Z",null);`, dm, aliceId, bobId, mine, reply, theirs, OLD_DATE, unique("old reacted"));
   await alice.page.reload();
   await openFromList(alice.page, bob.name);
 
-  const panel = alice.page.locator('[data-gryt="dm-info"]');
-  const option = panel.getByRole("button", { name: /Encrypt my older messages/ });
-  await expect(option).toContainText("After their next message");
-  await expect(option).toBeDisabled();
+  // Nothing moves before a message from Bob has opened on this device.
+  await expect(alice.page.getByText(mine).first()).toBeVisible();
+  expect(alice.frames.some((f) => f.includes('"chat:delete"'))).toBe(false);
 
-  const hello = unique("hello");
-  await say(bob.page, alice.name, hello);
-  await expect(messageRow(alice.page, hello)).toBeVisible();
-  await expect(option).not.toContainText("After their next message");
+  await say(bob.page, alice.name, unique("hello"));
+  await expect(alice.page.getByText("Encrypted 2 of your older messages")).toBeVisible({ timeout: 60_000 });
 
-  // The rows went in behind the server's first-page cache, which lasts 30 s.
-  await expect(async () => {
-    await option.click();
-    await alice.page.getByRole("button", { name: "Encrypt and remove" }).click();
-    await expect(alice.page.getByText("Encrypted 2 of your older messages")).toBeVisible({ timeout: 15_000 });
-  }).toPass({ timeout: 80_000 });
-
-  const left = await sql<{ message_id: string }[]>(container, `return db.prepare("SELECT message_id FROM messages WHERE conversation_id=? AND message_id LIKE 'p-%'").all(a[0])`, dm);
-  expect(left.map((r) => r.message_id)).toEqual(["p-theirs"]);
+  const left = await sql<{ message_id: string }[]>(container, `return db.prepare("SELECT message_id FROM messages WHERE conversation_id=? AND message_id LIKE 'p-%' ORDER BY message_id").all(a[0])`, dm);
+  expect(left.map((r) => r.message_id)).toEqual(["p-reacted", "p-theirs"]);
 
   for (const member of [alice, bob]) {
     await expect(member.page.locator('[data-message-id="re-p-mine"]')).toContainText(mine);

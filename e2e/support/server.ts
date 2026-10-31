@@ -27,6 +27,8 @@ export const PUBLIC_ALIAS = "e2e.gryt.chat";
 export interface ServerOptions {
   /** Published by /info. The port is then the same inside the container and out, like a server you host. */
   instanceId?: string;
+  /** The server's first-page cache, for a test that writes rows behind it. */
+  messageCacheTtlMs?: number;
   /** Open unless a test asks. The first person to join owns the server whatever this is. */
   joinPolicy?: "open" | "invite" | "request";
   /** Guests unless a test asks for accounts only, which nobody in the suite can have. */
@@ -118,6 +120,7 @@ export async function startServer(appOrigin: string, runId: string, options: Ser
     GRYT_ADMIN_PORT: "5099",
   };
   if (options.instanceId) env.SERVER_INSTANCE_ID = options.instanceId;
+  if (options.messageCacheTtlMs !== undefined) env.MESSAGE_CACHE_TTL_MS = String(options.messageCacheTtlMs);
 
   const args = ["run", "--detach", "--label", `${RUN_LABEL}=${runId}`];
   const published = options.instanceId ? `127.0.0.1:${serverPort}:${serverPort}` : "127.0.0.1::5000";

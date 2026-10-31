@@ -21,10 +21,10 @@ export interface ReencryptDeps {
   report: (done: number, total: number) => void;
 }
 
-/** Plain text only: files, polls, cards and pins can't travel in a history entry, so they stay. */
+/** Plain text only: files, reactions, polls, cards and pins can't travel in a history entry, so they stay. */
 function canMove(m: ChatMessage, me: string): boolean {
   return m.sender_server_id === me && !!m.text && !m.mls && !m.sealed && !m.mls_placeholder
-    && !m.attachments?.length && !m.poll && !m.cards?.length && !m.pinned_at && !m.thread_id;
+    && !m.attachments?.length && !m.reactions?.length && !m.poll && !m.cards?.length && !m.pinned_at && !m.thread_id;
 }
 
 async function plaintextOfMine(deps: ReencryptDeps, me: string): Promise<ChatMessage[]> {

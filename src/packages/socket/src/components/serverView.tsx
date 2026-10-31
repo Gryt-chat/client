@@ -724,15 +724,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     source: mlsSource,
   });
   const setImportOpen = discordImport.setDialogOpen;
-  const reencrypt = useReencrypt({
+  const reencryptProgress = useReencrypt({
     host: viewingHost,
     socket: viewingHost ? sockets[viewingHost] ?? null : null,
     source: mlsSource,
     me: currentServerUserId ?? undefined,
     conversationId: activeDm?.conversation_id,
     peer: activeDm?.kind === "dm" ? activeDm.other.server_user_id : undefined,
+    ready: reencryptReady,
   });
-  const [reencryptAsked, setReencryptAsked] = useState(false);
   const [askDismissed, setAskDismissed] = useState<Set<string>>(() => new Set());
   const dmPeer = activeDm?.kind === "dm" ? activeDm.other : undefined;
   const dmPeerAvatar = dmPeer && viewingHost
@@ -1743,9 +1743,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   }}
                   onSearch={openDmSearch}
                   onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
-                  onReencrypt={mlsSource ? () => setReencryptAsked(true) : undefined}
-                  reencryptReady={reencryptReady}
-                  reencryptDetail={reencrypt.progress ? `${reencrypt.progress.done} of ${reencrypt.progress.total}` : undefined}
+                  reencryptProgress={reencryptProgress}
                   importSection={importState && (
                     <DiscordImportCard
                       state={importState}
@@ -1861,18 +1859,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           onStart={(plan) => void discordImport.start(plan)}
         />
       )}
-      <ConfirmDialog
-        open={reencryptAsked}
-        onOpenChange={setReencryptAsked}
-        title="Encrypt your older messages here?"
-        description="Your old text messages get sent again, encrypted, and the unencrypted ones come off the server. Each keeps its sent date, and hovering the time shows when the server got this copy. Whoever runs the server may already have read or backed up the old ones. Reactions on them are lost, and messages with files or pins stay as they are. Encrypted messages live on your devices, and anyone offline for over 30 days can miss them. The other person does the same for theirs. Keep Gryt open until it’s done."
-        confirmLabel="Encrypt and remove"
-        confirmTone="danger"
-        onConfirm={() => {
-          setReencryptAsked(false);
-          void reencrypt.start();
-        }}
-      />
       <ConfirmDialog
         open={!!pendingLeave}
         onOpenChange={(open) => {
