@@ -35,7 +35,7 @@ export async function applyMlsContent(
     const fresh: ArchivedMessage[] = [];
     for (const e of acceptImport(content, { senderId, at })) {
       if (await messages.get(scope, conversationId, e.id)) continue;
-      fresh.push({ scope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId, text: e.text, attachments: e.attachments ?? {}, importedFrom: content.source });
+      fresh.push({ scope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId, text: e.text, attachments: e.attachments ?? {}, importedFrom: content.source, receivedAt: at });
     }
     if (fresh.length) await messages.put(fresh);
     return;
