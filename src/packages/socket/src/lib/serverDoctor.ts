@@ -60,12 +60,14 @@ function isHttpsPage(): boolean {
  * One advertised address, as a WebSocket URL this client could use. Not the voice
  * engine's version, which caches and falls back — the behaviour being diagnosed.
  */
-function sfuWsUrl(raw: string): string {
+export function sfuWsUrl(raw: string): string {
   const hasScheme = raw.startsWith("ws://") || raw.startsWith("wss://");
 
   try {
     const url = new URL(hasScheme ? raw : `ws://${raw}`);
-    url.protocol = isHttpsPage() ? "wss:" : "ws:";
+    // shortcut: a bare IP stands in for the engine's private-address check, which it doesn't export.
+    const keepsTls = raw.startsWith("wss://") && !/^(localhost|[\d.]+)$/.test(url.hostname);
+    url.protocol = isHttpsPage() || keepsTls ? "wss:" : "ws:";
     return url.toString();
   } catch {
     return hasScheme ? raw : `ws://${raw}`;
@@ -84,25 +86,40 @@ function httpBase(host: string): string {
   return `http://${host}`;
 }
 
+/** Whether an advertised voice address is really the Gryt server, by what it says it is or where it is. */
+export function isGrytServerAddress(raw: string, serverHost: string, service?: string): boolean {
+  if (service === "signaling-server") return true;
+  try {
+    return new URL(healthUrlFor(sfuWsUrl(raw))).host === new URL(httpBase(serverHost)).host;
+  } catch {
+    return false;
+  }
+}
+
 /** A fetch that gives up rather than hanging, and reports how long it took. */
 async function probe(
   url: string,
-): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
+): Promise<{ ok: boolean; latencyMs: number; error?: string; service?: string }> {
   const started = performance.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
 
   try {
-    await fetch(url, { method: "GET", signal: controller.signal, cache: "no-store" });
-    return { ok: true, latencyMs: Math.round(performance.now() - started) };
+    const res = await fetch(url, { method: "GET", signal: controller.signal, cache: "no-store" });
+    const body = (await res.json().catch(() => null)) as { service?: unknown } | null;
+    return {
+      ok: true,
+      latencyMs: Math.round(performance.now() - started),
+      service: typeof body?.service === "string" ? body.service : undefined,
+    };
   } catch (err) {
-    // An abort and a refused connection are different problems to the reader: a
-    // firewall swallowing packets, or nothing listening.
+    // An abort and a failed fetch are different problems to the reader. A failed
+    // fetch can be a refusal, a bad certificate or CORS, and the browser won't say which.
     const aborted = err instanceof Error && err.name === "AbortError";
     return {
       ok: false,
       latencyMs: Math.round(performance.now() - started),
-      error: aborted ? `no answer within ${PROBE_TIMEOUT_MS / 1000}s` : "refused",
+      error: aborted ? `no answer within ${PROBE_TIMEOUT_MS / 1000}s` : "could not connect",
     };
   } finally {
     clearTimeout(timer);
@@ -152,7 +169,7 @@ async function checkServerHttp(host: string): Promise<CheckResult> {
  * Every advertised SFU address, tried separately. `server:details` hands over a
  * list and the client picks the fastest, so one bad address reads as broken voice.
  */
-async function checkSfuHttp(sfuHosts: string[]): Promise<CheckResult> {
+async function checkSfuHttp(sfuHosts: string[], serverHost: string): Promise<CheckResult> {
   if (sfuHosts.length === 0) {
     return {
       id: "sfu-http",
@@ -166,6 +183,9 @@ async function checkSfuHttp(sfuHosts: string[]): Promise<CheckResult> {
   const addresses = await Promise.all(
     sfuHosts.map(async (raw) => {
       const result = await probe(healthUrlFor(sfuWsUrl(raw)));
+      if (isGrytServerAddress(raw, serverHost, result.service)) {
+        return { address: raw, ok: false, latencyMs: result.latencyMs, error: "this is the Gryt server, not the SFU" };
+      }
       return {
         address: raw,
         ok: result.ok,
@@ -176,6 +196,17 @@ async function checkSfuHttp(sfuHosts: string[]): Promise<CheckResult> {
   );
 
   const reachable = addresses.filter((a) => a.ok);
+
+  if (reachable.length === 0 && addresses.some((a) => a.error?.includes("Gryt server"))) {
+    return {
+      id: "sfu-http",
+      label: "Voice signalling reachable",
+      status: "fail",
+      detail: "SFU_PUBLIC_HOST points at this Gryt server. Voice needs the SFU's own address, usually its own hostname.",
+      addresses,
+      help: HELP.sfu,
+    };
+  }
 
   if (reachable.length === 0 && isHttpsPage()) {
     return {
@@ -630,7 +661,7 @@ export async function runDoctor(
   }
 
   set("sfu-http", { status: "running" });
-  const sfuHttp = await checkSfuHttp(input.sfuHosts);
+  const sfuHttp = await checkSfuHttp(input.sfuHosts, input.host);
   set("sfu-http", sfuHttp);
 
   const firstReachable = sfuHttp.addresses?.find((a) => a.ok)?.address;
