@@ -471,7 +471,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
-    plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend,
+    plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
     mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
@@ -1744,6 +1744,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   onSearch={openDmSearch}
                   onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
                   onReencrypt={mlsSource ? () => setReencryptAsked(true) : undefined}
+                  reencryptReady={reencryptReady}
                   reencryptDetail={reencrypt.progress ? `${reencrypt.progress.done} of ${reencrypt.progress.total}` : undefined}
                   importSection={importState && (
                     <DiscordImportCard

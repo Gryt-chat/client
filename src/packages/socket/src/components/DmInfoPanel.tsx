@@ -192,7 +192,7 @@ function MiniCard({ member, host, statusText, onFullCard }: { member: MemberInfo
 
 /** Board D1: their card as one row, then the options laid out bare, then what this conversation holds. */
 export function DmPersonPanel({
-  host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection, onReencrypt, reencryptDetail,
+  host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection, onReencrypt, reencryptReady, reencryptDetail,
 }: {
   host: string;
   member?: MemberInfo;
@@ -205,6 +205,7 @@ export function DmPersonPanel({
   onImport?: () => void;
   importSection?: ReactNode;
   onReencrypt?: () => void;
+  reencryptReady?: boolean;
   reencryptDetail?: string;
 }) {
   const [fullCard, setFullCard] = useState(false);
@@ -241,7 +242,7 @@ export function DmPersonPanel({
           <Option icon={<PiMagnifyingGlassBold size={16} />} label="Search in this chat" onClick={onSearch} />
           {/* Greyed out until the import is built (GRYT-1965); dev builds pass onImport. */}
           <Option icon={<PiArchiveFill size={16} />} label="Import from Discord" detail={onImport ? undefined : "Soon"} onClick={onImport} />
-          {onReencrypt && <Option icon={<PiLockFill size={16} />} label="Encrypt my older messages" detail={reencryptDetail} onClick={reencryptDetail ? undefined : onReencrypt} />}
+          {onReencrypt && <Option icon={<PiLockFill size={16} />} label="Encrypt my older messages" detail={reencryptDetail ?? (reencryptReady ? undefined : "After their next message")} onClick={reencryptDetail || !reencryptReady ? undefined : onReencrypt} />}
         </div>
         {importSection}
         <Pinned pins={pins} memberList={memberList} onJump={onJump} />

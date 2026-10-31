@@ -65,6 +65,8 @@ interface UseChatReturn {
   /** Set when a send was held back for going out in the clear, and carries who
       is blocking it. */
   plaintextPrompt: SealDecision | null;
+  /** This DM has shown its key works, so old plaintext can move onto it. */
+  reencryptReady: boolean;
   /** Send it unencrypted, and stop asking for this conversation. */
   confirmPlaintextSend: () => void;
   /** Do not send it. The text goes back in the composer. */
@@ -242,6 +244,10 @@ export function useChat({
     nameFor: (id) => (id === currentUserId ? nickname : undefined),
   });
   const mlsMode = mls.mode?.kind ?? null;
+  /* A message from them that opened here proves both ends share a working key.
+     Without one, re-encrypting could delete the only readable copy. */
+  const reencryptReady = mlsMode === "mls" && !mls.problems.undecryptable && !mls.problems.lost && !mls.lostHistory
+    && mls.rows.some((m) => m.mls && m.sender_server_id === dmPeer && !m.shared_by && !m.imported_from);
   useArchiveReadCopies({
     host: serverHost,
     conversationId: activeConversationId,
@@ -820,6 +826,7 @@ export function useChat({
 
   return {
     plaintextPrompt,
+    reencryptReady,
     confirmPlaintextSend,
     cancelPlaintextSend,
     chatMessages: shownMessages,

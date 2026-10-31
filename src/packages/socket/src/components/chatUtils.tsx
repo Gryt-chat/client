@@ -165,8 +165,10 @@ function formatDateSeparator(d: Date): string {
   return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
-export const MessageTimestamp = ({ date }: { date: Date }) => (
-  <Tooltip title={formatFullDate(date)}>
+export const MessageTimestamp = ({ date, receivedAt }: { date: Date; receivedAt?: string }) => (
+  <Tooltip title={receivedAt
+    ? `Sent ${formatFullDate(date)}, according to the sender. Server received this copy ${formatFullDate(new Date(receivedAt))}.`
+    : formatFullDate(date)}>
     {/*
       gray-11 is Radix's low-contrast *text* step. gray-9 and gray-10 are solid
       steps meant for backgrounds and borders, and against the message surface

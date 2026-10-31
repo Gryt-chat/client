@@ -29,7 +29,7 @@ export function archivedRow(m: ArchivedMessage, nameFor: (id: string) => string 
     reply_to_message_id: m.replyTo ?? null,
     reactions: m.reactions?.length ? m.reactions : null,
     mls: true,
-    ...(m.sharedBy ? { shared_by: nameFor(m.sharedBy) ?? "them" } : {}),
+    ...(m.sharedBy && m.sharedBy !== m.senderId ? { shared_by: nameFor(m.sharedBy) ?? "them" } : {}),
     ...(m.receivedAt ? { received_at: new Date(m.receivedAt).toISOString() } : {}),
     ...(m.importedFrom ? { imported_from: m.importedFrom } : {}),
   };
