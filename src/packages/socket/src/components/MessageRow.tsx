@@ -1172,19 +1172,23 @@ function AddedLine({
 /** Board 5: a small red dot beside a message that went out in the clear. */
 function UnencryptedDot({ side }: { side: "left" | "right" }) {
   return (
-    <span
-      role="img"
-      aria-label="Not encrypted"
-      title="Sent without encryption. Whoever runs this server can read it in the clear."
-      style={{
-        position: "absolute",
-        top: "calc(50% - 3.5px)",
-        [side]: -11,
-        width: 7,
-        height: 7,
-        borderRadius: "50%",
-        background: "var(--gryt-danger-9)",
-      }}
-    />
+    <Tooltip title="Not encrypted. Whoever runs this server can read this message.">
+      <span
+        role="img"
+        aria-label="Not encrypted"
+        style={{
+          position: "absolute",
+          top: "calc(50% - 10px)",
+          [side]: -17,
+          width: 20,
+          height: 20,
+          display: "grid",
+          placeItems: "center",
+          cursor: "help",
+        }}
+      >
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--gryt-danger-9)" }} />
+      </span>
+    </Tooltip>
   );
 }
