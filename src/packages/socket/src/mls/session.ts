@@ -16,9 +16,10 @@ import {
   type MlsServerCapability,
   type MlsStateStore,
   type MlsWelcomeDelivery,
+  readImportBundle,
   readMlsDmContent,
 } from "@gryt/core";
-import { generateMlsKeyPackage, type PeerPinStore } from "@gryt/crypto";
+import { generateMlsKeyPackage, openAttachment, type PeerPinStore } from "@gryt/crypto";
 
 import type { ArchivedMessage, MessageArchive } from "@/common";
 
@@ -33,7 +34,7 @@ import { type AckSocket, asBytes, socketMlsTransport } from "./transport.ts";
 
 /** The uploads a send carries, so the server lets the other side fetch them. */
 function attachmentIdsOf(content: MlsDmContent): string[] {
-  if (content.type === "message") return Object.keys(content.attachments ?? {});
+  if (content.type === "message" || content.type === "import_bundle") return Object.keys(content.attachments ?? {});
   if (content.type === "import") return content.entries.flatMap((e) => Object.keys(e.attachments ?? {}));
   return [];
 }
@@ -55,6 +56,8 @@ export interface ConversationProblems {
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
 
 /** Hand the UI a turn every few messages, so a long catch-up doesn't freeze it. */
+const BUNDLE_TRIES = 5;
+const BUNDLE_RETRY_MS = 2_000;
 const YIELD_EVERY = 8;
 
 export interface ArchivedMlsMessage {
@@ -73,6 +76,8 @@ export interface MlsSessionOptions {
   serverUserId: string;
   capability: MlsServerCapability | null;
   getAccessToken: () => Promise<string | null>;
+  /** An upload's sealed bytes, for an import that came as one file. */
+  fetchUpload: (fileId: string) => Promise<Uint8Array>;
   messages: MessageArchive;
   store: MlsStateStore;
   pinStore: PeerPinStore;
@@ -226,8 +231,31 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
     if (record) listener({ conversationId, seq, epoch, record });
   }
 
-  const apply = (conversationId: string, senderId: string, senderDeviceId: string | undefined, content: MlsDmContent, at: number) =>
-    applyMlsContent(messages, { scope: storeScope, conversationId, senderId, senderDeviceId, content, at });
+
+  /** An import's sealed file, as the `import` it stands for. Null when it can't be fetched or read. */
+  async function openBundle(conversationId: string, content: Extract<MlsDmContent, { type: "import_bundle" }>): Promise<Extract<MlsDmContent, { type: "import" }> | null> {
+    const [[fileId, meta]] = Object.entries(content.attachments);
+    for (let attempt = 0; attempt < BUNDLE_TRIES; attempt++) {
+      try {
+        const ciphertext = await options.fetchUpload(fileId);
+        const entries = readImportBundle(openAttachment({ ciphertext, conversationId, meta }));
+        return entries?.length ? { type: "import", id: content.id, source: content.source, entries } : null;
+      } catch (e) {
+        console.warn("[MLS] An import's file didn't open", attempt, e);
+        await new Promise((r) => setTimeout(r, BUNDLE_RETRY_MS));
+      }
+    }
+    return null;
+  }
+
+  const apply = async (conversationId: string, senderId: string, senderDeviceId: string | undefined, content: MlsDmContent, at: number) => {
+    const opened = content.type === "import_bundle" ? await openBundle(conversationId, content) : content;
+    if (!opened) {
+      setProblems(conversationId, { undecryptable: (problems.get(conversationId)?.undecryptable ?? 0) + 1 });
+      return;
+    }
+    await applyMlsContent(messages, { scope: storeScope, conversationId, senderId, senderDeviceId, content: opened, at });
+  };
 
   const driver: MlsDmDriver = createMlsDmDriver({
     transport,

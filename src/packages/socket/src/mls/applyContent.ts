@@ -30,6 +30,8 @@ export async function applyMlsContent(
     at: number;
   },
 ): Promise<void> {
+  // The session opens these into an `import` first.
+  if (content.type === "import_bundle") return;
   if (content.type === "import") {
     // Every entry is filed under whoever sent the batch, never a sender it claims.
     const fresh: ArchivedMessage[] = [];

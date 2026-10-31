@@ -8,6 +8,7 @@ import {
   getLocalArchiveSnapshot,
   getOwnServerUserId,
   getServerAccessToken,
+  getUploadsFileUrl,
   getValidIdentityToken,
   identityScopeFor,
   keyHandoverFor,
@@ -453,6 +454,11 @@ async function refresh(host: string): Promise<void> {
         serverUserId,
         capability,
         getAccessToken: async () => getServerAccessToken(host),
+        fetchUpload: async (fileId) => {
+          const resp = await fetch(getUploadsFileUrl(host, fileId), { credentials: "omit" });
+          if (!resp.ok) throw new Error(`Upload fetch failed (${resp.status})`);
+          return new Uint8Array(await resp.arrayBuffer());
+        },
         messages: archive.messages,
         store: archive.mlsState(scope, claim),
         pinStore: localPeerPinStore,

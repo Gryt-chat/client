@@ -722,6 +722,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     conversationId: activeDm?.conversation_id,
     peer: activeDm?.kind === "dm" ? activeDm.other.server_user_id : undefined,
     source: mlsSource,
+    maxFileBytes: viewingHost ? serverDetailsList[viewingHost]?.server_info?.upload_max_bytes : null,
   });
   const setImportOpen = discordImport.setDialogOpen;
   const reencryptProgress = useReencrypt({

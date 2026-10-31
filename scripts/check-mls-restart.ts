@@ -121,6 +121,7 @@ function member(fake: FakeDeliveryService, who: "kari" | "mia") {
   const line = socketTo(fake, who);
   const messages = archive();
   const session = createMlsSession({
+    fetchUpload: async () => new Uint8Array(),
     socket: line.socket,
     storeScope: SCOPE,
     dmScope: SCOPE,
