@@ -70,6 +70,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { DiscordImportCard } from "./DiscordImportCard";
 import { DiscordImportDialog } from "./DiscordImportDialog";
+import { DiscordImportReceipt } from "./DiscordImportReceipt";
 import { DmGroupPanel, DmPersonPanel, PANEL_WIDTH as DM_PANEL_WIDTH } from "./DmInfoPanel";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
@@ -725,6 +726,30 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     maxFileBytes: viewingHost ? serverDetailsList[viewingHost]?.server_info?.upload_max_bytes : null,
   });
   const setImportOpen = discordImport.setDialogOpen;
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const jobKind = discordImport.state?.kind;
+  const jobKindBefore = useRef(jobKind);
+  useEffect(() => {
+    const finishing = jobKindBefore.current === "running" && (jobKind === "done" || jobKind === "missing");
+    jobKindBefore.current = jobKind;
+    if (!finishing) return;
+    toast((t) => (
+      <span>
+        Discord import finished.{" "}
+        <button
+          type="button"
+          className="gryt-link cursor-pointer border-0 bg-transparent p-0"
+          onClick={() => {
+            toast.dismiss(t.id);
+            setReceiptOpen(true);
+          }}
+        >
+          View details
+        </button>
+      </span>
+    ));
+  }, [jobKind]);
+
   const reencryptProgress = useReencrypt({
     host: viewingHost,
     socket: viewingHost ? sockets[viewingHost] ?? null : null,
@@ -1751,6 +1776,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                       peerName={activeDm.other.nickname}
                       peerAvatar={dmPeerAvatar}
                       onPause={discordImport.pause}
+                      onDetails={() => setReceiptOpen(true)}
                       onAddMine={() => setImportOpen(true)}
                       onDismiss={() => {
                         if (importState.kind === "asked") setAskDismissed((prev) => new Set(prev).add(activeDm.conversation_id));
@@ -1858,6 +1884,20 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           peerName={activeDm.other.nickname}
           peerAvatar={dmPeerAvatar}
           onStart={(plan) => void discordImport.start(plan)}
+        />
+      )}
+      {(job?.kind === "done" || job?.kind === "missing") && (
+        <DiscordImportReceipt
+          open={receiptOpen}
+          onOpenChange={setReceiptOpen}
+          state={job}
+          canRetry={discordImport.canRetry}
+          canChangeLimit={viewerPermissions.can("manage_server")}
+          onRetry={discordImport.retry}
+          onDropPackage={() => {
+            setReceiptOpen(false);
+            setImportOpen(true);
+          }}
         />
       )}
       <ConfirmDialog

@@ -13,6 +13,7 @@ interface DiscordImportCardProps {
   onPause: (paused: boolean) => void;
   onAddMine: () => void;
   onDismiss: () => void;
+  onDetails: () => void;
 }
 
 function Bar({ label, count, active }: { label: string; count: Count; active: boolean }) {
@@ -39,7 +40,7 @@ function whyMissing(linksUntil: number | null): string {
 }
 
 /** The import in the DM sidebar: D5 while it runs, D6 for the other person, D8 once done, D9 for files left behind. */
-export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddMine, onDismiss }: DiscordImportCardProps) {
+export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddMine, onDismiss, onDetails }: DiscordImportCardProps) {
   if (state.kind === "done") {
     return (
       <section className="flex flex-col gap-2" data-gryt="discord-import-card">
@@ -51,6 +52,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
           <span>{fmtCount(state.mine)} from you{state.theirs !== null && `, ${fmtCount(state.theirs)} from ${peerName}`}</span>
           {state.tooLarge > 0 && <span>{fmtCount(state.tooLarge)} {state.tooLarge === 1 ? "file was" : "files were"} too big for this server, and their messages say so.</span>}
           <span className="text-gryt-muted">{fmtCount(state.files)} files · {monthYear(state.firstAt)} to {monthYear(state.lastAt)}</span>
+          <button type="button" className="gryt-link cursor-pointer self-start border-0 bg-transparent p-0 text-[13px]" onClick={onDetails}>View details</button>
         </div>
       </section>
     );
@@ -109,6 +111,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
           <>Gryt fetches only the missing files.</>,
         ]} />
         <div className="flex flex-wrap gap-2">
+          <Button size="small" onClick={onDetails}>View details</Button>
           <Button size="small" onClick={onAddMine}>Drop the new package</Button>
           <Button size="small" tone="neutral" onClick={onDismiss}>Dismiss</Button>
         </div>

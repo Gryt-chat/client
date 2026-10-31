@@ -1,4 +1,4 @@
-import { type DiscordPackageDm, type DiscordPackageMessage, type ImportFileStore, type ImportProgress, isDiscordPackage, linksExpireAt, listDiscordDms, readDiscordDm, retryAfterMs, runDiscordImport } from "@gryt/core";
+import { type DiscordPackageDm, type DiscordPackageMessage, type ImportFileStore, type ImportLeftOut, type ImportProgress, isDiscordPackage, linksExpireAt, listDiscordDms, readDiscordDm, retryAfterMs, retryLeftOut,runDiscordImport } from "@gryt/core";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -37,9 +37,9 @@ export type DiscordImportState =
       peerAdded: boolean;
     }
   | { kind: "asked"; by: string }
-  | { kind: "missing"; files: number; imported: number; linksUntil: number | null }
+  | { kind: "missing"; files: number; imported: number; linksUntil: number | null; leftOut: ImportLeftOut[] }
   | { kind: "stopped"; name: string; done: number; total: number }
-  | { kind: "done"; mine: number; theirs: number | null; files: number; tooLarge: number; firstAt: number; lastAt: number };
+  | { kind: "done"; mine: number; theirs: number | null; files: number; tooLarge: number; firstAt: number; lastAt: number; leftOut: ImportLeftOut[] };
 
 export const fmtCount = (n: number) => n.toLocaleString("en-US");
 
@@ -131,9 +131,16 @@ export function useDiscordImport({ host, conversationId, peer, source, maxFileBy
   const [owner, setOwner] = useState<string | null>(null);
   const paused = useRef(false);
   const stopped = useRef(false);
+  const lastPlan = useRef<DiscordImportPlan | null>(null);
+  const carried = useRef<ImportLeftOut[]>([]);
+  const retrying = useRef(false);
 
   const start = useCallback(async (plan: DiscordImportPlan) => {
     if (!host || !conversationId || !peer || !source) return;
+    if (!retrying.current) {
+      lastPlan.current = plan;
+      carried.current = [];
+    }
     paused.current = false;
     stopped.current = false;
     setOwner(conversationId);
@@ -175,7 +182,8 @@ export function useDiscordImport({ host, conversationId, peer, source, maxFileBy
       },
       store: cacheStore(cache),
       bundles: true,
-      maxFileBytes,
+      // The limit may have just been raised, and this copy of it can be old: the server decides.
+      maxFileBytes: retrying.current ? null : maxFileBytes,
       alreadyHas: async (id) => !!(await messages.get(source.storeScope, conversationId, id)),
       sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
       newId: () => crypto.randomUUID(),
@@ -191,9 +199,24 @@ export function useDiscordImport({ host, conversationId, peer, source, maxFileBy
     }
     writeSaved(conversationId, null);
     setState(done.missing
-      ? { kind: "missing", files: done.downloaded.total, imported: done.downloaded.total - done.missing, linksUntil: plan.linksUntil }
-      : { kind: "done", mine: plan.messages.length, theirs: null, files: done.sent.total - done.tooLarge, tooLarge: done.tooLarge, firstAt: plan.dm.firstAt, lastAt: plan.dm.lastAt });
+      ? { kind: "missing", files: done.downloaded.total, imported: done.downloaded.total - done.missing, linksUntil: plan.linksUntil, leftOut: [...carried.current, ...done.leftOut] }
+      : { kind: "done", mine: plan.messages.length, theirs: null, files: done.sent.total - done.tooLarge, tooLarge: done.tooLarge, leftOut: [...carried.current, ...done.leftOut], firstAt: plan.dm.firstAt, lastAt: plan.dm.lastAt });
   }, [host, conversationId, peer, source, maxFileBytes]);
+
+  /* The package isn't kept past a restart, so this is null then and the card asks for it again. */
+  const retry = useCallback((urls: string[]) => {
+    const plan = lastPlan.current;
+    if (!plan) return;
+    const chosen = new Set(urls);
+    setState((s) => {
+      if (s?.kind === "done" || s?.kind === "missing") carried.current = s.leftOut.filter((f) => !chosen.has(f.url));
+      return s;
+    });
+    retrying.current = true;
+    void start({ ...plan, messages: retryLeftOut(plan.messages, chosen) }).finally(() => {
+      retrying.current = false;
+    });
+  }, [start]);
 
   const pause = useCallback((next: boolean) => {
     paused.current = next;
@@ -209,5 +232,5 @@ export function useDiscordImport({ host, conversationId, peer, source, maxFileBy
   // After a restart there's no job here, only the record of how far the last one got.
   const saved = conversationId ? readSaved(conversationId) : null;
   const live = owner === conversationId ? state : null;
-  return { dialogOpen, setDialogOpen, state: live ?? (saved ? { kind: "stopped" as const, ...saved } : null), start, pause, dismiss };
+  return { canRetry: !!lastPlan.current, retry, dialogOpen, setDialogOpen, state: live ?? (saved ? { kind: "stopped" as const, ...saved } : null), start, pause, dismiss };
 }
