@@ -470,15 +470,19 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
+      # The report is a convenience. Only the shards' result below decides this job.
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           pattern: blob-report-*
           path: e2e/all-blob-reports
           merge-multiple: true
       - run: yarn playwright merge-reports --reporter=html e2e/all-blob-reports
+        continue-on-error: true
         env:
           PLAYWRIGHT_HTML_REPORT: e2e/playwright-report
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: e2e-report
           path: e2e/playwright-report
