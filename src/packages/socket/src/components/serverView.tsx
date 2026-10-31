@@ -44,6 +44,7 @@ import { useChannelIcons, useIsTinyWindow, useMemberListMode, useRoomForThreadBe
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
+import { useReencrypt } from "../hooks/useReencrypt";
 import { useReportUser } from "../hooks/useReportUser";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
@@ -723,6 +724,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     source: mlsSource,
   });
   const setImportOpen = discordImport.setDialogOpen;
+  const reencrypt = useReencrypt({
+    host: viewingHost,
+    socket: viewingHost ? sockets[viewingHost] ?? null : null,
+    source: mlsSource,
+    me: currentServerUserId ?? undefined,
+    conversationId: activeDm?.conversation_id,
+    peer: activeDm?.kind === "dm" ? activeDm.other.server_user_id : undefined,
+  });
+  const [reencryptAsked, setReencryptAsked] = useState(false);
   const [askDismissed, setAskDismissed] = useState<Set<string>>(() => new Set());
   const dmPeer = activeDm?.kind === "dm" ? activeDm.other : undefined;
   const dmPeerAvatar = dmPeer && viewingHost
@@ -1733,6 +1743,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   }}
                   onSearch={openDmSearch}
                   onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
+                  onReencrypt={mlsSource ? () => setReencryptAsked(true) : undefined}
+                  reencryptDetail={reencrypt.progress ? `${reencrypt.progress.done} of ${reencrypt.progress.total}` : undefined}
                   importSection={importState && (
                     <DiscordImportCard
                       state={importState}
@@ -1848,6 +1860,18 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           onStart={(plan) => void discordImport.start(plan)}
         />
       )}
+      <ConfirmDialog
+        open={reencryptAsked}
+        onOpenChange={setReencryptAsked}
+        title="Encrypt your older messages here?"
+        description="Your old text messages get sent again, encrypted, and the unencrypted ones come off the server. Each shows when you sent it and when the server got this copy. Whoever runs the server may already have read or backed up the old ones. Reactions on them are lost, and messages with files or pins stay as they are. Encrypted messages live on your devices, and anyone offline for over 30 days can miss them. The other person does the same for theirs. Keep Gryt open until it’s done."
+        confirmLabel="Encrypt and remove"
+        confirmTone="danger"
+        onConfirm={() => {
+          setReencryptAsked(false);
+          void reencrypt.start();
+        }}
+      />
       <ConfirmDialog
         open={!!pendingLeave}
         onOpenChange={(open) => {

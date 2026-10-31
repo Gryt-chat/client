@@ -390,6 +390,13 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                     </span>
                   </Tooltip>
                 )}
+                {m.received_at && new Date(m.received_at).toDateString() !== toDate(m.created_at).toDateString() && (
+                  <Tooltip title="The sent date is what the sender’s device says. The received date comes from the server, and it’s when this copy arrived.">
+                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
+                      received {new Date(m.received_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </Tooltip>
+                )}
                 {meta.isFirstEdited && m.edited_at && (
                   <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>

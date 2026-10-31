@@ -101,6 +101,8 @@ export type ChatMessage = {
   mls?: boolean;
   /** Who sent this from their copy of the DM (GRYT-1875). */
   shared_by?: string;
+  /** When the server got this copy. Its sent date is only what the sender says. */
+  received_at?: string;
   imported_from?: "discord";
   /** Why a failed send failed, when there's more to say than that it did. */
   failure?: string;
