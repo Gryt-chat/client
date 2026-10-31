@@ -61,6 +61,8 @@ export function useReencrypt({ host, socket, source, me, conversationId, peer, r
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
+    // Off until it has proved safe on real DMs: it deletes server copies. GRYT-1969.
+    if (localStorage.getItem("gryt.reencryptOn") !== "1") return;
     if (!ready || !host || !socket || !source || !me || !conversationId || !peer) return;
     const id = `${host}/${conversationId}`;
     const token = getServerAccessToken(host);

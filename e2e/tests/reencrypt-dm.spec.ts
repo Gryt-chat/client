@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 
 import type { Page } from "@playwright/test";
 
-import { composer, membersPanel, messageRow, unique } from "../support/app";
+import { composer, joinServer, membersPanel, messageRow, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 const run = promisify(execFile);
@@ -38,7 +38,10 @@ test("old plaintext moves by itself once the key has worked, keeps its sent date
   test.setTimeout(180_000);
   const server = await freshServer({ instanceId: `reencrypt-${Date.now()}`, messageCacheTtlMs: 0 });
   const container = server.containerId as string;
-  const alice = await newMember({ server, label: "alice" });
+  const alice = await newMember({ server, join: false, label: "alice" });
+  await alice.context.addInitScript(() => localStorage.setItem("gryt.reencryptOn", "1"));
+  await alice.page.reload();
+  await joinServer(alice.page, server.host);
   const bob = await newMember({ server, label: "bob" });
   // Bob's DM only goes over MLS once his device exists.
   await expect.poll(() => bob.frames.some((f) => f.includes("mls:keypackages:publish")), { timeout: 30_000 }).toBe(true);
