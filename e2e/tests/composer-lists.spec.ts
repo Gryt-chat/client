@@ -34,7 +34,7 @@ test("the format bar makes a numbered list, and Tab nests it", async ({ newMembe
   await expect(message.locator("ol ol li")).toHaveText("second");
 });
 
-test("typing an arrow turns it into the symbol, except in code", async ({ newMember }) => {
+test("typing an arrow turns it into the symbol", async ({ newMember }) => {
   const { page } = await newMember();
   const box = channelComposer(page);
   await box.click();
