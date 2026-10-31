@@ -2545,6 +2545,10 @@ img.discord-import-letter { object-fit: cover; }
 .discord-import-card[data-tone="warning"] { background: var(--gryt-warning-3); box-shadow: inset 0 0 0 1px var(--gryt-warning-7); }
 .discord-import-bar { height: 6px; border-radius: 999px; background: var(--gryt-neutral-5); overflow: hidden; }
 .discord-import-bar > span { display: block; height: 100%; background: var(--gryt-accent-9); }
+.discord-import-bar[data-active] > span { position: relative; overflow: hidden; }
+.discord-import-bar[data-active] > span::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in oklab, white 45%, transparent), transparent); animation: discord-import-shine 1.6s ease-in-out infinite; }
+@keyframes discord-import-shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .discord-import-bar[data-active] > span::after { animation: none; display: none; } }
 .poll-dialog { display: flex; flex-direction: column; gap: 14px; width: 440px; max-width: 100%; }
 .poll-dialog-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gryt-accent-9); color: var(--gryt-accent-contrast, #14161d); }
 .poll-dialog-field { display: flex; flex-direction: column; gap: 6px; }

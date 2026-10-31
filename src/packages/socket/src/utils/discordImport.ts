@@ -2,7 +2,7 @@ import { type DiscordPackageDm, type DiscordPackageMessage, type ImportFileStore
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { sealAttachment } from "@/common";
+import { openLocalArchive, sealAttachment } from "@/common";
 
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import type { MlsSource } from "../mls/serverMls";
@@ -31,15 +31,15 @@ export type DiscordImportState =
       downloaded: Count;
       sent: Count;
       bytesPerSecond: number;
-      downloadsDoneAt: number | null;
-      sendingLeftMs: number | null;
+      finishesAt: number | null;
+      limited: boolean;
       linksUntil: number | null;
       peerAdded: boolean;
     }
   | { kind: "asked"; by: string }
   | { kind: "missing"; files: number; imported: number; linksUntil: number | null }
   | { kind: "stopped"; name: string; done: number; total: number }
-  | { kind: "done"; mine: number; theirs: number | null; files: number; firstAt: number; lastAt: number };
+  | { kind: "done"; mine: number; theirs: number | null; files: number; tooLarge: number; firstAt: number; lastAt: number };
 
 export const fmtCount = (n: number) => n.toLocaleString("en-US");
 
@@ -71,10 +71,9 @@ export async function planImport(files: ZipFiles, dm: DiscordDm): Promise<Discor
   return { dm, messages, linksUntil: linksExpireAt(messages.flatMap((m) => m.attachments)) };
 }
 
-function running(p: ImportProgress, plan: DiscordImportPlan, paused: boolean, peerAdded: boolean): Extract<DiscordImportState, { kind: "running" }> {
+function running(p: ImportProgress, plan: DiscordImportPlan, paused: boolean, peerAdded: boolean, limited = false): Extract<DiscordImportState, { kind: "running" }> {
   const seconds = Math.max(1, (Date.now() - p.startedAt) / 1000);
   const bytesPerSecond = p.bytes / seconds;
-  const perFile = p.downloaded.done ? (Date.now() - p.startedAt) / p.downloaded.done : null;
   const perSent = p.sent.done ? (Date.now() - p.startedAt) / p.sent.done : null;
   return {
     kind: "running",
@@ -83,8 +82,8 @@ function running(p: ImportProgress, plan: DiscordImportPlan, paused: boolean, pe
     downloaded: p.downloaded,
     sent: p.sent,
     bytesPerSecond,
-    downloadsDoneAt: perFile === null ? null : Date.now() + perFile * (p.downloaded.total - p.downloaded.done),
-    sendingLeftMs: perSent === null ? null : perSent * (p.sent.total - p.sent.done),
+    finishesAt: perSent === null ? null : Date.now() + perSent * (p.sent.total - p.sent.done),
+    limited,
     linksUntil: plan.linksUntil,
     peerAdded,
   };
@@ -126,7 +125,7 @@ function writeSaved(conversationId: string, saved: Saved | null): void {
 }
 
 /** One DM's import (GRYT-1965). Re-running is safe: ids come from Discord's, and downloads stay cached. */
-export function useDiscordImport({ host, conversationId, peer, source }: { host: string | undefined; conversationId: string | undefined; peer: string | undefined; source: MlsSource | null }) {
+export function useDiscordImport({ host, conversationId, peer, source, maxFileBytes }: { maxFileBytes?: number | null; host: string | undefined; conversationId: string | undefined; peer: string | undefined; source: MlsSource | null }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [state, setState] = useState<DiscordImportState | null>(null);
   const [owner, setOwner] = useState<string | null>(null);
@@ -139,15 +138,27 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
     stopped.current = false;
     setOwner(conversationId);
     const cache = await caches.open("gryt-discord-import");
+    const { messages } = await openLocalArchive();
+    let limitedUntil = 0;
     const report = (p: ImportProgress) => {
-      setState(running(p, plan, paused.current, false));
+      setState(running(p, plan, paused.current, false, Date.now() < limitedUntil));
       writeSaved(conversationId, { name: plan.dm.name, done: p.messages.done, total: p.messages.total });
     };
     const done = await runDiscordImport(plan.messages, {
       send: async (content) => { await source.send(conversationId, peer, content); },
       upload: async ({ name, type, bytes }) => {
         const file = new File([bytes as Uint8Array<ArrayBuffer>], name, { type });
-        const up = await uploadChatFile(file, host, await getMediaDimensions(file), (b, about) => sealAttachment({ bytes: b, conversationId, ...about }));
+        const up = await uploadChatFile(file, host, await getMediaDimensions(file), (b, about) => sealAttachment({ bytes: b, conversationId, ...about })).catch((e: { status?: number; retryAfter?: string | null }) => {
+          if (e.status === 429) {
+            const wait = retryAfterMs(e.retryAfter ?? null);
+            limitedUntil = Date.now() + wait;
+            setState((s) => (s?.kind === "running" ? { ...s, limited: true } : s));
+            return { retryAfterMs: wait };
+          }
+          if (e.status === 413) return { tooLarge: true as const };
+          throw e;
+        });
+        if ("retryAfterMs" in up || "tooLarge" in up) return up;
         if (!up.meta) throw new Error("The file was uploaded without its key.");
         return { id: up.fileId, key: up.meta };
       },
@@ -163,6 +174,9 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
         return res.ok ? { type: res.headers.get("content-type") ?? "", bytes: new Uint8Array(await res.arrayBuffer()) } : null;
       },
       store: cacheStore(cache),
+      bundles: true,
+      maxFileBytes,
+      alreadyHas: async (id) => !!(await messages.get(source.storeScope, conversationId, id)),
       sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
       newId: () => crypto.randomUUID(),
     }, { paused: () => paused.current, stopped: () => stopped.current }, report).catch((e: Error) => {
@@ -178,8 +192,8 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
     writeSaved(conversationId, null);
     setState(done.missing
       ? { kind: "missing", files: done.downloaded.total, imported: done.downloaded.total - done.missing, linksUntil: plan.linksUntil }
-      : { kind: "done", mine: plan.messages.length, theirs: null, files: done.sent.total, firstAt: plan.dm.firstAt, lastAt: plan.dm.lastAt });
-  }, [host, conversationId, peer, source]);
+      : { kind: "done", mine: plan.messages.length, theirs: null, files: done.sent.total - done.tooLarge, tooLarge: done.tooLarge, firstAt: plan.dm.firstAt, lastAt: plan.dm.lastAt });
+  }, [host, conversationId, peer, source, maxFileBytes]);
 
   const pause = useCallback((next: boolean) => {
     paused.current = next;

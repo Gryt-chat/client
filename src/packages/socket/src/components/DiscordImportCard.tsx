@@ -2,7 +2,7 @@ import { Avatar, Button, IconButton } from "@gryt/ui";
 
 import { isElectron } from "../../../../lib/electron";
 import { PiArchiveFill, PiPauseFill, PiPlayFill, PiWarningFill } from "../../../../lib/icons";
-import { type Count, type DiscordImportState, fmtCount, fmtDuration, fmtTime, fmtWhen } from "../utils/discordImport";
+import { type Count, type DiscordImportState, fmtCount, fmtTime, fmtWhen } from "../utils/discordImport";
 import { formatFileSize } from "../utils/formatFileSize";
 import { ImportSteps } from "./DiscordImportDialog";
 
@@ -15,7 +15,7 @@ interface DiscordImportCardProps {
   onDismiss: () => void;
 }
 
-function Bar({ label, count }: { label: string; count: Count }) {
+function Bar({ label, count, active }: { label: string; count: Count; active: boolean }) {
   const pct = count.total ? Math.round((count.done / count.total) * 100) : 0;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
@@ -23,7 +23,7 @@ function Bar({ label, count }: { label: string; count: Count }) {
         <span>{label}</span>
         <span className="ml-auto">{fmtCount(count.done)} of {fmtCount(count.total)}</span>
       </span>
-      <div className="discord-import-bar" role="progressbar" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+      <div className="discord-import-bar" data-active={active && count.done < count.total ? "" : undefined} role="progressbar" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <span style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -49,6 +49,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
         </div>
         <div className="flex flex-col gap-1 rounded-(--gryt-radius-md) bg-gryt-neutral-3 px-3 py-2.5 text-[13px]">
           <span>{fmtCount(state.mine)} from you{state.theirs !== null && `, ${fmtCount(state.theirs)} from ${peerName}`}</span>
+          {state.tooLarge > 0 && <span>{fmtCount(state.tooLarge)} {state.tooLarge === 1 ? "file was" : "files were"} too big for this server, and their messages say so.</span>}
           <span className="text-gryt-muted">{fmtCount(state.files)} files · {monthYear(state.firstAt)} to {monthYear(state.lastAt)}</span>
         </div>
       </section>
@@ -125,17 +126,19 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
           {state.paused ? <PiPlayFill size={14} /> : <PiPauseFill size={14} />}
         </IconButton>
       </div>
-      <Bar label="Messages" count={state.messages} />
-      <Bar label="Downloaded" count={state.downloaded} />
-      <Bar label="Sent to server" count={state.sent} />
+      <Bar label="Messages" count={state.messages} active={!state.paused} />
+      <Bar label="Downloaded" count={state.downloaded} active={!state.paused} />
+      <Bar label="Sent to server" count={state.sent} active={!state.paused} />
       {!state.paused && (
         <p className="discord-import-hint">
           {formatFileSize(Math.round(state.bytesPerSecond))}/s.
-          {state.downloadsDoneAt !== null && <> Downloads done by {fmtTime(state.downloadsDoneAt)}{links}.</>}
-          {state.sendingLeftMs !== null && <> Sending takes about {fmtDuration(state.sendingLeftMs)} more.</>}
+          {state.finishesAt !== null && <> Finishes around {fmtTime(state.finishesAt)}{links}.</>}
         </p>
       )}
-      {!state.peerAdded && <p className="discord-import-hint">Waiting for {peerName} to add their side.</p>}
+      {!state.paused && state.limited && (
+        <p className="discord-import-hint">Waiting on this server&rsquo;s upload limit. It carries on by itself.</p>
+      )}
+      {!state.peerAdded && <p className="discord-import-hint">This is only your side. {peerName} can add theirs any time, and this doesn&rsquo;t wait for them.</p>}
     </div>
   );
 }

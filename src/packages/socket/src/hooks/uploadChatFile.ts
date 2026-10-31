@@ -76,7 +76,7 @@ export async function uploadChatFile(
       else if (err.error) msg = err.error;
     } catch { /* ignored */ }
     console.error("[Upload] Failed:", { status: resp.status, url: `${base}/api/uploads`, body: raw });
-    throw new Error(msg);
+    throw Object.assign(new Error(msg), { status: resp.status, retryAfter: resp.headers.get("retry-after") });
   }
   const data = await resp.json();
   return { fileId: data.fileId as string, ...(sealed ? { meta: sealed.meta } : null) };
