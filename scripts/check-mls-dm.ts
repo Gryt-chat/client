@@ -219,6 +219,7 @@ test("an import is filed under whoever sent it, tagged, and never overwrites (GR
   assert.equal(stored(db, "discord-1").text, "already here");
   assert.equal(db.rows.has("discord-3"), false, "dated after the server got it");
   assert.equal(archivedRow(imported, () => undefined).imported_from, "discord");
+  assert.ok(archivedRow(imported, () => undefined).received_at, "an import shows when the server got it");
 });
 
 test("a copy someone shares carries the server's time, whatever the sender claims (GRYT-1969)", async () => {
