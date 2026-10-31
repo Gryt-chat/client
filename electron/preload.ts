@@ -65,6 +65,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     webFrame.setZoomFactor(factor);
   },
 
+  discordFileFetch(url: string) {
+    return ipcRenderer.invoke("discord-file-fetch", url);
+  },
   getAppVersion(): Promise<string> {
     return ipcRenderer.invoke("get-app-version");
   },
