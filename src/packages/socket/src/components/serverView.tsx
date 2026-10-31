@@ -1864,7 +1864,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         open={reencryptAsked}
         onOpenChange={setReencryptAsked}
         title="Encrypt your older messages here?"
-        description="Your old text messages get sent again, encrypted, and the unencrypted ones come off the server. Each shows when you sent it and when the server got this copy. Whoever runs the server may already have read or backed up the old ones. Reactions on them are lost, and messages with files or pins stay as they are. Encrypted messages live on your devices, and anyone offline for over 30 days can miss them. The other person does the same for theirs. Keep Gryt open until it’s done."
+        description="Your old text messages get sent again, encrypted, and the unencrypted ones come off the server. Each keeps its sent date, and hovering the time shows when the server got this copy. Whoever runs the server may already have read or backed up the old ones. Reactions on them are lost, and messages with files or pins stay as they are. Encrypted messages live on your devices, and anyone offline for over 30 days can miss them. The other person does the same for theirs. Keep Gryt open until it’s done."
         confirmLabel="Encrypt and remove"
         confirmTone="danger"
         onConfirm={() => {

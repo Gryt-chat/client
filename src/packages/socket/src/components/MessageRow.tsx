@@ -377,7 +377,13 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                     BOT
                   </span>
                 )}
-                <MessageTimestamp date={toDate(m.created_at)} />
+                {m.received_at ? (
+                  <Tooltip title={`Sent ${toDate(m.created_at).toLocaleString()}, according to the sender. Server received this copy ${new Date(m.received_at).toLocaleString()}.`}>
+                    <span><MessageTimestamp date={toDate(m.created_at)} /></span>
+                  </Tooltip>
+                ) : (
+                  <MessageTimestamp date={toDate(m.created_at)} />
+                )}
                 {m.imported_from && (
                   <Tooltip title="Imported from Discord">
                     <span className="discord-import-tag">Discord</span>
@@ -387,13 +393,6 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   <Tooltip title={`From ${m.shared_by}\u2019s copy of this conversation`}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
                       shared by {m.shared_by}
-                    </span>
-                  </Tooltip>
-                )}
-                {m.received_at && new Date(m.received_at).toDateString() !== toDate(m.created_at).toDateString() && (
-                  <Tooltip title="The sent date is what the sender’s device says. The received date comes from the server, and it’s when this copy arrived.">
-                    <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-                      received {new Date(m.received_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                     </span>
                   </Tooltip>
                 )}

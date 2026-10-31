@@ -92,7 +92,6 @@ import {
   ListBullets,
   ListChecks,
   Lock,
-  Lock,
   LockOpen,
   LockSimple,
   MagnifyingGlass,
