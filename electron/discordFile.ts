@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-types -- the url comes over IPC from the page, and is checked here. */
-/* Discord's CDN only sends CORS headers for media, so a PDF or a zip can't be fetched from the page.
-   The main process can, for these addresses and nothing else. */
+// Discord's CDN only sends CORS headers for media, so the main process fetches its files.
 const HOSTS = new Set(["cdn.discordapp.com", "media.discordapp.net"]);
 const MAX_BYTES = 1024 * 1024 * 1024;
 
