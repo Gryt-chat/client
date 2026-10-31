@@ -230,6 +230,9 @@ test("a copy someone shares carries the server's time, whatever the sender claim
   const row = archivedRow(stored, () => undefined);
   assert.equal(row.received_at, new Date(5000).toISOString());
   assert.equal(row.shared_by, undefined, "no tag on someone's own message");
+
+  await applyMlsContent(db, { ...base, senderId: "kari", at: 6000, content: { type: "history", id: "h2", entries: [{ id: "re-b", senderId: "kari", sentAt: 1000, text: "b", reactions: [{ emoji: "👍", users: ["sable"] }] }] } });
+  assert.deepEqual(db.rows.get("re-b")?.reactions, [{ src: "👍", amount: 1, users: ["sable"] }]);
 });
 
 test("sending your copy pages the whole DM and leaves server copies out (GRYT-1875)", async () => {
