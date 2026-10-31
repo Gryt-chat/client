@@ -28,6 +28,7 @@
     "test:update-supersede": "node scripts/check-update-supersede.ts",
     "test:update-in-progress": "node scripts/check-update-in-progress.ts",
     "test:dm-destination": "node scripts/check-dm-destination.ts",
+    "test:doctor-sfu": "node scripts/check-doctor-sfu.ts",
     "test:narrow-dm-parity": "node scripts/check-narrow-dm-parity.ts",
     "test:search-snippet": "node --disable-warning=ExperimentalWarning scripts/check-search-snippet.ts",
     "test:unread-split": "node --disable-warning=ExperimentalWarning scripts/check-unread-split.ts",
