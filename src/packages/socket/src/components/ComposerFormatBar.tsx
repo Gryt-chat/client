@@ -1,5 +1,5 @@
 import { $isLinkNode, TOGGLE_LINK_COMMAND } from "@lexical/link";
-import { $isListNode, INSERT_UNORDERED_LIST_COMMAND, REMOVE_LIST_COMMAND } from "@lexical/list";
+import { $isListNode, INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND, REMOVE_LIST_COMMAND } from "@lexical/list";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $createHeadingNode, $createQuoteNode, $isHeadingNode, $isQuoteNode } from "@lexical/rich-text";
 import { $setBlocksType } from "@lexical/selection";
@@ -62,7 +62,8 @@ export function ComposerFormatBar({ disabled }: { disabled?: boolean }) {
       const block = sel.anchor.getNode().getTopLevelElement();
       if ($isHeadingNode(block) && ["h1", "h2", "h3"].includes(block.getTag())) active.add(block.getTag() as ComposerFormat);
       if ($isQuoteNode(block)) active.add("quote");
-      if ($isListNode(block)) active.add("list");
+      const list = $findMatchingParent(sel.anchor.getNode(), $isListNode);
+      if (list) active.add(list.getListType() === "number" ? "olist" : "list");
       const link = $findMatchingParent(sel.anchor.getNode(), $isLinkNode);
       if (link) active.add("link");
       if (link && addingLink.current) {
@@ -83,6 +84,7 @@ export function ComposerFormatBar({ disabled }: { disabled?: boolean }) {
     const text = TEXT_FORMATS[format];
     if (text) editor.dispatchCommand(FORMAT_TEXT_COMMAND, text);
     else if (format === "list") editor.dispatchCommand(on ? REMOVE_LIST_COMMAND : INSERT_UNORDERED_LIST_COMMAND, undefined);
+    else if (format === "olist") editor.dispatchCommand(on ? REMOVE_LIST_COMMAND : INSERT_ORDERED_LIST_COMMAND, undefined);
     else if (format === "link") {
       addingLink.current = !on;
       editor.dispatchCommand(TOGGLE_LINK_COMMAND, on ? null : "https://");

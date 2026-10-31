@@ -1,7 +1,7 @@
 import { Menu } from "@gryt/ui";
 import { CodeNode } from "@lexical/code";
 import { autoLinkEmailMatcher, AutoLinkNode, autoLinkUrlMatcher, LinkNode } from "@lexical/link";
-import { ListItemNode, ListNode } from "@lexical/list";
+import { $isListItemNode, ListItemNode, ListNode } from "@lexical/list";
 import { $convertFromMarkdownString, $convertToMarkdownString } from "@lexical/markdown";
 import { AutoLinkPlugin } from "@lexical/react/LexicalAutoLinkPlugin";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
@@ -14,7 +14,7 @@ import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { mergeRegister } from "@lexical/utils";
+import { $findMatchingParent, mergeRegister } from "@lexical/utils";
 import {
   $createTextNode,
   $getRoot,
@@ -24,11 +24,14 @@ import {
   COMMAND_PRIORITY_HIGH,
   DROP_COMMAND,
   FORMAT_TEXT_COMMAND,
+  INDENT_CONTENT_COMMAND,
   INSERT_PARAGRAPH_COMMAND,
   KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
+  KEY_TAB_COMMAND,
   type LexicalEditor,
   type LexicalNode,
+  OUTDENT_CONTENT_COMMAND,
   PASTE_COMMAND,
 } from "lexical";
 import {
@@ -76,7 +79,7 @@ const THEME = {
   text: { bold: "lx-bold", italic: "lx-italic", strikethrough: "lx-strike", code: "lx-code" },
   heading: { h1: "lx-h1", h2: "lx-h2", h3: "lx-h3" },
   quote: "lx-quote",
-  list: { ul: "lx-ul", ol: "lx-ol", listitem: "lx-li" },
+  list: { ul: "lx-ul", ol: "lx-ol", listitem: "lx-li", nested: { listitem: "lx-li-nested" } },
   link: "gryt-link",
   code: "lx-codeblock",
   paragraph: "lx-p",
@@ -420,6 +423,16 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           if (!e?.shiftKey) return false;
           e.preventDefault();
           editor.dispatchCommand(INSERT_PARAGRAPH_COMMAND, undefined);
+          return true;
+        }, COMMAND_PRIORITY_HIGH),
+        // Only inside a list. Everywhere else Tab has to keep moving focus out of the box.
+        editor.registerCommand(KEY_TAB_COMMAND, (e) => {
+          const sel = $getSelection();
+          const item = $isRangeSelection(sel) ? $findMatchingParent(sel.anchor.getNode(), $isListItemNode) : null;
+          // Handled but not prevented, or the rich text plugin indents the paragraph and traps focus.
+          if (!item || (e.shiftKey && item.getIndent() === 0)) return true;
+          e.preventDefault();
+          editor.dispatchCommand(e.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND, undefined);
           return true;
         }, COMMAND_PRIORITY_HIGH),
         editor.registerCommand(PASTE_COMMAND, (e) => (e instanceof ClipboardEvent ? handlePasteRef.current(e) : false), COMMAND_PRIORITY_HIGH),

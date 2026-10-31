@@ -90,6 +90,7 @@ import {
   LinkSimple,
   List,
   ListBullets,
+  ListNumbers,
   ListChecks,
   Lock,
   LockOpen,
@@ -349,6 +350,7 @@ export const PiTrashSimpleBold: Icon = weighted(TrashSimple, "bold", "PiTrashSim
 export const PiTrashSimpleFill: Icon = weighted(TrashSimple, "fill", "PiTrashSimpleFill");
 export const PiCodeBlockBold: Icon = weighted(CodeBlock, "bold", "PiCodeBlockBold");
 export const PiListBulletsBold: Icon = weighted(ListBullets, "bold", "PiListBulletsBold");
+export const PiListNumbersBold: Icon = weighted(ListNumbers, "bold", "PiListNumbersBold");
 export const PiQuotesBold: Icon = weighted(Quotes, "bold", "PiQuotesBold");
 export const PiTextBBold: Icon = weighted(TextB, "bold", "PiTextBBold");
 export const PiTextItalicBold: Icon = weighted(TextItalic, "bold", "PiTextItalicBold");

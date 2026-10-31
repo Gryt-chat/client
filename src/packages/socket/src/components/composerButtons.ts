@@ -1,6 +1,6 @@
-import { PiCode, PiLinkSimpleBold, PiListBulletsBold, PiQuotesBold, PiTextBBold, PiTextHOneBold, PiTextHThreeBold, PiTextHTwoBold, PiTextItalicBold, PiTextStrikethroughBold } from "../../../../lib/icons";
+import { PiCode, PiLinkSimpleBold, PiListBulletsBold, PiListNumbersBold, PiQuotesBold, PiTextBBold, PiTextHOneBold, PiTextHThreeBold, PiTextHTwoBold, PiTextItalicBold, PiTextStrikethroughBold } from "../../../../lib/icons";
 
-export type ComposerFormat = "bold" | "italic" | "strike" | "code" | "link" | "h1" | "h2" | "h3" | "list" | "quote";
+export type ComposerFormat = "bold" | "italic" | "strike" | "code" | "link" | "h1" | "h2" | "h3" | "list" | "olist" | "quote";
 
 export const MASS_MENTION = /(^|\s)@(everyone|here)\b/;
 
@@ -23,7 +23,8 @@ export const FORMAT_GROUPS: FormatButton[][] = [
     { format: "h3", label: "Heading 3", Icon: PiTextHThreeBold },
   ],
   [
-    { format: "list", label: "List", Icon: PiListBulletsBold },
+    { format: "list", label: "Bullet list", Icon: PiListBulletsBold },
+    { format: "olist", label: "Numbered list", Icon: PiListNumbersBold },
     { format: "quote", label: "Quote", Icon: PiQuotesBold },
   ],
 ];

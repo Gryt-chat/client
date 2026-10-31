@@ -186,6 +186,17 @@ const AUTOLINK_EXPORT: TextMatchTransformer = {
   type: "text-match",
 };
 
+function arrow(typed: string, symbol: string): TextMatchTransformer {
+  return {
+    dependencies: [],
+    export: () => null,
+    regExp: new RegExp(`${typed}$`),
+    replace: (node) => { node.setTextContent(symbol); },
+    trigger: typed.slice(-1),
+    type: "text-match",
+  };
+}
+
 /** What the box reads and writes, mentions ahead of LINK so a mention link doesn't import as a plain link.
     No highlight: chat doesn't render `==x==`. */
 export function composerTransformers(channelName: EditorChannelName): Transformer[] {
@@ -193,5 +204,6 @@ export function composerTransformers(channelName: EditorChannelName): Transforme
     HEADING, QUOTE, CODE, UNORDERED_LIST, ORDERED_LIST,
     BOLD_ITALIC_STAR, BOLD_STAR, ITALIC_STAR, STRIKETHROUGH, INLINE_CODE,
     mentionTransformer(channelName), EMOJI_EXPORT, AUTOLINK_EXPORT, LINK,
+    arrow("->", "→"), arrow("<-", "←"), arrow("=>", "⇒"),
   ];
 }
