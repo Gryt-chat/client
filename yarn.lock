@@ -551,10 +551,10 @@
   resolved "https://registry.yarnpkg.com/@floating-ui/utils/-/utils-0.2.12.tgz#afefe785949f16ac4cdd1e695935a321572dd56a"
   integrity sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==
 
-"@gryt/core@0.26.0":
-  version "0.26.0"
-  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.26.0.tgz#508cc7b89b9c40ac1c1a2e4a8cbacfc0aa4edd69"
-  integrity sha512-tqlh72xXIFiD1M2LExVXpBHfFSYO0KJqk+w0Nl5RrKbOHqkTSIrHRP3sDNZs7gwD4QIvjaxD4TTB7JRAEV3pYQ==
+"@gryt/core@0.27.0":
+  version "0.27.0"
+  resolved "https://registry.yarnpkg.com/@gryt/core/-/core-0.27.0.tgz#a3e78aa3e92aeb2102ef88992ed4f0cc572fa213"
+  integrity sha512-IEIwVx+AUUMd5zzuDe2lIW82oTpgV6oVo+6i6ptXKMpdlSg+XCGm7VDFU/hnNP0rK0h2zE+AX7tNuJdWhkq88w==
   dependencies:
     "@gryt/crypto" "0.13.0"
     "@noble/hashes" "^2.3.0"
