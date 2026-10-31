@@ -225,6 +225,8 @@ export interface VoiceHelperAPI {
 
 export interface ElectronAPI {
   isElectron: true;
+  /** A Discord file, fetched where CORS can't block it. Absent on builds from before it existed. */
+  discordFileFetch?: (url: string) => Promise<{ status: number; type: string; retryAfter: string | null; bytes: Uint8Array | null }>;
   /** False where the compositor draws and places windows itself. */
   drawsWindowChrome: boolean;
   /** The computer's own name, for the device certificate. Absent on builds from before it existed. */

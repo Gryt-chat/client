@@ -9,6 +9,7 @@ import {
   Menu,
   type MessageBoxOptions,
   nativeImage,
+  net,
   Notification,
   powerMonitor,
   safeStorage,
@@ -64,6 +65,7 @@ import {
   supportsPerApplicationAudio,
 } from "./audioCaptureManager";
 import curatedGames from "./curated-games.json";
+import { fetchDiscordFile } from "./discordFile";
 import { createRpcHost, findHolder, type Holder, ipcDir, ipcPath, type RpcHostState } from "./discordIpc";
 import {
   autoStartIfNeeded,
@@ -3088,6 +3090,8 @@ if (!gotSingleInstanceLock) {
           }
         }
       }
+
+      ipcMain.handle("discord-file-fetch", (_event, url: unknown) => fetchDiscordFile(url, net.fetch.bind(net)));
 
       ipcMain.handle(
         "get-app-version",

@@ -1,5 +1,6 @@
 import { Avatar, Button, IconButton } from "@gryt/ui";
 
+import { isElectron } from "../../../../lib/electron";
 import { PiArchiveFill, PiPauseFill, PiPlayFill, PiWarningFill } from "../../../../lib/icons";
 import { type Count, type DiscordImportState, fmtCount, fmtDuration, fmtTime, fmtWhen } from "../utils/discordImport";
 import { formatFileSize } from "../utils/formatFileSize";
@@ -30,6 +31,12 @@ function Bar({ label, count }: { label: string; count: Count }) {
 }
 
 const monthYear = (at: number) => new Date(at).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+
+function whyMissing(linksUntil: number | null): string {
+  if (linksUntil && linksUntil < Date.now()) return `The links stopped working ${fmtWhen(linksUntil)}.`;
+  if (isElectron()) return "Discord didn\u2019t hand them over.";
+  return "A browser can only download pictures, videos and text from Discord, so PDFs, zips and similar need the Gryt desktop app.";
+}
 
 /** The import in the DM sidebar: D5 while it runs, D6 for the other person, D8 once done, D9 for files left behind. */
 export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddMine, onDismiss }: DiscordImportCardProps) {
@@ -90,10 +97,10 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
       <div className="discord-import-card" data-tone="warning" data-gryt="discord-import-card">
         <div className="flex items-center gap-2">
           <PiWarningFill size={16} style={{ color: "var(--gryt-warning-11)" }} />
-          <span className="font-bold">{fmtCount(left)} files couldn&rsquo;t be downloaded</span>
+          <span className="font-bold">{fmtCount(left)} {left === 1 ? "file" : "files"} couldn&rsquo;t be downloaded</span>
         </div>
         <p className="discord-import-text">
-          {state.linksUntil && state.linksUntil < Date.now() ? `The links stopped working ${fmtWhen(state.linksUntil)}.` : "Discord didn\u2019t hand them over."} All messages are in, and {fmtCount(state.imported)} files are too.
+          {whyMissing(state.linksUntil)} All messages are in, and {fmtCount(state.imported)} files are too.
         </p>
         <ImportSteps steps={[
           <>Request your data from Discord again, with <b>Messages</b> ticked.</>,
@@ -123,7 +130,7 @@ export function DiscordImportCard({ state, peerName, peerAvatar, onPause, onAddM
       <Bar label="Sent to server" count={state.sent} />
       {!state.paused && (
         <p className="discord-import-hint">
-          4 at a time, {formatFileSize(Math.round(state.bytesPerSecond))}/s.
+          {formatFileSize(Math.round(state.bytesPerSecond))}/s.
           {state.downloadsDoneAt !== null && <> Downloads done by {fmtTime(state.downloadsDoneAt)}{links}.</>}
           {state.sendingLeftMs !== null && <> Sending takes about {fmtDuration(state.sendingLeftMs)} more.</>}
         </p>

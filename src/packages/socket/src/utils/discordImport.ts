@@ -152,6 +152,12 @@ export function useDiscordImport({ host, conversationId, peer, source }: { host:
         return { id: up.fileId, key: up.meta };
       },
       download: async (url) => {
+        const desktop = window.electronAPI?.discordFileFetch;
+        if (desktop) {
+          const got = await desktop(url);
+          if (got.status === 429) return { retryAfterMs: retryAfterMs(got.retryAfter) };
+          return got.bytes ? { type: got.type, bytes: got.bytes } : null;
+        }
         const res = await fetch(url);
         if (res.status === 429) return { retryAfterMs: retryAfterMs(res.headers.get("retry-after")) };
         return res.ok ? { type: res.headers.get("content-type") ?? "", bytes: new Uint8Array(await res.arrayBuffer()) } : null;
