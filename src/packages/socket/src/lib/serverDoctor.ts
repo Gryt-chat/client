@@ -106,11 +106,11 @@ async function probe(
 
   try {
     const res = await fetch(url, { method: "GET", signal: controller.signal, cache: "no-store" });
-    const body = (await res.json().catch(() => null)) as { service?: unknown } | null;
+    const body = (await res.json().catch(() => null)) as { service?: string } | null;
     return {
       ok: true,
       latencyMs: Math.round(performance.now() - started),
-      service: typeof body?.service === "string" ? body.service : undefined,
+      service: body?.service,
     };
   } catch (err) {
     // An abort and a failed fetch are different problems to the reader. A failed
