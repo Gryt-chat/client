@@ -1768,7 +1768,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                     });
                   }}
                   onSearch={openDmSearch}
-                  onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
+                  onImport={() => setImportOpen(true)}
                   reencryptProgress={reencryptProgress}
                   importSection={importState && (
                     <DiscordImportCard
