@@ -42,7 +42,7 @@ export async function applyMlsContent(
       if (await messages.get(scope, conversationId, e.id)) continue;
       const record: ArchivedMessage = {
         scope, conversationId, messageId: e.id, sentAt: e.sentAt, senderId: e.senderId,
-        text: e.text, attachments: e.attachments ?? {}, sharedBy: senderId,
+        text: e.text, attachments: e.attachments ?? {}, sharedBy: senderId, receivedAt: at,
       };
       if (e.replyTo) record.replyTo = e.replyTo;
       fresh.push(record);

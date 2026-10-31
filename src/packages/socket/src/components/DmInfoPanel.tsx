@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { generatedAvatarColor, getUploadsFileUrl, identityScopeFor, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey, useTheme } from "@/common";
 
-import { PiArchiveFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
+import { PiArchiveFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiLockFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
@@ -192,7 +192,7 @@ function MiniCard({ member, host, statusText, onFullCard }: { member: MemberInfo
 
 /** Board D1: their card as one row, then the options laid out bare, then what this conversation holds. */
 export function DmPersonPanel({
-  host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection,
+  host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection, reencryptProgress,
 }: {
   host: string;
   member?: MemberInfo;
@@ -204,6 +204,7 @@ export function DmPersonPanel({
   onSearch: () => void;
   onImport?: () => void;
   importSection?: ReactNode;
+  reencryptProgress?: { done: number; total: number } | null;
 }) {
   const [fullCard, setFullCard] = useState(false);
   const name = member?.nickname || conversation.other.nickname;
@@ -239,6 +240,7 @@ export function DmPersonPanel({
           <Option icon={<PiMagnifyingGlassBold size={16} />} label="Search in this chat" onClick={onSearch} />
           {/* Greyed out until the import is built (GRYT-1965); dev builds pass onImport. */}
           <Option icon={<PiArchiveFill size={16} />} label="Import from Discord" detail={onImport ? undefined : "Soon"} onClick={onImport} />
+          {reencryptProgress && <Option icon={<PiLockFill size={16} />} label="Encrypting older messages" detail={`${reencryptProgress.done} of ${reencryptProgress.total}`} />}
         </div>
         {importSection}
         <Pinned pins={pins} memberList={memberList} onJump={onJump} />

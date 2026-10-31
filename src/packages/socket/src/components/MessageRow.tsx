@@ -377,7 +377,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                     BOT
                   </span>
                 )}
-                <MessageTimestamp date={toDate(m.created_at)} />
+                <MessageTimestamp date={toDate(m.created_at)} receivedAt={m.received_at} />
                 {m.imported_from && (
                   <Tooltip title="Imported from Discord">
                     <span className="discord-import-tag">Discord</span>
@@ -532,7 +532,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
               />
             </span>
             <span className="text-xs" style={{ opacity: 0.75 }}>
-              <MessageTimestamp date={toDate(m.created_at)} />
+              <MessageTimestamp date={toDate(m.created_at)} receivedAt={m.received_at} />
             </span>
           </span>
         </div>

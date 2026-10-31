@@ -221,6 +221,39 @@ test("an import is filed under whoever sent it, tagged, and never overwrites (GR
   assert.equal(archivedRow(imported, () => undefined).imported_from, "discord");
 });
 
+test("re-encrypting removes only what went, keeps the sent date and marks when it arrived (GRYT-1969)", async () => {
+  const { reencryptMine, reencryptedId } = await import("../src/packages/socket/src/mls/reencrypt.ts");
+  const row = (id: string, extra: object = {}) => ({ conversation_id: "dm_1", message_id: id, sender_server_id: "kari", text: id, created_at: "2024-03-12T10:00:00.000Z", attachments: null, reactions: null, ...extra });
+  const items = [row("a"), row("b", { reply_to_message_id: "a" }), row("file", { attachments: ["f"] }), row("reacted", { reactions: [{ src: "x", amount: 1, users: ["sable"] }] }), row("theirs", { sender_server_id: "sable" }), row("sealed", { sealed: "x", text: null })];
+  const removed: string[] = [];
+  const put: ArchivedMessage[] = [];
+  const sent: MlsDmContent[] = [];
+  const deps = (send: () => Promise<void>) => ({
+    source: { storeScope: "s", send: async (_c: string, _p: string, c: MlsDmContent) => { await send(); sent.push(c); } },
+    archive: { put: async (r: ArchivedMessage[]) => void put.push(...r) },
+    fetchOlder: async () => ({ items: items as never, hasMore: false }),
+    remove: (id: string) => void removed.push(id),
+    sleep: async () => {},
+    stopped: () => false,
+    report: () => {},
+  });
+
+  await assert.rejects(reencryptMine(deps(async () => { throw new Error("offline"); }) as never, "kari", "dm_1", "sable"));
+  assert.deepEqual(removed, [], "a failed send removes nothing");
+
+  assert.equal(await reencryptMine(deps(async () => {}) as never, "kari", "dm_1", "sable"), 2);
+  assert.deepEqual(removed.sort(), ["a", "b"]);
+  const entries = sent.flatMap((c) => (c.type === "history" ? c.entries : []));
+  assert.equal(entries[0].sentAt, Date.parse("2024-03-12T10:00:00.000Z"));
+  assert.equal(entries.find((e) => e.id === reencryptedId("b"))?.replyTo, reencryptedId("a"));
+
+  const db = memoryArchive();
+  await applyMlsContent(db, { ...base, senderId: "kari", at: 5000, content: sent[0] });
+  const stored = db.rows.get(reencryptedId("a"));
+  assert.equal(stored?.receivedAt, 5000, "the server's time, whatever the sender claims");
+  assert.equal(archivedRow(stored as ArchivedMessage, () => undefined).received_at, new Date(5000).toISOString());
+});
+
 test("sending your copy pages the whole DM and leaves server copies out (GRYT-1875)", async () => {
   const { shareHistory } = await import("../src/packages/socket/src/mls/shareHistory.ts");
   const all: ArchivedMessage[] = Array.from({ length: 1200 }, (_, i) => ({

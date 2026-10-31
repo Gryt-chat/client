@@ -91,6 +91,7 @@ import {
   List,
   ListBullets,
   ListChecks,
+  Lock,
   LockOpen,
   LockSimple,
   MagnifyingGlass,
@@ -168,6 +169,7 @@ function weighted(Base: Icon, weight: IconProps["weight"], name: string): Icon {
 }
 
 export const PiArchiveFill: Icon = weighted(Archive, "fill", "PiArchiveFill");
+export const PiLockFill: Icon = weighted(Lock, "fill", "PiLockFill");
 export const PiArrowBendUpLeftFill: Icon = weighted(ArrowBendUpLeft, "fill", "PiArrowBendUpLeftFill");
 export const PiArrowBendUpLeftBold: Icon = weighted(ArrowBendUpLeft, "bold", "PiArrowBendUpLeftBold");
 export const PiArrowDownBold: Icon = weighted(ArrowDown, "bold", "PiArrowDownBold");

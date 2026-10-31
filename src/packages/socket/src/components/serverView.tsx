@@ -44,6 +44,7 @@ import { useChannelIcons, useIsTinyWindow, useMemberListMode, useRoomForThreadBe
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
+import { useReencrypt } from "../hooks/useReencrypt";
 import { useReportUser } from "../hooks/useReportUser";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
@@ -470,7 +471,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
-    plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend,
+    plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
     mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
@@ -723,6 +724,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     source: mlsSource,
   });
   const setImportOpen = discordImport.setDialogOpen;
+  const reencryptProgress = useReencrypt({
+    host: viewingHost,
+    socket: viewingHost ? sockets[viewingHost] ?? null : null,
+    source: mlsSource,
+    me: currentServerUserId ?? undefined,
+    conversationId: activeDm?.conversation_id,
+    peer: activeDm?.kind === "dm" ? activeDm.other.server_user_id : undefined,
+    ready: reencryptReady,
+  });
   const [askDismissed, setAskDismissed] = useState<Set<string>>(() => new Set());
   const dmPeer = activeDm?.kind === "dm" ? activeDm.other : undefined;
   const dmPeerAvatar = dmPeer && viewingHost
@@ -1733,6 +1743,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   }}
                   onSearch={openDmSearch}
                   onImport={import.meta.env.DEV ? () => setImportOpen(true) : undefined}
+                  reencryptProgress={reencryptProgress}
                   importSection={importState && (
                     <DiscordImportCard
                       state={importState}
