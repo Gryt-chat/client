@@ -238,8 +238,7 @@ export function DmPersonPanel({
       <div className="flex flex-col gap-4 px-1.5">
         <div className="flex flex-col gap-0.5">
           <Option icon={<PiMagnifyingGlassBold size={16} />} label="Search in this chat" onClick={onSearch} />
-          {/* Greyed out until the import is built (GRYT-1965); dev builds pass onImport. */}
-          <Option icon={<PiArchiveFill size={16} />} label="Import from Discord" detail={onImport ? undefined : "Soon"} onClick={onImport} />
+          <Option icon={<PiArchiveFill size={16} />} label="Import from Discord" onClick={onImport} />
           {reencryptProgress && <Option icon={<PiLockFill size={16} />} label="Encrypting older messages" detail={`${reencryptProgress.done} of ${reencryptProgress.total}`} />}
         </div>
         {importSection}
