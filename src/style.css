@@ -715,6 +715,8 @@ body {
 
 .chat-editor-lexical .lx-ul { list-style: disc; }
 .chat-editor-lexical .lx-ol { list-style: decimal; }
+.chat-editor-lexical .lx-ul .lx-ul { list-style: circle; }
+.chat-editor-lexical .lx-li-nested { list-style: none; }
 
 .chat-editor-lexical .lx-codeblock {
   display: block;

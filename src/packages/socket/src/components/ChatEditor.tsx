@@ -1,7 +1,7 @@
 import { Menu } from "@gryt/ui";
 import { CodeNode } from "@lexical/code";
 import { autoLinkEmailMatcher, AutoLinkNode, autoLinkUrlMatcher, LinkNode } from "@lexical/link";
-import { ListItemNode, ListNode } from "@lexical/list";
+import { $isListItemNode, ListItemNode, ListNode } from "@lexical/list";
 import { $convertFromMarkdownString, $convertToMarkdownString } from "@lexical/markdown";
 import { AutoLinkPlugin } from "@lexical/react/LexicalAutoLinkPlugin";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
@@ -14,21 +14,27 @@ import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
-import { mergeRegister } from "@lexical/utils";
+import { $findMatchingParent, mergeRegister } from "@lexical/utils";
 import {
   $createTextNode,
   $getRoot,
   $getSelection,
   $isRangeSelection,
   $isTextNode,
+  $setSelection,
+  BLUR_COMMAND,
   COMMAND_PRIORITY_HIGH,
   DROP_COMMAND,
+  FOCUS_COMMAND,
   FORMAT_TEXT_COMMAND,
+  INDENT_CONTENT_COMMAND,
   INSERT_PARAGRAPH_COMMAND,
   KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
+  KEY_TAB_COMMAND,
   type LexicalEditor,
   type LexicalNode,
+  OUTDENT_CONTENT_COMMAND,
   PASTE_COMMAND,
 } from "lexical";
 import {
@@ -76,7 +82,7 @@ const THEME = {
   text: { bold: "lx-bold", italic: "lx-italic", strikethrough: "lx-strike", code: "lx-code" },
   heading: { h1: "lx-h1", h2: "lx-h2", h3: "lx-h3" },
   quote: "lx-quote",
-  list: { ul: "lx-ul", ol: "lx-ol", listitem: "lx-li" },
+  list: { ul: "lx-ul", ol: "lx-ol", listitem: "lx-li", nested: { listitem: "lx-li-nested" } },
   link: "gryt-link",
   code: "lx-codeblock",
   paragraph: "lx-p",
@@ -404,6 +410,9 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     useEffect(() => {
       const editor = editorRef.current;
       if (!editor) return;
+      // Left by keyboard: with a selection still set, the editor's next update takes focus back.
+      let leaving = false;
+      let left = false;
       const strike = (e: KeyboardEvent) => (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "x";
       return mergeRegister(
         editor.registerCommand(KEY_DOWN_COMMAND, (e) => {
@@ -413,6 +422,10 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             return true;
           }
           handleKeyDownRef.current(e);
+          if (e.key === "Escape" && !e.defaultPrevented) {
+            leaving = true;
+            editor.getRootElement()?.blur();
+          }
           return e.defaultPrevented;
         }, COMMAND_PRIORITY_HIGH),
         // A new paragraph, not a <br>: `# ` and `- ` only become blocks at the start of one.
@@ -421,6 +434,35 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           e.preventDefault();
           editor.dispatchCommand(INSERT_PARAGRAPH_COMMAND, undefined);
           return true;
+        }, COMMAND_PRIORITY_HIGH),
+        // Only inside a list. Everywhere else Tab has to keep moving focus out of the box.
+        editor.registerCommand(KEY_TAB_COMMAND, (e) => {
+          const sel = $getSelection();
+          const item = $isRangeSelection(sel) ? $findMatchingParent(sel.anchor.getNode(), $isListItemNode) : null;
+          // Handled but not prevented, or the rich text plugin indents the paragraph and traps focus.
+          if (!item || (e.shiftKey && item.getIndent() === 0)) {
+            leaving = true;
+            return true;
+          }
+          e.preventDefault();
+          editor.dispatchCommand(e.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND, undefined);
+          return true;
+        }, COMMAND_PRIORITY_HIGH),
+        editor.registerCommand(BLUR_COMMAND, () => {
+          if (leaving) {
+            leaving = false;
+            left = true;
+            editor.update(() => $setSelection(null));
+          }
+          return false;
+        }, COMMAND_PRIORITY_HIGH),
+        // The browser would put the caret before the text.
+        editor.registerCommand(FOCUS_COMMAND, () => {
+          if (left) {
+            left = false;
+            editor.update(() => { $getRoot().selectEnd(); });
+          }
+          return false;
         }, COMMAND_PRIORITY_HIGH),
         editor.registerCommand(PASTE_COMMAND, (e) => (e instanceof ClipboardEvent ? handlePasteRef.current(e) : false), COMMAND_PRIORITY_HIGH),
         editor.registerCommand(DROP_COMMAND, (e) => {

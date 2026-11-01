@@ -81,7 +81,8 @@ test.describe("unread counts", () => {
     const after = sidebarChannelRow(watcher.page, name);
     await expect(unreadBadge(after)).toHaveText("3");
     await send(sender.page, box, unique("plain"));
-    await expect(unreadBadge(after)).toHaveAttribute("title", "3 unread, 3 naming you");
+    // The server counts the three as unread since 1.12.2, so the plain one makes four.
+    await expect(unreadBadge(after)).toHaveAttribute("title", "4 unread, 3 naming you");
   });
 
   test("a thread reply counts on the channel it hangs off", async ({ freshServer, newMember }) => {
