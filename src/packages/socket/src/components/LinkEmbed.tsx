@@ -163,7 +163,7 @@ export const MessageEmbeds = memo(({
 
   return (
     <>
-      <div className="flex flex-col gap-2" style={{ marginTop: "4px" }}>
+      <div className="link-embed-grid">
         {visibleUrls.map((url) => {
           const onDismiss = () => setPendingDismissUrl(url);
           const type = getEmbedType(url);

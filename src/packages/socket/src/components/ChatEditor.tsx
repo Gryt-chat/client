@@ -180,6 +180,13 @@ function autoResize(el: HTMLElement, open = document.activeElement === el) {
   el.toggleAttribute("data-collapsed", !open && full > oneLine);
 }
 
+/** Shrinking under a press moves whatever was pressed, and the click misses. So it waits for the release. */
+function shrinkAfterPress(el: HTMLElement) {
+  const shrink = () => setTimeout(() => autoResize(el), 150);
+  if (document.querySelector(":active")) window.addEventListener("pointerup", shrink, { once: true });
+  else shrink();
+}
+
 /** The pill a pick turns into. @everyone and @here stay text, as the old box sent them. */
 function pillFor(member: MentionMember): EditorPill {
   if (member.kind === "channel" && member.channelId) return { dataset: { channelId: member.channelId }, text: `#${member.nickname}` };
@@ -770,7 +777,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                     onFocus={(e) => autoResize(e.currentTarget, true)}
                     onBlur={(e) => {
                       // Into the link field is still writing this message.
-                      if (!wrapperRef.current?.contains(e.relatedTarget as Node | null)) autoResize(e.currentTarget, false);
+                      if (!wrapperRef.current?.contains(e.relatedTarget as Node | null)) shrinkAfterPress(e.currentTarget);
                     }}
                   />
                 }

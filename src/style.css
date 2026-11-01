@@ -428,7 +428,7 @@ body {
   min-height: 21px;
   max-height: 66vh;
   overflow-y: auto;
-  transition: height 0.18s ease;
+  transition: height 0.36s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
   border: none;
   background: transparent;
@@ -1161,9 +1161,22 @@ body {
 
 /* ── Link Embeds ─────────────────────────────────────────── */
 
+/* Wrapping flex, not a grid: the message around it is fit-content, where an auto-fill grid stays one column. */
+.link-embed-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.link-embed-grid:has(> :nth-child(2)) > * {
+  width: 420px;
+}
+
 .link-embed-container {
   position: relative;
-  max-width: 420px;
+  max-width: min(420px, 100%);
   overflow: hidden;
   border-radius: var(--gryt-radius-md);
 }
@@ -1552,11 +1565,13 @@ body {
   margin-block: calc(var(--md-unit) * 0.5);
 }
 
-/* A single newline gets a smaller gap than a blank line. Most people separate paragraphs with one Enter,
-   and without it a post of long lines reads as one wall; a blank line still means more. */
+/* Spaced the way the message box draws it: a newline is the next line, a blank line is one empty line. */
 .markdown-message .md-br {
   display: block;
-  height: calc(var(--md-unit) * 0.35);
+}
+
+.markdown-message .md-p + .md-p {
+  margin-top: calc(var(--md-unit) * 1.5);
 }
 
 /* A heading belongs to the block under it, so it gets more room above than
