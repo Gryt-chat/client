@@ -41,3 +41,23 @@ test("typing an arrow turns it into the symbol", async ({ newMember }) => {
   await page.keyboard.type("a -> b <- c => d ");
   await expect(box).toHaveText("a → b ← c ⇒ d ");
 });
+
+test("Tab and Escape leave the box, and it picks up where it was", async ({ newMember }) => {
+  const { page } = await newMember();
+  const box = channelComposer(page);
+  await box.click();
+  await page.keyboard.insertText("just");
+
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Insert emoji" })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(box).toBeFocused();
+  await page.keyboard.insertText(" text");
+  await expect(box).toHaveText("just text");
+
+  await page.keyboard.press("Escape");
+  await expect(box).not.toBeFocused();
+  await expect(box).toHaveText("just text");
+  await page.keyboard.press("Tab");
+  await expect(box).not.toBeFocused();
+});

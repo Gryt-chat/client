@@ -190,6 +190,8 @@ function arrow(typed: string, symbol: string): TextMatchTransformer {
   return {
     dependencies: [],
     export: () => null,
+    // Typing only: never rewrites a message loaded for editing.
+    importRegExp: /(?!)/,
     regExp: new RegExp(`${typed}$`),
     replace: (node) => { node.setTextContent(symbol); },
     trigger: typed.slice(-1),
