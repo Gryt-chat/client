@@ -1,5 +1,5 @@
 import { Menu } from "@gryt/ui";
-import { CodeNode } from "@lexical/code";
+import { $isCodeNode, CodeNode } from "@lexical/code";
 import { autoLinkEmailMatcher, AutoLinkNode, autoLinkUrlMatcher, LinkNode } from "@lexical/link";
 import { $isListItemNode, ListItemNode, ListNode } from "@lexical/list";
 import { $convertFromMarkdownString, $convertToMarkdownString } from "@lexical/markdown";
@@ -16,6 +16,7 @@ import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { $findMatchingParent, mergeRegister } from "@lexical/utils";
 import {
+  $createParagraphNode,
   $createTextNode,
   $getRoot,
   $getSelection,
@@ -380,13 +381,23 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         return true;
       }
 
-      // Plain text, as before: a web page's formatting doesn't come along.
+      // Only the plain text: a web page's formatting doesn't come along, but its Markdown shows as it'll send.
       editorRef.current?.update(() => {
         const sel = $getSelection();
-        if ($isRangeSelection(sel)) sel.insertRawText(text);
+        if (!$isRangeSelection(sel)) return;
+        if ($findMatchingParent(sel.anchor.getNode(), $isCodeNode)) {
+          sel.insertRawText(text);
+          return;
+        }
+        const caret = sel.clone();
+        const holder = $createParagraphNode();
+        // The import moves the selection into the holder.
+        $convertFromMarkdownString(text, transformers, holder, true);
+        $setSelection(caret);
+        caret.insertNodes(holder.getChildren());
       });
       return true;
-    }, [addFiles, isEditing, allowFiles]);
+    }, [addFiles, isEditing, allowFiles, transformers]);
     const handlePasteRef = useRef(handlePaste);
     handlePasteRef.current = handlePaste;
     const addFilesRef = useRef(addFiles);

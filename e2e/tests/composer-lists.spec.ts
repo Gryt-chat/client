@@ -1,4 +1,4 @@
-import { channelComposer, unique } from "../support/app";
+import { channelComposer, pasteText, unique } from "../support/app";
 import { expect, test } from "../support/fixtures";
 
 test("the format bar makes a numbered list, and Tab nests it", async ({ newMember }) => {
@@ -32,6 +32,49 @@ test("the format bar makes a numbered list, and Tab nests it", async ({ newMembe
   await expect(box).toHaveText("");
   const message = page.locator(".markdown-message").filter({ hasText: first }).last();
   await expect(message.locator("ol ol li")).toHaveText("second");
+});
+
+test("pasted Markdown shows formatted, and sends the same", async ({ newMember }) => {
+  const { page, context } = await newMember();
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const box = channelComposer(page);
+  const first = unique("first");
+
+  await pasteText(page, box, `Plan:\n\n1. ${first}\n2. **second**\n   - nested\n\n> quoted`);
+  await expect(box.locator("ol > li").first()).toHaveText(first);
+  await expect(box.locator("ol strong, ol b")).toHaveText("second");
+  await expect(box.locator("ol ul li")).toHaveText("nested");
+  await expect(box.locator("blockquote")).toHaveText("quoted");
+  await expect(box).not.toContainText("**");
+
+  await page.keyboard.press("Enter");
+  await expect(box).toHaveText("");
+  const message = page.locator(".markdown-message").filter({ hasText: first }).last();
+  await expect(message.locator("ol ul li")).toHaveText("nested");
+  await expect(message.locator("blockquote")).toContainText("quoted");
+});
+
+test("a paste stays where the caret is, and stays raw in a code block", async ({ newMember }) => {
+  const { page, context } = await newMember();
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const box = channelComposer(page);
+  const paste = async (text: string) => {
+    await page.evaluate((value) => navigator.clipboard.writeText(value), text);
+    await page.keyboard.press("ControlOrMeta+V");
+  };
+
+  await box.click();
+  await page.keyboard.insertText("before  after");
+  for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowLeft");
+  await paste("**bold**");
+  await expect(box).toHaveText("before bold after");
+  await expect(box.locator("strong, b")).toHaveText("bold");
+
+  await page.keyboard.press("ControlOrMeta+A");
+  await paste("```\nx\n```");
+  await expect(box.locator("code")).toContainText("x");
+  await paste("**raw**");
+  await expect(box.locator("code")).toContainText("**raw**");
 });
 
 test("typing an arrow turns it into the symbol", async ({ newMember }) => {
