@@ -9,6 +9,7 @@ import { type CallPeek, ChannelList } from "./ChannelList";
 import type { AdminActions, MemberInfo } from "./MemberSidebar";
 import { ServerHeader } from "./ServerHeader";
 import type { ChannelPlacement } from "./sidebarTree";
+import { UnreadScroller } from "./UnreadScroller";
 
 /** A role id. The server defines its own; these only pass one along. */
 type Role = string;
@@ -155,7 +156,7 @@ export const ServerSidebar = ({
               work. The rows are 12px narrower now, sitting in a 6px gutter,
               and that is the trade.
             */}
-            <div style={{
+            <UnreadScroller iconsOnly={iconsOnly ?? false} style={{
               flex: 1,
               width: "100%",
               minHeight: 0,
@@ -198,7 +199,7 @@ export const ServerSidebar = ({
                 threadUnreadCounts={threadUnreadCounts}
                 mentionCounts={mentionCounts}
               />
-            </div>
+            </UnreadScroller>
           </div>
         </div>
       </div>

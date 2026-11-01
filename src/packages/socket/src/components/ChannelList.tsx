@@ -332,6 +332,7 @@ export const ChannelList = ({
             actually in, which is the wrong way round. */}
         <button
           type="button"
+          data-activity={unread > 0 || mentions > 0 ? mentions : undefined}
           onClick={() => toggleCollapsed(item.id)}
           aria-expanded={!isCollapsed}
           className={[
@@ -404,6 +405,7 @@ export const ChannelList = ({
         <MaybeNameTip name={iconsOnly ? channel?.name : undefined}>
         <Button size="small"
           data-gryt="channel-row"
+          data-activity={unread > 0 || mentions > 0 ? mentions : undefined}
           aria-label={iconsOnly ? channel?.name : undefined}
           tone={selected ? "primary" : "ghost"}
           style={{
