@@ -52,8 +52,37 @@ test.describe("unread counts", () => {
     const name = uniqueName("room");
     await addChannel(sender.page, server, name);
     await expect(sidebarChannelRow(watcher.page, name)).toBeVisible();
-    return { name, sender, watcher, box: await open(sender.page, name), row: sidebarChannelRow(watcher.page, name) };
+    return { server, name, sender, watcher, box: await open(sender.page, name), row: sidebarChannelRow(watcher.page, name) };
   }
+
+  test("a pill points at unread channels out of view, and goes when they're in view", async ({ freshServer, newMember }) => {
+    const { server, name, sender, watcher } = await room(freshServer, newMember);
+    const fillers = Array.from({ length: 12 }, () => uniqueName("filler"));
+    for (const filler of fillers) await addChannel(sender.page, server, filler);
+    await watcher.page.setViewportSize({ width: 1280, height: 420 });
+    const last = sidebarChannelRow(watcher.page, fillers.at(-1)!);
+    await expect(last).toBeAttached();
+
+    const lastBox = await open(sender.page, fillers.at(-1)!);
+    await send(sender.page, lastBox, unique("down here"));
+    const below = watcher.page.locator('[data-gryt="unread-below"]');
+    await expect(below).toHaveText("New activity");
+    await expect(last).not.toBeInViewport();
+
+    await send(sender.page, lastBox, `@${watcher.name} ${unique("named")}`);
+    await expect(below).toHaveText("1 mention");
+
+    await below.click();
+    await expect(last).toBeInViewport({ ratio: 0.9 });
+    await expect(below).toHaveCount(0);
+
+    await send(sender.page, await open(sender.page, name), unique("back up here"));
+    const above = watcher.page.locator('[data-gryt="unread-above"]');
+    await expect(above).toHaveText("New activity");
+    await above.click();
+    await expect(sidebarChannelRow(watcher.page, name)).toBeInViewport();
+    await expect(above).toHaveCount(0);
+  });
 
   test("a mention is still on the badge after a reload", async ({ freshServer, newMember }) => {
     const { name, sender, watcher, box, row } = await room(freshServer, newMember);
