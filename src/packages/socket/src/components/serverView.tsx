@@ -353,12 +353,14 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
      list yields to it the way it already yields to the voice panel. */
   const threadOpen = useOpenThread();
   const threadBeside = useRoomForThreadBeside(drawnVoicePanelWidth);
-  const membersMode = useMemberListMode(
+  const fittedMembersMode = useMemberListMode(
     drawnVoicePanelWidth,
     showVoiceView && voiceWidth !== "0px" && isMaximized && !chatTakenOver,
     threadBeside && threadOpen ? THREAD_PANEL_WIDTH : 0,
     pinChannelsSidebar,
   );
+  // A thread is what you came to read, so the member list steps aside even when it would fit.
+  const membersMode = threadOpen ? "none" : fittedMembersMode;
   const roomForMembers = membersMode !== "none";
   const roomForVoice = useRoomForVoicePanel();
 

@@ -25,6 +25,7 @@ import { channelHref } from "@/lib/mentionTokens";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiChatTeardropTextFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { closeOpenThread, setThreadExpanded, useRememberedThread, useThreadExpanded } from "../hooks/openThreadMemory";
 import type { CallBubble } from "../hooks/useCallBubbles";
 import { cameraStreamFor } from "../lib/cameraStream";
 import { shareCount } from "../lib/screenItems";
@@ -233,6 +234,8 @@ export const ChannelList = ({
   );
 
   const prefs = useSyncExternalStore(subscribeToPrefs, getStoredSnapshot, getStoredSnapshot);
+  const openThread = useRememberedThread();
+  const threadExpanded = useThreadExpanded();
   const hideMuted = useSyncExternalStore(
     subscribeToPrefs,
     () => getHideMuted(serverHost),
@@ -390,7 +393,8 @@ export const ChannelList = ({
       return id === currentConnectionId ? localCamera : cameraStreamFor(clients[id].cameraStreamID, null, videoStreams);
     };
 
-    const selected = channel?.id === selectedChannelId;
+    const threadHere = openThread && openThread.host === serverHost && openThread.conversationId === channel?.id ? openThread.thread : null;
+    const selected = channel?.id === selectedChannelId && !(threadHere && threadExpanded);
 
     return (
       <div className="flex flex-col items-start w-full relative" style={inThisCall ? CALL_CARD_STYLE : undefined}>
@@ -422,6 +426,7 @@ export const ChannelList = ({
           }}
           title={locked ? "You cannot join this voice channel." : undefined}
           onClick={() => {
+            if (threadHere && threadExpanded) closeOpenThread();
             if (channel) onChannelClick(channel);
           }}
         >
@@ -499,6 +504,19 @@ export const ChannelList = ({
           )}
         </Button>
         </MaybeNameTip>
+
+        {threadHere && !iconsOnly && (
+          <Button
+            size="small"
+            data-gryt="thread-row"
+            tone={threadExpanded ? "primary" : "ghost"}
+            style={{ width: "100%", justifyContent: "start", overflow: "hidden", paddingLeft: 28 }}
+            onClick={() => setThreadExpanded(true)}
+          >
+            <PiChatsTeardropFill size={14} style={{ flexShrink: 0 }} />
+            <span className="truncate">{threadHere.title ? <EmojiText text={threadHere.title} /> : "Thread"}</span>
+          </Button>
+        )}
 
         {channel?.type === "voice" && (
           <AnimatePresence initial={false}>

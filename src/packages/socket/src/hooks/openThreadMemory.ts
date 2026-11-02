@@ -13,6 +13,8 @@ interface RememberedThread {
 }
 
 let remembered: RememberedThread | null = null;
+let expanded = false;
+let closer: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -20,14 +22,15 @@ function emit() {
 }
 
 export function rememberOpenThread(host: string, conversationId: string, thread: ThreadSummary): void {
-  const first = !remembered;
+  const changed = remembered?.thread.thread_id !== thread.thread_id || remembered?.thread.title !== thread.title;
   remembered = { host, conversationId, thread };
-  if (first) emit();
+  if (changed) emit();
 }
 
 export function forgetOpenThread(): void {
   if (!remembered) return;
   remembered = null;
+  expanded = false;
   emit();
 }
 
@@ -50,4 +53,35 @@ export function useOpenThread(): boolean {
     () => remembered !== null,
     () => false,
   );
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** The open thread itself, for the row the channel list draws under its channel. */
+export function useRememberedThread(): RememberedThread | null {
+  return useSyncExternalStore(subscribe, () => remembered, () => null);
+}
+
+export function useThreadExpanded(): boolean {
+  return useSyncExternalStore(subscribe, () => expanded, () => false);
+}
+
+export function setThreadExpanded(next: boolean): void {
+  if (expanded === next) return;
+  expanded = next;
+  emit();
+}
+
+/* ChatView owns closing, because it saves a half-written reply first. The channel list is elsewhere in the tree. */
+export function registerThreadCloser(close: (() => void) | null): void {
+  closer = close;
+}
+
+export function closeOpenThread(): void {
+  closer?.();
 }

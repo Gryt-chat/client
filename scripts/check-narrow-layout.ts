@@ -228,7 +228,7 @@ assert.match(
   /threadBeside && threadOpen \? THREAD_PANEL_WIDTH : 0/,
   "the member list stopped yielding to a thread beside the conversation",
 );
-assert.match(chatView, /beside=\{threadBeside\}/, "ChatView stopped passing the width rule to the panel");
+assert.match(chatView, /beside=\{threadBeside && !threadExpanded\}/, "ChatView stopped passing the width rule to the panel");
 assert.match(
   chatView,
   /<div className="flex min-w-0 grow flex-col p-3"/,
