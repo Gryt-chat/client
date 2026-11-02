@@ -3,7 +3,7 @@ import type { CSSProperties, MouseEvent } from "react";
 
 import type { SealDecision } from "@/common";
 
-import { PiArrowBendUpLeftBold, PiChatTeardropTextFill, PiDotsThreeBold, PiSmileyWinkBold, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiArrowBendUpLeftBold, PiChatCircleBold, PiChatTeardropTextFill, PiDotsThreeBold, PiSmileyWinkBold, PiSpeakerHighFill } from "../../../../lib/icons";
 import { EmojiText } from "./EmojiText";
 
 /* Sized to the GRYT-1722 drafts: 36px buttons, 21px emoji, 20px icons. */
@@ -40,12 +40,17 @@ function historyLine(kind: "channel" | "dm" | undefined, serverName: string | un
 
 export const MessageHoverToolbar = ({
   onReply,
+  onThread,
+  threadLabel,
   onMore,
   quickReactions,
   onQuickReaction,
   onOpenEmojiPicker,
 }: {
   onReply?: () => void;
+  /** Starts this message's thread, or opens it if it has one. Absent where there can't be one. */
+  onThread?: () => void;
+  threadLabel?: string;
   /** Opens the message's own menu at the button, where thread, pin, edit and delete live. */
   onMore?: (anchor: HTMLElement) => void;
   /**
@@ -119,6 +124,18 @@ export const MessageHoverToolbar = ({
           onMouseLeave={hoverOff}
         >
           <PiArrowBendUpLeftBold size={20} />
+        </button>
+      )}
+      {onThread && (
+        <button
+          onClick={onThread}
+          title={threadLabel}
+          aria-label={threadLabel}
+          style={BAR_BUTTON}
+          onMouseEnter={hoverOn}
+          onMouseLeave={hoverOff}
+        >
+          <PiChatCircleBold size={20} />
         </button>
       )}
       {onMore && (

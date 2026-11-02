@@ -30,6 +30,7 @@ import {
   CaretRight,
   CaretUp,
   ChartBar,
+  ChatCircle,
   ChatsTeardrop,
   ChatTeardropDots,
   ChatTeardropText,
@@ -195,6 +196,7 @@ export const PiCaretLeftBold: Icon = weighted(CaretLeft, "bold", "PiCaretLeftBol
 export const PiCaretRightBold: Icon = weighted(CaretRight, "bold", "PiCaretRightBold");
 export const PiCaretRightFill: Icon = weighted(CaretRight, "fill", "PiCaretRightFill");
 export const PiCaretUpFill: Icon = weighted(CaretUp, "fill", "PiCaretUpFill");
+export const PiChatCircleBold: Icon = weighted(ChatCircle, "bold", "PiChatCircleBold");
 export const PiChatTeardropDotsFill: Icon = weighted(ChatTeardropDots, "fill", "PiChatTeardropDotsFill");
 export const PiChatTeardropTextFill: Icon = weighted(ChatTeardropText, "fill", "PiChatTeardropTextFill");
 export const PiChatsTeardropFill: Icon = weighted(ChatsTeardrop, "fill", "PiChatsTeardropFill");
