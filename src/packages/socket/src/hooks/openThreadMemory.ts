@@ -15,6 +15,9 @@ interface RememberedThread {
 let remembered: RememberedThread | null = null;
 let expanded = false;
 let closer: (() => void) | null = null;
+/* What each conversation had open when you left it. In memory only, so a restart starts clean. */
+const parked = new Map<string, { thread: ThreadSummary; expanded: boolean }>();
+const parkedKey = (host: string, conversationId: string) => `${host}\n${conversationId}`;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -32,6 +35,23 @@ export function forgetOpenThread(): void {
   remembered = null;
   expanded = false;
   emit();
+}
+
+/** Leave the open thread with its conversation, for `resumeParkedThread` to bring back. */
+export function parkOpenThread(): void {
+  if (!remembered) return;
+  parked.set(parkedKey(remembered.host, remembered.conversationId), { thread: remembered.thread, expanded });
+  forgetOpenThread();
+}
+
+/** Makes what this conversation left open the open thread again. */
+export function resumeParkedThread(host: string, conversationId: string): void {
+  const key = parkedKey(host, conversationId);
+  const left = parked.get(key);
+  if (!left) return;
+  parked.delete(key);
+  rememberOpenThread(host, conversationId, left.thread);
+  setThreadExpanded(left.expanded);
 }
 
 /** The thread this conversation had open, if it is the one that was remembered. */

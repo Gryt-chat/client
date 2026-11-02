@@ -1,8 +1,8 @@
 import type { BrowserContext, Locator, Page, WebSocketRoute } from "@playwright/test";
 
 import { accessTokenOf, setProfanityMode } from "../support/admin";
-import { composer, CONFIRMED_ROW, type Member, messageRow, sendMessage, unique } from "../support/app";
-import { expect, test } from "../support/fixtures";
+import { addChannel, composer, CONFIRMED_ROW, type Member, messageRow, sendMessage, sidebarChannelRow, unique } from "../support/app";
+import { expect, test, uniqueName } from "../support/fixtures";
 
 /** The panel itself: what closes it, what Escape means inside it, where it opens. */
 
@@ -572,4 +572,38 @@ test("a reply deleted while the thread's first page is on its way stays deleted"
   const rows = panel(alice.page).locator(CONFIRMED_ROW);
   await expect(rows.filter({ hasText: kept }), "the page went in").toHaveCount(1);
   await expect(rows.filter({ hasText: doomed }), "the page read before the delete put it back").toHaveCount(0);
+});
+
+async function openChannel(page: Page, name: string): Promise<void> {
+  await sidebarChannelRow(page, name).click();
+}
+
+test("a thread stays with its channel, expanded or not, until it is closed", async ({ newMember, owner, gryt }) => {
+  const here = uniqueName("here");
+  const there = uniqueName("there");
+  await addChannel(owner.page, gryt.server, here);
+  await addChannel(owner.page, gryt.server, there);
+
+  const alice = await newMember();
+  await alice.page.setViewportSize({ width: 1500, height: 800 });
+  await openChannel(alice.page, here);
+  const root = unique("a thread to leave and come back to");
+  await sendMessage(alice.page, root);
+  await startThread(alice.page, root);
+  await alice.page.getByRole("button", { name: "Expand thread" }).click();
+  await expect(panel(alice.page)).toHaveAttribute("data-beside", "no");
+
+  await openChannel(alice.page, there);
+  await expect(panel(alice.page)).toHaveCount(0);
+
+  await openChannel(alice.page, here);
+  await expect(panel(alice.page)).toHaveAttribute("data-beside", "no");
+  await expect(panel(alice.page)).toContainText(root);
+
+  await alice.page.getByRole("button", { name: "Back to the small panel" }).click();
+  await alice.page.getByRole("button", { name: "Close the thread panel" }).click();
+  await openChannel(alice.page, there);
+  await openChannel(alice.page, here);
+  await expect(messageRow(alice.page, root).first()).toBeVisible();
+  await expect(panel(alice.page)).toHaveCount(0);
 });

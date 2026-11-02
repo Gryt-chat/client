@@ -115,7 +115,8 @@ test("the author closes a topic from the panel, and it leaves All for Closed", a
   const title = unique("a topic that gets closed");
   await createTopic(alice.page, title, "Something that stops being worth replying to.");
 
-  const row = alice.page.getByRole("button", { name: new RegExp(title) });
+  // Not the sidebar's row for the open thread, which carries the same title.
+  const row = alice.page.locator('button:not([data-gryt="thread-row"])').filter({ hasText: title });
   await row.click();
   const panel = alice.page.getByRole("complementary", { name: "Thread" });
   await expect(panel).toBeVisible();
