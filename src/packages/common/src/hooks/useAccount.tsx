@@ -170,12 +170,12 @@ function useAccountHook(): Account {
   }
 
   // Takes no argument on purpose: it's handed straight to onClick, which would pass the event.
-  const login = () => signIn(false);
+  const login = () => signIn();
 
-  async function signIn(anotherAccount: boolean) {
+  async function signIn() {
     setLoginInProgress(true);
     try {
-      await startLogin(window.location.href, anotherAccount);
+      await startLogin(window.location.href);
       if (isElectron()) {
         const { keycloak, authenticated } = await initKeycloak();
         setIsSignedIn(!!(authenticated && keycloak.token));
@@ -224,7 +224,7 @@ function useAccountHook(): Account {
   async function loginAnotherAccount() {
     if (isElectron()) {
       await logout();
-      await signIn(true);
+      await signIn();
       return;
     }
     // In the browser, signing out leaves the page; the init above picks it up on the way back.

@@ -380,10 +380,10 @@ export async function retrySignIn(): Promise<SignInAttempt> {
   return unreachable ? "unavailable" : "signed-out";
 }
 
-/** `anotherAccount` shows the login form even while the browser is still signed in to Keycloak. */
-export async function startLogin(redirectUri?: string, anotherAccount = false): Promise<void> {
+/** Always shows the form, with the sign-out link on it, even while the browser is signed in to Keycloak. */
+export async function startLogin(redirectUri?: string): Promise<void> {
   if (isElectron()) {
-    await electronLogin(anotherAccount);
+    await electronLogin();
     // After successful login, re-init keycloak with the new tokens
     resetKeycloakInit();
     await initKeycloak();
@@ -392,7 +392,7 @@ export async function startLogin(redirectUri?: string, anotherAccount = false): 
 
   const { keycloak } = await initKeycloak();
   const target = redirectUri || consumePreLoginUrl() || window.location.href;
-  await keycloak.login({ redirectUri: target, ...(anotherAccount ? { prompt: "login" as const } : {}) });
+  await keycloak.login({ redirectUri: target, prompt: "login" });
 }
 
 export async function startRegister(redirectUri?: string): Promise<void> {
