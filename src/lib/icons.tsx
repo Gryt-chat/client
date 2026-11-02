@@ -13,8 +13,10 @@ import {
   ArrowLineRight,
   ArrowRight,
   ArrowsClockwise,
+  ArrowsInSimple,
   ArrowsLeftRight,
   ArrowsOut,
+  ArrowsOutSimple,
   ArrowSquareOut,
   ArrowUp,
   At,
@@ -182,7 +184,9 @@ export const PiArrowRightBold: Icon = weighted(ArrowRight, "bold", "PiArrowRight
 export const PiArrowsClockwiseBold: Icon = weighted(ArrowsClockwise, "bold", "PiArrowsClockwiseBold");
 export const PiArrowsClockwiseFill: Icon = weighted(ArrowsClockwise, "fill", "PiArrowsClockwiseFill");
 export const PiArrowsLeftRightFill: Icon = weighted(ArrowsLeftRight, "fill", "PiArrowsLeftRightFill");
+export const PiArrowsInSimpleBold: Icon = weighted(ArrowsInSimple, "bold", "PiArrowsInSimpleBold");
 export const PiArrowsOutBold: Icon = weighted(ArrowsOut, "bold", "PiArrowsOutBold");
+export const PiArrowsOutSimpleBold: Icon = weighted(ArrowsOutSimple, "bold", "PiArrowsOutSimpleBold");
 export const PiArrowSquareOutBold: Icon = weighted(ArrowSquareOut, "bold", "PiArrowSquareOutBold");
 export const PiArrowSquareOutFill: Icon = weighted(ArrowSquareOut, "fill", "PiArrowSquareOutFill");
 export const PiAtBold: Icon = weighted(At, "bold", "PiAtBold");

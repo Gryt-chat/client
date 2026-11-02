@@ -2,7 +2,7 @@ import { Button, Divider, IconButton, Menu, Tooltip } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 
-import { PiCaretLeftBold, PiChatsTeardropFill, PiCheck, PiDotsThreeVerticalBold, PiX } from "../../../../lib/icons";
+import { PiArrowsInSimpleBold, PiArrowsOutSimpleBold, PiCaretLeftBold, PiChatsTeardropFill, PiCheck, PiDotsThreeVerticalBold, PiX } from "../../../../lib/icons";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import type { ChatMessage } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
@@ -58,9 +58,14 @@ interface ThreadPanelProps {
    * takes the whole chat pane otherwise, rather than covering half a message row.
    */
   beside?: boolean;
+  /** Taking the whole chat pane by choice, though it would fit beside. */
+  expanded?: boolean;
+  /** Absent where there is no room for the small panel to go back to. */
+  onToggleExpand?: () => void;
+  channelName?: string;
 }
 
-export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags, error, onRetry, beside = false }: ThreadPanelProps) {
+export function ThreadPanel({ thread, root, messages, loading, renderMessage, renderComposer, hasOlder, loadingOlder, onLoadOlder, typingIndicator, onClose, onSetStatus, forumTags = [], onSetTags, error, onRetry, beside = false, expanded = false, onToggleExpand, channelName }: ThreadPanelProps) {
   /* What chat:send checks before it takes a reply. Drawing a composer the
      server will refuse is what GRYT-1389 was about. */
   const takesReplies = thread.status !== "closed" && thread.locked !== true;
@@ -117,15 +122,23 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
     if (pinnedRef.current) el.scrollTop = el.scrollHeight;
   }, [messages, root, loading]);
 
+  const resizable = beside || expanded;
+
   return (
+    <>
+    {/* Holds the column while the panel grows over it, so the conversation behind doesn't reflow every frame. */}
+    {resizable && <div aria-hidden style={{ width: THREAD_PANEL_WIDTH, flexShrink: 0 }} />}
     <aside
       aria-label="Thread"
+      className="gryt-thread-panel"
       data-beside={beside ? "yes" : "no"}
       style={{
-        /* Beside: a column in the row, so the conversation keeps the width it is
-           drawn at. Otherwise the whole pane, so nothing is left half covered. */
-        ...(beside
-          ? { position: "relative", width: THREAD_PANEL_WIDTH, flexShrink: 0, borderLeft: "1px solid var(--gryt-neutral-6)" }
+        ...(resizable
+          ? {
+              position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 20,
+              width: expanded ? "100%" : THREAD_PANEL_WIDTH,
+              borderLeft: "1px solid var(--gryt-neutral-6)",
+            }
           : { position: "absolute", inset: 0, zIndex: 20 }),
         display: "flex", flexDirection: "column", minWidth: 0,
         background: "var(--gryt-neutral-1)",
@@ -153,6 +166,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             {thread.title ? <EmojiText text={thread.title} /> : "Thread"}
           </div>
           <div style={{ fontSize: 11, color: "var(--gryt-neutral-10)" }}>
+            {expanded && channelName && `In #${channelName} · `}
             {thread.reply_count} {thread.reply_count === 1 ? "reply" : "replies"}
             {thread.status === "solved" && <span style={{ color: "var(--gryt-accent-11)", marginLeft: 8 }}>Solved</span>}
             {!takesReplies && <span style={{ color: "var(--gryt-neutral-11)", marginLeft: 8 }}>Closed</span>}
@@ -209,6 +223,18 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
               </Menu.Positioner>
             </Menu.Portal>
           </Menu.Root>
+        )}
+        {onToggleExpand && (
+          <Tooltip title={expanded ? "Back to the small panel" : "Expand thread"}>
+            <IconButton
+              tone="neutral"
+              size="xsmall"
+              aria-label={expanded ? "Back to the small panel" : "Expand thread"}
+              onClick={onToggleExpand}
+            >
+              {expanded ? <PiArrowsInSimpleBold size={14} /> : <PiArrowsOutSimpleBold size={14} />}
+            </IconButton>
+          </Tooltip>
         )}
         {onSetStatus && beside && (
           <Divider orientation="vertical" className="my-1 self-stretch" />
@@ -317,5 +343,6 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
         )}
       </div>
     </aside>
+    </>
   );
 }

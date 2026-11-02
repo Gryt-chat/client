@@ -8,7 +8,7 @@ import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
 import { type ChatErrorPayload, type ChatErrorRef, isMutedError, isNonRetryableError } from "./chatEventHandlers";
 import { mergeMessages } from "./mergeMessages";
-import { forgetOpenThread, recallOpenThread, rememberOpenThread } from "./openThreadMemory";
+import { forgetOpenThread, parkOpenThread, recallOpenThread, rememberOpenThread, resumeParkedThread } from "./openThreadMemory";
 import { draftKey, returnDraft } from "./returnedDrafts";
 import { type EmitResult, type QueueSocket, SendQueue } from "./sendQueue";
 import { uploadChatFile } from "./uploadChatFile";
@@ -169,21 +169,23 @@ export function useThreads(
      page the server read before the delete can't put one back. */
   const deletedIdsRef = useRef<Set<string>>(new Set());
 
-  /* The panel belongs to one channel, so it closes on a switch — but not when
-     this hook is mounted again on the same one, which a resize does (GRYT-1390). */
+  /* A switch leaves the thread with its channel, and coming back resumes it. Not when
+     this hook is mounted again on the same channel, which a resize does (GRYT-1390). */
   useEffect(() => {
     if (recallOpenThread(serverHost || "", conversationId)) return;
     setOpenThread(serverHost || "", null);
-    forgetOpenThread();
+    parkOpenThread();
     setOpen(null);
     openRef.current = null;
     pendingOpenRoot.current = null;
+    resumeParkedThread(serverHost || "", conversationId);
   }, [conversationId, serverHost]);
 
   /* Remembered on every change, so what comes back after a remount carries the
      title and the reply count rather than the placeholder the fetch starts from. */
   useEffect(() => {
-    if (open) rememberOpenThread(serverHost || "", conversationId, open.thread);
+    // On a switch `open` is still the old channel's until the next render, and openRef isn't.
+    if (open && openRef.current) rememberOpenThread(serverHost || "", conversationId, open.thread);
   }, [open, conversationId, serverHost]);
 
   /* Summaries outlive a channel switch, the way the message cache does: come

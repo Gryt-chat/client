@@ -8,6 +8,7 @@ import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
 import { PiArchiveFill, PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { registerThreadCloser, setThreadExpanded, useThreadExpanded } from "../hooks/openThreadMemory";
 import { draftKey, returnDraft, type ReturnedDraft, saveDraftToDisk, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
 import { useChatActions } from "../hooks/useChatActions";
@@ -547,6 +548,12 @@ export const ChatView = memo(({
     }
     threads.closeThread();
   }, [threadDraftKey, threads]);
+
+  const threadExpanded = useThreadExpanded();
+  useEffect(() => {
+    registerThreadCloser(closeThread);
+    return () => registerThreadCloser(null);
+  }, [closeThread]);
 
   // ── Sender helpers ────────────────────────────────────────────
   const getSenderName = useCallback((msg: ChatMessage): string => {
@@ -1183,7 +1190,10 @@ export const ChatView = memo(({
           </div>
           {threads.open && (
             <ThreadPanel
-              beside={threadBeside}
+              beside={threadBeside && !threadExpanded}
+              expanded={threadBeside && threadExpanded}
+              onToggleExpand={threadBeside ? () => setThreadExpanded(!threadExpanded) : undefined}
+              channelName={channelName}
               thread={threads.open.thread}
               root={threads.open.root}
               messages={visibleThreadMessages}
