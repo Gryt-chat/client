@@ -179,6 +179,7 @@ test("a refused fetch says so where the replies would be", async ({ newMember })
   const root = unique("a thread to ask for too often");
   await sendMessage(alice.page, root);
   await startThread(alice.page, root);
+  await replyInThread(alice.page, unique("so the reply line exists"));
 
   /* The fetch limit is 15 in 10 seconds and the reply line asks again on every
      press, which is the one refusal a test can provoke on its own. */

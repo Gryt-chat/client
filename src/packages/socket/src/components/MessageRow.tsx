@@ -925,7 +925,8 @@ function MessageContent({
           </span>
         )}
       </motion.div>
-      {messageActions.onOpenThread && (
+      {/* Nothing under the message until someone replies. An empty thread opens from the hover bar or the menu. */}
+      {messageActions.onOpenThread && (messageActions.replyCount ?? 0) > 0 && (
         <button
           onClick={messageActions.onOpenThread}
           style={{
