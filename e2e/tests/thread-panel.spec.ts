@@ -579,14 +579,13 @@ async function openChannel(page: Page, name: string): Promise<void> {
 }
 
 test("a thread stays with its channel, expanded or not, until it is closed", async ({ newMember, owner, gryt }) => {
-  const here = uniqueName("here");
+  // sendMessage writes in General, so that's the channel the thread stays with.
+  const here = "General";
   const there = uniqueName("there");
-  await addChannel(owner.page, gryt.server, here);
   await addChannel(owner.page, gryt.server, there);
 
   const alice = await newMember();
   await alice.page.setViewportSize({ width: 1500, height: 800 });
-  await openChannel(alice.page, here);
   const root = unique("a thread to leave and come back to");
   await sendMessage(alice.page, root);
   await startThread(alice.page, root);
