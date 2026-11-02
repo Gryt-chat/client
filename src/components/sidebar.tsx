@@ -83,12 +83,13 @@ function iconOpacity(s: { bright: boolean; isUnavailable: boolean; awaitingAppro
 }
 
 
-/** First and last letter of the name and the whole domain: yours to recognise, little to someone looking on. */
+/** First letters and the ending only: yours to recognise, little to someone looking on. */
 function maskEmail(email: string): string {
   const at = email.lastIndexOf("@");
   if (at < 1) return email;
-  const name = email.slice(0, at);
-  return `${name[0]}•••${name.length > 1 ? name[name.length - 1] : ""}${email.slice(at)}`;
+  const domain = email.slice(at + 1);
+  const dot = domain.lastIndexOf(".");
+  return `${email[0]}•••@${domain[0] ?? ""}•••${dot > 0 ? domain.slice(dot) : ""}`;
 }
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { isSignedIn, email, login, loginAnotherAccount, logout } = useAccount();
@@ -346,7 +347,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 {isSignedIn ? (
                   <>
                     {email && (
-                      <div className="px-3 py-1 text-xs text-gryt-muted" title={email}>
+                      <div className="px-3 py-1 text-xs text-gryt-muted">
                         Signed in as {maskEmail(email)}
                       </div>
                     )}
