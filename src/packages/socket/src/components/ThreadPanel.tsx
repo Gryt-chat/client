@@ -2,7 +2,7 @@ import { Button, Divider, IconButton, Menu, Tooltip } from "@gryt/ui";
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 
-import { PiCaretLeftBold, PiChatsTeardropFill, PiCheck, PiCornersInFill, PiCornersOutFill, PiDotsThreeVerticalBold, PiX } from "../../../../lib/icons";
+import { PiArrowsInSimpleBold, PiArrowsOutSimpleBold, PiCaretLeftBold, PiChatsTeardropFill, PiCheck, PiDotsThreeVerticalBold, PiX } from "../../../../lib/icons";
 import { THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import type { ChatMessage } from "./chatUtils";
 import { EmojiText } from "./EmojiText";
@@ -122,15 +122,23 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
     if (pinnedRef.current) el.scrollTop = el.scrollHeight;
   }, [messages, root, loading]);
 
+  const resizable = beside || expanded;
+
   return (
+    <>
+    {/* Holds the column while the panel grows over it, so the conversation behind doesn't reflow every frame. */}
+    {resizable && <div aria-hidden style={{ width: THREAD_PANEL_WIDTH, flexShrink: 0 }} />}
     <aside
       aria-label="Thread"
+      className="gryt-thread-panel"
       data-beside={beside ? "yes" : "no"}
       style={{
-        /* Beside: a column in the row, so the conversation keeps the width it is
-           drawn at. Otherwise the whole pane, so nothing is left half covered. */
-        ...(beside
-          ? { position: "relative", width: THREAD_PANEL_WIDTH, flexShrink: 0, borderLeft: "1px solid var(--gryt-neutral-6)" }
+        ...(resizable
+          ? {
+              position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 20,
+              width: expanded ? "100%" : THREAD_PANEL_WIDTH,
+              borderLeft: "1px solid var(--gryt-neutral-6)",
+            }
           : { position: "absolute", inset: 0, zIndex: 20 }),
         display: "flex", flexDirection: "column", minWidth: 0,
         background: "var(--gryt-neutral-1)",
@@ -224,7 +232,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
               aria-label={expanded ? "Back to the small panel" : "Expand thread"}
               onClick={onToggleExpand}
             >
-              {expanded ? <PiCornersInFill size={14} /> : <PiCornersOutFill size={14} />}
+              {expanded ? <PiArrowsInSimpleBold size={14} /> : <PiArrowsOutSimpleBold size={14} />}
             </IconButton>
           </Tooltip>
         )}
@@ -335,5 +343,6 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
         )}
       </div>
     </aside>
+    </>
   );
 }

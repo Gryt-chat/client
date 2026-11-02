@@ -2674,3 +2674,13 @@ img.discord-import-letter { object-fit: cover; }
 .gryt-toast > svg {
   flex-shrink: 0;
 }
+
+.gryt-thread-panel {
+  transition: width 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gryt-thread-panel {
+    transition: none;
+  }
+}
