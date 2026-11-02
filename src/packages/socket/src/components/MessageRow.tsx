@@ -443,6 +443,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 own={isOwnMessage}
                 highlighted={highlighted}
                 onMore={handleMore}
+                onThread={messageActions.onOpenThread ?? messageActions.onStartThread}
+                threadLabel={messageActions.onOpenThread ? "Open thread" : "Start thread"}
                 messageActions={messageActions}
                 threadUnread={threadUnread}
                 threadMentions={threadMentions}
@@ -664,6 +666,8 @@ function MessageContent({
   own,
   highlighted,
   onMore,
+  onThread,
+  threadLabel,
 }: {
   /** Floated before the text, for Compact's time and name in mini mode. */
   leading?: React.ReactNode;
@@ -676,6 +680,8 @@ function MessageContent({
   /** Hovered, or its menu or picker open. Bubbles show it on the bubble rather than the row. */
   highlighted: boolean;
   onMore: (anchor: HTMLElement) => void;
+  onThread?: () => void;
+  threadLabel: string;
   bgColor: string;
   showToolbar: boolean;
   /** The reactions this person uses most, for the hover bar. */
@@ -777,6 +783,8 @@ function MessageContent({
               onQuickReaction={(src) => onReaction(src, m)}
               onOpenEmojiPicker={quickReactions ? () => onOpenReactionPicker() : undefined}
               onReply={() => onReply(m)}
+              onThread={onThread}
+              threadLabel={threadLabel}
               onMore={onMore}
             />
           </HoverBar>
