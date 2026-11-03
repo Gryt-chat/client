@@ -20,7 +20,7 @@ export function BotTag({ size = "normal" }: { size?: "normal" | "small" }) {
         padding: size === "small" ? "0.13em 0.3em" : "0.16em 0.36em",
         borderRadius: "var(--gryt-radius-sm, 3px)",
         background: "var(--gryt-neutral-6)",
-        color: "var(--gryt-text-muted)",
+        color: "var(--gryt-text)",
         border: "1px solid var(--gryt-border)",
         textTransform: "uppercase",
         verticalAlign: "middle",
