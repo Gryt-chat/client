@@ -1,11 +1,11 @@
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
-import useSound from "use-sound";
 
 import type { SealDecision } from "@/common";
 import { getOwnServerUserId, getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useAccount, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
+import { playNotificationSound } from "@/lib/notificationSound";
 import { MESSAGE_SOUNDS, resolveSound } from "@/lib/soundPresets";
 import { useSettings } from "@/settings";
 import type { ForumTag, serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
@@ -140,10 +140,11 @@ export function useChat({
   const desktopNotificationsEnabledRef = useRef(desktopNotificationsEnabled);
   useEffect(() => { desktopNotificationsEnabledRef.current = desktopNotificationsEnabled; }, [desktopNotificationsEnabled]);
 
-  const [playMessageSound] = useSound(resolveSound(customMessageSoundFile, MESSAGE_SOUNDS), {
-    volume: messageSoundVolume / 100,
-    soundEnabled: messageSoundEnabled,
-  });
+  // The same player and volume curve as the settings preview and the ringtone, and it isn't throttled in the background.
+  const playMessageSound = useCallback(
+    () => playNotificationSound(resolveSound(customMessageSoundFile, MESSAGE_SOUNDS), messageSoundVolume),
+    [customMessageSoundFile, messageSoundVolume],
+  );
   const messageSoundRef = useRef(playMessageSound);
   const messageSoundEnabledRef = useRef(messageSoundEnabled);
   useEffect(() => { messageSoundRef.current = playMessageSound; }, [playMessageSound]);

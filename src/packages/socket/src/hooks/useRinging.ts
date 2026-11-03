@@ -15,13 +15,13 @@ export function useRinging(call: { conversationId: string; title: string; host: 
 
   useEffect(() => {
     if (!call) return;
-    const stopSound = ringtoneEnabled ? playLoopingSound(resolveSound(customRingtoneFile, RINGTONES), ringtoneVolume) : null;
+    const ring = ringtoneEnabled ? playLoopingSound(resolveSound(customRingtoneFile, RINGTONES), ringtoneVolume) : null;
     window.electronAPI?.flashFrame?.(true);
     if (desktopNotificationsEnabled && !document.hasFocus()) {
       showDesktopNotification(call.title, "Calling you", { host: call.host, channelId: call.conversationId });
     }
     return () => {
-      stopSound?.();
+      ring?.stop();
       window.electronAPI?.flashFrame?.(false);
     };
     // One ring per conversation: a re-render with the same call must not restart the sound.

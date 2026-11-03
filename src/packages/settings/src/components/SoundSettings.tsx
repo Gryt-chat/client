@@ -1,11 +1,10 @@
 import { Button, IconButton, Select, Slider, Switch, Tooltip } from "@gryt/ui";
-import { useEffect, useRef, useState } from "react";
-import useSound from "use-sound";
+import { useEffect, useRef } from "react";
 
-import { playNotificationSound } from "@/lib/notificationSound";
+import { playLoopingSound, playNotificationSound } from "@/lib/notificationSound";
 import { presetIdOf, presetValue, resolveSound, type SoundPreset } from "@/lib/soundPresets";
 
-import { PiArrowsClockwiseFill, PiCheck, PiPlayFill, PiStopFill } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiCheck } from "../../../../lib/icons";
 
 interface SoundSettingsProps {
   label: string;
@@ -20,6 +19,8 @@ interface SoundSettingsProps {
   defaultSoundSrc: string;
   /** Built-in sounds to pick from (GRYT-2010). The first is the default. */
   presets?: readonly SoundPreset[];
+  /** A ringtone loops while the volume slider is dragged, so the level can be heard as it changes. */
+  loopPreview?: boolean;
   showAlert: (
     type: "success" | "error",
     title: string,
@@ -39,36 +40,16 @@ export function SoundSettings({
   onCustomSoundFileChange,
   defaultSoundSrc,
   presets,
+  loopPreview = false,
   showAlert,
 }: SoundSettingsProps) {
   const chosenPreset = presetIdOf(customSoundFile);
   const uploaded = customSoundFile !== null && chosenPreset === null;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const src = presets ? resolveSound(customSoundFile, presets) : customSoundFile || defaultSoundSrc;
+  const loop = useRef<ReturnType<typeof playLoopingSound> | null>(null);
 
-  const [playSound, { stop: stopSound }] = useSound(
-    presets ? resolveSound(customSoundFile, presets) : customSoundFile || defaultSoundSrc,
-    {
-      volume: volume / 100,
-      soundEnabled: true,
-      interrupt: false,
-      onplay: () => setIsPlaying(true),
-      onend: () => setIsPlaying(false),
-      onstop: () => setIsPlaying(false),
-      onloaderror: () => setIsPlaying(false),
-      onplayerror: () => setIsPlaying(false),
-    },
-  );
-
-  useEffect(() => {
-    return () => {
-      try {
-        stopSound();
-      } catch (error) {
-        console.error(`Error stopping ${label} sound on unmount:`, error);
-      }
-    };
-  }, [stopSound, label]);
+  useEffect(() => () => loop.current?.stop(), []);
 
   useEffect(() => {
     if (!customSoundFile || presetIdOf(customSoundFile) !== null) return;
@@ -147,6 +128,7 @@ export function SoundSettings({
       if (dataUrl) {
         try {
           onCustomSoundFileChange(dataUrl);
+          playNotificationSound(dataUrl, volume);
           showAlert(
             "success",
             "Sound File Saved",
@@ -166,44 +148,11 @@ export function SoundSettings({
   };
 
   const resetSound = () => {
-    if (isPlaying) stopSound();
     onCustomSoundFileChange(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const resetVolume = () => onVolumeChange(defaultVolume);
-
-  const testSound = () => {
-    try {
-      playSound();
-    } catch (error) {
-      console.error(`Error playing ${label} sound:`, error);
-      setIsPlaying(false);
-    }
-  };
-
-  const stopSoundTest = () => {
-    try {
-      stopSound();
-    } catch (error) {
-      console.error(`Error stopping ${label} sound:`, error);
-      setIsPlaying(false);
-    }
-  };
-
-  const playButton = (
-    <Tooltip title="Test sound" side="top">
-      {isPlaying ? (
-        <Button tone="danger" size="small" onClick={stopSoundTest}>
-          <PiStopFill size={16} />
-        </Button>
-      ) : (
-        <Button tone="ghost" size="small" onClick={testSound}>
-          <PiPlayFill size={16} />
-        </Button>
-      )}
-    </Tooltip>
-  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -247,9 +196,19 @@ export function SoundSettings({
                 value={volume}
                 onValueChange={(next) => {
                   const value = Number(next);
-                  if (!Number.isNaN(value)) {
-                    onVolumeChange(Math.min(100, Math.max(0, value)));
-                  }
+                  if (Number.isNaN(value)) return;
+                  const clamped = Math.min(100, Math.max(0, value));
+                  onVolumeChange(clamped);
+                  if (!loopPreview) return;
+                  if (loop.current) loop.current.setVolume(clamped);
+                  else loop.current = playLoopingSound(src, clamped);
+                }}
+                onValueCommitted={(next) => {
+                  loop.current?.stop();
+                  loop.current = null;
+                  const value = Number(next);
+                  // Let go, and you hear the level you picked.
+                  if (!loopPreview && !Number.isNaN(value)) playNotificationSound(src, value);
                 }}
               />
               <span className="text-sm" style={{ minWidth: "36px" }}>
@@ -267,7 +226,6 @@ export function SoundSettings({
                     value={uploaded ? "custom" : chosenPreset ?? presets[0].id}
                     onValueChange={(v) => {
                       const id = String(v);
-                      if (isPlaying) stopSound();
                       if (id === "custom") return;
                       const next = id === presets[0].id ? null : presetValue(id);
                       onCustomSoundFileChange(next);
@@ -280,7 +238,6 @@ export function SoundSettings({
                     ]}
                   />
                 </div>
-                {playButton}
               </div>
             </div>
           )}
@@ -314,7 +271,6 @@ export function SoundSettings({
               >
                 {uploaded ? "Change File" : "Choose File"}
               </Button>
-              {!presets && playButton}
             </div>
             {uploaded && (
               <span className="text-xs text-gryt-success inline-flex items-center gap-1">

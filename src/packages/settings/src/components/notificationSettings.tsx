@@ -147,7 +147,7 @@ export function NotificationSettings() {
         onEnabledChange={setMessageSoundEnabled}
         volume={messageSoundVolume}
         onVolumeChange={setMessageSoundVolume}
-        defaultVolume={30}
+        defaultVolume={60}
         customSoundFile={customMessageSoundFile}
         onCustomSoundFileChange={setCustomMessageSoundFile}
         defaultSoundSrc={messageSoundMp3}
@@ -169,6 +169,7 @@ export function NotificationSettings() {
         onCustomSoundFileChange={setCustomRingtoneFile}
         defaultSoundSrc={RINGTONES[0].src}
         presets={RINGTONES}
+        loopPreview
         showAlert={showAlert}
       />
 
