@@ -281,7 +281,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                     pointerEvents: "none",
                   }}
                 >
-                  {newLanServers.length > 9 ? "9+" : newLanServers.length}
+                  {/* Trimmed to the digits' own height: centring the line box left them 0.8px high. */}
+                  <span style={{ textBoxTrim: "trim-both", textBoxEdge: "cap alphabetic" }}>
+                    {newLanServers.length > 9 ? "9+" : newLanServers.length}
+                  </span>
                 </div>
               )}
             </div>
