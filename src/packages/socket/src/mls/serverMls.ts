@@ -290,6 +290,12 @@ function setAwaitingApproval(host: string, waiting: boolean): void {
   for (const listener of approvalListeners) listener();
 }
 
+/** Opens the approve-or-reset dialog for this server, which is how its key changes since GRYT-1886. */
+export function askToApproveHere(host: string): void {
+  setAwaitingApproval(host, true);
+  window.dispatchEvent(new Event("gryt:approve-device-open"));
+}
+
 export function useHostsAwaitingApproval(): ReadonlySet<string> {
   return useSyncExternalStore(
     (listener) => {

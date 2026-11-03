@@ -291,6 +291,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [dmSearchOpen, setDmSearchOpen] = useState(false);
   // The conversation info panel on the right of the messages space (GRYT-1745).
   const [dmInfoOpen, setDmInfoOpen] = useState(true);
+  const [compareSignal, setCompareSignal] = useState(0);
+  const compareKeys = useCallback(() => {
+    setDmInfoOpen(true);
+    setCompareSignal((n) => n + 1);
+  }, []);
   const [askHide, hideDialog] = useConfirmHide();
   const [pendingLeave, setPendingLeave] = useState<{ title: string; leave: () => void } | null>(null);
   const askLeave = (title: string, leave: () => void) => setPendingLeave({ title, leave });
@@ -483,7 +488,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
-    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions,
+    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -500,9 +505,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       react: reactMlsMessage,
       reportsTaken: mlsReportsTaken,
       archiveFailed,
-      actions: mlsActions,
+      actions: peerKeyNotice
+        ? [{ label: `Check ${activeConversation?.other.nickname ?? "their"}'s key`, run: compareKeys }]
+        : mlsActions,
     }),
-    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions],
+    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, activeConversation?.other.nickname, compareKeys],
   );
 
   /** The server already withholds new messages, so this covers what was drawn
@@ -1076,12 +1083,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
             conversationId={activeDm.conversation_id}
             memberNames={memberNames}
             onAsk={(text) => sendChat(text, [])}
-            onCompare={() => setDmInfoOpen(true)}
+            onCompare={compareKeys}
           />
         )}
       </span>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, compareKeys]);
 
   /* Board 7, option A: behind ⋯ in a channel's header. The pin button stays beside it. */
   const channelMoreMenu = useMemo(() => {
@@ -1777,6 +1784,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               ) : (
                 <DmPersonPanel
                   host={host}
+                  compareSignal={compareSignal}
                   member={memberListMap[activeDm.other.server_user_id]}
                   conversation={activeDm}
                   pins={dmPins}

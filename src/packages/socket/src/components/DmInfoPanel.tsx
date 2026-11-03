@@ -192,7 +192,7 @@ function MiniCard({ member, host, statusText, onFullCard }: { member: MemberInfo
 
 /** Board D1: their card as one row, then the options laid out bare, then what this conversation holds. */
 export function DmPersonPanel({
-  host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection, reencryptProgress,
+  host, member, conversation, pins, memberList, onJump, onHide, onSearch, onImport, importSection, reencryptProgress, compareSignal = 0,
 }: {
   host: string;
   member?: MemberInfo;
@@ -205,8 +205,13 @@ export function DmPersonPanel({
   onImport?: () => void;
   importSection?: ReactNode;
   reencryptProgress?: { done: number; total: number } | null;
+  /** Bumped to open the full card at the code comparison. */
+  compareSignal?: number;
 }) {
   const [fullCard, setFullCard] = useState(false);
+  useEffect(() => {
+    if (compareSignal) setFullCard(true);
+  }, [compareSignal]);
   const name = member?.nickname || conversation.other.nickname;
   const status = member?.status;
   const where = [status && statusConfig[status].label, member?.activity].filter(Boolean).join(" · ");
@@ -218,7 +223,7 @@ export function DmPersonPanel({
       style={{ width: PANEL_WIDTH, background: "var(--gryt-neutral-2)", borderRadius: "var(--gryt-radius-lg)" }}
     >
       {/* shrink-0: the card clips its overflow, so in this flex column it was squeezed and cut off instead of the panel scrolling. */}
-      {fullCard && member && <div className="shrink-0"><MemberIdentityCard member={member} serverHost={host} inline /></div>}
+      {fullCard && member && <div className="shrink-0"><MemberIdentityCard member={member} serverHost={host} inline compareSignal={compareSignal} /></div>}
       {!fullCard && member && <div className="shrink-0"><MiniCard member={member} host={host} statusText={where || undefined} onFullCard={() => setFullCard(true)} /></div>}
       {!member && (
         <div
