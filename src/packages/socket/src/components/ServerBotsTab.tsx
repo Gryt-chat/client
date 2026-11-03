@@ -21,6 +21,8 @@ type BotEntry = {
   awaitingClaim: boolean;
   createdAt: string | Date;
   decidedAt: string | Date | null;
+  /** Asked for since it was let in (GRYT-2006). An older server sends none. */
+  more?: string[];
 };
 
 /**
@@ -63,6 +65,9 @@ export function ServerBotsTab({
         if (b.status === "pending" && !next[b.registrationId]) {
           next[b.registrationId] = new Set(b.requested);
         }
+        if (b.status === "approved" && b.more?.length && !next[b.registrationId]) {
+          next[b.registrationId] = new Set(b.more);
+        }
       }
       return next;
     });
@@ -103,6 +108,7 @@ export function ServerBotsTab({
   };
 
   const pending = useMemo(() => (bots ?? []).filter((b) => b.status === "pending"), [bots]);
+  const wantsMore = useMemo(() => (bots ?? []).filter((b) => b.status === "approved" && (b.more?.length ?? 0) > 0), [bots]);
   const settled = useMemo(() => (bots ?? []).filter((b) => b.status !== "pending"), [bots]);
 
   if (!bots) {
@@ -113,8 +119,8 @@ export function ServerBotsTab({
     <div className="flex flex-col gap-6">
       <span className="text-sm text-gryt-muted">
         A bot is a member like any other — it holds only what you give it, and it can never
-        give itself more. What it asked for is fixed the first time it turns up, so a bot
-        that has been tampered with since cannot come back asking for the keys.
+        give itself more. If it asks for more later, it keeps what it has and the new ask
+        waits here for you, so a bot that has been tampered with can ask but can't take.
       </span>
 
       <Surface>
@@ -177,9 +183,65 @@ export function ServerBotsTab({
           </span>
         </div>
 
-        {pending.length === 0 ? (
+        {wantsMore.map((bot) => {
+          const chosen = ticked[bot.registrationId] ?? new Set<string>();
+          const more = bot.more ?? [];
+          return (
+            <Surface key={`more-${bot.registrationId}`}>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-bold">{bot.nickname} wants new permissions</span>
+                  {bot.botId && (
+                    <span className="text-xs text-gryt-muted font-mono select-all" style={{ wordBreak: "break-all" }}>
+                      {bot.botId}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  {bot.granted.map((permission) => (
+                    <PermissionRow key={permission} permission={permission} checked disabled />
+                  ))}
+                  {more.map((permission) => (
+                    <PermissionRow
+                      key={permission}
+                      permission={permission}
+                      checked={chosen.has(permission)}
+                      onChange={(checked) => toggle(bot.registrationId, permission, checked)}
+                    />
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    tone="neutral"
+                    size="small"
+                    disabled={busy}
+                    onClick={() => emit("server:bots:decide", { botId: bot.botId, decision: "denied" })}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    size="small"
+                    disabled={busy}
+                    onClick={() =>
+                      emit("server:bots:decide", {
+                        botId: bot.botId,
+                        decision: "approved",
+                        permissions: [...bot.granted, ...more.filter((p) => chosen.has(p))],
+                        rank: bot.rank,
+                      })
+                    }
+                  >
+                    Approve
+                  </Button>
+                </div>
+              </div>
+            </Surface>
+          );
+        })}
+
+        {pending.length === 0 && wantsMore.length === 0 ? (
           <span className="text-sm text-gryt-muted">Nothing waiting.</span>
-        ) : (
+        ) : pending.length === 0 ? null : (
           pending.map((bot) => {
             const chosen = ticked[bot.registrationId] ?? new Set<string>();
             return (
@@ -359,5 +421,29 @@ function RegisterBot({ busy, onCreate }: { busy: boolean; onCreate: (nickname: s
         </Button>
       </div>
     </Surface>
+  );
+}
+
+/** One permission with its explanation. A disabled, ticked one is something the bot already has. */
+function PermissionRow({
+  permission,
+  checked,
+  disabled,
+  onChange,
+}: {
+  permission: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+}) {
+  const meta = describePermission(permission);
+  return (
+    <label className="flex items-start gap-2 text-sm" style={{ cursor: disabled ? "default" : "pointer" }}>
+      <Checkbox checked={checked} disabled={disabled} onCheckedChange={(c) => onChange?.(c === true)} style={{ marginTop: "0.3em" }} />
+      <span className="flex flex-col">
+        <span>{meta.label}</span>
+        {meta.description && <span className="text-xs text-gryt-muted">{meta.description}</span>}
+      </span>
+    </label>
   );
 }
