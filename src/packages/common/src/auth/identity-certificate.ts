@@ -4,9 +4,10 @@
  */
 import { getGrytConfig } from "../../../../config";
 import { certificateVerdict } from "./certificate-verdict";
-import { clearIdentityKeys, getPublicKeyJwk } from "./identity-keys";
+import { asIdentityScope, clearIdentityKeys, deriveScopedKeyPair, getPublicKeyJwk, signJwtWithKey } from "./identity-keys";
 import { decodeJwt } from "./jwt";
 import { getValidIdentityToken } from "./keycloak";
+import { jwkThumbprint } from "./server-pins";
 
 const CERT_STORAGE_KEY = "gryt_identity_certificate";
 const RENEW_BUFFER_MS = 24 * 60 * 60 * 1000; // Renew 24h before expiry
@@ -97,6 +98,7 @@ async function fetchCertificateFromService(): Promise<string> {
   }
 
   const publicJwk = await getPublicKeyJwk();
+  const proof = await seedProof(keycloakToken, publicJwk).catch(() => undefined);
 
   const res = await fetch(`${identityUrl}/api/v1/certificate`, {
     method: "POST",
@@ -104,8 +106,16 @@ async function fetchCertificateFromService(): Promise<string> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${keycloakToken}`,
     },
-    body: JSON.stringify({ jwk: publicJwk }),
+    body: JSON.stringify({ jwk: publicJwk, proof }),
   });
+
+  if (res.status === 403) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string; resetAt?: number | null };
+    if (body.error === "approval_required") {
+      window.dispatchEvent(new CustomEvent("gryt:sign-in-approval", { detail: { resetAt: body.resetAt ?? null } }));
+      throw new Error("This sign-in needs approving from one of your devices.");
+    }
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -194,4 +204,31 @@ export function getCertificateSub(): string | null {
   const stored = getStoredCert();
   if (!stored) return null;
   return parseJwtSub(stored.certificate);
+}
+
+/* Linking and the 24 words copy the seed, so every device of yours proves the same key (GRYT-2016). */
+const ACCOUNT_CERT_SCOPE = asIdentityScope("gryt:account-cert");
+
+async function seedProof(keycloakToken: string, certJwk: JsonWebKey): Promise<string> {
+  const { privateKey, publicJwk } = await deriveScopedKeyPair(ACCOUNT_CERT_SCOPE);
+  const { kty, crv, x, y } = publicJwk;
+  return signJwtWithKey(
+    { sub: parseJwtSub(keycloakToken), cnf: await jwkThumbprint(certJwk), iat: Math.floor(Date.now() / 1000) },
+    privateKey,
+    { jwk: { kty, crv, x, y } },
+  );
+}
+
+/** The account service's view of this device's seed key: on record, and any reset under way. */
+export async function accountKeyCall(path: "status" | "reset" | "reset/cancel"): Promise<{ known?: boolean; resetAt?: number | null; resetIsYours?: boolean; at?: number; ok?: boolean } | null> {
+  const token = await getValidIdentityToken().catch(() => undefined);
+  if (!token) return null;
+  const jwk = await getPublicKeyJwk();
+  const identityUrl = getGrytConfig().GRYT_IDENTITY_URL.replace(/\/+$/, "");
+  const res = await fetch(`${identityUrl}/api/v1/account-key/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ jwk, proof: await seedProof(token, jwk) }),
+  }).catch(() => null);
+  return res?.ok ? res.json() : null;
 }
