@@ -147,7 +147,7 @@ export function NotificationSettings() {
         onEnabledChange={setMessageSoundEnabled}
         volume={messageSoundVolume}
         onVolumeChange={setMessageSoundVolume}
-        defaultVolume={30}
+        defaultVolume={60}
         customSoundFile={customMessageSoundFile}
         onCustomSoundFileChange={setCustomMessageSoundFile}
         defaultSoundSrc={messageSoundMp3}

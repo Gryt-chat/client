@@ -71,7 +71,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   customConnectSoundFile: null,
   customDisconnectSoundFile: null,
   messageSoundEnabled: true,
-  messageSoundVolume: 30,
+  messageSoundVolume: 60,
   customMessageSoundFile: null,
   ringtoneEnabled: true,
   ringtoneVolume: 40,
