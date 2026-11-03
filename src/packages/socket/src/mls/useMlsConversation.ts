@@ -11,7 +11,6 @@ import {
   type SealedAttachmentKey,
   useLocalArchive,
 } from "@/common";
-import { useSettings } from "@/settings";
 
 import { useLinkDevice } from "../../../../lib/pairing/useLinkDevice";
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
@@ -19,7 +18,7 @@ import { draftKey, returnDraft } from "../hooks/returnedDrafts";
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import { getMediaDimensions } from "../utils/imageUtils";
 import { openSealedAttachment } from "../utils/sealedAttachments";
-import { askToApproveHere, mlsDmDiagnostics, useMlsSource } from "./serverMls";
+import { askToApproveHere, useMlsSource } from "./serverMls";
 import type { ConversationProblems } from "./session";
 import { archivedRow, newMessage, sendFailure, withOpenedFiles } from "./timeline";
 
@@ -79,7 +78,6 @@ export function useMlsConversation({
 }): MlsConversation {
   const source = useMlsSource(host);
   const { open: openLinkDevice } = useLinkDevice();
-  const { showAdvanced } = useSettings();
   const archiveNow = useLocalArchive();
   const archiveOpen = archiveNow.status.kind === "open";
   const archiveEpoch = archiveNow.epoch;
@@ -364,31 +362,18 @@ export function useMlsConversation({
     send,
     actions: useMemo((): MlsAction[] => {
       if (!active || !conversationId) return [];
-      // Hidden for support (GRYT-1864): what this device knows about the DM, ids only.
-      const details: MlsAction[] =
-        showAdvanced && (problems.lost || problems.undecryptable)
-          ? [{
-              label: "Copy details",
-              run: () =>
-                void mlsDmDiagnostics(host, conversationId)
-                  .then((d) => navigator.clipboard.writeText(JSON.stringify({ host, conversationId, problems, ...d }, null, 2)))
-                  .then(() => toast.success("Copied the encryption details"))
-                  .catch(() => toast.error("Couldn't read the details")),
-            }]
-          : [];
       const requestAdd = source?.requestAdd;
       if (problems.lost === "not_added" && requestAdd) {
-        return [{ label: "Ask again", run: () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e)) }, ...details];
+        return [{ label: "Ask again", run: () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e)) }];
       }
-      if (problems.lost !== "other_identity") return details;
-      // The safe choice first; "Copy details" is for support, so it goes last.
+      if (problems.lost !== "other_identity") return [];
+      // The safe choice first.
       return [
         { label: "Link this device", run: openLinkDevice },
         // The server only takes a new key here with the old key's approval, or after a 30-day reset.
         { label: "Other ways", run: () => askToApproveHere(host) },
-        ...details,
       ];
-    }, [active, source, conversationId, problems, host, openLinkDevice, showAdvanced]),
+    }, [active, source, conversationId, problems, host, openLinkDevice]),
     edit: useCallback(
       (id: string, text: string) => {
         const body = text.trim();

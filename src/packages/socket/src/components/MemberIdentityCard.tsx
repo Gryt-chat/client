@@ -1,6 +1,6 @@
 import { base64Url, type PeerPin } from "@gryt/crypto";
 import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
-import { cloneElement, type ReactElement, type ReactNode, useEffect, useMemo, useState } from "react";
+import { cloneElement, type ReactElement, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
@@ -97,6 +97,7 @@ export function MemberIdentityCard({
   serverHost,
   voiceChannelName,
   inline = false,
+  compareSignal = 0,
 }: {
   member: MemberInfo;
   /** Which server this member is shown on, for their key state, roles and uploads. */
@@ -105,6 +106,8 @@ export function MemberIdentityCard({
   voiceChannelName?: string;
   /** Drawn in a panel rather than a popover, so its buttons have nothing to close (GRYT-1745). */
   inline?: boolean;
+  /** Bumped by "Compare codes" and "Check their key": opens straight to the comparison. */
+  compareSignal?: number;
 }) {
   const Close = inline ? InlineClose : Popover.Close;
   const actions = useMemberCardActions();
@@ -244,6 +247,13 @@ export function MemberIdentityCard({
 
   const [open, setOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const verifyRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!compareSignal) return;
+    setOpen(true);
+    setVerifyOpen(true);
+    requestAnimationFrame(() => verifyRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  }, [compareSignal]);
   const [menuOpen, setMenuOpen] = useState(false);
   const identityIsTheQuestion = member.identityTier === "local";
   const fingerprint = member.identityFingerprint;
@@ -578,6 +588,7 @@ export function MemberIdentityCard({
         )}
         {(code || (!identityIsTheQuestion && fingerprint)) && (
           <details
+            ref={verifyRef}
             className="gmc-who gmc-sub"
             open={verifyOpen}
             onToggle={(e) => setVerifyOpen((e.currentTarget as HTMLDetailsElement).open)}
