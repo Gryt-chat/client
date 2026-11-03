@@ -2,7 +2,7 @@ import { Button, Dialog } from "@gryt/ui";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
-import { cancelKeyReset, keyResets } from "@/socket";
+import { cancelKeyReset, handoverRequests, keyResets } from "@/socket";
 
 /**
  * Someone asked to reset your key on a server (GRYT-1886). This device holds the current key, so
@@ -10,9 +10,11 @@ import { cancelKeyReset, keyResets } from "@/socket";
  */
 export function KeyResetDialog() {
   const resets = keyResets.use();
+  // An ask from one of your devices already shows as "Is this your …?", which can stop it too.
+  const asking = new Set(handoverRequests.use().map((r) => r.host));
   const [seen, setSeen] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState(false);
-  const pending = Object.entries(resets).find(([host, r]) => r.holdsCurrentKey && !seen.has(`${host}:${r.at}`));
+  const pending = Object.entries(resets).find(([host, r]) => r.holdsCurrentKey && !asking.has(host) && !seen.has(`${host}:${r.at}`));
   const close = () => pending && setSeen(new Set([...seen, `${pending[0]}:${pending[1].at}`]));
 
   const stop = async () => {

@@ -350,7 +350,12 @@ async function askHandoverOnce(host: string, state: HostState): Promise<void> {
   askedHandover.add(host);
   const code = await handoverCode(host, accountBinding, binding).catch(() => "");
   ownHandover.set({ ...ownHandover.get(), [host]: { code, denied: false } });
-  state.socket.emit("dm:key:handover:ask", { binding, deviceName: thisDeviceCertificateName() });
+  state.socket.emit("dm:key:handover:ask", { binding, deviceName: thisDeviceCertificateName() }, (reply?: { ok?: boolean; at?: number; holder?: string | null; seenAt?: number | null }) => {
+    if (!reply?.ok) return;
+    ownHandover.set({ ...ownHandover.get(), [host]: { code, denied: false, holder: reply.holder, seenAt: reply.seenAt, at: reply.at } });
+    // The device with the current key hasn't been here for 30 days: nobody is left to say no.
+    if (reply.at !== undefined && reply.at <= Date.now()) void adoptThisDevicesKey(host);
+  });
 }
 
 /** "Yes, that's my device": this device's key signs the server over to the one that asked. */
@@ -365,9 +370,11 @@ export async function approveHandover(request: HandoverRequest): Promise<boolean
   return ok;
 }
 
-export function denyHandover(request: HandoverRequest): void {
+/** Closing the window only drops it here; "No" also stops the ask from finishing by itself. */
+export function denyHandover(request: HandoverRequest, { stop = false }: { stop?: boolean } = {}): void {
   hosts.get(request.host)?.socket.emit("dm:key:handover:deny", { askerId: request.askerId });
   handoverRequests.set(handoverRequests.get().filter((r) => r !== request));
+  if (stop) void cancelKeyReset(request.host);
 }
 
 /**

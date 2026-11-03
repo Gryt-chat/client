@@ -1,5 +1,7 @@
 import { dmKeyBindingFor } from "@/common";
 
+import { thisDeviceCertificateName } from "../mls/deviceName";
+
 /**
  * Publishing this device's DM key. The one part of this that needs a socket;
  * deciding about everybody else's is `member-keys` in `@gryt/crypto`.
@@ -20,7 +22,7 @@ export async function publishDmKey(
     // A server from before GRYT-1868 never answers, and took the key anyway.
     return await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => resolve(true), 10_000);
-      socket.emit("dm:key:publish", { binding, ...(replace ? { replace } : {}) }, (reply) => {
+      socket.emit("dm:key:publish", { binding, deviceName: thisDeviceCertificateName(), ...(replace ? { replace } : {}) }, (reply) => {
         clearTimeout(timer);
         resolve(reply?.ok !== false);
       });
