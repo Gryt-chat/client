@@ -48,6 +48,8 @@ function store<T>(initial: T) {
 export const handoverRequests = store<readonly HandoverRequest[]>([]);
 
 export interface OwnHandover {
+  /** The key this device asked to take over with, which a "no" names. */
+  binding: string;
   code: string;
   denied: boolean;
   /** The device holding the current key, as it named itself, and when it was last connected. */

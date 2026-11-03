@@ -255,9 +255,11 @@ export function attachServerMls(socket: Socket, host: string): void {
       handoverRequests.set([...handoverRequests.get(), { host, binding, askerId, code, deviceName: asked.deviceName || "A new device" }]),
     ).catch(() => {});
   });
-  socket.on("dm:key:handover:denied", () => {
+  // Sent to every device on the account since GRYT-2023, so only the one whose key was asked for acts.
+  socket.on("dm:key:handover:denied", (denied?: { binding?: string }) => {
     const mine = ownHandover.get()[host];
-    if (mine) ownHandover.set({ ...ownHandover.get(), [host]: { ...mine, denied: true } });
+    if (!mine || (denied?.binding && denied.binding !== mine.binding)) return;
+    ownHandover.set({ ...ownHandover.get(), [host]: { ...mine, denied: true } });
   });
 
   claim ??= claimMlsWorker({
@@ -349,10 +351,10 @@ async function askHandoverOnce(host: string, state: HostState): Promise<void> {
   if (!binding) return;
   askedHandover.add(host);
   const code = await handoverCode(host, accountBinding, binding).catch(() => "");
-  ownHandover.set({ ...ownHandover.get(), [host]: { code, denied: false } });
+  ownHandover.set({ ...ownHandover.get(), [host]: { binding, code, denied: false } });
   state.socket.emit("dm:key:handover:ask", { binding, deviceName: thisDeviceCertificateName() }, (reply?: { ok?: boolean; at?: number; holder?: string | null; seenAt?: number | null }) => {
     if (!reply?.ok) return;
-    ownHandover.set({ ...ownHandover.get(), [host]: { code, denied: false, holder: reply.holder, seenAt: reply.seenAt, at: reply.at } });
+    ownHandover.set({ ...ownHandover.get(), [host]: { binding, code, denied: false, holder: reply.holder, seenAt: reply.seenAt, at: reply.at } });
     // The device with the current key hasn't been here for 30 days: nobody is left to say no.
     if (reply.at !== undefined && reply.at <= Date.now()) void adoptThisDevicesKey(host);
   });
