@@ -291,6 +291,15 @@ export function ServerBotsTab({
                     </span>
                   </span>
                   <span className="text-xs text-gryt-muted">
+                    {bot.botId && (
+                      <span className="font-mono select-all" title={bot.botId}>
+                        {bot.botId.slice(0, 12)}…{" · "}
+                      </span>
+                    )}
+                    knocked {when(bot.createdAt)}
+                    {bot.decidedAt && ` · ${bot.status === "approved" ? "allowed" : "turned away"} ${when(bot.decidedAt)}`}
+                  </span>
+                  <span className="text-xs text-gryt-muted">
                     {bot.granted.length > 0
                       ? bot.granted.map((p) => describePermission(p).label).join(", ")
                       : "Can do nothing"}
@@ -312,6 +321,10 @@ export function ServerBotsTab({
       </div>
     </div>
   );
+}
+
+function when(at: string | Date): string {
+  return new Date(at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 /**
