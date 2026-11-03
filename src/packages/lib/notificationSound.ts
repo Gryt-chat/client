@@ -74,10 +74,13 @@ export function playNotificationSound(url: string, sliderValue: number): void {
     });
 }
 
-/** Plays a sound on repeat, as a ringtone does, until the returned function is called. */
-export function playLoopingSound(url: string, sliderValue: number): () => void {
+/** Plays a sound on repeat, as a ringtone does, until stopped. The volume can change while it plays. */
+export function playLoopingSound(url: string, sliderValue: number): { stop: () => void; setVolume: (sliderValue: number) => void } {
   const actx = getContext();
   let source: AudioBufferSourceNode | null = null;
+  const gain = actx.createGain();
+  gain.gain.value = sliderToGain(sliderValue);
+  gain.connect(actx.destination);
   let stopped = false;
   fetchBuffer(url)
     .then((buf) => {
@@ -85,20 +88,23 @@ export function playLoopingSound(url: string, sliderValue: number): () => void {
       source = actx.createBufferSource();
       source.buffer = buf;
       source.loop = true;
-      const gain = actx.createGain();
-      gain.gain.value = sliderToGain(sliderValue);
       source.connect(gain);
-      gain.connect(actx.destination);
       source.start();
     })
     .catch((err) => console.warn("[notificationSound] ringtone failed to play", err));
-  return () => {
-    stopped = true;
-    try {
-      source?.stop();
-    } catch {
-      // Never started.
-    }
+  return {
+    stop: () => {
+      stopped = true;
+      try {
+        source?.stop();
+      } catch {
+        // Never started.
+      }
+      gain.disconnect();
+    },
+    setVolume: (next) => {
+      gain.gain.value = sliderToGain(next);
+    },
   };
 }
 

@@ -169,6 +169,7 @@ export function NotificationSettings() {
         onCustomSoundFileChange={setCustomRingtoneFile}
         defaultSoundSrc={RINGTONES[0].src}
         presets={RINGTONES}
+        loopPreview
         showAlert={showAlert}
       />
 
