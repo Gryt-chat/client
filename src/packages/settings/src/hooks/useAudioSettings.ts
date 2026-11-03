@@ -35,6 +35,9 @@ export interface AudioSettingsData {
   messageSoundEnabled: boolean;
   messageSoundVolume: number;
   customMessageSoundFile: string | null;
+  ringtoneEnabled: boolean;
+  ringtoneVolume: number;
+  customRingtoneFile: string | null;
   notificationBadgeEnabled: boolean;
   desktopNotificationsEnabled: boolean;
 }
@@ -70,6 +73,9 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   messageSoundEnabled: true,
   messageSoundVolume: 30,
   customMessageSoundFile: null,
+  ringtoneEnabled: true,
+  ringtoneVolume: 40,
+  customRingtoneFile: null,
   notificationBadgeEnabled: true,
   desktopNotificationsEnabled: true,
   // Beta starts on the Low latency preset, so the own transport is heard at its fastest (GRYT-1831).
@@ -106,6 +112,9 @@ export function loadAudioFromCache(): AudioSettingsData {
     messageSoundEnabled: getUserValue("messageSoundEnabled", AUDIO_DEFAULTS.messageSoundEnabled),
     messageSoundVolume: getUserValue("messageSoundVolume", AUDIO_DEFAULTS.messageSoundVolume),
     customMessageSoundFile: getUserValue("customMessageSoundFile", AUDIO_DEFAULTS.customMessageSoundFile),
+    ringtoneEnabled: getUserValue("ringtoneEnabled", AUDIO_DEFAULTS.ringtoneEnabled),
+    ringtoneVolume: getUserValue("ringtoneVolume", AUDIO_DEFAULTS.ringtoneVolume),
+    customRingtoneFile: getUserValue("customRingtoneFile", AUDIO_DEFAULTS.customRingtoneFile),
     notificationBadgeEnabled: getUserValue("notificationBadgeEnabled", AUDIO_DEFAULTS.notificationBadgeEnabled),
     desktopNotificationsEnabled: getUserValue("desktopNotificationsEnabled", AUDIO_DEFAULTS.desktopNotificationsEnabled),
   };
@@ -150,6 +159,9 @@ export function useAudioSettings() {
   const [messageSoundEnabled, setMessageSoundEnabled] = useState(AUDIO_DEFAULTS.messageSoundEnabled);
   const [messageSoundVolume, setMessageSoundVolume] = useState(AUDIO_DEFAULTS.messageSoundVolume);
   const [customMessageSoundFile, setCustomMessageSoundFile] = useState<string | null>(AUDIO_DEFAULTS.customMessageSoundFile);
+  const [ringtoneEnabled, setRingtoneEnabled] = useState(AUDIO_DEFAULTS.ringtoneEnabled);
+  const [ringtoneVolume, setRingtoneVolume] = useState(AUDIO_DEFAULTS.ringtoneVolume);
+  const [customRingtoneFile, setCustomRingtoneFile] = useState<string | null>(AUDIO_DEFAULTS.customRingtoneFile);
 
   const [notificationBadgeEnabled, setNotificationBadgeEnabled] = useState(AUDIO_DEFAULTS.notificationBadgeEnabled);
   const [desktopNotificationsEnabled, setDesktopNotificationsEnabled] = useState(AUDIO_DEFAULTS.desktopNotificationsEnabled);
@@ -182,6 +194,9 @@ export function useAudioSettings() {
     setMessageSoundEnabled(d.messageSoundEnabled);
     setMessageSoundVolume(d.messageSoundVolume);
     setCustomMessageSoundFile(d.customMessageSoundFile);
+    setRingtoneEnabled(d.ringtoneEnabled);
+    setRingtoneVolume(d.ringtoneVolume);
+    setCustomRingtoneFile(d.customRingtoneFile);
     setNotificationBadgeEnabled(d.notificationBadgeEnabled);
     setDesktopNotificationsEnabled(d.desktopNotificationsEnabled);
   }
@@ -359,6 +374,21 @@ export function useAudioSettings() {
     }
   }
 
+  function updateRingtoneEnabled(enabled: boolean) {
+    setRingtoneEnabled(enabled);
+    setUserValue("ringtoneEnabled", enabled);
+  }
+
+  function updateRingtoneVolume(volume: number) {
+    setRingtoneVolume(volume);
+    setUserValue("ringtoneVolume", volume);
+  }
+
+  function updateCustomRingtoneFile(file: string | null) {
+    setCustomRingtoneFile(file);
+    setUserValue("customRingtoneFile", file);
+  }
+
   function updateNotificationBadgeEnabled(value: boolean) {
     setNotificationBadgeEnabled(value);
     setUserValue("notificationBadgeEnabled", value);
@@ -470,6 +500,12 @@ export function useAudioSettings() {
     setMessageSoundVolume: updateMessageSoundVolume,
     customMessageSoundFile,
     setCustomMessageSoundFile: updateCustomMessageSoundFile,
+    ringtoneEnabled,
+    setRingtoneEnabled: updateRingtoneEnabled,
+    ringtoneVolume,
+    setRingtoneVolume: updateRingtoneVolume,
+    customRingtoneFile,
+    setCustomRingtoneFile: updateCustomRingtoneFile,
     notificationBadgeEnabled,
     setNotificationBadgeEnabled: updateNotificationBadgeEnabled,
     desktopNotificationsEnabled,

@@ -358,6 +358,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-badge-count", count);
   },
 
+  flashFrame(on: boolean) {
+    ipcRenderer.send("flash-frame", on);
+  },
+
   /**
    * Repaint the native minimise/maximise/close buttons. Colours rather than a
    * theme name: only the renderer knows what the variables evaluate to.

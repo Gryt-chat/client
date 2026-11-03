@@ -46,6 +46,7 @@ import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
 import { useReencrypt } from "../hooks/useReencrypt";
 import { useReportUser } from "../hooks/useReportUser";
+import { useRinging } from "../hooks/useRinging";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useServerReports } from "../hooks/useServerReports";
 import { useServerState } from "../hooks/useServerState";
@@ -866,6 +867,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   /** A ring carries a nickname and nothing else, or a person's appearance is a
       second copy to go stale. A caller not in the list draws from the name. */
   const caller = incomingCall ? memberListMap[incomingCall.from.server_user_id] : undefined;
+  useRinging(
+    incomingCall && viewingHost
+      ? {
+          conversationId: incomingCall.conversation_id,
+          host: viewingHost,
+          title: callerTitle(directConversations.find((c) => c.conversation_id === incomingCall.conversation_id), incomingCall.from.nickname),
+        }
+      : null,
+  );
   const callerAvatarUrl =
     caller?.avatarFileId && viewingHost
       ? getUploadsFileUrl(viewingHost, caller.avatarFileId, { thumb: true })

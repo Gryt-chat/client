@@ -187,6 +187,12 @@ export interface Settings {
   setMessageSoundVolume: (value: number) => void;
   customMessageSoundFile: string | null;
   setCustomMessageSoundFile: (value: string | null) => void;
+  ringtoneEnabled: boolean;
+  setRingtoneEnabled: (value: boolean) => void;
+  ringtoneVolume: number;
+  setRingtoneVolume: (value: number) => void;
+  customRingtoneFile: string | null;
+  setCustomRingtoneFile: (value: string | null) => void;
 
   chatMediaVolume: number;
   setChatMediaVolume: (value: number) => void;
@@ -393,6 +399,12 @@ export const settingsInit: Settings = {
   setMessageSoundVolume: noop,
   customMessageSoundFile: AUDIO_DEFAULTS.customMessageSoundFile,
   setCustomMessageSoundFile: noop,
+  ringtoneEnabled: AUDIO_DEFAULTS.ringtoneEnabled,
+  setRingtoneEnabled: noop,
+  ringtoneVolume: AUDIO_DEFAULTS.ringtoneVolume,
+  setRingtoneVolume: noop,
+  customRingtoneFile: AUDIO_DEFAULTS.customRingtoneFile,
+  setCustomRingtoneFile: noop,
 
   chatMediaVolume: 50,
   setChatMediaVolume: noop,

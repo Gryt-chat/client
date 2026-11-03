@@ -3,10 +3,10 @@ import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 import useSound from "use-sound";
 
-import messageSoundMp3 from "@/audio/src/assets/universfield-computer-mouse-click-02-383961.mp3";
 import type { SealDecision } from "@/common";
 import { getOwnServerUserId, getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, markChannelUnread, markThreadUnread, mentionsMember, shouldNotifyForMessage, useAccount, useUnreadBadge } from "@/common";
 import { showDesktopNotification } from "@/lib/desktopNotification";
+import { MESSAGE_SOUNDS, resolveSound } from "@/lib/soundPresets";
 import { useSettings } from "@/settings";
 import type { ForumTag, serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
@@ -138,7 +138,7 @@ export function useChat({
   const desktopNotificationsEnabledRef = useRef(desktopNotificationsEnabled);
   useEffect(() => { desktopNotificationsEnabledRef.current = desktopNotificationsEnabled; }, [desktopNotificationsEnabled]);
 
-  const [playMessageSound] = useSound(customMessageSoundFile || messageSoundMp3, {
+  const [playMessageSound] = useSound(resolveSound(customMessageSoundFile, MESSAGE_SOUNDS), {
     volume: messageSoundVolume / 100,
     soundEnabled: messageSoundEnabled,
   });
