@@ -1,6 +1,6 @@
 /* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md) */
 import { Alert, Button, Dialog, TextField } from "@gryt/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { restoreIdentityFromWords } from "@/common";
@@ -21,6 +21,13 @@ export function ApproveThisDevice() {
   const [panel, setPanel] = useState<"words" | "fresh" | null>(null);
   const [words, setWords] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // A DM's "Other ways" reopens this after "Not now".
+  useEffect(() => {
+    const reopen = () => setLater(false);
+    window.addEventListener("gryt:approve-device-open", reopen);
+    return () => window.removeEventListener("gryt:approve-device-open", reopen);
+  }, []);
 
   const restore = async () => {
     setBusy(true);

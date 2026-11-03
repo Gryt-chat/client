@@ -19,7 +19,7 @@ import { draftKey, returnDraft } from "../hooks/returnedDrafts";
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import { getMediaDimensions } from "../utils/imageUtils";
 import { openSealedAttachment } from "../utils/sealedAttachments";
-import { adoptThisDevicesKey, mlsDmDiagnostics, useMlsSource } from "./serverMls";
+import { askToApproveHere, mlsDmDiagnostics, useMlsSource } from "./serverMls";
 import type { ConversationProblems } from "./session";
 import { archivedRow, newMessage, sendFailure, withOpenedFiles } from "./timeline";
 
@@ -384,20 +384,8 @@ export function useMlsConversation({
       // The safe choice first; "Copy details" is for support, so it goes last.
       return [
         { label: "Link this device", run: openLinkDevice },
-        {
-          label: "Use this device's key instead",
-          run: () => {
-            void adoptThisDevicesKey(host).then((ok) => {
-              if (!ok) toast.error("Couldn't switch your key to this device's.");
-            });
-          },
-          confirm: {
-            title: "Use this device's key for your account?",
-            description:
-              "Everyone you message here will see that your key changed. Your other devices stop working for encrypted DMs here until you link them to this one. Only do this if you can't link this device.",
-            confirmLabel: "Use this key",
-          },
-        },
+        // The server only takes a new key here with the old key's approval, or after a 30-day reset.
+        { label: "Other ways", run: () => askToApproveHere(host) },
         ...details,
       ];
     }, [active, source, conversationId, problems, host, openLinkDevice, showAdvanced]),
