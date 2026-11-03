@@ -59,7 +59,7 @@ export function ApproveThisDevice() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto">
-          <Dialog.Title>Approve this device from your phone</Dialog.Title>
+          <Dialog.Title>Approve this device</Dialog.Title>
           <div className="mt-3 flex flex-col gap-3 text-sm">
             <p>
               You&rsquo;re signed in. To open your private messages here too, approve it once from a device you
@@ -67,11 +67,19 @@ export function ApproveThisDevice() {
             </p>
             {handover && !handover.denied && (
               <div className="flex flex-col gap-1 rounded-md border border-gryt-border p-3">
-                <span className="font-semibold">Your other device has a request from this one</span>
+                <span className="font-semibold">
+                  Waiting for {handover.holder || "your other device"}
+                  {handover.seenAt ? `, last used ${new Date(handover.seenAt).toLocaleDateString()}` : ""}
+                </span>
                 <span>
                   Open Gryt there and check it shows <span className="font-mono font-semibold">{handover.code}</span>,
                   then approve. This server then uses the same key as your other servers.
                 </span>
+                {handover.at && (
+                  <span className="text-gryt-muted">
+                    If nobody answers, this device takes over by itself on {new Date(handover.at).toLocaleDateString()}.
+                  </span>
+                )}
               </div>
             )}
             {handover?.denied && (

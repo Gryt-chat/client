@@ -41,7 +41,7 @@ export function HandoverRequestDialog() {
               <Button disabled={busy} onClick={() => void approve()}>
                 Yes, approve
               </Button>
-              <Button tone="neutral" disabled={busy} onClick={() => request && denyHandover(request)}>
+              <Button tone="neutral" disabled={busy} onClick={() => request && denyHandover(request, { stop: true })}>
                 No, that&rsquo;s not mine
               </Button>
             </div>
