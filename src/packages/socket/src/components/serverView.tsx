@@ -160,7 +160,14 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     devFakeParticipants, devFakeMuted, devFakeScreenShare,
     devFakeDeafened, devFakeSpeaking, devFakeMembers, devFakeChatSeconds,
   } = useSettings();
-  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace } = useServerManagement();
+  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace, addServer, removeServer } = useServerManagement();
+  /* Switches the saved server to the address it gave as public (GRYT-2007). A new address is
+     joined and proved like any server added by hand, so its identity check runs as normal. */
+  const switchToPublicAddress = (server: { host: string; name?: string; publicHost?: string }) => {
+    if (!server.publicHost) return;
+    addServer({ host: server.publicHost, name: server.name || server.publicHost }, true);
+    removeServer(server.host);
+  };
   const directory = useDirectory();
   /* The conversations as the search panel's "channels", which is what it names a hit by
      and what `in:` offers. Only the fields it reads. */
@@ -1210,6 +1217,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         sfuHosts={[]}
         stunHosts={[]}
         onTryNow={() => reconnectServer(currentlyViewingServer.host)}
+        publicHost={currentlyViewingServer.publicHost}
+        onUsePublic={() => switchToPublicAddress(currentlyViewingServer)}
       />
     );
   }
@@ -1388,6 +1397,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         sfuHosts={serverDetails.sfu_hosts ?? (serverDetails.sfu_host ? [serverDetails.sfu_host] : [])}
         stunHosts={serverDetails.stun_hosts ?? []}
         onTryNow={() => reconnectServer(host)}
+        publicHost={currentlyViewingServer.publicHost}
+        onUsePublic={() => switchToPublicAddress(currentlyViewingServer)}
       />
     );
   }

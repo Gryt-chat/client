@@ -81,6 +81,8 @@ export type serverDetails = {
   voice_capacity_max?: number | null;
   clients?: Record<string, unknown>;
   server_info?: {
+    /** Where it answers from anywhere, when the operator set one (GRYT-2007). */
+    public_host?: string;
     server_id?: string;
     name?: string;
     description?: string;
@@ -160,6 +162,8 @@ export type Server = {
    * means outstanding; a timestamp so the entry can say how long (GRYT-289).
    */
   approvalRequestedAt?: number;
+  /** The server's public address, remembered for when this one doesn't answer (GRYT-2007). */
+  publicHost?: string;
 };
 
 export type Servers = {
