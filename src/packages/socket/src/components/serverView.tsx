@@ -53,6 +53,7 @@ import { SIDEBAR_HOVER_PX, SIDEBAR_WIDTH_PX, useMediaAutoShow, useSidebarHover, 
 import { useSidebarEditor } from "../hooks/useSidebarEditor";
 import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
+import { useWaitingBots } from "../hooks/useWaitingBots";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { withSharing } from "../lib/screenItems";
@@ -542,12 +543,15 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
 
   const viewerPermissions = useServerPermissions(currentlyViewingServer?.host || "");
 
-  const { pendingReportCount, memberListMap } = useServerReports({
+  const { pendingReportCount: waitingReports, memberListMap } = useServerReports({
     currentConnection, accessToken, currentlyViewingServer, memberLists,
     /* `has`, not `can`: this drives an automatic `reports:list` on join, before
        `server:details` arrives, so `can` made a refusal a new member's first sight. */
     canViewReports: viewerPermissions.has("view_reports"),
   });
+  // One badge on Server settings for anything waiting in there: reports and bots.
+  const waitingBots = useWaitingBots(currentConnection, accessToken, viewerPermissions.has("manage_bots"));
+  const pendingReportCount = waitingReports + waitingBots;
 
   const viewingHost = currentlyViewingServer?.host;
   const [updateAvailable, setUpdateAvailable] = useState(() =>
