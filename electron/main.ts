@@ -4679,6 +4679,11 @@ if (!gotSingleInstanceLock) {
         }
       );
 
+      // A ring flashes the taskbar or bounces the dock until it's answered (GRYT-2010).
+      ipcMain.on("flash-frame", (_event, on: boolean) => {
+        mainWindow?.flashFrame(on === true);
+      });
+
       ipcMain.on(
         "toggle-always-on-top",
         (

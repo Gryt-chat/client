@@ -313,6 +313,8 @@ export interface ElectronAPI {
   getHardwareAcceleration(): Promise<boolean>;
   setHardwareAcceleration(enabled: boolean): void;
   setBadgeCount(count: number): void;
+  /** Flash the taskbar entry or bounce the dock. Absent on builds before GRYT-2010. */
+  flashFrame?(on: boolean): void;
   /**
    * Raise an OS notification. Absent on builds older than the one that added
    * it, which is why the renderer falls back to the web Notification API.

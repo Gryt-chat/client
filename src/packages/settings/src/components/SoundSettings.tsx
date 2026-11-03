@@ -1,6 +1,8 @@
-import { Button, IconButton, Slider, Switch, Tooltip } from "@gryt/ui";
+import { Button, IconButton, Select, Slider, Switch, Tooltip } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
 import useSound from "use-sound";
+
+import { presetIdOf, presetValue, resolveSound, type SoundPreset } from "@/lib/soundPresets";
 
 import { PiArrowsClockwiseFill, PiCheck, PiPlayFill, PiStopFill } from "../../../../lib/icons";
 
@@ -15,6 +17,8 @@ interface SoundSettingsProps {
   customSoundFile: string | null;
   onCustomSoundFileChange: (file: string | null) => void;
   defaultSoundSrc: string;
+  /** Built-in sounds to pick from (GRYT-2010). The first is the default. */
+  presets?: readonly SoundPreset[];
   showAlert: (
     type: "success" | "error",
     title: string,
@@ -33,13 +37,16 @@ export function SoundSettings({
   customSoundFile,
   onCustomSoundFileChange,
   defaultSoundSrc,
+  presets,
   showAlert,
 }: SoundSettingsProps) {
+  const chosenPreset = presetIdOf(customSoundFile);
+  const uploaded = customSoundFile !== null && chosenPreset === null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const [playSound, { stop: stopSound }] = useSound(
-    customSoundFile || defaultSoundSrc,
+    presets ? resolveSound(customSoundFile, presets) : customSoundFile || defaultSoundSrc,
     {
       volume: volume / 100,
       soundEnabled: true,
@@ -63,7 +70,7 @@ export function SoundSettings({
   }, [stopSound, label]);
 
   useEffect(() => {
-    if (!customSoundFile) return;
+    if (!customSoundFile || presetIdOf(customSoundFile) !== null) return;
 
     const isBlobUrl = (url: string) => url.startsWith("blob:");
     const isDataUrl = (url: string) => url.startsWith("data:");
@@ -236,6 +243,25 @@ export function SoundSettings({
             </div>
           </div>
 
+          {presets && (
+            <div className="flex flex-col gap-2">
+              <span className="font-medium text-sm">Sound</span>
+              <Select
+                value={uploaded ? "custom" : chosenPreset ?? presets[0].id}
+                onValueChange={(v) => {
+                  const id = String(v);
+                  if (isPlaying) stopSound();
+                  if (id === "custom") return;
+                  onCustomSoundFileChange(id === presets[0].id ? null : presetValue(id));
+                }}
+                options={[
+                  ...presets.map((p) => ({ label: p.label, value: p.id })),
+                  ...(uploaded ? [{ label: "Your file", value: "custom" }] : []),
+                ]}
+              />
+            </div>
+          )}
+
           {/* Custom Sound File */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -263,7 +289,7 @@ export function SoundSettings({
                 onClick={() => fileInputRef.current?.click()}
                 style={{ flexGrow: 1 }}
               >
-                {customSoundFile ? "Change File" : "Choose File"}
+                {uploaded ? "Change File" : "Choose File"}
               </Button>
               <Tooltip title="Test sound" side="top">
                 {isPlaying ? (
@@ -279,7 +305,7 @@ export function SoundSettings({
                 )}
               </Tooltip>
             </div>
-            {customSoundFile && (
+            {uploaded && (
               <span className="text-xs text-gryt-success inline-flex items-center gap-1">
                 <PiCheck size={12} />
                 Custom sound file loaded

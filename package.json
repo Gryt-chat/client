@@ -33,6 +33,7 @@
     "test:search-snippet": "node --disable-warning=ExperimentalWarning scripts/check-search-snippet.ts",
     "test:unread-split": "node --disable-warning=ExperimentalWarning scripts/check-unread-split.ts",
     "test:lan-server-memory": "node scripts/check-lan-server-memory.ts",
+    "test:sound-presets": "node --disable-warning=ExperimentalWarning scripts/check-sound-presets.ts",
     "test:lan-discovery": "node --disable-warning=ExperimentalWarning scripts/check-lan-discovery.ts",
     "test:voice-presence": "node scripts/check-voice-presence.ts",
     "test:voice-server-removed": "node scripts/check-voice-server-removed.ts",

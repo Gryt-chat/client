@@ -8,6 +8,7 @@ import {
   setGlobalLevel,
   subscribeToPrefs,
 } from "@/common";
+import { MESSAGE_SOUNDS, RINGTONES } from "@/lib/soundPresets";
 import { useSettings } from "@/settings";
 
 import { NoticeDialog } from "../../../socket/src/components/NoticeDialog";
@@ -34,6 +35,12 @@ export function NotificationSettings() {
     setMessageSoundVolume,
     customMessageSoundFile,
     setCustomMessageSoundFile,
+    ringtoneEnabled,
+    setRingtoneEnabled,
+    ringtoneVolume,
+    setRingtoneVolume,
+    customRingtoneFile,
+    setCustomRingtoneFile,
   } = useSettings();
 
   /* The global level and the per-server rules share a store, and this reads
@@ -144,6 +151,24 @@ export function NotificationSettings() {
         customSoundFile={customMessageSoundFile}
         onCustomSoundFileChange={setCustomMessageSoundFile}
         defaultSoundSrc={messageSoundMp3}
+        presets={MESSAGE_SOUNDS}
+        showAlert={showAlert}
+      />
+
+      <Divider />
+
+      <SoundSettings
+        label="Ringtone"
+        description="Play a sound while somebody is calling you"
+        enabled={ringtoneEnabled}
+        onEnabledChange={setRingtoneEnabled}
+        volume={ringtoneVolume}
+        onVolumeChange={setRingtoneVolume}
+        defaultVolume={40}
+        customSoundFile={customRingtoneFile}
+        onCustomSoundFileChange={setCustomRingtoneFile}
+        defaultSoundSrc={RINGTONES[0].src}
+        presets={RINGTONES}
         showAlert={showAlert}
       />
 
