@@ -2,6 +2,7 @@ import { Button, IconButton, Select, Slider, Switch, Tooltip } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
 import useSound from "use-sound";
 
+import { playNotificationSound } from "@/lib/notificationSound";
 import { presetIdOf, presetValue, resolveSound, type SoundPreset } from "@/lib/soundPresets";
 
 import { PiArrowsClockwiseFill, PiCheck, PiPlayFill, PiStopFill } from "../../../../lib/icons";
@@ -190,6 +191,20 @@ export function SoundSettings({
     }
   };
 
+  const playButton = (
+    <Tooltip title="Test sound" side="top">
+      {isPlaying ? (
+        <Button tone="danger" size="small" onClick={stopSoundTest}>
+          <PiStopFill size={16} />
+        </Button>
+      ) : (
+        <Button tone="ghost" size="small" onClick={testSound}>
+          <PiPlayFill size={16} />
+        </Button>
+      )}
+    </Tooltip>
+  );
+
   return (
     <div className="flex flex-col gap-3">
       <span className="font-medium text-base">
@@ -246,19 +261,27 @@ export function SoundSettings({
           {presets && (
             <div className="flex flex-col gap-2">
               <span className="font-medium text-sm">Sound</span>
-              <Select
-                value={uploaded ? "custom" : chosenPreset ?? presets[0].id}
-                onValueChange={(v) => {
-                  const id = String(v);
-                  if (isPlaying) stopSound();
-                  if (id === "custom") return;
-                  onCustomSoundFileChange(id === presets[0].id ? null : presetValue(id));
-                }}
-                options={[
-                  ...presets.map((p) => ({ label: p.label, value: p.id })),
-                  ...(uploaded ? [{ label: "Your file", value: "custom" }] : []),
-                ]}
-              />
+              <div className="flex items-center gap-2">
+                <div style={{ flexGrow: 1 }}>
+                  <Select
+                    value={uploaded ? "custom" : chosenPreset ?? presets[0].id}
+                    onValueChange={(v) => {
+                      const id = String(v);
+                      if (isPlaying) stopSound();
+                      if (id === "custom") return;
+                      const next = id === presets[0].id ? null : presetValue(id);
+                      onCustomSoundFileChange(next);
+                      // Picking one plays it, so the list can be listened through.
+                      playNotificationSound(resolveSound(next, presets), volume);
+                    }}
+                    options={[
+                      ...presets.map((p) => ({ label: p.label, value: p.id })),
+                      ...(uploaded ? [{ label: "Your file", value: "custom" }] : []),
+                    ]}
+                  />
+                </div>
+                {playButton}
+              </div>
             </div>
           )}
 
@@ -291,19 +314,7 @@ export function SoundSettings({
               >
                 {uploaded ? "Change File" : "Choose File"}
               </Button>
-              <Tooltip title="Test sound" side="top">
-                {isPlaying ? (
-                  <Button tone="danger" size="small"
-                    onClick={stopSoundTest}
-                  >
-                    <PiStopFill size={16} />
-                  </Button>
-                ) : (
-                  <Button tone="ghost" size="small" onClick={testSound}>
-                    <PiPlayFill size={16} />
-                  </Button>
-                )}
-              </Tooltip>
+              {!presets && playButton}
             </div>
             {uploaded && (
               <span className="text-xs text-gryt-success inline-flex items-center gap-1">
