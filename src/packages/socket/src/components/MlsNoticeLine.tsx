@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { Button } from "@gryt/ui";
+import { useState } from "react";
 
 import { PiInfoFill } from "../../../../lib/icons";
 import type { MlsAction } from "../mls/useMlsConversation";
@@ -15,21 +16,23 @@ export function MlsNoticeLine({ notice, actions }: { notice: string; actions: Ml
       style={{ color: "var(--gryt-neutral-11)" }}
     >
       <PiInfoFill aria-hidden="true" size={13} style={{ flexShrink: 0, marginTop: "1px" }} />
-      <span>
-        {notice}
-        {actions.map((action) => (
-          <Fragment key={action.label}>
-            {" "}
-            <button
-              type="button"
-              className="gryt-link"
-              onClick={() => (action.confirm ? setConfirming(action) : action.run())}
-            >
-              {action.label}
-            </button>
-          </Fragment>
-        ))}
-      </span>
+      <div className="flex min-w-0 flex-col gap-2">
+        <span>{notice}</span>
+        {actions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {actions.map((action, i) => (
+              <Button
+                key={action.label}
+                size="small"
+                tone={i === 0 ? "primary" : "neutral"}
+                onClick={() => (action.confirm ? setConfirming(action) : action.run())}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
       {confirming?.confirm && (
         <ConfirmDialog
           open

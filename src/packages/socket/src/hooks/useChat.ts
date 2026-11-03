@@ -107,6 +107,8 @@ interface UseChatReturn {
   archiveFailed: boolean;
   /** Buttons for the line above the composer. */
   mlsActions: MlsAction[];
+  /** The notice is about the other person's key changing; offer their card. */
+  peerKeyNotice: boolean;
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -803,6 +805,8 @@ export function useChat({
     [onMlsPath, peerKeyChanged, sealing.decision],
   );
 
+  // When the line shown is "<name> has a new key", its buttons are for checking that key, not this device's.
+  const peerKeyNotice = mls.mode?.kind === "mls" && peerKeyChanged && mls.problems.lost !== "device_removed" && !(peerKeyResetAt && peerKeyResetAt > Date.now());
   const composer = dmComposer({ dmPeer, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed, peerKeyChanged });
   const sendPath = composer.path;
   const sendOnEitherPath = useCallback(
@@ -875,6 +879,7 @@ export function useChat({
     reactMlsMessage: mls.react,
     mlsReportsTaken,
     archiveFailed: composer.archiveProblem,
-    mlsActions: dmPeer ? mls.actions : NO_ACTIONS,
+    mlsActions: dmPeer && !peerKeyNotice ? mls.actions : NO_ACTIONS,
+    peerKeyNotice,
   };
 }

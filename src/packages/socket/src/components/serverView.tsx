@@ -484,7 +484,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
-    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions,
+    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -501,9 +501,11 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       react: reactMlsMessage,
       reportsTaken: mlsReportsTaken,
       archiveFailed,
-      actions: mlsActions,
+      actions: peerKeyNotice
+        ? [{ label: `Check ${activeConversation?.other.nickname ?? "their"}'s key`, run: () => setDmInfoOpen(true) }]
+        : mlsActions,
     }),
-    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions],
+    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, activeConversation?.other.nickname],
   );
 
   /** The server already withholds new messages, so this covers what was drawn

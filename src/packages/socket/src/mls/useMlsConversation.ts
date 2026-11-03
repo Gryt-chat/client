@@ -381,8 +381,8 @@ export function useMlsConversation({
         return [{ label: "Ask again", run: () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e)) }, ...details];
       }
       if (problems.lost !== "other_identity") return details;
+      // The safe choice first; "Copy details" is for support, so it goes last.
       return [
-        ...details,
         { label: "Link this device", run: openLinkDevice },
         {
           label: "Use this device's key instead",
@@ -398,6 +398,7 @@ export function useMlsConversation({
             confirmLabel: "Use this key",
           },
         },
+        ...details,
       ];
     }, [active, source, conversationId, problems, host, openLinkDevice, showAdvanced]),
     edit: useCallback(

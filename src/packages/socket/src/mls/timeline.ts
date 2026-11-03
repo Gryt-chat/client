@@ -169,13 +169,13 @@ export function mlsNotice(
     return `${peerName}'s key is being reset, and a new one takes over on ${on}. If you didn't expect this, check with ${peerName} another way.`;
   }
   if (mode?.kind === "mls" && peerKeyChanged) {
-    return `${peerName} has a new key, usually from a new phone or computer. Before you reply, open their card and compare the pictures with them, in person or on a call.`;
+    return `${peerName} has a new key, usually from a new phone or computer. Before you reply, compare the pictures on their card with them somewhere this server can't change: in person, on a call, or in a chat on another server.`;
   }
   if (problems.lost === "too_many_devices") {
     return `${Here} can't use encrypted DMs here because your account has the most devices allowed. Remove an old one in Settings, under Devices.`;
   }
   if (problems.lost === "other_identity") {
-    return `${Here} has a different encryption key from your other devices, so people who know your key can't reach you here. Link it from a device you already use.`;
+    return `${Here} has its own encryption key on this server, not your account's. Link it from one of your devices that has your account's key, or make this device's key your account's.`;
   }
   if (problems.lost === "not_added") {
     return `${Here} is new to your chat with ${peerName}. ${peerName}'s app or another of your devices adds it by itself the next time one of them is open. Until then, what you write here waits and goes out on its own.`;

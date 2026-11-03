@@ -133,7 +133,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, app) ?? "", /3 messages/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "removed" }, app) ?? "", /taken out/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "not_added" }, app) ?? "", /new to your chat with Mia.*waits and goes out on its own/);
-  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /different encryption key.*Link it/);
+  assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /own encryption key on this server.*Link it/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*Settings/);
   const refused = { kind: "refused", reason: "no_own_device" } as const;
   assert.match(mlsNotice(refused, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*Settings/);
