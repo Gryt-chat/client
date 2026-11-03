@@ -240,7 +240,7 @@ export function ServerBotsTab({
                       disabled={busy}
                       onClick={() => emit("server:bots:decide", { botId: bot.botId, decision: "denied" })}
                     >
-                      Turn away
+                      Decline
                     </Button>
                     <Button
                       size="small"
@@ -253,7 +253,7 @@ export function ServerBotsTab({
                         })
                       }
                     >
-                      Let it in with {chosen.size}
+                      Approve
                     </Button>
                   </div>
                 </div>
