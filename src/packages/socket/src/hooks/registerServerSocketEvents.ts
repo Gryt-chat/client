@@ -283,6 +283,13 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("server:details", (data: serverDetails) => {
+    const publicHost = data.server_info?.public_host;
+    const saved = serversRef.current[host];
+    if (saved && typeof publicHost === "string" && publicHost !== host && saved.publicHost !== publicHost) {
+      const updated = { ...serversRef.current, [host]: { ...saved, publicHost } };
+      serversRef.current = updated;
+      setServers(updated);
+    }
     // An older server says nothing, which reads as off.
     setExternalEmojisAllowed(host, data.server_info?.external_emojis === true);
     /* Where the sidebar arrives, and the layer deciding whether a message makes a

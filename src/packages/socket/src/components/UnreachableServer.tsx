@@ -1,7 +1,7 @@
 import { Button, Surface } from "@gryt/ui";
 import { useState } from "react";
 
-import { PiArrowsClockwiseFill, PiPlugsFill, PiPulseBold } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiGlobeSimpleFill, PiPlugsFill, PiPulseBold } from "../../../../lib/icons";
 import { ServerDoctor } from "./ServerDoctor";
 
 /**
@@ -14,12 +14,17 @@ export function UnreachableServer({
   sfuHosts,
   stunHosts,
   onTryNow,
+  publicHost,
+  onUsePublic,
 }: {
   host: string;
   serverName: string;
   sfuHosts: string[];
   stunHosts: string[];
   onTryNow: () => void;
+  /** The address it answers on from anywhere, when this one is its LAN address (GRYT-2007). */
+  publicHost?: string;
+  onUsePublic?: () => void;
 }) {
   const [doctorOpen, setDoctorOpen] = useState(false);
 
@@ -73,6 +78,12 @@ export function UnreachableServer({
               Check the connection
             </Button>
           </div>
+          {publicHost && publicHost !== host && onUsePublic && (
+            <Button size="small" tone="ghost" onClick={onUsePublic}>
+              <PiGlobeSimpleFill size={16} />
+              Connect through {publicHost}
+            </Button>
+          )}
           {serverName !== host && <span className="text-xs text-gryt-muted" style={{ marginTop: 8 }}>{host}</span>}
         </div>
       </div>
