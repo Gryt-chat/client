@@ -239,10 +239,10 @@ export function ServerBotsTab({
           );
         })}
 
-        {pending.length === 0 && wantsMore.length === 0 ? (
+        {pending.length === 0 && wantsMore.length === 0 && (
           <span className="text-sm text-gryt-muted">Nothing waiting.</span>
-        ) : pending.length === 0 ? null : (
-          pending.map((bot) => {
+        )}
+        {pending.map((bot) => {
             const chosen = ticked[bot.registrationId] ?? new Set<string>();
             return (
               <Surface key={bot.registrationId}>
@@ -321,8 +321,7 @@ export function ServerBotsTab({
                 </div>
               </Surface>
             );
-          })
-        )}
+          })}
       </div>
 
       <div className="flex flex-col gap-3">
