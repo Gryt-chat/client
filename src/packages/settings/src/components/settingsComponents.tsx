@@ -81,11 +81,12 @@ interface ToggleSettingProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   statusText?: string;
+  advanced?: boolean;
 }
 
-export function ToggleSetting({ title, description, checked, onCheckedChange, statusText }: ToggleSettingProps) {
+export function ToggleSetting({ title, description, checked, onCheckedChange, statusText, advanced }: ToggleSettingProps) {
   return (
-    <SettingGroup title={title} description={description}>
+    <SettingGroup title={title} description={description} advanced={advanced}>
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <span className="text-sm text-gryt-muted">Enable {title}</span>
