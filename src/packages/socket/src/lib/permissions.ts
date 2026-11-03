@@ -153,6 +153,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: "manage_webhooks", label: "Manage webhooks", description: "Create and revoke webhooks." },
       { id: "view_audit_log", label: "View audit log", description: "Read what moderators and admins have done." },
       { id: "view_server_status", label: "See server status", description: "Whether this server is running a current build." },
+      { id: "view_diagnostics", label: "See diagnostics", description: "Who's in voice, their latency, and the voice server's numbers. What an AI helping debug this server reads." },
       { id: "manage_roles", label: "Manage roles", description: "Edit roles and hand them out. The keys to the building." },
       { id: "manage_bots", label: "Manage bots", description: "Answer bots at the door and decide what they may do." },
       { id: "manage_server", label: "Manage server", description: "Name, description, icon, limits, join policy." },
