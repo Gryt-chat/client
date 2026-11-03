@@ -8,15 +8,21 @@ import type { TypingUser } from "../hooks/useTypingIndicator";
 interface TypingIndicatorProps {
   typingUsers: TypingUser[];
   serverHost?: string;
+  /** The #2 after a name someone else here also uses (GRYT-1674). */
+  nameTags?: Map<string, string>;
 }
 
-function buildLabel(users: TypingUser[]): string {
-  if (users.length === 1) return `${users[0].nickname} is typing...`;
-  if (users.length === 2) return `${users[0].nickname} and ${users[1].nickname} are typing...`;
+function buildLabel(users: TypingUser[], tags?: Map<string, string>): string {
+  const name = (u: TypingUser) => {
+    const tag = tags?.get(u.serverUserId);
+    return tag ? `${u.nickname} ${tag}` : u.nickname;
+  };
+  if (users.length === 1) return `${name(users[0])} is typing...`;
+  if (users.length === 2) return `${name(users[0])} and ${name(users[1])} are typing...`;
   return "Several people are typing...";
 }
 
-export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProps) {
+export function TypingIndicator({ typingUsers, serverHost, nameTags }: TypingIndicatorProps) {
   const first = typingUsers[0] as TypingUser | undefined;
 
   return (
@@ -42,7 +48,7 @@ export function TypingIndicator({ typingUsers, serverHost }: TypingIndicatorProp
               />
             )}
             <span className="text-xs" style={{ color: "var(--gryt-neutral-11)", fontSize: 13 }}>
-              {buildLabel(typingUsers)}
+              {buildLabel(typingUsers, nameTags)}
             </span>
           </div>
         </motion.div>
