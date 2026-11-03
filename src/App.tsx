@@ -46,6 +46,7 @@ import { MainIdentity } from "./components/MainIdentity";
 import { MicrophoneDebugOverlay } from "./components/microphoneDebugOverlay";
 import { ReportDialog } from "./components/reportDialog";
 import { SaveWordsDialog } from "./components/saveWordsDialog";
+import { SignInApproval } from "./components/signInApproval";
 import { TermsPrompt } from "./components/termsPrompt";
 import { TrayVoiceState } from "./components/trayVoiceState";
 import { VaultUpgradePrompt } from "./components/vaultUpgradePrompt";
@@ -155,6 +156,7 @@ export function App() {
           <SaveWordsDialog />
           <HandoverRequestDialog />
           <KeyResetDialog />
+          <SignInApproval />
           <FriendRequestDialog />
           <ApproveDeviceDialog />
           <AddNewServer showAddServer={showAddServer} setShowAddServer={setShowAddServer} />
