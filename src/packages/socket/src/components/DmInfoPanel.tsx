@@ -217,8 +217,9 @@ export function DmPersonPanel({
       className="flex h-full shrink-0 flex-col gap-3 overflow-y-auto p-2"
       style={{ width: PANEL_WIDTH, background: "var(--gryt-neutral-2)", borderRadius: "var(--gryt-radius-lg)" }}
     >
-      {fullCard && member && <MemberIdentityCard member={member} serverHost={host} inline />}
-      {!fullCard && member && <MiniCard member={member} host={host} statusText={where || undefined} onFullCard={() => setFullCard(true)} />}
+      {/* shrink-0: the card clips its overflow, so in this flex column it was squeezed and cut off instead of the panel scrolling. */}
+      {fullCard && member && <div className="shrink-0"><MemberIdentityCard member={member} serverHost={host} inline /></div>}
+      {!fullCard && member && <div className="shrink-0"><MiniCard member={member} host={host} statusText={where || undefined} onFullCard={() => setFullCard(true)} /></div>}
       {!member && (
         <div
           className="flex items-center gap-3 p-3"
