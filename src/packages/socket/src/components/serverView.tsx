@@ -1,5 +1,5 @@
 import { Avatar, Button, IconButton, Menu, Tooltip } from "@gryt/ui";
-import { useCamera, useSFU } from "@gryt/voice";
+import { useSFU } from "@gryt/voice";
 import { motion } from "motion/react";
 import { type ReactNode,useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -13,7 +13,7 @@ import { hostedServerAt, manageServerTab } from "@/settings/src/hostedServers";
 import type { SidebarItem } from "@/settings/src/types/server";
 import { setInACall, useAnyCallButtonPress } from "@/webRTC";
 
-import { PiCameraFill,PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
+import { PiCaretLeftBold, PiGearSixFill, PiMagnifyingGlassBold, PiPhoneFill, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { useFakeChat } from "../dev/fakeChat";
 import { useFakeChatRunning } from "../dev/fakeChatController";
 import { fakeConversations, fakeDmsOn, fakeHostNow } from "../dev/fakeDms";
@@ -299,7 +299,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [askHide, hideDialog] = useConfirmHide();
   const [pendingLeave, setPendingLeave] = useState<{ title: string; leave: () => void } | null>(null);
   const askLeave = (title: string, leave: () => void) => setPendingLeave({ title, leave });
-  const { setCameraEnabled } = useCamera();
   const openDmSearch = useCallback(() => {
     setDmSearchOpen(true);
     setSearchFocus((n) => n + 1);
@@ -958,10 +957,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
           {mayCall && (ringing
             ? <Button size="small" tone="primary" onClick={stopCall}>Cancel</Button>
             : icon("Call", () => startCall(conversationId), <PiPhoneFill size={17} />))}
-          {mayCall && !ringing && icon("Video call", () => {
-            startCall(conversationId);
-            setCameraEnabled(true);
-          }, <PiCameraFill size={17} />)}
           {icon("Search messages", () => (dmSearchOpen ? setDmSearchOpen(false) : openDmSearch()), <PiMagnifyingGlassBold size={17} />, dmSearchOpen)}
           {icon("Conversation info", () => {
             setDmInfoOpen(!dmInfoOpen || dmSearchOpen);
@@ -994,7 +989,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         ) : null}
       </div>
     );
-  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost, isTiny, isMobile, dmSearchOpen, dmInfoOpen, openDmSearch, setCameraEnabled, inThisCall, callSeconds, setShowVoiceView]);
+  }, [activeDm, viewerPermissions, outgoingCall, cancelCall, startCall, setGroupDialog, handleVoiceDisconnect, viewingHost, isTiny, isMobile, dmSearchOpen, dmInfoOpen, openDmSearch, inThisCall, callSeconds, setShowVoiceView]);
 
   /* The same member list the sidebar reads presence off — someone it hides
      from this viewer has no entry here either (GRYT-1467). */
