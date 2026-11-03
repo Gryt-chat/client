@@ -1159,7 +1159,7 @@ export const ChatView = memo(({
             </div>
           ) : (
           <>
-          <TypingIndicator typingUsers={typingUsers} serverHost={serverHost} />
+          <TypingIndicator typingUsers={typingUsers} serverHost={serverHost} nameTags={nameTagsFor(memberList)} />
           <ChatEditorBar
             replyingTo={replyingTo}
             editingMessage={editingMessage}
@@ -1208,7 +1208,7 @@ export const ChatView = memo(({
               onClose={closeThread}
               onSetStatus={maySetThreadStatus ? threads.setStatus : undefined}
               typingIndicator={
-                <TypingIndicator typingUsers={threadTypingUsers} serverHost={serverHost} />
+                <TypingIndicator typingUsers={threadTypingUsers} serverHost={serverHost} nameTags={nameTagsFor(memberList)} />
               }
               forumTags={forumTags ?? []}
               onSetTags={maySetThreadStatus ? threads.setTags : undefined}
