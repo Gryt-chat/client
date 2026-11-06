@@ -9,8 +9,8 @@ import {
   withCell,
 } from "@/settings/src/channelPermissionRules";
 
-import { PiCheckBold, PiMinusBold, PiProhibitBold } from "../../../../lib/icons";
 import { describePermission } from "../lib/permissions";
+import { PermissionCell } from "./PermissionCell";
 
 /**
  * What one channel changes, per role. Not `RolePermissionGrid`: three states
@@ -22,18 +22,6 @@ const CELL_LABEL: Record<CellState, string> = {
   allow: "Allowed here, even if the role cannot elsewhere",
   deny: "Denied here, even if the role can elsewhere",
 };
-
-function CellIcon({ state, inherited }: { state: CellState; inherited: boolean }) {
-  if (state === "allow") return <PiCheckBold size={13} aria-hidden />;
-  if (state === "deny") return <PiProhibitBold size={13} aria-hidden />;
-  // Inheriting. The icon shows what it inherits rather than nothing, so a
-  // column of grey ticks reads as "this role can already do all of these".
-  return (
-    <span className="opacity-40">
-      {inherited ? <PiCheckBold size={13} aria-hidden /> : <PiMinusBold size={13} aria-hidden />}
-    </span>
-  );
-}
 
 export function ChannelPermissionMatrix({
   roles,
@@ -83,18 +71,15 @@ export function ChannelPermissionMatrix({
                 return (
                   <td key={role.id} className="p-1 text-center">
                     <Tooltip title={CELL_LABEL[state]}>
-                      <button
-                        type="button"
+                      <PermissionCell
+                        state={state}
+                        inherited={inherited}
                         disabled={disabled}
                         aria-label={`${describePermission(permission).label} for ${role.name}: ${state}`}
-                        data-state={state}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded"
                         onClick={() =>
                           onChange(withCell(rules, role.id, permission, nextCellState(state)))
                         }
-                      >
-                        <CellIcon state={state} inherited={inherited} />
-                      </button>
+                      />
                     </Tooltip>
                   </td>
                 );
