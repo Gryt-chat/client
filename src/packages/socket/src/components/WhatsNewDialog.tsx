@@ -28,6 +28,8 @@ export interface WhatsNewChange {
   /** The part of Gryt it touches. Releases before 1.11.0, and older sites, have none. */
   area?: string;
   text: string;
+  /** Credit for whoever found or asked for it, under the change in italics. */
+  thanks?: string;
 }
 
 /** Set when the releases are ones a server has not updated to yet (GRYT-1413). */
@@ -165,6 +167,7 @@ function ChangeRows({ changes }: { changes: WhatsNewChange[] }) {
             {LABELS[change.kind] ?? change.kind}
           </Chip>
           <p>{change.text}</p>
+          {change.thanks && <p className="whats-new-thanks">{change.thanks}</p>}
         </li>
       ))}
     </ul>
