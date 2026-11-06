@@ -90,7 +90,8 @@ function Owl({ pose, mirrored }: { pose: OwlPose; mirrored: boolean }) {
           {pose.arm > 0.01 && (
             <path
               d={ARM}
-              transform={`translate(0 ${dy}) rotate(${turn * pose.arm + 40 * (1 - pose.arm)} ${PIVOT.x} ${PIVOT.y}) scale(${0.4 + 0.6 * pose.arm})`}
+              // Pulls in toward the shoulder: scaled about the pivot, not the drawing's corner.
+              transform={`translate(0 ${dy}) rotate(${turn} ${PIVOT.x} ${PIVOT.y}) translate(${PIVOT.x} ${PIVOT.y}) scale(${0.4 + 0.6 * pose.arm}) translate(${-PIVOT.x} ${-PIVOT.y})`}
               style={{ transformBox: "view-box" }}
               opacity={Math.min(1, pose.arm * 2)}
             />
@@ -154,16 +155,21 @@ function gaze(dx: number, dy: number) {
 /** Per second: how quickly the eyes catch up. Low enough that they ease over instead of snapping. */
 const EYE_EASE = 2.2;
 
-/** Somewhere random to look for a moment: more often while the cursor sits still. */
-function nextGlance(now: number, idle: boolean) {
+/** Somewhere random to look, with its eyes well off centre. */
+function spot() {
   const angle = Math.random() * Math.PI * 2;
-  const reach = 0.45 + Math.random() * 0.55;
-  const until = now + 900 + Math.random() * 1100;
+  const reach = 0.5 + Math.random() * 0.5;
+  return { x: Math.cos(angle) * reach, y: Math.sin(angle) * reach };
+}
+
+/** Either it watches your cursor, or for 5-6s it looks around at things of its own, a few seconds each. */
+function nextWander(now: number, idle: boolean) {
+  const until = now + 5000 + Math.random() * 1500;
   return {
-    x: Math.cos(angle) * reach,
-    y: Math.sin(angle) * reach,
+    looks: [spot(), spot(), spot()],
+    from: now,
     until,
-    next: until + (idle ? 1500 + Math.random() * 2500 : 5000 + Math.random() * 5000),
+    next: until + (idle ? 3000 + Math.random() * 2000 : 7000 + Math.random() * 5000),
   };
 }
 
@@ -217,12 +223,14 @@ export function GuideOwl({
   line,
   mood,
   waving,
+  point,
   controls,
 }: {
   target: Rect | null;
   line: Line | null;
   mood: Mood;
   waving: boolean;
+  point: boolean;
   controls: ReactNode;
 }) {
   const still = useReducedMotion() ?? false;
@@ -237,14 +245,18 @@ export function GuideOwl({
     last: performance.now(),
     cursor: null as { x: number; y: number } | null,
     movedAt: 0,
-    glance: { x: 0, y: 0, until: 0, next: performance.now() + 4000 },
+    /** 0 while it travels, 1 once it has stopped: the arm only comes out at 1. */
+    settled: 1,
+    wander: { looks: [spot()], from: 0, until: 0, next: performance.now() + 6000 },
   });
-  const home = homeFor(target);
-  const homeRef = useRef(home);
-  homeRef.current = home;
+  // With no target, between steps, it stays where it was rather than heading for the middle.
+  const homeRef = useRef(homeFor(null));
+  if (target) homeRef.current = homeFor(target);
+  const home = homeRef.current;
   const targetRef = useRef(target);
   targetRef.current = target;
   const [said, setSaid] = useState<Line | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
@@ -275,11 +287,13 @@ export function GuideOwl({
       let want = { x: 0, y: 0 };
       if (!still && s.cursor) want = gaze(s.cursor.x - s.pos.x, s.cursor.y - s.pos.y);
       else if (t) want = gaze(t.left + t.width / 2 - s.pos.x, t.top + t.height / 2 - s.pos.y);
-      if (now > s.glance.next) s.glance = nextGlance(now, now - s.movedAt > 2000);
-      if (!still && now < s.glance.until) want = s.glance;
+      const w = s.wander;
+      if (now > w.next) s.wander = nextWander(now, now - s.movedAt > 2000);
+      if (!still && now < w.until) want = w.looks[Math.min(2, Math.floor((now - w.from) / 2200))];
       const speed = Math.hypot(s.vel.x, s.vel.y);
       const m = Math.min(1, speed / 300);
       const go = { x: s.vel.x / (speed || 1), y: s.vel.y / (speed || 1) };
+      s.settled = still ? 1 : s.settled + ((speed < 25 ? 1 : 0) - s.settled) * (1 - Math.exp(-8 * dt));
       const follow = 1 - Math.exp(-EYE_EASE * dt);
       s.look.x += (want.x * (1 - m) + go.x * m - s.look.x) * follow;
       s.look.y += (want.y * (1 - m) + go.y * m - s.look.y) * follow;
@@ -314,8 +328,13 @@ export function GuideOwl({
 
   // Points while it talks unless it's waving, then tucks the arm back in. The bubble stays.
   useEffect(() => {
+    const tuck = () => {
+      tw.to("arm", 0, 380, ease.inOut, still);
+      tw.to("rise", 0, 420, ease.inOut, still);
+    };
     if (!line) {
       tw.to("pop", 0, 280, ease.in, still);
+      if (!waving) tuck();
       return;
     }
     let cancelled = false;
@@ -323,18 +342,21 @@ export function GuideOwl({
     setSaid(line);
     tw.to("pop", 0, 1, ease.out, true);
     tw.to("pop", 1, 800, ease.spring, still);
+    if (!point && !waving) {
+      tuck();
+      return;
+    }
     tw.to("rise", 1, 450, ease.out, still);
     tw.to("arm", 1, 520, ease.spring, still);
     void (async () => {
       await wait(700 + (line.title.length + (line.body?.length ?? 0)) * 38);
       if (cancelled || waving) return;
-      tw.to("arm", 0, 380, ease.inOut, still);
-      tw.to("rise", 0, 420, ease.inOut, still);
+      tuck();
     })();
     return () => {
       cancelled = true;
     };
-    // waving is read once per line on purpose.
+    // waving and point are read once per line on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [line?.id, tw, still]);
 
@@ -349,18 +371,25 @@ export function GuideOwl({
   const now = performance.now();
   const sign = home.mirrored ? -1 : 1;
   let aim = 0;
-  if (waving) aim = -65 + 25 * Math.sin(now / 160);
+  if (waving) aim = -15 + 20 * Math.sin(now / 160);
   else if (target) {
     const ax = Math.abs(target.left + target.width / 2 - x) || 1;
-    aim = Math.max(-60, Math.min(70, (Math.atan2(target.top + target.height / 2 - y, ax) * 180) / Math.PI));
+    // Never steeply up: a raised straight arm reads as a salute.
+    aim = Math.max(-20, Math.min(70, (Math.atan2(target.top + target.height / 2 - y, ax) * 180) / Math.PI));
   }
   const rise = hiding ? -1 : tw.get("rise");
   const pop = hiding ? 0 : tw.get("pop");
   const vh = window.innerHeight;
   const vw = window.innerWidth;
-  const controlsBelow = y + SIZE / 2 + GAP + CONTROLS_HEIGHT < vh;
-  const bubbleBottom = SIZE / 2 + GAP + (controls && !controlsBelow ? CONTROLS_HEIGHT + 8 : 0);
-  const left = Math.min(Math.max(x - SIZE / 2, EDGE), vw - 280 - EDGE) - x;
+  // Laid out from where it's going, not where it is mid-flight, so nothing flips sides on the way.
+  const controlsBelow = home.y + SIZE / 2 + GAP + CONTROLS_HEIGHT < vh;
+  const row = controls ? CONTROLS_HEIGHT + 8 : 0;
+  const bubbleHeight = bubbleRef.current?.offsetHeight ?? 120;
+  const bubbleAbove = home.y - SIZE / 2 - GAP - bubbleHeight - (controlsBelow ? 0 : row) >= EDGE;
+  const bubblePlace = bubbleAbove
+    ? { bottom: SIZE / 2 + GAP + (controlsBelow ? 0 : row) }
+    : { top: SIZE / 2 + GAP + (controlsBelow ? row : 0) };
+  const left = Math.min(Math.max(home.x - SIZE / 2, EDGE), vw - 280 - EDGE) - home.x;
 
   return (
     <div data-gryt="guide-owl" className="pointer-events-none fixed" style={{ left: x, top: y, opacity: tw.get("o") }}>
@@ -382,7 +411,7 @@ export function GuideOwl({
             lookX: sign * s.look.x,
             lookY: s.look.y,
             rise,
-            arm: hiding ? 0 : tw.get("arm"),
+            arm: hiding ? 0 : tw.get("arm") * s.settled,
             aim,
             shift: sign * Math.max(-1, Math.min(1, s.vel.x / 500)),
             paws: tw.get("paws"),
@@ -394,14 +423,15 @@ export function GuideOwl({
       {said && pop > 0.01 && (
         <div
           key={said.id}
+          ref={bubbleRef}
           role="status"
           className="absolute"
           style={{
             left,
-            bottom: bubbleBottom,
+            ...bubblePlace,
             width: "max-content",
             maxWidth: 280,
-            transformOrigin: "0% 100%",
+            transformOrigin: bubbleAbove ? "0% 100%" : "0% 0%",
             transform: `scale(${0.6 + 0.4 * pop})`,
             opacity: Math.min(1, pop * 1.2),
             padding: "9px 13px",

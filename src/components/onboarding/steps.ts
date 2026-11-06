@@ -18,6 +18,8 @@ export interface TourStep {
   body: string;
   /** Happy eyes, kept for hello and goodbye. */
   mood?: Mood;
+  /** Raises its arm at the target. Only for small controls that are easy to miss. */
+  point?: boolean;
   /**
    * Run when the step becomes current. Opens whatever this step points into; the
    * target will not exist for a frame or two, which the tour waits out.
@@ -38,8 +40,9 @@ export const tourSteps: TourStep[] = [
   {
     id: "menu",
     target: "profile",
+    point: true,
     title: "Everything about you is here",
-    body: "Your profile, your settings, and signing in when you want to. Bottom left, always.",
+    body: "Your profile, your settings, and signing in when you want to, all from this menu.",
     mood: "happy",
     // Closes anything a re-run of the tour left open, so step one always starts
     // from the same place.
@@ -62,8 +65,8 @@ export const tourSteps: TourStep[] = [
   {
     id: "account",
     target: "account-signin",
-    title: "An account, if you ever want one",
-    body: "You do not need one. It carries your servers and settings between machines, and that is the only thing it is for.",
+    title: "An account, if you want one",
+    body: "Gryt works without one. An account gives you a way back in if you lose this device, and makes you the same person on every server. Some servers only let in people who have one.",
     // Already inside Settings, so this is one press on the destination itself.
     via: ["settings-account"],
     // A narrow window has a picker instead of that button, so the hop is skipped and this opens the page.
@@ -72,6 +75,7 @@ export const tourSteps: TourStep[] = [
   {
     id: "server",
     target: "add-server",
+    point: true,
     title: "Gryt is empty until you join a server",
     body: "This is where you add one, whether it is a friend's or your own.",
     // The owl presses the same X the user would, so the panel closing has a cause.
@@ -83,7 +87,7 @@ export const tourSteps: TourStep[] = [
     id: "join",
     target: "join-address",
     title: "Paste an invite to join",
-    body: "A friend's invite link goes straight in here, and a plain address works too. No account needed, and you can leave again whenever you like.",
+    body: "A friend's invite link goes straight in here, and a plain address works too. It tells you whether the server needs an account before you join.",
     // Two hops now that the dialog asks which errand you are on: open it, then
     // choose Join. The cursor makes the same choice a person would.
     via: ["add-server", "choose-join"],

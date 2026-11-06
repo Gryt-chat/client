@@ -78,7 +78,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   };
 
   const reduceMotion = useReducedMotion();
-  /** The control the owl is flying to press while the step walks its route. */
+  /** Where the owl flies once the step's route has opened its target. */
   const [hop, setHop] = useState<Rect | null>(null);
   const [waving, setWaving] = useState(true);
   const greeted = useRef(false);
@@ -122,16 +122,12 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       setRect(null);
       setShownStep(step);
 
-      // The owl sits by each control on the route while it's pressed for real.
+      // The owl stays put while the route is pressed, and flies once to where the step ends.
       for (const anchor of step.via ?? []) {
-        const at = readRect(anchor);
-        if (!at) {
+        if (!readRect(anchor)) {
           console.warn(`[tour] no control for "${anchor}" — skipping this hop`);
           continue;
         }
-        setHop(at);
-        await sleep(pause(FLY_MS));
-        if (cancelled) return;
         pressControl(anchor);
         await sleep(pause(HOP_MS));
         if (cancelled) return;
@@ -270,6 +266,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         target={hop ?? lit}
         mood={waving ? "happy" : shownStep.mood ?? "open"}
         waving={waving && !reduceMotion}
+        point={shownStep.point ?? false}
         line={waving ? HELLO : stepLine}
         controls={
           lit && (
