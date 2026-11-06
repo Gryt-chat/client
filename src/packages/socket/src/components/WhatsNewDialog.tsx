@@ -236,7 +236,7 @@ function ReleasePicture({ releases }: { releases: WhatsNewRelease[] }) {
 
 /**
  * One release: its line, then its security fixes in a block of their own, then the
- * rest under a heading per area. Changes that all share an area get no heading.
+ * rest under a heading per area. Only a release with no areas at all goes without.
  */
 function ReleaseBody({
   line,
@@ -266,10 +266,12 @@ function ReleaseBody({
 
   return (
     <div className="whats-new-body">
-      <p className="whats-new-line">
-        {line}
-        <PostLink post={post} />
-      </p>
+      {line && (
+        <p className="whats-new-line">
+          {line}
+          <PostLink post={post} />
+        </p>
+      )}
       {security.length > 0 && (
         <AreaBlock
           changes={security}
@@ -279,7 +281,7 @@ function ReleaseBody({
           label="Security"
         />
       )}
-      {areas.length === 1 ? (
+      {areas.length === 1 && areas[0].area === "" ? (
         <ChangeRows changes={areas[0].changes} />
       ) : (
         areas.map((group) => (
