@@ -1,7 +1,7 @@
-import { motion, useReducedMotion } from "motion/react";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { useReducedMotion } from "motion/react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
-// Sivert's guide owl (Default/Point/Hiding.svg, 1269x1269), drawn in parts so it can rise, point, look and blink.
+// Sivert's guide owl (Default/Point/Hiding.svg, 1269x1269), moving the way it does in the gryt.chat video.
 const BODY = "M239.884 926.727C243.177 913.113 242.794 851.152 242.071 836.363C230.602 602.556 406.03 433.2 637.883 440.21C750.663 443.622 841.202 464.015 924.829 548.432C1033.22 657.844 1030.99 781.939 1029.39 923.973C1102.85 1095.97 1117.85 1252.44 1051.04 1433.1C1032.39 1483.53 989.484 1553.75 947.424 1588.24C912.887 1608.89 877.59 1629.9 836.658 1634.74C832.219 1646.93 830.654 1655.2 821.017 1663.62C793.478 1665.11 794.79 1661.41 772.95 1681.58C758.767 1683.54 758.022 1683.81 743.87 1673.16C742.161 1671.87 740.462 1670.55 738.781 1669.22C709.405 1671.33 706.188 1677.57 689.593 1650.62L584.224 1650.57C553.04 1696.05 558.299 1651.27 514.512 1680.99C497.577 1682.23 476.439 1669.75 459.62 1664.75C444.063 1660.12 441.786 1652.15 435.301 1637.28C382.307 1626.86 364.426 1604.86 325.482 1588.89C278.119 1554.18 236.54 1481 216.794 1427.04C153.339 1253.63 166.099 1092.41 239.884 926.727Z";
 const SIDE_R = "M1029.39 923.973C1102.85 1095.97 1117.85 1252.44 1051.04 1433.1C1032.39 1483.53 989.485 1553.75 947.425 1588.24C859.821 1463.12 860.363 1205.86 936.599 1078.79C968.216 1026.09 1002.73 980.645 1029.39 923.973Z";
 const SIDE_L = "M239.884 926.729C270.912 985.743 311.074 1036.21 341.458 1091.53C409.026 1214.55 404.418 1380.04 362.221 1510.7C353.875 1535.49 343.002 1568.3 325.482 1588.9C278.119 1554.18 236.54 1481.01 216.794 1427.04C153.339 1253.63 166.099 1092.41 239.884 926.729Z";
@@ -13,104 +13,136 @@ const RING = "M1237 634.5C1237 967.252 967.252 1237 634.5 1237C301.748 1237 32 9
 const PAW_L = "M224.1 1151.99C139.348 1116.1 166.663 955.814 225.979 945.417C285.295 935.02 319.127 971.358 347.688 1006.92C376.248 1042.48 394.538 1068.39 378.619 1101.54C362.701 1134.68 308.852 1187.87 224.1 1151.99Z";
 const PAW_R = "M1038.77 1145.99C1123.52 1110.1 1096.21 949.814 1036.89 939.417C977.576 929.02 943.744 965.358 915.183 1000.92C886.623 1036.48 868.333 1062.39 884.252 1095.54C900.17 1128.68 954.019 1181.87 1038.77 1145.99Z";
 const ARM = "M1026.84 864.43C1026.84 864.43 911.832 967.518 993.822 1061.01C1075.81 1154.5 1192.83 1185.88 1228.31 1195C1263.79 1204.13 1334.34 1218.55 1357.84 1212.51C1381.35 1206.46 1380.8 1183.51 1337.31 1119.01C1293.81 1054.51 1278.29 1037.2 1219.31 986.009C1160.33 934.819 1081.19 876.113 1026.84 864.43Z";
+
 /** Top of the shoulder in Point.svg. The drawn arm reaches out 46° below horizontal. */
-const PIVOT = "1010px 905px";
+const PIVOT = { x: 1010, y: 905 };
 const ARM_ANGLE = 46;
 const EYES = { left: { x: 492, y: 744 }, right: { x: 778, y: 745 } };
 const arc = (c: { x: number; y: number }) => `M${c.x - 52} ${c.y + 18}Q${c.x} ${c.y - 46} ${c.x + 52} ${c.y + 18}`;
 
-const SIZE = 64;
+/** 130px on the video's 1920px stage, scaled to how big that reads in the app. */
+const SIZE = 96;
+const K = SIZE / 130;
 const GAP = 14;
 const EDGE = 8;
-const BUBBLE_WIDTH = 256;
-const BUBBLE_HEIGHT = 136;
+const CONTROLS_HEIGHT = 40;
 
-export type Mood = "open" | "happy";
+export type Mood = "open" | "happy" | "wink";
 
 interface OwlPose {
-  /** 1 is the raised pointing stance, -1 ducked behind the ring. */
+  lookX: number;
+  lookY: number;
+  /** 0 sits, 1 the raised pointing stance, -1 ducked behind the ring. */
   rise: number;
-  pointing: boolean;
+  arm: number;
   /** Degrees from straight ahead, clockwise. */
   aim: number;
-  /** -1..1 each, in the owl's own frame: +x is the way the arm points. */
-  look: { x: number; y: number };
-  blink: boolean;
+  /** -1..1: the body sliding forward inside the ring while it travels. */
+  shift: number;
+  paws: number;
+  blink: number;
   mood: Mood;
 }
 
-function Owl({ pose, mirrored, still }: { pose: OwlPose; mirrored: boolean; still: boolean }) {
-  const clip = useId();
+function Owl({ pose, mirrored }: { pose: OwlPose; mirrored: boolean }) {
+  const id = useId();
   const dy = pose.rise >= 0 ? -61 * pose.rise : -323 * pose.rise;
-  const look = pose.rise < 0 ? { x: 0, y: 0 } : pose.look;
-  const ease = (ms: number) => (still ? "none" : `transform ${ms}ms var(--ease-spring, ease), opacity ${ms}ms ease`);
+  const fx = 44 * pose.lookX, fy = 44 * pose.lookY;
+  const ex = 88 * pose.lookX, ey = 88 * pose.lookY;
+  const turn = pose.aim - ARM_ANGLE;
   return (
     <svg width={SIZE} height={SIZE} viewBox="0 0 1269 1269" overflow="visible" style={{ transform: mirrored ? "scaleX(-1)" : undefined }}>
       <defs>
-        <clipPath id={clip}><circle cx="634.5" cy="634.5" r="620" /></clipPath>
+        <clipPath id={`${id}c`}><circle cx="634.5" cy="634.5" r="604" /></clipPath>
+        <filter id={`${id}p`} x="-10%" y="-10%" width="120%" height="120%">
+          <feOffset dy="-4" in="SourceAlpha" result="o" />
+          <feGaussianBlur in="o" stdDeviation="1.5" result="b" />
+          <feComposite in="b" in2="SourceAlpha" operator="out" result="s" />
+          <feColorMatrix in="s" values="0 0 0 0 0.18 0 0 0 0 0.176 0 0 0 0 0.37 0 0 0 0.4 0" />
+          <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
       </defs>
-      <circle cx="634.5" cy="634.5" r="603" fill="#2E2D5F" />
-      <g clipPath={`url(#${clip})`}>
-        <g style={{ transform: `translateY(${dy}px)`, transition: ease(450) }}>
+      {/* Inside the ring only: at full size its edge showed around the outside of the ring. */}
+      <circle cx="634.5" cy="634.5" r="604" fill="#2E2D5F" />
+      <g clipPath={`url(#${id}c)`}>
+        <g transform={`translate(${70 * pose.shift} ${dy})`}>
           <path d={BODY} fill="#A495E3" />
           <path d={SIDE_R} fill="#7C6EC3" />
           <path d={SIDE_L} fill="#7C6EC3" />
-          <path d={FACE} fill="#B5A8E6" style={{ transform: `translate(${20 * look.x}px, ${20 * look.y}px)`, transition: ease(500) }} />
-          <g fill="#2E2D5F" style={{ transform: `translate(${40 * look.x}px, ${40 * look.y}px)`, transition: ease(500) }}>
-            {(["left", "right"] as const).map((side) =>
-              pose.mood === "happy" ? (
-                <path key={side} d={arc(EYES[side])} fill="none" stroke="#2E2D5F" strokeWidth="26" strokeLinecap="round" />
-              ) : (
-                <path
-                  key={side}
-                  d={side === "left" ? EYE_L : EYE_R}
-                  style={{ transform: `scaleY(${pose.blink ? 0.1 : 1})`, transformBox: "fill-box", transformOrigin: "center", transition: still ? "none" : "transform 70ms ease" }}
-                />
-              ),
-            )}
+          <path d={FACE} fill="#B5A8E6" transform={`translate(${fx} ${fy})`} />
+          <g transform={`translate(${ex} ${ey})`} fill="#2E2D5F">
+            {(["left", "right"] as const).map((side) => {
+              const c = EYES[side];
+              const shut = pose.mood === "happy" || (pose.mood === "wink" && side === "right");
+              if (shut) return <path key={side} d={arc(c)} fill="none" stroke="#2E2D5F" strokeWidth="26" strokeLinecap="round" />;
+              const sy = 1 - 0.9 * pose.blink;
+              return <path key={side} d={side === "left" ? EYE_L : EYE_R} transform={`translate(0 ${c.y * (1 - sy)}) scale(1 ${sy})`} />;
+            })}
             <path d={BEAK} />
           </g>
         </g>
       </g>
       <path d={RING} strokeWidth="64" stroke="#16162F" fill="none" />
-      <g fill="#7C6EC3" style={{ opacity: pose.rise < -0.5 ? 0 : 1, transition: ease(200) }}>
-        <path d={PAW_L} />
-        <path d={PAW_R} style={{ opacity: pose.pointing ? 0 : 1, transition: ease(200) }} />
-        <path
-          d={ARM}
-          style={{
-            transformBox: "view-box",
-            transformOrigin: PIVOT,
-            transform: `translateY(${dy}px) rotate(${pose.pointing ? pose.aim - ARM_ANGLE : 40}deg) scale(${pose.pointing ? 1 : 0.4})`,
-            opacity: pose.pointing ? 1 : 0,
-            transition: ease(520),
-          }}
-        />
-      </g>
+      {pose.paws > 0.01 && (
+        <g filter={`url(#${id}p)`} fill="#7C6EC3" opacity={pose.paws} transform={`translate(0 ${(1 - pose.paws) * 90})`}>
+          <path d={PAW_L} />
+          <path d={PAW_R} opacity={1 - Math.min(1, pose.arm * 2)} />
+          {pose.arm > 0.01 && (
+            <path
+              d={ARM}
+              transform={`translate(0 ${dy}) rotate(${turn * pose.arm + 40 * (1 - pose.arm)} ${PIVOT.x} ${PIVOT.y}) scale(${0.4 + 0.6 * pose.arm})`}
+              style={{ transformBox: "view-box" }}
+              opacity={Math.min(1, pose.arm * 2)}
+            />
+          )}
+        </g>
+      )}
     </svg>
   );
 }
 
-/** Shut for a moment every few seconds, at a slightly uneven pace so it doesn't tick. */
-function useBlink(off: boolean) {
-  const [shut, setShut] = useState(false);
-  useEffect(() => {
-    if (off) return;
-    let timer = 0;
-    const next = () => {
-      timer = window.setTimeout(() => {
-        setShut(true);
-        timer = window.setTimeout(() => {
-          setShut(false);
-          next();
-        }, 140);
-      }, 3200 + Math.random() * 2400);
-    };
-    next();
-    return () => window.clearTimeout(timer);
-  }, [off]);
-  return shut;
+const ease = {
+  inOut: (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+  out: (t: number) => 1 - Math.pow(1 - t, 4),
+  in: (t: number) => t * t * t,
+  spring: (t: number) => (t >= 1 ? 1 : 1 - Math.exp(-6.5 * t) * Math.cos(8.5 * t)),
+};
+
+interface Tween { from: number; to: number; start: number; dur: number; e: (t: number) => number }
+
+function makeTweens(initial: Record<string, number>) {
+  const values = new Map(Object.entries(initial));
+  const tweens = new Map<string, Tween>();
+  const get = (key: string) => {
+    const tw = tweens.get(key);
+    if (!tw) return values.get(key) ?? 0;
+    const p = Math.min(1, Math.max(0, (performance.now() - tw.start) / tw.dur));
+    if (p >= 1) {
+      values.set(key, tw.to);
+      tweens.delete(key);
+    }
+    return tw.from + (tw.to - tw.from) * tw.e(p);
+  };
+  const to = (key: string, v: number, dur: number, e: (t: number) => number, still: boolean) => {
+    if (still) {
+      tweens.delete(key);
+      values.set(key, v);
+      return;
+    }
+    tweens.set(key, { from: get(key), to: v, start: performance.now(), dur, e });
+  };
+  return { get, to };
 }
+
+/** Shut for 140ms every 4.3s, and every third time a double blink. */
+function blinkAt(t: number) {
+  const k = t % 4300;
+  const one = (from: number) => (k > from && k < from + 140 ? Math.sin(((k - from) / 140) * Math.PI) : 0);
+  return Math.max(one(4000), Math.floor(t / 4300) % 3 === 0 ? one(3780) : 0);
+}
+
+/** Every 6s it glances somewhere else for a second, so it looks around while the cursor sits still. */
+const GLANCES = [{ x: -0.9, y: -0.3 }, { x: 0.2, y: -0.8 }, { x: -0.6, y: 0.3 }];
 
 function usePasswordFocused() {
   const [focused, setFocused] = useState(false);
@@ -136,128 +168,240 @@ export interface Rect {
   height: number;
 }
 
-/** Slow enough to follow with your eye across the window. */
-export const FLY_MS = 1100;
-/** How long it looks at what it's pointing at before its eyes go back to your cursor. */
-const WATCH_AFTER_MS = 2500;
-const WAVE_MS = 280;
+/** Left of the target and level with it, as in the video. Right of it only when the left would cover it. */
+function homeFor(target: Rect | null) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  if (!target) return { x: vw / 2, y: vh / 2, mirrored: false };
+  const y = Math.min(vh - SIZE / 2 - EDGE, Math.max(SIZE / 2 + EDGE, target.top + target.height / 2));
+  const left = Math.max(110 * K, Math.min(vw / 2, target.left - 140 * K));
+  if (left + SIZE / 2 + GAP <= target.left) return { x: left, y, mirrored: false };
+  return { x: Math.min(vw - SIZE / 2 - EDGE, target.left + target.width + GAP + SIZE / 2), y, mirrored: true };
+}
 
-function usePointer(on: boolean) {
-  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
-  useEffect(() => {
-    if (!on) return;
-    let frame = 0;
-    const move = (e: PointerEvent) => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setAt({ x: e.clientX, y: e.clientY }));
-    };
-    window.addEventListener("pointermove", move);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      cancelAnimationFrame(frame);
-    };
-  }, [on]);
-  return on ? at : null;
+export interface Line {
+  id: string;
+  text: string;
 }
 
 /**
- * Starts in the middle of the window, waves if `waving`, then flies beside `target`, level
- * with it on the side with more room, and points. The bubble sits above or below, never on it.
+ * The owl pops up, drifts beside `target` and says `line` once, in a bubble that goes again
+ * after reading time. `controls` stay up under it, or above it near the bottom of the window.
  */
-export function GuideOwl({ target, mood, waving, bubble }: { target: Rect | null; mood: Mood; waving: boolean; bubble: ReactNode }) {
+export function GuideOwl({
+  target,
+  line,
+  mood,
+  waving,
+  controls,
+}: {
+  target: Rect | null;
+  line: Line | null;
+  mood: Mood;
+  waving: boolean;
+  controls: ReactNode;
+}) {
   const still = useReducedMotion() ?? false;
-  const blink = useBlink(still);
   const hiding = usePasswordFocused();
-  const [spot, setSpot] = useState(() => ({ x: window.innerWidth / 2, y: window.innerHeight / 2, mirrored: false }));
-  const [watching, setWatching] = useState(false);
-  const pointer = usePointer(watching && !still);
-  const [wave, setWave] = useState(0);
+  const [, setFrame] = useState(0);
+  const [tw] = useState(() => makeTweens({ scale: 0, rise: -1, paws: 0, arm: 0, pop: 0, o: 0 }));
+  const state = useRef({
+    pos: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+    vel: { x: 0, y: 0 },
+    look: { x: 0, y: 0 },
+    lean: 0,
+    last: performance.now(),
+    cursor: null as { x: number; y: number } | null,
+  });
+  const home = homeFor(target);
+  const homeRef = useRef(home);
+  homeRef.current = home;
+  const targetRef = useRef(target);
+  targetRef.current = target;
+  const [said, setSaid] = useState<Line | null>(null);
 
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  let aim = 0;
-  let look = { x: 0.6, y: 0.2 };
-  if (target) {
-    const cx = target.left + target.width / 2;
-    const cy = target.top + target.height / 2;
-    const mirrored = cx < vw / 2;
-    const x = mirrored ? target.left + target.width + GAP + SIZE / 2 : target.left - GAP - SIZE / 2;
-    const next = {
-      x: Math.min(Math.max(x, SIZE / 2 + EDGE), vw - SIZE / 2 - EDGE),
-      y: Math.min(Math.max(cy, SIZE / 2 + EDGE), vh - SIZE / 2 - EDGE),
-      mirrored,
+  useEffect(() => {
+    const move = (e: PointerEvent) => (state.current.cursor = { x: e.clientX, y: e.clientY });
+    window.addEventListener("pointermove", move);
+    let frame = requestAnimationFrame(function tick(now) {
+      const s = state.current;
+      const dt = Math.min(0.05, (now - s.last) / 1000);
+      s.last = now;
+      const h = homeRef.current;
+      if (still) {
+        s.pos = { x: h.x, y: h.y };
+        s.vel = { x: 0, y: 0 };
+      } else if (dt > 0) {
+        // A critically damped spring that leans into its own acceleration, like a segway.
+        const k = 5, c = 2 * Math.sqrt(k);
+        const ax = k * (h.x - s.pos.x) - c * s.vel.x;
+        const ay = k * (h.y - s.pos.y) - c * s.vel.y;
+        s.vel.x += ax * dt;
+        s.vel.y += ay * dt;
+        s.pos.x += s.vel.x * dt;
+        s.pos.y += s.vel.y * dt;
+        s.lean += (Math.max(-14, Math.min(14, ax * 0.006)) - s.lean) * Math.min(1, dt * 10);
+      }
+      const t = targetRef.current;
+      let want = { x: 0, y: 0 };
+      if (!still && s.cursor) {
+        const cx = s.cursor.x - s.pos.x, cy = s.cursor.y - s.pos.y;
+        const cd = Math.hypot(cx, cy) || 1;
+        want = { x: cx / cd, y: Math.max(-0.35, Math.min(0.35, cy / cd)) };
+      } else if (t) {
+        const cx = t.left + t.width / 2 - s.pos.x, cy = t.top + t.height / 2 - s.pos.y;
+        const cd = Math.hypot(cx, cy) || 1;
+        want = { x: cx / cd, y: Math.max(-0.35, Math.min(0.35, cy / cd)) };
+      }
+      const g = now % 6000;
+      if (!still && g > 4600 && g < 5600) want = GLANCES[Math.floor(now / 6000) % 3];
+      const speed = Math.hypot(s.vel.x, s.vel.y);
+      const m = Math.min(1, speed / 300);
+      const go = { x: s.vel.x / (speed || 1), y: Math.max(-0.5, Math.min(0.5, s.vel.y / (speed || 1))) };
+      s.look.x += (want.x * (1 - m) + go.x * m - s.look.x) * 0.08;
+      s.look.y += (want.y * (1 - m) + go.y * m - s.look.y) * 0.08;
+      setFrame((n) => n + 1);
+      frame = requestAnimationFrame(tick);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", move);
     };
-    if (next.x !== spot.x || next.y !== spot.y || next.mirrored !== spot.mirrored) setSpot(next);
-    const dx = Math.abs(cx - spot.x) || 1;
-    aim = Math.max(-60, Math.min(70, (Math.atan2(cy - spot.y, dx) * 180) / Math.PI));
-    look = { x: 0.8, y: Math.max(-0.6, Math.min(0.6, (cy - spot.y) / Math.hypot(dx, cy - spot.y))) };
-  }
-  if (pointer) {
-    const dx = pointer.x - spot.x;
-    const dy = pointer.y - spot.y;
-    const d = Math.hypot(dx, dy) || 1;
-    look = { x: ((spot.mirrored ? -dx : dx) / d) * 0.8, y: Math.max(-0.6, Math.min(0.6, dy / d)) };
-  }
+  }, [still]);
+
+  // Entrance, as in the video: the ring pops, the owl peeks over the rim, then comes up with its paws.
+  useEffect(() => {
+    let cancelled = false;
+    const wait = (ms: number) => new Promise((r) => window.setTimeout(r, still ? 0 : ms));
+    tw.to("o", 1, 300, ease.out, false);
+    tw.to("scale", 1, 700, ease.spring, still);
+    void (async () => {
+      await wait(250);
+      if (cancelled) return;
+      tw.to("rise", -0.55, 600, ease.out, still);
+      await wait(600);
+      if (cancelled) return;
+      tw.to("rise", 0, 420, ease.spring, still);
+      tw.to("paws", 1, 420, ease.out, still);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tw, still]);
+
+  // Says the line once, pointing while it talks unless it's waving, then tucks the arm back in.
+  useEffect(() => {
+    if (!line) return;
+    let cancelled = false;
+    const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+    setSaid(line);
+    tw.to("pop", 0, 1, ease.out, true);
+    tw.to("pop", 1, 520, ease.spring, still);
+    tw.to("rise", 1, 450, ease.out, still);
+    tw.to("arm", 1, 520, ease.spring, still);
+    void (async () => {
+      await wait(700 + line.text.length * 38);
+      if (cancelled) return;
+      tw.to("pop", 0, 280, ease.in, still);
+      if (waving) return;
+      tw.to("arm", 0, 380, ease.inOut, still);
+      tw.to("rise", 0, 420, ease.inOut, still);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // waving is read once per line on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line?.id, tw, still]);
 
   useEffect(() => {
-    setWatching(false);
     if (waving) return;
-    const id = window.setTimeout(() => setWatching(true), WATCH_AFTER_MS);
-    return () => window.clearTimeout(id);
-  }, [spot.x, spot.y, waving]);
+    tw.to("arm", 0, 380, ease.inOut, still);
+    tw.to("rise", 0, 420, ease.inOut, still);
+  }, [waving, tw, still]);
 
-  useEffect(() => {
-    if (!waving || still) return;
-    const id = window.setInterval(() => setWave((n) => n + 1), WAVE_MS);
-    return () => window.clearInterval(id);
-  }, [waving, still]);
-
-  const above = spot.y - SIZE / 2 - GAP - BUBBLE_HEIGHT > EDGE;
-  let bubbleFrom = spot.mirrored ? spot.x - SIZE / 2 : spot.x + SIZE / 2 - BUBBLE_WIDTH;
-  if (waving) bubbleFrom = spot.x - BUBBLE_WIDTH / 2;
-  const bubbleLeft = Math.min(
-    Math.max(bubbleFrom, EDGE),
-    vw - BUBBLE_WIDTH - EDGE,
-  );
-  const fly = still ? "none" : `left ${FLY_MS}ms cubic-bezier(.45,0,.25,1), top ${FLY_MS}ms cubic-bezier(.45,0,.25,1)`;
+  const s = state.current;
+  const { x, y } = s.pos;
+  const now = performance.now();
+  const sign = home.mirrored ? -1 : 1;
+  let aim = 0;
+  if (waving) aim = -65 + 25 * Math.sin(now / 160);
+  else if (target) {
+    const ax = Math.abs(target.left + target.width / 2 - x) || 1;
+    aim = Math.max(-60, Math.min(70, (Math.atan2(target.top + target.height / 2 - y, ax) * 180) / Math.PI));
+  }
+  const rise = hiding ? -1 : tw.get("rise");
+  const pop = hiding ? 0 : tw.get("pop");
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const controlsBelow = y + SIZE / 2 + GAP + CONTROLS_HEIGHT < vh;
+  const bubbleBottom = SIZE / 2 + GAP + (controls && !controlsBelow ? CONTROLS_HEIGHT + 8 : 0);
+  const left = Math.min(Math.max(x - SIZE / 2, EDGE), vw - 240 - EDGE) - x;
 
   return (
-    <>
-      <motion.div
+    <div data-gryt="guide-owl" className="pointer-events-none fixed" style={{ left: x, top: y, opacity: tw.get("o") }}>
+      <div
         aria-hidden="true"
-        data-gryt="guide-owl"
-        className="pointer-events-none fixed"
-        initial={still ? false : { opacity: 0, scale: 0.3 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 18 }}
-        style={{ left: spot.x - SIZE / 2, top: spot.y - SIZE / 2, width: SIZE, height: SIZE, transition: fly }}
+        className="absolute"
+        style={{
+          left: -SIZE / 2,
+          top: -SIZE / 2,
+          width: SIZE,
+          height: SIZE,
+          transform: `rotate(${s.lean}deg) scale(${tw.get("scale")})`,
+          transformOrigin: "50% 50%",
+        }}
       >
         <Owl
-          mirrored={spot.mirrored}
-          still={still}
+          mirrored={home.mirrored}
           pose={{
-            rise: hiding ? -1 : 1,
-            pointing: (waving || target !== null) && !hiding,
-            aim: waving ? -65 + 20 * (wave % 2 ? -1 : 1) : aim,
-            look: waving ? { x: 0, y: 0 } : look,
-            blink,
+            lookX: sign * s.look.x,
+            lookY: s.look.y,
+            rise,
+            arm: hiding ? 0 : tw.get("arm"),
+            aim,
+            shift: sign * Math.max(-1, Math.min(1, s.vel.x / 500)),
+            paws: tw.get("paws"),
+            blink: still ? 0 : blinkAt(now),
             mood,
           }}
         />
-      </motion.div>
-      {bubble && !hiding && (
+      </div>
+      {said && pop > 0.01 && (
         <div
-          className="fixed"
+          key={said.id}
+          role="status"
+          className="absolute"
           style={{
-            left: bubbleLeft,
-            width: BUBBLE_WIDTH,
-            transition: fly,
-            ...(above ? { bottom: vh - (spot.y - SIZE / 2 - GAP) } : { top: spot.y + SIZE / 2 + GAP }),
+            left,
+            bottom: bubbleBottom,
+            width: "max-content",
+            maxWidth: 240,
+            transformOrigin: "0% 100%",
+            transform: `scale(${0.6 + 0.4 * pop})`,
+            opacity: Math.min(1, pop * 1.5),
+            padding: "9px 13px",
+            borderRadius: 16,
+            background: "var(--gryt-neutral-12)",
+            color: "var(--gryt-neutral-1)",
+            fontSize: 17,
+            fontWeight: 700,
+            lineHeight: 1.3,
+            letterSpacing: "-0.01em",
+            boxShadow: "0 18px 50px rgba(0,0,0,.4)",
           }}
         >
-          {bubble}
+          {said.text}
         </div>
       )}
-    </>
+      {controls && !hiding && (
+        <div
+          className="pointer-events-auto absolute"
+          style={{ left, ...(controlsBelow ? { top: SIZE / 2 + GAP } : { bottom: SIZE / 2 + GAP }) }}
+        >
+          {controls}
+        </div>
+      )}
+    </div>
   );
 }

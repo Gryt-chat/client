@@ -1,12 +1,12 @@
 import { Button } from "@gryt/ui";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useSettings } from "@/settings";
 import { useServerManagement } from "@/socket";
 
-import { FLY_MS, GuideOwl, type Rect } from "./GuideOwl";
+import { GuideOwl, type Rect } from "./GuideOwl";
 import type { TourControls } from "./steps";
 import { tourSteps } from "./steps";
 
@@ -16,8 +16,11 @@ const HALO = 8;
 const TARGET_WAIT_MS = 2500;
 
 const FADE_MS = 260;
-/** The owl waving hello in the middle of the window before it starts. */
-const HELLO_MS = 2200;
+const HELLO = { id: "hello", text: "Hi! Let me show you around." };
+/** The entrance, then the wave while it says hi, in the middle of the window. */
+const HELLO_MS = 3600;
+/** The owl's spring takes about this long to settle beside the next control. */
+const FLY_MS = 1300;
 /** Between hops, for the menu or panel the last press opened to arrive. */
 const HOP_MS = 420;
 const SETTLE_MS = 650;
@@ -243,6 +246,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   }
 
   const lit = focusShown ? rect : null;
+  const stepLine = lit && { id: shownStep.id, text: shownStep.line };
   const cut = lit && {
     top: lit.top - HALO,
     left: lit.left - HALO,
@@ -252,7 +256,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
   // Portaled to body: the app renders inside `.radix-themes`, a stacking context no z-index here would beat.
   return createPortal(
-    // Transparent to the pointer so the lit control stays clickable; only the bubble takes clicks back.
+    // Transparent to the pointer so the lit control stays clickable; only the owl's controls take clicks back.
     <div data-gryt="tour" className="pointer-events-none fixed inset-0 z-(--gryt-z-tour)">
       {cut && (
         <div
@@ -266,42 +270,25 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         target={hop ?? lit}
         mood={waving ? "happy" : shownStep.mood ?? "open"}
         waving={waving && !reduceMotion}
-        bubble={
-          waving ? (
-            <p className="mx-auto my-0 w-fit rounded-(--gryt-radius-xl) bg-gryt-text px-3.5 py-2.5 text-sm font-semibold text-gryt-bg shadow-[0_18px_50px_rgb(0_0_0/0.4)]">
-              Hi! Let me show you around.
-            </p>
-          ) : lit && (
-            <motion.div
-              key={shownStep.id}
+        line={waving ? HELLO : stepLine}
+        controls={
+          lit && (
+            <div
               role="dialog"
               aria-modal="false"
-              aria-labelledby={`tour-${shownStep.id}-line`}
-              initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 420, damping: 26 }}
-              // pointer-events back on: a Radix modal sets pointer-events: none on the body, and this is portaled there.
-              className="pointer-events-auto rounded-(--gryt-radius-xl) bg-gryt-text p-3.5 text-gryt-bg shadow-[0_18px_50px_rgb(0_0_0/0.4)]"
+              aria-label={shownStep.line}
+              className="flex items-center gap-2 rounded-full bg-gryt-surface py-1 pr-1 pl-3 shadow-[0_10px_30px_rgb(0_0_0/0.35)]"
             >
-              <p className="m-0 font-mono text-xs tracking-wide text-gryt-accent">
-                {tourSteps.indexOf(shownStep) + 1} of {tourSteps.length}
-              </p>
-              <p id={`tour-${shownStep.id}-line`} className="mt-1 mb-3 text-sm font-semibold leading-5">
-                {shownStep.line}
-              </p>
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={onFinish}
-                  className="cursor-pointer rounded-full px-2 py-1 text-xs opacity-70 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-gryt-accent"
-                >
-                  Skip
-                </button>
-                <Button size="small" onClick={advance}>
-                  {isLast ? "Done" : "Next"}
-                </Button>
-              </div>
-            </motion.div>
+              <span className="font-mono text-xs text-gryt-muted">
+                {tourSteps.indexOf(shownStep) + 1}/{tourSteps.length}
+              </span>
+              <Button tone="ghost" size="small" onClick={onFinish}>
+                Skip
+              </Button>
+              <Button size="small" onClick={advance}>
+                {isLast ? "Done" : "Next"}
+              </Button>
+            </div>
           )
         }
       />
