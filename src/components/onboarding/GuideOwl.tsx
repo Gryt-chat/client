@@ -141,8 +141,31 @@ function blinkAt(t: number) {
   return Math.max(one(4000), Math.floor(t / 4300) % 3 === 0 ? one(3780) : 0);
 }
 
-/** Every 6s it glances somewhere else for a second, so it looks around while the cursor sits still. */
-const GLANCES = [{ x: -0.9, y: -0.3 }, { x: 0.2, y: -0.8 }, { x: -0.6, y: 0.3 }];
+/** How far away something has to be before the eyes turn all the way to it. */
+const REACH = 360;
+
+/** Eyes that turn further the further away it is: centred on the owl, all the way at REACH. */
+function gaze(dx: number, dy: number) {
+  const d = Math.hypot(dx, dy) || 1;
+  const m = Math.min(1, d / REACH);
+  return { x: (dx / d) * m, y: (dy / d) * m };
+}
+
+/** Per second: how quickly the eyes catch up. Low enough that they ease over instead of snapping. */
+const EYE_EASE = 2.2;
+
+/** Somewhere random to look for a moment: more often while the cursor sits still. */
+function nextGlance(now: number, idle: boolean) {
+  const angle = Math.random() * Math.PI * 2;
+  const reach = 0.45 + Math.random() * 0.55;
+  const until = now + 900 + Math.random() * 1100;
+  return {
+    x: Math.cos(angle) * reach,
+    y: Math.sin(angle) * reach,
+    until,
+    next: until + (idle ? 1500 + Math.random() * 2500 : 5000 + Math.random() * 5000),
+  };
+}
 
 function usePasswordFocused() {
   const [focused, setFocused] = useState(false);
@@ -213,6 +236,8 @@ export function GuideOwl({
     lean: 0,
     last: performance.now(),
     cursor: null as { x: number; y: number } | null,
+    movedAt: 0,
+    glance: { x: 0, y: 0, until: 0, next: performance.now() + 4000 },
   });
   const home = homeFor(target);
   const homeRef = useRef(home);
@@ -222,7 +247,10 @@ export function GuideOwl({
   const [said, setSaid] = useState<Line | null>(null);
 
   useEffect(() => {
-    const move = (e: PointerEvent) => (state.current.cursor = { x: e.clientX, y: e.clientY });
+    const move = (e: PointerEvent) => {
+      state.current.cursor = { x: e.clientX, y: e.clientY };
+      state.current.movedAt = performance.now();
+    };
     window.addEventListener("pointermove", move);
     let frame = requestAnimationFrame(function tick(now) {
       const s = state.current;
@@ -245,22 +273,16 @@ export function GuideOwl({
       }
       const t = targetRef.current;
       let want = { x: 0, y: 0 };
-      if (!still && s.cursor) {
-        const cx = s.cursor.x - s.pos.x, cy = s.cursor.y - s.pos.y;
-        const cd = Math.hypot(cx, cy) || 1;
-        want = { x: cx / cd, y: Math.max(-0.35, Math.min(0.35, cy / cd)) };
-      } else if (t) {
-        const cx = t.left + t.width / 2 - s.pos.x, cy = t.top + t.height / 2 - s.pos.y;
-        const cd = Math.hypot(cx, cy) || 1;
-        want = { x: cx / cd, y: Math.max(-0.35, Math.min(0.35, cy / cd)) };
-      }
-      const g = now % 6000;
-      if (!still && g > 4600 && g < 5600) want = GLANCES[Math.floor(now / 6000) % 3];
+      if (!still && s.cursor) want = gaze(s.cursor.x - s.pos.x, s.cursor.y - s.pos.y);
+      else if (t) want = gaze(t.left + t.width / 2 - s.pos.x, t.top + t.height / 2 - s.pos.y);
+      if (now > s.glance.next) s.glance = nextGlance(now, now - s.movedAt > 2000);
+      if (!still && now < s.glance.until) want = s.glance;
       const speed = Math.hypot(s.vel.x, s.vel.y);
       const m = Math.min(1, speed / 300);
-      const go = { x: s.vel.x / (speed || 1), y: Math.max(-0.5, Math.min(0.5, s.vel.y / (speed || 1))) };
-      s.look.x += (want.x * (1 - m) + go.x * m - s.look.x) * 0.08;
-      s.look.y += (want.y * (1 - m) + go.y * m - s.look.y) * 0.08;
+      const go = { x: s.vel.x / (speed || 1), y: s.vel.y / (speed || 1) };
+      const follow = 1 - Math.exp(-EYE_EASE * dt);
+      s.look.x += (want.x * (1 - m) + go.x * m - s.look.x) * follow;
+      s.look.y += (want.y * (1 - m) + go.y * m - s.look.y) * follow;
       setFrame((n) => n + 1);
       frame = requestAnimationFrame(tick);
     });
