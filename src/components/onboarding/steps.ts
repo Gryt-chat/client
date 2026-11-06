@@ -16,7 +16,7 @@ export interface TourStep {
   target: string;
   title: string;
   body: string;
-  /** Happy eyes, kept for hello and goodbye. */
+  /** The face it makes once it has said the line. Kept to a couple of steps. */
   mood?: Mood;
   /** Raises its arm at the target. Only for small controls that are easy to miss. */
   point?: boolean;
@@ -43,7 +43,6 @@ export const tourSteps: TourStep[] = [
     point: true,
     title: "Everything about you is here",
     body: "Your profile, your settings, and signing in when you want to, all from this menu.",
-    mood: "happy",
     // Closes anything a re-run of the tour left open, so step one always starts
     // from the same place.
     enter: (app) => {
@@ -56,6 +55,7 @@ export const tourSteps: TourStep[] = [
     target: "profile-editor",
     title: "Pick a name and a face",
     body: "A nickname, and a picture if you want one. Neither is permanent, and you can change them whenever.",
+    mood: "wink",
     // The honest route: the avatar opens its menu, and Settings is in the menu.
     // Nothing here is simulated — these are the two presses a person makes.
     via: ["profile", "menu-settings"],

@@ -42,6 +42,8 @@ interface OwlPose {
   paws: number;
   blink: number;
   mood: Mood;
+  /** 0..1: the beak opening while it talks. */
+  talk: number;
 }
 
 function Owl({ pose, mirrored }: { pose: OwlPose; mirrored: boolean }) {
@@ -78,7 +80,7 @@ function Owl({ pose, mirrored }: { pose: OwlPose; mirrored: boolean }) {
               const sy = 1 - 0.9 * pose.blink;
               return <path key={side} d={side === "left" ? EYE_L : EYE_R} transform={`translate(0 ${c.y * (1 - sy)}) scale(1 ${sy})`} />;
             })}
-            <path d={BEAK} />
+            <path d={BEAK} transform={`translate(0 ${822 * -0.3 * pose.talk}) scale(1 ${1 + 0.3 * pose.talk})`} />
           </g>
         </g>
       </g>
@@ -256,6 +258,8 @@ export function GuideOwl({
   const targetRef = useRef(target);
   targetRef.current = target;
   const [said, setSaid] = useState<Line | null>(null);
+  const [face, setFace] = useState<Mood>("open");
+  const talkUntil = useRef(0);
   const bubbleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -340,14 +344,18 @@ export function GuideOwl({
     let cancelled = false;
     const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
     setSaid(line);
+    setFace("open");
+    const talking = Math.min(2600, 500 + (line.title.length + (line.body?.length ?? 0)) * 18);
+    talkUntil.current = performance.now() + talking;
+    // The face comes after the line is said; a wink is only a moment.
+    const faced = window.setTimeout(() => setFace(mood), talking);
+    const unwink = mood === "wink" ? window.setTimeout(() => setFace("open"), talking + 700) : 0;
     tw.to("pop", 0, 1, ease.out, true);
     tw.to("pop", 1, 800, ease.spring, still);
-    if (!point && !waving) {
-      tuck();
-      return;
-    }
-    tw.to("rise", 1, 450, ease.out, still);
-    tw.to("arm", 1, 520, ease.spring, still);
+    if (point || waving) {
+      tw.to("rise", 1, 450, ease.out, still);
+      tw.to("arm", 1, 520, ease.spring, still);
+    } else tuck();
     void (async () => {
       await wait(700 + (line.title.length + (line.body?.length ?? 0)) * 38);
       if (cancelled || waving) return;
@@ -355,8 +363,10 @@ export function GuideOwl({
     })();
     return () => {
       cancelled = true;
+      window.clearTimeout(faced);
+      window.clearTimeout(unwink);
     };
-    // waving and point are read once per line on purpose.
+    // waving, point and mood are read once per line on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [line?.id, tw, still]);
 
@@ -416,7 +426,8 @@ export function GuideOwl({
             shift: sign * Math.max(-1, Math.min(1, s.vel.x / 500)),
             paws: tw.get("paws"),
             blink: still ? 0 : blinkAt(now),
-            mood,
+            mood: face,
+            talk: !still && now < talkUntil.current ? Math.abs(Math.sin(now / 85)) : 0,
           }}
         />
       </div>
