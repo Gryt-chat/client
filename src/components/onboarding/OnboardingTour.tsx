@@ -16,7 +16,7 @@ const HALO = 8;
 const TARGET_WAIT_MS = 2500;
 
 const FADE_MS = 260;
-const HELLO = { id: "hello", text: "Hi! Let me show you around." };
+const HELLO = { id: "hello", title: "Hi! Let me show you around." };
 /** The entrance, then the wave while it says hi, in the middle of the window. */
 const HELLO_MS = 3600;
 /** The owl's spring takes about this long to settle beside the next control. */
@@ -246,7 +246,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   }
 
   const lit = focusShown ? rect : null;
-  const stepLine = lit && { id: shownStep.id, text: shownStep.line };
+  const stepLine = lit && { id: shownStep.id, title: shownStep.title, body: shownStep.body };
   const cut = lit && {
     top: lit.top - HALO,
     left: lit.left - HALO,
@@ -276,7 +276,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
             <div
               role="dialog"
               aria-modal="false"
-              aria-label={shownStep.line}
+              aria-label={shownStep.title}
               className="flex items-center gap-2 rounded-full bg-gryt-surface py-1 pr-1 pl-3 shadow-[0_10px_30px_rgb(0_0_0/0.35)]"
             >
               <span className="font-mono text-xs text-gryt-muted">
@@ -285,6 +285,11 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
               <Button tone="ghost" size="small" onClick={onFinish}>
                 Skip
               </Button>
+              {index > 0 && (
+                <Button tone="neutral" size="small" onClick={() => setIndex((current) => current - 1)}>
+                  Back
+                </Button>
+              )}
               <Button size="small" onClick={advance}>
                 {isLast ? "Done" : "Next"}
               </Button>

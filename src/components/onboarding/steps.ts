@@ -14,8 +14,8 @@ export interface TourStep {
   id: string;
   /** Matches a data-tour attribute in the app chrome. */
   target: string;
-  /** What the owl says when the step starts. One short instruction. */
-  line: string;
+  title: string;
+  body: string;
   /** Happy eyes, kept for hello and goodbye. */
   mood?: Mood;
   /**
@@ -38,7 +38,8 @@ export const tourSteps: TourStep[] = [
   {
     id: "menu",
     target: "profile",
-    line: "Your profile and settings are here.",
+    title: "Everything about you is here",
+    body: "Your profile, your settings, and signing in when you want to. Bottom left, always.",
     mood: "happy",
     // Closes anything a re-run of the tour left open, so step one always starts
     // from the same place.
@@ -50,7 +51,8 @@ export const tourSteps: TourStep[] = [
   {
     id: "profile",
     target: "profile-editor",
-    line: "Pick a name and a picture. You can change them anytime.",
+    title: "Pick a name and a face",
+    body: "A nickname, and a picture if you want one. Neither is permanent, and you can change them whenever.",
     // The honest route: the avatar opens its menu, and Settings is in the menu.
     // Nothing here is simulated — these are the two presses a person makes.
     via: ["profile", "menu-settings"],
@@ -60,7 +62,8 @@ export const tourSteps: TourStep[] = [
   {
     id: "account",
     target: "account-signin",
-    line: "You don't need an account. It syncs your servers and settings between devices.",
+    title: "An account, if you ever want one",
+    body: "You do not need one. It carries your servers and settings between machines, and that is the only thing it is for.",
     // Already inside Settings, so this is one press on the destination itself.
     via: ["settings-account"],
     // A narrow window has a picker instead of that button, so the hop is skipped and this opens the page.
@@ -69,15 +72,18 @@ export const tourSteps: TourStep[] = [
   {
     id: "server",
     target: "add-server",
-    line: "Gryt is empty until you join a server. Add one here.",
-    // The panel closing needs a cause too, or it vanishes as abruptly as it
-    // arrived. The cursor presses the same X the user would.
+    title: "Gryt is empty until you join a server",
+    body: "This is where you add one, whether it is a friend's or your own.",
+    // The owl presses the same X the user would, so the panel closing has a cause.
     via: ["settings-close"],
+    // Coming back from the join step, its dialog would cover this.
+    enter: (app) => app.setShowAddServer(false),
   },
   {
     id: "join",
     target: "join-address",
-    line: "Paste an invite link or a server address.",
+    title: "Paste an invite to join",
+    body: "A friend's invite link goes straight in here, and a plain address works too. No account needed, and you can leave again whenever you like.",
     // Two hops now that the dialog asks which errand you are on: open it, then
     // choose Join. The cursor makes the same choice a person would.
     via: ["add-server", "choose-join"],
@@ -85,7 +91,8 @@ export const tourSteps: TourStep[] = [
   {
     id: "community",
     target: "official-server",
-    line: "Or come say hi on Gryt Chat, the server we run.",
+    title: "Or join our official server 👋",
+    body: "Gryt Chat is the server we host. Come say hi, ask anything, or tell us what's broken.",
     mood: "happy",
     // Already on the join screen. Hidden, joined or unreachable, and the tour ends a step early.
   },

@@ -181,12 +181,13 @@ function homeFor(target: Rect | null) {
 
 export interface Line {
   id: string;
-  text: string;
+  title: string;
+  body?: string;
 }
 
 /**
- * The owl pops up, drifts beside `target` and says `line` once, in a bubble that goes again
- * after reading time. `controls` stay up under it, or above it near the bottom of the window.
+ * The owl pops up, drifts beside `target` and says `line` in a bubble that stays until the line
+ * changes. `controls` sit under it, or above it near the bottom of the window.
  */
 export function GuideOwl({
   target,
@@ -289,21 +290,22 @@ export function GuideOwl({
     };
   }, [tw, still]);
 
-  // Says the line once, pointing while it talks unless it's waving, then tucks the arm back in.
+  // Points while it talks unless it's waving, then tucks the arm back in. The bubble stays.
   useEffect(() => {
-    if (!line) return;
+    if (!line) {
+      tw.to("pop", 0, 280, ease.in, still);
+      return;
+    }
     let cancelled = false;
     const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
     setSaid(line);
     tw.to("pop", 0, 1, ease.out, true);
-    tw.to("pop", 1, 520, ease.spring, still);
+    tw.to("pop", 1, 800, ease.spring, still);
     tw.to("rise", 1, 450, ease.out, still);
     tw.to("arm", 1, 520, ease.spring, still);
     void (async () => {
-      await wait(700 + line.text.length * 38);
-      if (cancelled) return;
-      tw.to("pop", 0, 280, ease.in, still);
-      if (waving) return;
+      await wait(700 + (line.title.length + (line.body?.length ?? 0)) * 38);
+      if (cancelled || waving) return;
       tw.to("arm", 0, 380, ease.inOut, still);
       tw.to("rise", 0, 420, ease.inOut, still);
     })();
@@ -336,7 +338,7 @@ export function GuideOwl({
   const vw = window.innerWidth;
   const controlsBelow = y + SIZE / 2 + GAP + CONTROLS_HEIGHT < vh;
   const bubbleBottom = SIZE / 2 + GAP + (controls && !controlsBelow ? CONTROLS_HEIGHT + 8 : 0);
-  const left = Math.min(Math.max(x - SIZE / 2, EDGE), vw - 240 - EDGE) - x;
+  const left = Math.min(Math.max(x - SIZE / 2, EDGE), vw - 280 - EDGE) - x;
 
   return (
     <div data-gryt="guide-owl" className="pointer-events-none fixed" style={{ left: x, top: y, opacity: tw.get("o") }}>
@@ -376,10 +378,10 @@ export function GuideOwl({
             left,
             bottom: bubbleBottom,
             width: "max-content",
-            maxWidth: 240,
+            maxWidth: 280,
             transformOrigin: "0% 100%",
             transform: `scale(${0.6 + 0.4 * pop})`,
-            opacity: Math.min(1, pop * 1.5),
+            opacity: Math.min(1, pop * 1.2),
             padding: "9px 13px",
             borderRadius: 16,
             background: "var(--gryt-neutral-12)",
@@ -391,7 +393,8 @@ export function GuideOwl({
             boxShadow: "0 18px 50px rgba(0,0,0,.4)",
           }}
         >
-          {said.text}
+          {said.title}
+          {said.body && <p className="mt-1 mb-0 text-sm leading-5 font-normal opacity-80">{said.body}</p>}
         </div>
       )}
       {controls && !hiding && (
