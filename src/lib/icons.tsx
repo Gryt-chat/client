@@ -132,7 +132,6 @@ import {
   SidebarSimple,
   SignIn,
   SignOut,
-  Signpost,
   SlidersHorizontal,
   SmileyWink,
   SpeakerHigh,
@@ -297,7 +296,6 @@ export const PiShieldWarningFill: Icon = weighted(ShieldWarning, "fill", "PiShie
 export const PiSignInBold: Icon = weighted(SignIn, "bold", "PiSignInBold");
 export const PiSignInFill: Icon = weighted(SignIn, "fill", "PiSignInFill");
 export const PiSignOutFill: Icon = weighted(SignOut, "fill", "PiSignOutFill");
-export const PiSignpost: Icon = Signpost;
 export const PiSlidersHorizontalFill: Icon = weighted(SlidersHorizontal, "fill", "PiSlidersHorizontalFill");
 export const PiSpeakerHighFill: Icon = weighted(SpeakerHigh, "fill", "PiSpeakerHighFill");
 export const PiSpeakerSimpleHighFill: Icon = weighted(SpeakerSimpleHigh, "fill", "PiSpeakerSimpleHighFill");

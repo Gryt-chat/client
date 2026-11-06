@@ -226,6 +226,7 @@ export function GuideOwl({
   mood,
   waving,
   point,
+  gone,
   controls,
 }: {
   target: Rect | null;
@@ -233,6 +234,8 @@ export function GuideOwl({
   mood: Mood;
   waving: boolean;
   point: boolean;
+  /** Shrinks back into nothing, on the way out. */
+  gone: boolean;
   controls: ReactNode;
 }) {
   const still = useReducedMotion() ?? false;
@@ -369,6 +372,13 @@ export function GuideOwl({
     // waving, point and mood are read once per line on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [line?.id, tw, still]);
+
+  useEffect(() => {
+    if (!gone) return;
+    tw.to("scale", 0, 400, ease.in, still);
+    tw.to("o", 0, 400, ease.in, false);
+    tw.to("pop", 0, 280, ease.in, still);
+  }, [gone, tw, still]);
 
   useEffect(() => {
     if (waving) return;

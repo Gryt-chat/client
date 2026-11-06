@@ -1,12 +1,12 @@
 import { Button, Chip, Divider, Surface, Switch } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
-import { Wordmark } from "@/common";
+import { LogoIcon, Wordmark } from "@/common";
 import { requestWhatsNew } from "@/socket";
 
 import { FaGithub } from "../../../../lib/brandIcons";
 import { getElectronAPI, isElectron, isMacAppStoreBuild, isMicrosoftStoreBuild, MS_STORE_PAGE, type UpdateStatus } from "../../../../lib/electron";
-import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatTeardropDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiSignpost, PiXCircleFill } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiArrowSquareOutFill, PiBugFill, PiChatTeardropDotsFill, PiCheckCircleFill, PiClockClockwiseFill, PiDesktopFill, PiDownloadSimpleFill, PiXCircleFill } from "../../../../lib/icons";
 import { useReportForm } from "../../../../lib/reports/useReportForm";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { useSettings } from "../hooks/useSettings";
@@ -415,8 +415,8 @@ export function AboutSettings() {
           Report a bug
         </Button>
         <Button size="small" tone="neutral" onClick={startTour}>
-          <PiSignpost size={16} />
-          Show me around
+          <LogoIcon size={16} />
+          Get a tour
         </Button>
       </div>
 

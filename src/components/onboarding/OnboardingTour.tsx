@@ -17,6 +17,9 @@ const TARGET_WAIT_MS = 2500;
 
 const FADE_MS = 260;
 const HELLO = { id: "hello", title: "Hi! Let me show you around." };
+const BYE = { id: "bye", title: "Goodbye! Enjoy Gryt!" };
+/** The wave and the goodbye line, before the owl shrinks away and the tour closes. */
+const BYE_MS = 2600;
 /** The entrance, then the wave while it says hi, in the middle of the window. */
 const HELLO_MS = 3600;
 /** The owl's spring takes about this long to settle beside the next control. */
@@ -78,9 +81,18 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   };
 
   const reduceMotion = useReducedMotion();
+
+  // Started from Settings › About, the hello would play over Settings.
+  useEffect(() => {
+    controlsRef.current.closeSettings();
+    controlsRef.current.setShowAddServer(false);
+  }, []);
   /** Where the owl flies once the step's route has opened its target. */
   const [hop, setHop] = useState<Rect | null>(null);
   const [waving, setWaving] = useState(true);
+  const [bye, setBye] = useState(false);
+  const [gone, setGone] = useState(false);
+  const goodbye = useCallback(() => setBye(true), []);
   const greeted = useRef(false);
   const [focusShown, setFocusShown] = useState(false);
   /** Lags the real step so the old line doesn't swap while its bubble fades out. */
@@ -192,11 +204,11 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       return;
     }
     if (isLast) {
-      onFinish();
+      goodbye();
     } else {
       setIndex((current) => current + 1);
     }
-  }, [step, isLast, onFinish, reduceMotion]);
+  }, [step, isLast, goodbye, reduceMotion]);
 
   useLayoutEffect(measure, [measure]);
 
@@ -221,13 +233,24 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onFinish();
-      }
+      if (event.key !== "Escape") return;
+      // A second Escape doesn't wait for the goodbye.
+      if (bye) onFinish();
+      else goodbye();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onFinish]);
+  }, [bye, goodbye, onFinish]);
+
+  useEffect(() => {
+    if (!bye) return;
+    const leave = window.setTimeout(() => setGone(true), reduceMotion ? 1500 : BYE_MS);
+    const done = window.setTimeout(onFinish, (reduceMotion ? 1500 : BYE_MS) + 450);
+    return () => {
+      window.clearTimeout(leave);
+      window.clearTimeout(done);
+    };
+  }, [bye, onFinish, reduceMotion]);
 
   if (!step) {
     return null;
@@ -235,14 +258,16 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
   function advance() {
     if (isLast) {
-      onFinish();
+      goodbye();
       return;
     }
     setIndex((current) => current + 1);
   }
 
-  const lit = focusShown ? rect : null;
+  const lit = focusShown && !bye ? rect : null;
   const stepLine = lit && { id: shownStep.id, title: shownStep.title, body: shownStep.body };
+  let said = waving ? HELLO : stepLine;
+  if (bye) said = BYE;
   const cut = lit && {
     top: lit.top - HALO,
     left: lit.left - HALO,
@@ -264,10 +289,11 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
       <GuideOwl
         target={hop ?? lit}
-        mood={waving ? "happy" : shownStep.mood ?? "open"}
-        waving={waving && !reduceMotion}
+        mood={waving || bye ? "happy" : shownStep.mood ?? "open"}
+        waving={(waving || bye) && !reduceMotion}
+        gone={gone}
         point={shownStep.point ?? false}
-        line={waving ? HELLO : stepLine}
+        line={said}
         controls={
           lit && (
             <div
@@ -279,7 +305,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
               <span className="font-mono text-xs text-gryt-muted">
                 {tourSteps.indexOf(shownStep) + 1}/{tourSteps.length}
               </span>
-              <Button tone="ghost" size="small" onClick={onFinish}>
+              <Button tone="ghost" size="small" onClick={goodbye}>
                 Skip
               </Button>
               {index > 0 && (
