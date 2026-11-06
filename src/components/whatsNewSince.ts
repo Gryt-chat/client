@@ -58,6 +58,29 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
+const coreOf = (version: string) => version.split("-")[0];
+
+/**
+ * Every beta of one version as a single entry, under the newest beta's version (GRYT-2029).
+ * Their lines each told only their own step, so the folded entry has none; its changes say it all.
+ */
+export function foldBetas(newestFirst: Release[]): Release[] {
+  const out: Release[] = [];
+  for (const r of newestFirst) {
+    const last = out[out.length - 1];
+    const sameBeta = last && r.channel === "beta" && last.channel === "beta" && coreOf(r.version) === coreOf(last.version);
+    if (!sameBeta) {
+      out.push(r);
+      continue;
+    }
+    const seen = new Set((last.changes ?? []).map((c) => c.text));
+    const changes = [...(last.changes ?? []), ...(r.changes ?? []).filter((c) => !seen.has(c.text))];
+    // Betas from before changes had kinds have only their lines, so the newest one stays.
+    out[out.length - 1] = { ...last, line: changes.length ? "" : last.line, changes };
+  }
+  return out;
+}
+
 /**
  * The releases between the last one somebody saw and the one they are running.
  * Beta lines only reach a beta build; anything odd falls back to the running one.
@@ -68,9 +91,16 @@ export function releasesToShow(
   running: string,
   beta: boolean,
 ): ReleasesToShow {
-  const current = app.find((r) => r.version === running);
-  if (!current) return { releases: [], since: null, capped: false };
+  const found = app.find((r) => r.version === running);
+  if (!found) return { releases: [], since: null, capped: false };
 
+  /* A beta stands for every beta of its version so far, so it never shows one step alone. */
+  const current = found.channel === "beta"
+    ? foldBetas(app
+      .filter((r) => r.channel === "beta" && coreOf(r.version) === coreOf(running) && compareVersions(r.version, running) <= 0)
+      .filter((r, i, all) => all.findIndex((o) => o.version === r.version) === i)
+      .sort((a, b) => compareVersions(b.version, a.version)))[0]
+    : found;
   const only = { releases: [current], since: null, capped: false };
   if (seen === null) return only;
 
@@ -83,10 +113,11 @@ export function releasesToShow(
   /* A downgrade or a seen value that isn't a version leaves nothing between. */
   if (between.length <= 1) return only;
 
+  const folded = foldBetas(between);
   return {
-    releases: between.slice(0, MAX_RELEASES),
+    releases: folded.slice(0, MAX_RELEASES),
     since: seen,
-    capped: between.length > MAX_RELEASES,
+    capped: folded.length > MAX_RELEASES,
   };
 }
 
@@ -108,5 +139,6 @@ export function releasesAhead(list: Release[], running: string, latest: string, 
     .filter((r, i, all) => all.findIndex((o) => o.version === r.version) === i)
     .sort((a, b) => compareVersions(b.version, a.version));
 
-  return { releases: ahead.slice(0, MAX_RELEASES), capped: ahead.length > MAX_RELEASES };
+  const folded = foldBetas(ahead);
+  return { releases: folded.slice(0, MAX_RELEASES), capped: folded.length > MAX_RELEASES };
 }

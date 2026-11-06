@@ -326,8 +326,8 @@ const BETA = { version: "1.12.0-beta.1", date: "2026-09-15", line: "Beta.", chan
   const r = await run({ seen: "1.11.10", version: "1.12.0-beta.2", app: [running, BETA, R11, R10], beta: true });
   assert.deepEqual(
     r.shown.map((e) => e.version),
-    ["1.12.0-beta.2", "1.12.0-beta.1", "1.11.11"],
-    "a beta build did not see the beta lines since its last version",
+    ["1.12.0-beta.2", "1.11.11"],
+    "a beta build did not see its version's betas, as one entry, since its last version",
   );
 }
 
@@ -641,25 +641,26 @@ const SPREAD = {
   );
 }
 
-// Every change in one area, or a feed with no areas at all: security on its own, then no headings.
-for (const changes of [
-  SEVERAL_FIXES.changes.map((change) => ({ ...change, area: "settings" })),
-  SEVERAL_FIXES.changes,
-]) {
-  const html = renderToStaticMarkup(createElement(ReleaseBody, { line: "x", changes }));
+// One area keeps its heading (GRYT-2029); only a feed with no areas at all goes without one.
+for (const [changes, heading] of [
+  [SEVERAL_FIXES.changes.map((change) => ({ ...change, area: "settings" })), ["h3 Settings & app"]],
+  [SEVERAL_FIXES.changes, []],
+] as const) {
+  const html = renderToStaticMarkup(createElement(ReleaseBody, { line: "x", changes: [...changes] }));
   assert.deepEqual(
     drawn(html),
     [
       "line: x",
       "security › h3 Security",
       "security › Security: Uploads are checked",
+      ...heading,
       "New: Webhooks post cards",
       "Changed: Webhook avatars are resized",
       "Fixed: Updates said there were none",
       "Fixed: A hosted server said reconnecting",
       "Fixed: The desktop entry listed gryt five times",
     ],
-    "a release with one area or none is not its line, the security block, then its rows with no heading",
+    "a release with one area lost its heading, or one with none got an Other heading",
   );
 }
 
@@ -888,6 +889,6 @@ console.log(
   "what's new: ok, waits for the store, once per version, quiet on a fresh " +
     "install and with no line; revalidates and retries " +
     `${RETRY_DELAYS_MS.length} times; a pill on every change, unknown kinds kept, the line on top, ` +
-    "security in a red block of its own, a heading per area only when there are two, " +
+    "security in a red block of its own, a heading per area whenever there is one, " +
     "each with its own mark and pinned to the top of its own rows, dates local",
 );

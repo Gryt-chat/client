@@ -102,8 +102,8 @@ assert.deepEqual(versions(releasesToShow(APP.slice(1), "1.11.8", "1.11.11", fals
   const beta = releasesToShow(app, "1.11.10", "1.12.0-beta.2", true);
   assert.deepEqual(
     versions(beta),
-    ["1.12.0-beta.2", "1.12.0-beta.1", "1.11.11"],
-    "a beta build missed the beta lines, or saw the release above it",
+    ["1.12.0-beta.2", "1.11.11"],
+    "a beta build missed the beta lines, saw the release above it, or got each beta apart (GRYT-2029)",
   );
 
   // Off the beta channel onto the release: the release, not the betas again.
@@ -200,3 +200,35 @@ console.log(
   `what's new since: ok, semver order, betas below releases and only on beta, newest first, capped at ${MAX_RELEASES}, ` +
     "areas kept, dialog draws a list",
 );
+
+/* ── a version's betas are one entry (GRYT-2029) ─────────────────────────── */
+{
+  const { foldBetas } = await import(pathToFileURL(join(root, SINCE)).href);
+  const change = (text: string, area = "chat") => ({ kind: "fixed", area, text });
+  const folded = foldBetas([
+    rel("1.12.0-beta.3", { channel: "beta", changes: [change("C"), change("B")] }),
+    rel("1.12.0-beta.2", { channel: "beta", changes: [change("B")] }),
+    rel("1.12.0-beta.1", { channel: "beta", changes: [change("A", "voice")] }),
+    rel("1.11.11", { changes: [change("Z")] }),
+    rel("1.11.11-beta.1", { channel: "beta", changes: [change("Y")] }),
+  ]);
+  assert.deepEqual(folded.map((r: { version: string }) => r.version), ["1.12.0-beta.3", "1.11.11", "1.11.11-beta.1"], "betas of one version were not folded, or a stable release was folded into them");
+  assert.deepEqual(folded[0].changes.map((c: { text: string }) => c.text), ["C", "B", "A"], "the folded entry lost a change or repeated one");
+  assert.equal(folded[0].line, "", "a folded entry kept one beta's line as if it spoke for all of them");
+  assert.equal(folded[1].line, "Line for 1.11.11.", "a stable release lost its line");
+  const plain = foldBetas([rel("1.12.0-beta.2", { channel: "beta" }), rel("1.12.0-beta.1", { channel: "beta" })]);
+  assert.equal(plain[0].line, "Line for 1.12.0-beta.2.", "betas with no changes lost the only text they had");
+}
+
+/* ── asked on a beta: its version's betas so far, as one ─────────────────── */
+{
+  const change = (text: string) => ({ kind: "fixed", area: "chat", text });
+  const app = [
+    rel("1.12.0-beta.3", { channel: "beta", changes: [change("C")] }),
+    rel("1.12.0-beta.2", { channel: "beta", changes: [change("B")] }),
+    rel("1.12.0-beta.1", { channel: "beta", changes: [change("A")] }),
+  ];
+  const asked = releasesToShow(app, null, "1.12.0-beta.2", true);
+  assert.deepEqual(versions(asked), ["1.12.0-beta.2"]);
+  assert.deepEqual(asked.releases[0].changes.map((c: { text: string }) => c.text), ["B", "A"], "asking on a beta showed one step, or a beta newer than the one running");
+}

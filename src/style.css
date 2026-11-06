@@ -2180,6 +2180,12 @@ body {
   line-height: 1.52;
 }
 
+/* The release's summary, so it reads as the release's subtitle, not a stray sentence. */
+.whats-new-line {
+  font-weight: 600;
+  color: var(--gryt-neutral-12);
+}
+
 /* A release with changes: its line, its security fixes in a block of their own, then
    the rest by area. One pill column runs through all of it, so the text lines up. */
 .whats-new-body {
