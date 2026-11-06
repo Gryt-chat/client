@@ -2,10 +2,10 @@
  * states carried by @gryt/ui Button, IconButton and Avatar; no new controls here. */
 import { Avatar, Button, Dialog, IconButton, MessageBubble } from "@gryt/ui";
 
-import { useAccount } from "@/common";
+import { LogoIcon, useAccount } from "@/common";
 import { useSettings } from "@/settings";
 
-import { PiSignpost, PiX } from "../lib/icons";
+import { PiX } from "../lib/icons";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 
 /**
@@ -86,10 +86,10 @@ export function Welcome() {
               DOM, so it is also first for a keyboard and a screen reader. */}
           <div className="flex flex-col gap-2 min-[24rem]:flex-row">
             <Button
-              startIcon={<PiSignpost size={18} />}
+              startIcon={<LogoIcon size={18} />}
               onClick={() => completeWelcome({ startTour: true })}
             >
-              Show me around
+              Get a tour
             </Button>
             <Button tone="ghost" onClick={() => completeWelcome()}>
               I&rsquo;ll look myself

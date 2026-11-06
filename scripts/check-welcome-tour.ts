@@ -58,7 +58,7 @@ const firstRun = { nickname: "Iron" };
 
 {
   const after = run(firstRun, { startTour: true });
-  assert.equal(after.showTour, true, "Show me around on a first run should start the tour");
+  assert.equal(after.showTour, true, "Get a tour on a first run should start the tour");
   assert.equal(after.hasSeenWelcome, true);
   assert.equal(after.welcomeWritten, true, "the welcome should be written down as seen");
   assert.equal(after.hasSeenTour, false, "starting the tour is not finishing it");
@@ -95,11 +95,11 @@ const firstRun = { nickname: "Iron" };
     /\[showTour, setShowTour\] = useState\(false\)/,
     "the tour should start closed",
   );
-  // And Settings › About's "Show me around", which somebody presses (GRYT-1779).
+  // And Settings › About's "Get a tour", which somebody presses (GRYT-1779).
   const startTour = bodyOf("function startTour(");
   assert.match(startTour, /^\{\s*setShowTour\(true\);\s*\}$/, "startTour should only open the tour");
   const about = readFileSync(join(root, "src/packages/settings/src/components/aboutSettings.tsx"), "utf8");
-  assert.match(about, /onClick=\{startTour\}/, "About's Show me around should be what calls startTour");
+  assert.match(about, /onClick=\{startTour\}/, "About's Get a tour should be what calls startTour");
   const outside = plain.replace(completeWelcome, "").replace(startTour, "");
   const opens = [...outside.matchAll(/setShowTour\(\s*([^)]*?)\s*\)/g)].filter((m) => m[1] !== "false");
   assert.deepEqual(
@@ -114,8 +114,8 @@ const firstRun = { nickname: "Iron" };
   const welcome = readFileSync(join(root, "src/components/welcome.tsx"), "utf8");
   assert.match(
     welcome,
-    /onClick=\{\(\) => completeWelcome\(\{ startTour: true \}\)\}\s*>\s*Show me around/,
-    "Show me around should call completeWelcome({ startTour: true })",
+    /onClick=\{\(\) => completeWelcome\(\{ startTour: true \}\)\}\s*>\s*Get a tour/,
+    "Get a tour should call completeWelcome({ startTour: true })",
   );
   const mainApp = readFileSync(join(root, "src/components/mainApp.tsx"), "utf8");
   assert.match(
