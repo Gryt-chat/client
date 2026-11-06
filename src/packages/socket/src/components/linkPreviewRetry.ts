@@ -8,6 +8,9 @@ export type PreviewStep =
   | { action: "give-up" }
   | { action: "retry"; delayMs: number };
 
+/** A request the server hasn't answered by now counts as dropped. Its own fetch gives up after about 20s. */
+export const PREVIEW_REQUEST_TIMEOUT_MS = 25_000;
+
 /** Waits before the second and third try after a 5xx or a dropped connection. */
 export const TRANSIENT_DELAYS_MS = [2_000, 8_000];
 

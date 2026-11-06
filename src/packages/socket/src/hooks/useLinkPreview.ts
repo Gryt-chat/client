@@ -4,7 +4,7 @@ import { getPreviewImageUrl, getServerAccessToken, getServerHttpBase } from "@/c
 import { useSettings } from "@/settings/src/hooks/useSettings";
 
 import { type LinkPreviewData, previewCache, previewRefused } from "../components/embedUtils";
-import { nextPreviewStep, type PreviewFailure } from "../components/linkPreviewRetry";
+import { nextPreviewStep, PREVIEW_REQUEST_TIMEOUT_MS, type PreviewFailure } from "../components/linkPreviewRetry";
 import { useTrustedEmbedHosts } from "../lib/trustedEmbedHosts";
 
 function hostOf(url: string): string {
@@ -54,6 +54,7 @@ export function useLinkPreview(url: string, serverHost: string) {
       try {
         res = await fetch(`${base}/api/link-preview?url=${encodeURIComponent(url)}`, {
           headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(PREVIEW_REQUEST_TIMEOUT_MS),
         });
       } catch {
         if (!cancelled) settle(attempt, { kind: "network" });
