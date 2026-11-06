@@ -5,6 +5,7 @@ import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
 import { useSettings } from "@/settings";
 
+import { useLocale } from "../../../../lib/localeContext";
 import { NoticeDialog } from "../../../socket/src/components/NoticeDialog";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 import { SoundSettings } from "./SoundSettings";
@@ -12,6 +13,7 @@ import { TileLayoutPicker } from "./tileLayoutPicker";
 import { TwoPersonLayoutPicker } from "./twoPersonLayoutPicker";
 
 export function VoiceSettings() {
+  const { t } = useLocale();
   const {
     eSportsModeEnabled,
     setESportsModeEnabled,
@@ -75,7 +77,7 @@ export function VoiceSettings() {
       <Divider />
 
       <SliderSetting
-        title={`AFK timeout: ${afkTimeoutMinutes} minutes`}
+        title="AFK timeout" titleValue={t("settings.duration.minutes", { count: afkTimeoutMinutes })}
         description="You are marked AFK after this many minutes of silence, and only while you are connected to voice."
         value={afkTimeoutMinutes}
         onChange={setAfkTimeoutMinutes}

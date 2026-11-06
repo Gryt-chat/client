@@ -138,11 +138,11 @@ export function InviteAcceptModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <PiEnvelopeFill size={16} />
-              <Dialog.Title>{t("Server Invite")}</Dialog.Title>
+              <Dialog.Title>{t("chat.serverInvite")}</Dialog.Title>
             </div>
             <Dialog.Close
               disabled={joining}
-              render={<IconButton tone="ghost" size="xsmall" aria-label="Close" />}
+              render={<IconButton tone="ghost" size="xsmall" aria-label={t("common.close")} />}
             >
               <PiX size={16} />
             </Dialog.Close>
@@ -182,7 +182,7 @@ export function InviteAcceptModal({
                 <div className="flex items-center gap-1">
                   <PiUsersThreeFill size={14} style={{ color: "var(--gryt-neutral-9)" }} />
                   <span className="text-sm text-gryt-muted">
-                {info.members} {t("members")}
+                {info.members} {t("settings.members")}
                   </span>
                 </div>
               )}
@@ -201,14 +201,14 @@ export function InviteAcceptModal({
 
           {view.needsAccount && !alreadyMember && (
             <span className="text-sm text-center">
-              {t("You need a Gryt account to join. Sign in and you’ll come back to this invite.")}
+              {t("chat.youNeedAGrytAccountToJoinSignInAnd")}
             </span>
           )}
 
           {view.showCodeField && !awaitingApproval && (
             <TextField
-              aria-label={t("Invite code")}
-              placeholder={t("Paste invite code")}
+              aria-label={t("settings.inviteCode")}
+              placeholder={t("settings.pasteInviteCode")}
               disabled={joining}
               value={typedCode}
               onChange={(e) => setTypedCode(normalizeCode(e.target.value))}
@@ -217,8 +217,8 @@ export function InviteAcceptModal({
 
           {view.showNote && (
             <TextField
-              aria-label={t("Say who you are")}
-              placeholder={t("Say who you are (optional)")}
+              aria-label={t("settings.sayWhoYouAre")}
+              placeholder={t("chat.sayWhoYouAreOptional")}
               maxLength={300}
               disabled={joining}
               value={note}
@@ -228,7 +228,7 @@ export function InviteAcceptModal({
 
           {awaitingApproval && (
             <Alert severity="info">
-              {t("Asked. Somebody who runs this server has to let you in. It’s in your server list now, marked as waiting, and opens on its own once they do.")}
+              {t("chat.askedSomebodyWhoRunsThisServerHasToLetYou")}
             </Alert>
           )}
 
@@ -238,22 +238,22 @@ export function InviteAcceptModal({
 
           <div className="flex flex-wrap justify-end gap-2">
             <Button tone="neutral" size="small" disabled={joining} onClick={dismiss}>
-              {t(alreadyMember || awaitingApproval ? "Close" : "Cancel")}
+              {t(alreadyMember || awaitingApproval ? "common.close" : "common.cancel")}
             </Button>
             {view.action.kind === "go-to-server" && (
-              <Button size="small" onClick={() => onGoToServer?.()}>{t("Go to Server")}</Button>
+              <Button size="small" onClick={() => onGoToServer?.()}>{t("chat.goToServer")}</Button>
             )}
             {view.action.kind === "sign-in" && (
               <Button size="small" disabled={signingIn} onClick={onSignIn}>
                 <PiSignInFill size={16} />
-                {signingIn ? t("Signing in…") : t("Sign in to join")}
+                {signingIn ? t("chat.signingIn") : t("chat.signInToJoin")}
               </Button>
             )}
             {view.action.kind === "join" && (
               <Button size="small" disabled={view.action.disabled || joining} onClick={() => void join()}>
                 {joining ? (
                   <>
-                  <Spinner size={20} /> {t("Joining…")}
+                  <Spinner size={20} /> {t("settings.joining")}
                   </>
                 ) : (
                   view.action.label

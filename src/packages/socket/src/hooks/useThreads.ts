@@ -92,7 +92,7 @@ function refusedReply(queue: Map<string, ThreadRetryEntry>, ref?: ChatErrorRef):
 }
 
 function errorText(e: ChatErrorPayload, t: (message: string) => string): string {
-  if (typeof e === "string") return t(e || "Something went wrong.");
+  if (typeof e === "string") return t(e || "chat.somethingWentWrong");
   if (e?.message) return t(e.message);
   const known: Record<string, string> = {
     forbidden: "You do not have permission to do that.",
@@ -530,7 +530,7 @@ export function useThreads(
     /* A dead socket swallows the emit, and the root stays queued to open a panel
        that no thread:created ever arrives for. Say so instead (GRYT-1389). */
     if (socket.connected === false) {
-      toast.error(t("Not connected to this server"));
+      toast.error(t("chat.notConnectedToThisServer"));
       return;
     }
     // Already threaded — just open it.

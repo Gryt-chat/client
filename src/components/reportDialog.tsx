@@ -146,10 +146,10 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
         <Divider />
 
         <div className="flex justify-end gap-3">
-          <Dialog.Close render={<Button tone="neutral" size="small">{t("Cancel")}</Button>} />
+          <Dialog.Close render={<Button tone="neutral" size="small">{t("common.cancel")}</Button>} />
           <Button size="small" disabled={empty || sending} onClick={() => void send()}>
             <PiArrowCircleUpFill size={14} />
-          {sending ? t("Sending…") : copy.send}
+          {sending ? t("common.sending") : copy.send}
           </Button>
         </div>
       </div>
@@ -178,7 +178,7 @@ function Attached({
       {lines.length > 0 && (
         <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
           <summary className="cursor-pointer text-sm text-gryt-muted">
-            {t("What gets sent with this")}
+            {t("common.whatGetsSentWithThis")}
           </summary>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
             {lines.map((line) => (
@@ -193,7 +193,7 @@ function Attached({
 
       <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
         <summary className="cursor-pointer text-sm text-gryt-muted">
-          {t("Read the exact data")}
+          {t("common.readTheExactData")}
         </summary>
         <pre
           className="mt-2 max-h-64 overflow-auto text-xs leading-relaxed"
@@ -206,7 +206,7 @@ function Attached({
       <label className="flex cursor-pointer items-start gap-2 text-xs text-gryt-muted">
         <Checkbox checked={includeLogs} onCheckedChange={onIncludeLogs} />
         <span>
-          {t("Include the app’s recent log. It makes a bug far easier to find, and it can contain personal information — a failed connection records the address of the server, which for a self-hosted one is often a home address.")}
+          {t("common.includeTheAppSRecentLogItMakesABug")}
         </span>
       </label>
 
@@ -214,8 +214,8 @@ function Attached({
           server's version is a number about software; its address is not. */}
       <span className="text-xs text-gryt-muted">
         {includeLogs
-          ? t("No messages and no names. The log may name servers you connect to.")
-          : t("No messages, no names, and nothing about who you talk to.")}
+          ? t("common.noMessagesAndNoNamesTheLogMayNameServers")
+          : t("common.noMessagesNoNamesAndNothingAboutWhoYouTalk")}
       </span>
     </div>
   );
@@ -231,11 +231,11 @@ function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
 
   return (
     <>
-      <Dialog.Title>{t(bug ? "Bug report received" : "Feedback received")}</Dialog.Title>
+      <Dialog.Title>{t(bug ? "common.bugReportReceived" : "common.feedbackReceived")}</Dialog.Title>
       <Dialog.Description>
         {bug
-          ? t("Thanks for your bug report, we greatly appreciate it.")
-          : t("Thanks for your feedback, we greatly appreciate it.")}
+          ? t("common.thanksForYourBugReportWeGreatlyAppreciateIt")
+          : t("common.thanksForYourFeedbackWeGreatlyAppreciateIt")}
       </Dialog.Description>
 
       {/* Focused on mount so Enter closes it without reaching for the mouse,
@@ -243,7 +243,7 @@ function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
           the backdrop already close it through Dialog.Root. */}
       <div className="mt-6 flex justify-end">
         <Button size="small" autoFocus onClick={onDone}>
-          {t("Done")}
+          {t("common.done")}
         </Button>
       </div>
     </>

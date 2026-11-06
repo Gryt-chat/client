@@ -29,9 +29,9 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28.75rem]">
-          <Dialog.Title>{t("Audio you’re sharing")}</Dialog.Title>
+          <Dialog.Title>{t("voice.audioYouReSharing")}</Dialog.Title>
           <Dialog.Description>
-            {t("Pick the applications to send. Anything you leave out stays out of the share, including a voice app you're in.")}
+            {t("voice.pickTheApplicationsToSendAnythingYouLeaveOutStays")}
           </Dialog.Description>
 
           <div className="flex flex-col gap-2 py-3">
@@ -53,7 +53,7 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
                   if (v === true) void captureWholeMachine();
                 }}
               />
-              {t("Everything except Gryt")}
+              {t("voice.everythingExceptGryt")}
             </label>
 
             <div
@@ -62,7 +62,7 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
             >
               {apps.length === 0 && (
                 <span className="text-sm text-gryt-muted" style={{ padding: 12, textAlign: "center" }}>
-                  {t("No open windows found")}
+                  {t("voice.noOpenWindowsFound")}
                 </span>
               )}
 
@@ -97,7 +97,7 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
 
           <div className="flex justify-end">
             <Button size="small" onClick={() => onOpenChange(false)}>
-              {t("Done")}
+              {t("common.done")}
             </Button>
           </div>
         </Dialog.Popup>

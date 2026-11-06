@@ -218,7 +218,8 @@
     "test:history-merge": "node --disable-warning=ExperimentalWarning scripts/check-history-merge.ts",
     "test:media-sandbox": "node --disable-warning=ExperimentalWarning scripts/check-media-sandbox.ts",
     "test:unknown-apps": "node --disable-warning=ExperimentalWarning scripts/check-unknown-apps.ts",
-    "test:polls": "node --disable-warning=ExperimentalWarning scripts/check-polls.ts"
+    "test:polls": "node --disable-warning=ExperimentalWarning scripts/check-polls.ts",
+    "locales:check": "node scripts/check-locales.mjs"
   },
   "dependencies": {
     "@lexical/code": "0.52.0",
@@ -230,8 +231,10 @@
     "@lexical/selection": "0.52.0",
     "@lexical/utils": "0.52.0",
     "electron-updater": "^6.8.3",
+    "i18next": "^26.7.1",
     "lexical": "0.52.0",
     "mediabunny": "^1.61.1",
+    "react-i18next": "^17.1.12",
     "react-motion-lightbox": "0.9.1",
     "semver": "^7.6.3",
     "tar": "^7.5.22",

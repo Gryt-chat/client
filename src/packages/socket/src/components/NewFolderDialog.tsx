@@ -34,20 +34,20 @@ export function NewFolderDialog({
         <Dialog.Popup>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <Dialog.Title style={{ margin: 0 }}>{t("New folder")}</Dialog.Title>
+              <Dialog.Title style={{ margin: 0 }}>{t("chat.newFolder")}</Dialog.Title>
               <Dialog.Close>
-                <IconButton size="xsmall" aria-label={t("Close")}><PiX size={16} /></IconButton>
+                <IconButton size="xsmall" aria-label={t("common.close")}><PiX size={16} /></IconButton>
               </Dialog.Close>
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">{t("Folder name")}</span>
+              <span className="text-sm font-medium">{t("chat.folderName")}</span>
               <TextField
-                aria-label={t("Folder name")}
+                aria-label={t("chat.folderName")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); create(); } }}
-                placeholder={t("Games")}
+                placeholder={t("chat.games")}
                 maxLength={100}
                 autoFocus
               />
@@ -55,10 +55,10 @@ export function NewFolderDialog({
 
             <div className="flex flex-wrap justify-end gap-3" style={{ marginTop: 4 }}>
               <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
-                {t("Cancel")}
+                {t("common.cancel")}
               </Button>
               <Button size="small" onClick={create} disabled={!trimmed}>
-                {t("Create folder")}
+                {t("chat.createFolder")}
               </Button>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { type LocaleMessage,localeMessage } from "../../../../lib/i18n.ts";
 /** The checks run in the order the connection does, so the first failure is the
     one to act on and anything after it is reported as untested. */
 
@@ -16,9 +17,9 @@ export interface CheckResult {
   label: string;
   status: CheckStatus;
   /** One line saying what happened. Shown whether it passed or not. */
-  detail?: string;
+  detail?: LocaleMessage;
   /** Per-address findings, for the checks that try more than one. */
-  addresses?: { address: string; ok: boolean; latencyMs?: number; error?: string }[];
+  addresses?: { address: string; ok: boolean; latencyMs?: number; error?: LocaleMessage }[];
   /** Anchor in the troubleshooting guide that covers this failure. */
   help?: { label: string; href: string };
 }
@@ -99,7 +100,7 @@ export function isGrytServerAddress(raw: string, serverHost: string, service?: s
 /** A fetch that gives up rather than hanging, and reports how long it took. */
 async function probe(
   url: string,
-): Promise<{ ok: boolean; latencyMs: number; error?: string; service?: string }> {
+): Promise<{ ok: boolean; latencyMs: number; error?: LocaleMessage; service?: string }> {
   const started = performance.now();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
@@ -119,18 +120,18 @@ async function probe(
     return {
       ok: false,
       latencyMs: Math.round(performance.now() - started),
-      error: aborted ? `no answer within ${PROBE_TIMEOUT_MS / 1000}s` : "could not connect",
+      error: aborted ? localeMessage("diagnostics.timeout", { seconds: PROBE_TIMEOUT_MS / 1000 }) : "could not connect",
     };
   } finally {
     clearTimeout(timer);
   }
 }
 
-function signallingDetail(reached: number, total: number): string {
+function signallingDetail(reached: number, total: number): LocaleMessage {
   if (reached !== total) {
-    return `${reached} of ${total} answered, which is normal if the others are for people on a different network.`;
+    return localeMessage("diagnostics.partialResponse", { count: reached, total: total });
   }
-  return total === 1 ? "The address advertised for voice answered." : `All ${total} advertised addresses answered.`;
+  return total === 1 ? "The address advertised for voice answered." : localeMessage("diagnostics.allResponded", { count: total });
 }
 
 export function initialChecks(): CheckResult[] {
@@ -152,7 +153,7 @@ async function checkServerHttp(host: string): Promise<CheckResult> {
       id: "server-http",
       label: "Server reachable",
       status: "pass",
-      detail: `${host} answered in ${result.latencyMs} ms`,
+      detail: localeMessage("diagnostics.latency", { server: host, milliseconds: result.latencyMs }),
     };
   }
 
@@ -160,7 +161,7 @@ async function checkServerHttp(host: string): Promise<CheckResult> {
     id: "server-http",
     label: "Server reachable",
     status: "fail",
-    detail: `${host} ${result.error}. Chat and joining go over this address, so nothing will work until it does.`,
+    detail: localeMessage("diagnostics.serverUnavailable", { server: host, reason: typeof result.error === "string" ? localeMessage(result.error) : (result.error ?? localeMessage("common.couldNotConnect")) }),
     help: HELP.server,
   };
 }
@@ -197,7 +198,7 @@ async function checkSfuHttp(sfuHosts: string[], serverHost: string): Promise<Che
 
   const reachable = addresses.filter((a) => a.ok);
 
-  if (reachable.length === 0 && addresses.some((a) => a.error?.includes("Gryt server"))) {
+  if (reachable.length === 0 && addresses.some((a) => typeof a.error === "string" && a.error.includes("Gryt server"))) {
     return {
       id: "sfu-http",
       label: "Voice signalling reachable",
@@ -228,7 +229,7 @@ async function checkSfuHttp(sfuHosts: string[], serverHost: string): Promise<Che
       detail:
         addresses.length === 1
           ? "The only address advertised for voice cannot be reached from here."
-          : `None of the ${addresses.length} addresses advertised for voice can be reached from here.`,
+          : localeMessage("diagnostics.noneResponded", { count: addresses.length }),
       addresses,
       help: HELP.sfu,
     };
@@ -265,7 +266,7 @@ function checkSfuWebSocket(url: string): Promise<CheckResult> {
         id: "sfu-ws",
         label,
         status: "fail",
-        detail: `Could not open a connection to ${url}.`,
+        detail: localeMessage("diagnostics.connectionFailed", { server: url }),
         help: HELP.sfu,
       });
       return;
@@ -277,7 +278,7 @@ function checkSfuWebSocket(url: string): Promise<CheckResult> {
         id: "sfu-ws",
         label,
         status: "fail",
-        detail: `${url} answered a health check but never completed a connection.`,
+        detail: localeMessage("diagnostics.healthOnly", { server: url }),
         help: HELP.sfu,
       });
     }, PROBE_TIMEOUT_MS);
@@ -285,7 +286,7 @@ function checkSfuWebSocket(url: string): Promise<CheckResult> {
     ws.onopen = () => {
       clearTimeout(timer);
       ws.close();
-      finish({ id: "sfu-ws", label, status: "pass", detail: `Connected to ${url}.` });
+      finish({ id: "sfu-ws", label, status: "pass", detail: localeMessage("diagnostics.connected", { server: url }) });
     };
 
     ws.onerror = () => {
@@ -294,7 +295,7 @@ function checkSfuWebSocket(url: string): Promise<CheckResult> {
         id: "sfu-ws",
         label,
         status: "fail",
-        detail: `${url} refused the connection.`,
+        detail: localeMessage("diagnostics.refused", { server: url }),
         help: HELP.sfu,
       });
     };
@@ -339,7 +340,7 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
           id: "media",
           label,
           status: "pass",
-          detail: `UDP leaves this machine: ${host} local and ${srflx} public candidate${srflx === 1 ? "" : "s"}. This does not prove the server's media port is open, only that this end can send.`,
+          detail: localeMessage("diagnostics.udpCandidates", { localCount: host, publicCount: srflx }),
         });
         return;
       }
@@ -349,7 +350,7 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
           id: "media",
           label,
           status: "warn",
-          detail: `Found ${host} local candidate${host === 1 ? "" : "s"} but no public one, so STUN got no answer. On mobile data this is expected and voice will not connect; on Wi-Fi it usually means UDP is blocked.`,
+          detail: localeMessage("diagnostics.noPublicCandidate", { count: host }),
           help: HELP.media,
         });
         return;
@@ -394,7 +395,7 @@ function checkMedia(stunHosts: string[]): Promise<CheckResult> {
  * The route media took. **Found through `selectedCandidatePairId`, not `nominated`**
  * — Chrome reports `nominated: false` on every pair, including the one it uses.
  */
-function describeSelectedPair(stats: RTCStatsReport): string {
+function describeSelectedPair(stats: RTCStatsReport): LocaleMessage {
   const generic = "Connected to the voice server and media flowed.";
 
   let selectedId: string | undefined;
@@ -418,7 +419,7 @@ function describeSelectedPair(stats: RTCStatsReport): string {
   const remote = stats.get(pair.remoteCandidateId ?? "");
   if (!local || !remote) return generic;
 
-  return `Connected. Media took ${local.candidateType} → ${remote.candidateType}, reaching the server at ${remote.address}:${remote.port} over ${String(remote.protocol ?? "udp").toUpperCase()}.`;
+  return localeMessage("diagnostics.mediaRoute", { localType: local.candidateType ?? "", remoteType: remote.candidateType ?? "", address: remote.address ?? "", port: remote.port ?? "", protocol: String(remote.protocol ?? "udp").toUpperCase() });
 }
 
 /**
@@ -483,7 +484,7 @@ async function checkCall(
           id: "call",
           label,
           status: "fail",
-          detail: `Negotiation started but never connected within ${CALL_TIMEOUT_MS / 1000}s. Signalling works and media does not, which almost always means the UDP port is closed or the network drops UDP.`,
+          detail: localeMessage("diagnostics.negotiationTimeout", { seconds: CALL_TIMEOUT_MS / 1000 }),
           help: HELP.media,
         }),
       CALL_TIMEOUT_MS,
@@ -494,7 +495,7 @@ async function checkCall(
         id: "call",
         label,
         status: "fail",
-        detail: `Could not open a connection to ${url}.`,
+        detail: localeMessage("diagnostics.connectionFailed", { server: url }),
         help: HELP.sfu,
       });
 
@@ -522,7 +523,7 @@ async function checkCall(
           id: "call",
           label,
           status: "fail",
-          detail: `The voice server refused the test room: ${message.data ?? "no reason given"}.`,
+          detail: localeMessage("diagnostics.roomRefused", { reason: localeMessage(message.data ?? "no reason given") }),
           help: HELP.sfu,
         });
         return;
@@ -708,7 +709,7 @@ export async function runDoctor(
       status: "fail",
       detail:
         err instanceof Error
-          ? `The server would not open a test room: ${err.message}`
+          ? localeMessage("diagnostics.roomUnavailable", { reason: localeMessage(err.message) })
           : "The server would not open a test room.",
       help: HELP.sfu,
     });
@@ -722,7 +723,7 @@ export async function runDoctor(
       status: "fail",
       detail:
         err instanceof Error
-          ? `The test call could not be started: ${err.message}`
+          ? localeMessage("diagnostics.callFailed", { reason: localeMessage(err.message) })
           : "The test call could not be started.",
       help: HELP.media,
     });

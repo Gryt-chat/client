@@ -1,12 +1,12 @@
 import { createContext, useContext } from "react";
 
-import type { Locale, LocalePreference } from "./locale";
+import type { Locale, LocaleMessage, LocalePreference, TranslationParams } from "./i18n.ts";
 
 export interface LocaleContextValue {
   locale: Locale;
   preference: LocalePreference;
   setPreference: (preference: LocalePreference) => void;
-  t: (message: string, params?: Record<string, string | number>) => string;
+  t: (message: LocaleMessage, params?: TranslationParams) => string;
 }
 
 export const LocaleContext = createContext<LocaleContextValue | null>(null);

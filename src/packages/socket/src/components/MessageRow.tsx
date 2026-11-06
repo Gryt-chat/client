@@ -54,11 +54,11 @@ function sendStateOf(m: { failed?: boolean; waiting?: boolean; pending?: boolean
 
 function addedHistoryLine(you: boolean, encrypted: boolean, added: string, t: (message: string, params?: Record<string, string | number>) => string): string {
   if (you && encrypted) {
-    return t("You’ll see what’s said from now on. Messages from before you were added stay with the people who were there, since they were encrypted for them.");
+    return t("chat.youLlSeeWhatSSaidFromNowOnMessages");
   }
-  if (you) return t("This conversation isn’t encrypted, so you can read what was said before you were added.");
-  if (encrypted) return t("{name} only sees messages from here on. What was said before stays encrypted for the people who were here.", { name: added });
-  return t("This conversation isn’t encrypted, so {name} can read what was said before.", { name: added });
+  if (you) return t("chat.thisConversationIsnTEncryptedSoYouCanReadWhat");
+  if (encrypted) return t("chat.onlySeesMessagesFromHereOnWhatWasSaidBefore", { name: added });
+  return t("chat.thisConversationIsnTEncryptedSoCanReadWhatWas", { name: added });
 }
 
 export interface MessageMeta {
@@ -182,6 +182,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   onTogglePin,
 }, forwardedRef) => {
   const { locale, t } = useLocale();
+  const compactTimeWidth = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString(locale === "pt-BR" ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
   const [isHovered, setIsHovered] = useState(false);
   const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
@@ -310,7 +311,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
             {meta.sender ? (
               <Popover.Root open={cardOpen} onOpenChange={(open) => setCardOpen(open)}>
                 <Popover.Trigger
-                  render={<button type="button" aria-label="Open card" className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
+                  render={<button type="button" aria-label={t("chat.openCard")} className="mt-0.5 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" />}
                 >
                   <Avatar
                     size="large"
@@ -381,21 +382,21 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} receivedAt={m.received_at} />
                 {m.imported_from && (
-                  <Tooltip title={t("Imported from Discord")}>
+                  <Tooltip title={t("chat.importedFromDiscord")}>
                     <span className="discord-import-tag">Discord</span>
                   </Tooltip>
                 )}
                 {m.shared_by && (
-                  <Tooltip title={t("From {name}’s copy of this conversation", { name: m.shared_by })}>
+                  <Tooltip title={t("chat.fromSCopyOfThisConversation", { name: m.shared_by })}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-                      {t("shared by {name}", { name: m.shared_by })}
+                      {t("chat.sharedBy", { name: m.shared_by })}
                     </span>
                   </Tooltip>
                 )}
                 {meta.isFirstEdited && m.edited_at && (
-                  <Tooltip title={t("Edited {date}", { date: new Date(m.edited_at).toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US") })}>
+                  <Tooltip title={t("chat.edited", { date: new Date(m.edited_at).toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US") })}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-                      ({t("edited")})
+                      ({t("chat.edited2")})
                     </span>
                   </Tooltip>
                 )}
@@ -446,7 +447,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 highlighted={highlighted}
                 onMore={handleMore}
                 onThread={messageActions.onOpenThread ?? messageActions.onStartThread}
-                threadLabel={t(messageActions.onOpenThread ? "Open thread" : "Start thread")}
+                threadLabel={t(messageActions.onOpenThread ? "chat.openThread" : "chat.startThread")}
                 messageActions={messageActions}
                 threadUnread={threadUnread}
                 threadMentions={threadMentions}
@@ -718,7 +719,6 @@ function MessageContent({
   threadMentions?: number;
 }) {
   const { locale, t } = useLocale();
-  const compactTimeWidth = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString(locale === "pt-BR" ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   const hasThreadNews = (threadUnread ?? 0) > 0 || (threadMentions ?? 0) > 0;
   const sealedNote = sealedPlaceholder(m);
@@ -810,7 +810,7 @@ function MessageContent({
             whiteSpace: "nowrap",
           }}
         >
-          <span className="text-xs">{replyPreviewText ? <ReplyPreviewText text={replyPreviewText} /> : t("Original message")}</span>
+          <span className="text-xs">{replyPreviewText ? <ReplyPreviewText text={replyPreviewText} /> : t("chat.originalMessage")}</span>
         </div>
       )}
       <motion.div
@@ -852,13 +852,13 @@ function MessageContent({
         {messageActions.pinned && (
           <span className="flex items-center gap-1" style={{ fontSize: 10, userSelect: "none", color: "var(--gryt-neutral-9)" }}>
             <PiPushPinFill size={10} />
-            {t("Pinned")}
+            {t("chat.pinned")}
           </span>
         )}
         {m.edited_at && !isFirstInGroup && (
-          <Tooltip title={t("Edited {date}", { date: new Date(m.edited_at).toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US") })}>
+          <Tooltip title={t("chat.edited", { date: new Date(m.edited_at).toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US") })}>
             <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-            ({t("edited")})
+            ({t("chat.edited2")})
             </span>
           </Tooltip>
         )}
@@ -953,7 +953,7 @@ function MessageContent({
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
           <PiChatsTeardropFill size={14} />
-          {t((messageActions.replyCount ?? 0) === 1 ? "{count} reply" : "{count} replies", { count: messageActions.replyCount ?? 0 })}
+          {t((messageActions.replyCount ?? 0) === 1 ? "chat.reply2" : "chat.replies", { count: messageActions.replyCount ?? 0 })}
           {/* The same badge a forum topic row draws, for the same reason. A
               thread on a text channel had the counts and nowhere to put them:
               the reply count says how big the thread is, not whether any of it
@@ -994,6 +994,7 @@ function ReactionBadges({
   onOpenPicker: (anchorEl?: HTMLElement) => void;
   alignRight?: boolean;
 }) {
+  const { t } = useLocale();
   const hasReactions = reactions && reactions.length > 0;
   if (!hasReactions) return null;
 
@@ -1073,7 +1074,7 @@ function ReactionBadges({
       {onReaction && (
       <button
         onClick={(e) => onOpenPicker(e.currentTarget)}
-        title="Add reaction"
+        title={t("chat.addReaction")}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -1166,11 +1167,11 @@ function AddedLine({
       <span className="text-center" style={{ maxWidth: 460, lineHeight: 1.55 }}>
         {you ? (
           <>
-            {t("{name} added you", { name: by })}{title ? <> {t("to")} <b style={{ color: "var(--gryt-neutral-12)" }}>{title}</b></> : null} &middot; {time}
+            {t("chat.addedYou", { name: by })}{title ? <> {t("chat.to")} <b style={{ color: "var(--gryt-neutral-12)" }}>{title}</b></> : null} &middot; {time}
           </>
         ) : (
           <>
-            {t("{by} added {name}", { by, name: added })} &middot; {time}
+            {t("chat.added", { by, name: added })} &middot; {time}
           </>
         )}
         <br />
@@ -1185,10 +1186,10 @@ function AddedLine({
 function UnencryptedDot({ side }: { side: "left" | "right" }) {
   const { t } = useLocale();
   return (
-    <Tooltip title={t("Not encrypted. Whoever runs this server can read this message.")}>
+    <Tooltip title={t("chat.notEncryptedWhoeverRunsThisServerCanReadThisMessage")}>
       <span
         role="img"
-        aria-label={t("Not encrypted")}
+        aria-label={t("chat.notEncrypted")}
         style={{
           position: "absolute",
           top: "calc(50% - 10px)",

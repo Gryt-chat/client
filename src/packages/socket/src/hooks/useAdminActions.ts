@@ -49,7 +49,7 @@ export function useAdminActions({
         currentlyViewingServer.host,
       );
       if (!sent) {
-        toast.error(t("Not signed in to this server — try reconnecting."));
+        toast.error(t("chat.notSignedInToThisServerTryReconnecting"));
       }
     },
     [currentConnection, currentlyViewingServer, t],

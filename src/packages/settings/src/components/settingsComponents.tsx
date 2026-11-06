@@ -14,6 +14,8 @@ const ADVANCED_COLOR = "cyan" as const;
 // Reusable wrapper components following DRY principles
 interface SettingGroupProps {
   title: string;
+  titleKey?: string;
+  titleValue?: React.ReactNode;
   description: string;
   children: React.ReactNode;
   /**
@@ -23,7 +25,7 @@ interface SettingGroupProps {
   advanced?: boolean;
 }
 
-export function SettingGroup({ title, description, children, advanced }: SettingGroupProps) {
+export function SettingGroup({ title, titleKey, titleValue, description, children, advanced }: SettingGroupProps) {
   const { showAdvanced } = useSettings();
   const { t } = useLocale();
   // Anchor for search results to scroll to. Derived from the title by the same
@@ -43,14 +45,10 @@ export function SettingGroup({ title, description, children, advanced }: Setting
   // Rendered nowhere rather than hidden with CSS, so search cannot find a
   // setting the panel is not currently offering.
   if (advanced && !showAdvanced) return null;
-  const splitTitle = title.match(/^([^:]+):\s*([+-]?\d+(?:\.\d+)?)(.*)$/);
-  const displayTitle = splitTitle
-    ? `${t(splitTitle[1])}: ${splitTitle[2]}${splitTitle[3].replace(/\bminutes?\b/g, (unit) => t(unit))}`
-    : t(title);
 
   return (
     <div className="flex flex-col gap-2" id={anchor} data-setting={anchor} data-advanced={advanced || undefined}>
-      <span className="font-medium text-sm" color={advanced ? ADVANCED_COLOR : undefined}>{displayTitle}</span>
+      <span className="font-medium text-sm" color={advanced ? ADVANCED_COLOR : undefined}>{t(titleKey ?? title)}{titleValue != null && <>: {titleValue}</>}</span>
       <span className="text-xs text-gryt-muted">{t(description)}</span>
       {children}
     </div>
@@ -59,6 +57,8 @@ export function SettingGroup({ title, description, children, advanced }: Setting
 
 interface SliderSettingProps {
   title: string;
+  titleKey?: string;
+  titleValue?: React.ReactNode;
   description: string;
   value: number;
   onChange: (value: number) => void;
@@ -67,9 +67,9 @@ interface SliderSettingProps {
   step?: number;
 }
 
-export function SliderSetting({ title, description, value, onChange, min = 0, max = 100, step = 1 }: SliderSettingProps) {
+export function SliderSetting({ title, titleKey, titleValue, description, value, onChange, min = 0, max = 100, step = 1 }: SliderSettingProps) {
   return (
-    <SettingGroup title={title} description={description}>
+    <SettingGroup title={title} titleKey={titleKey} titleValue={titleValue} description={description}>
       <Slider
         value={value}
         onValueChange={(next) => onChange(Number(next))}
@@ -83,6 +83,8 @@ export function SliderSetting({ title, description, value, onChange, min = 0, ma
 
 interface ToggleSettingProps {
   title: string;
+  titleKey?: string;
+  titleValue?: React.ReactNode;
   description: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -90,13 +92,13 @@ interface ToggleSettingProps {
   advanced?: boolean;
 }
 
-export function ToggleSetting({ title, description, checked, onCheckedChange, statusText, advanced }: ToggleSettingProps) {
+export function ToggleSetting({ title, titleKey, titleValue, description, checked, onCheckedChange, statusText, advanced }: ToggleSettingProps) {
   const { t } = useLocale();
   return (
-    <SettingGroup title={title} description={description} advanced={advanced}>
+    <SettingGroup title={title} titleKey={titleKey} titleValue={titleValue} description={description} advanced={advanced}>
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-gryt-muted">{t(`Enable ${title}`)}</span>
+          <span className="text-sm text-gryt-muted">{t("settings.enableControl", { title: t(titleKey ?? title) })}</span>
           {statusText && (
             <span className="text-xs text-gryt-muted">{t(statusText)}</span>
           )}

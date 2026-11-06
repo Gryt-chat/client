@@ -28,17 +28,17 @@ export function FriendRequestDialog() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[24rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto">
-          <Dialog.Title>{member ? `${member.nickname} ${t("wants to be friends")}` : t("Friend request")}</Dialog.Title>
+          <Dialog.Title>{member ? `${member.nickname} ${t("chat.wantsToBeFriends")}` : t("chat.friendRequest")}</Dialog.Title>
           <div className="mt-3 flex flex-col gap-3 text-sm">
-            <span className="text-gryt-muted">{t("On")} {serverName}</span>
+            <span className="text-gryt-muted">{t("chat.on")} {serverName}</span>
             {member ? <MemberIdentityCard member={member} serverHost={current?.host} inline /> : null}
             {state === "incoming" || state === null ? (
               <div className="flex flex-wrap gap-2">
-                <Button className="flex-1" onClick={() => answer("accept")}>{t("Accept")}</Button>
-                <Button className="flex-1" tone="neutral" onClick={() => answer("decline")}>{t("Decline")}</Button>
+                <Button className="flex-1" onClick={() => answer("accept")}>{t("chat.accept")}</Button>
+                <Button className="flex-1" tone="neutral" onClick={() => answer("decline")}>{t("chat.decline")}</Button>
               </div>
             ) : (
-              <span className="text-gryt-muted">{t("You’ve already answered this one.")}</span>
+              <span className="text-gryt-muted">{t("chat.youVeAlreadyAnsweredThisOne")}</span>
             )}
           </div>
         </Dialog.Popup>

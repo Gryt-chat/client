@@ -37,8 +37,8 @@ const formatTime = (d: Date, locale: string) => d.toLocaleTimeString(locale, { h
 function dayLabel(d: Date, locale: string, t: (message: string) => string): string {
   const today = new Date();
   const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return t("Today");
-  if (d.toDateString() === yesterday.toDateString()) return t("Yesterday");
+  if (d.toDateString() === today.toDateString()) return t("chat.today");
+  if (d.toDateString() === yesterday.toDateString()) return t("chat.yesterday");
   return d.toLocaleDateString(locale, { day: "numeric", month: "long", ...(d.getFullYear() === today.getFullYear() ? {} : { year: "numeric" }) });
 }
 
@@ -46,11 +46,11 @@ type Option = { filter: SearchFilter; detail?: string };
 
 function noHitsLine(error: string | null | undefined, local: boolean, tab: SearchKind, t: (message: string) => string): string {
   if (error === "unsupported") {
-    return local ? t("This device has no message history to search.") : t("This server doesn't support search yet. It needs an update.");
+    return local ? t("chat.thisDeviceHasNoMessageHistoryToSearch") : t("chat.thisServerDoesnTSupportSearchYetItNeedsAn");
   }
-  if (error === "rate_limited") return t("Searching too fast. Give it a few seconds.");
-  if (error) return t("Search didn't work this time. Try again.");
-  return tab === "files" ? t("No files match.") : t("No messages match.");
+  if (error === "rate_limited") return t("chat.searchingTooFastGiveItAFewSeconds");
+  if (error) return t("chat.searchDidnTWorkThisTimeTryAgain");
+  return tab === "files" ? t("chat.noFilesMatch") : t("chat.noMessagesMatch");
 }
 
 /** The search side panel (GRYT-1738): messages and file names on this server, with
@@ -130,9 +130,14 @@ export function SearchPanel({
         .map((c) => ({ filter: { key: "in", value: c.id, label: local ? c.name : `#${c.name}` } }));
     }
     if (token.key === "has") {
-      return (["image", "link", "file"] as const)
-        .filter((v) => v.startsWith(q))
-        .map((v) => ({ filter: { key: "has", value: v, label: v } }));
+      const options = [
+        { value: "image", aliases: ["image", "imagem"] },
+        { value: "link", aliases: ["link"] },
+        { value: "file", aliases: ["file", "arquivo"] },
+      ] as const;
+      return options
+        .filter((option) => option.aliases.some((alias) => alias.startsWith(q)))
+        .map(({ value }) => ({ filter: { key: "has", value, label: t(value) } }));
     }
     const dates = q ? [q] : ["today", "yesterday"];
     return dates.flatMap((d) => {
@@ -214,14 +219,14 @@ export function SearchPanel({
     return resolveAvatarSrc(uploaded, nameOf(hit), member?.avatarWorn);
   };
   const count = (n: number) => (n >= 1000 ? "1000+" : String(n));
-  const searchPrompt = local ? t("Search messages") : t("Search {server}", { server: serverName });
+  const searchPrompt = local ? t("chat.searchMessages") : t("chat.search2", { server: serverName });
   const muted = { color: "var(--gryt-neutral-11)" };
   let index = -1;
 
   return (
     <div
       role="complementary"
-      aria-label={t("Search")}
+      aria-label={t("chat.search")}
       data-gryt="search-panel"
       className="flex h-full shrink-0 flex-col overflow-hidden"
       style={{ width: PANEL_WIDTH, background: "var(--gryt-neutral-3)", borderRadius: "var(--gryt-radius-lg)" }}
@@ -245,7 +250,7 @@ export function SearchPanel({
                 {f.label}
                 <button
                   type="button"
-                  aria-label={t("Remove {filter}: {value}", { filter: f.key, value: f.label })}
+                  aria-label={t("chat.remove", { filter: f.key, value: f.label })}
                   className="flex cursor-pointer border-0 bg-transparent p-0.5"
                   style={{ color: "var(--gryt-accent-11)" }}
                   onClick={() => setFilters((prev) => prev.filter((x) => x.key !== f.key))}
@@ -260,7 +265,7 @@ export function SearchPanel({
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={filters.length ? "" : searchPrompt}
-              aria-label={local ? t("Search direct messages") : t("Search {server}", { server: serverName })}
+              aria-label={local ? t("chat.searchDirectMessages") : t("chat.search2", { server: serverName })}
               data-gryt="search-input"
               className="min-w-[80px] grow border-0 bg-transparent py-0.5 text-sm outline-none"
               style={{ color: "var(--gryt-neutral-12)" }}
@@ -268,7 +273,7 @@ export function SearchPanel({
           </div>
           <button
             type="button"
-            aria-label={t("Close search")}
+            aria-label={t("chat.closeSearch")}
             data-gryt="search-close"
             className="flex cursor-pointer rounded border-0 bg-transparent p-1"
             style={muted}
@@ -297,19 +302,19 @@ export function SearchPanel({
                 }}
                 onClick={() => setTab(k)}
               >
-                {t(k === "messages" ? "Messages" : "Files")} {tabs[k].loading && tabs[k].items.length === 0 ? "" : count(tabs[k].total)}
+                {t(k === "messages" ? "settings.messages" : "chat.files")} {tabs[k].loading && tabs[k].items.length === 0 ? "" : count(tabs[k].total)}
               </button>
             ))}
-            <span className="ml-auto text-xs" style={muted}>{t("Newest first")}</span>
+            <span className="ml-auto text-xs" style={muted}>{t("chat.newestFirst")}</span>
           </div>
         )}
       </div>
 
       {token && (
-        <div className="flex flex-col py-1" role="listbox" aria-label={t("Pick {filter}", { filter: token.key })} data-gryt="search-options">
+        <div className="flex flex-col py-1" role="listbox" aria-label={t("chat.pick", { filter: token.key })} data-gryt="search-options">
           {options.length === 0 ? (
             <div className="px-3 py-2 text-sm" style={muted}>
-              {t(token.key === "before" || token.key === "after" ? "Type a date like 2026-10-01, or today." : "Nothing matches that.")}
+              {t(token.key === "before" || token.key === "after" ? "chat.typeADateLike20261001OrToday" : "chat.nothingMatchesThat")}
             </div>
           ) : (
             options.map((o, i) => (
@@ -333,7 +338,7 @@ export function SearchPanel({
       )}
       {!token && !searching && (
         <div className="flex flex-col gap-2 p-3">
-          <div className="text-xs font-semibold uppercase" style={muted}>{t("Narrow it down")}</div>
+          <div className="text-xs font-semibold uppercase" style={muted}>{t("chat.narrowItDown")}</div>
           <div className="flex flex-wrap gap-1.5">
             {SEARCH_FILTER_KEYS.map((k) => (
               <button
@@ -353,8 +358,8 @@ export function SearchPanel({
           </div>
           <div className="mt-2 text-xs" style={muted}>
             {t(local
-              ? "Searched on this device, in history it has decrypted. Nothing is sent to the server."
-              : "Searches the channels you can read here. Direct messages aren’t included.")}
+              ? "chat.searchedOnThisDeviceInHistoryItHasDecryptedNothing"
+              : "chat.searchesTheChannelsYouCanReadHereDirectMessagesAren")}
           </div>
         </div>
       )}
@@ -394,7 +399,7 @@ export function SearchPanel({
                     )}
                     <span className="flex min-w-0 grow flex-col gap-0.5">
                       <span className="flex items-baseline gap-1.5 text-xs">
-                        <span className="truncate text-sm font-semibold">{hit.file ? hit.file.name || t("Unnamed file") : nameOf(hit)}</span>
+                        <span className="truncate text-sm font-semibold">{hit.file ? hit.file.name || t("chat.unnamedFile") : nameOf(hit)}</span>
                         {!hit.file && <span className="shrink-0" style={muted}>{formatTime(new Date(hit.created_at), locale === "pt-BR" ? "pt-BR" : "en-US")}</span>}
                         <span className="ml-auto shrink-0" style={muted}>{local ? "" : "#"}{channelById.get(hit.conversation_id)?.name}</span>
                       </span>
@@ -411,10 +416,10 @@ export function SearchPanel({
                               <span key={k}>{p.text}</span>
                             ),
                           )}
-                          {!hit.snippet && <span style={muted}>{t("Attachment")}</span>}
+                          {!hit.snippet && <span style={muted}>{t("chat.attachment")}</span>}
                         </span>
                       )}
-                      {hit.thread_id && <span className="text-xs" style={muted}>{t("In a thread")}</span>}
+                      {hit.thread_id && <span className="text-xs" style={muted}>{t("chat.inAThread")}</span>}
                     </span>
                   </button>
                 );
@@ -426,13 +431,13 @@ export function SearchPanel({
               {noHitsLine(shown.error, Boolean(local), tab, t)}
             </div>
           )}
-          {shown.loading && <div className="px-1 py-3 text-center text-xs" style={muted}>{t("Searching…")}</div>}
+          {shown.loading && <div className="px-1 py-3 text-center text-xs" style={muted}>{t("chat.searching")}</div>}
           <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
       )}
       {local && (
         <p className="mt-auto flex gap-1.5 px-3.5 pb-3.5 pt-2.5 text-xs" style={{ ...muted, borderTop: "1px solid var(--gryt-neutral-6)" }}>
-          {t("Searched on this device, in history it has decrypted. Nothing is sent to the server. Messages from before this device joined a conversation aren’t here.")}
+          {t("chat.searchedOnThisDeviceInHistoryItHasDecryptedNothing2")}
         </p>
       )}
     </div>

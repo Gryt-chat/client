@@ -2,11 +2,13 @@ import { Divider } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { getElectronAPI, isMacDesktop } from "../../../../lib/electron";
+import { useLocale } from "../../../../lib/localeContext";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
 const isMac = isMacDesktop();
 
 export function DesktopSettings() {
+  const { t } = useLocale();
   const [closeToTray, setCloseToTray] = useState(true);
   const [startWithWindowsSupported, setStartWithWindowsSupported] = useState(false);
   const [startWithWindows, setStartWithWindows] = useState(true);
@@ -56,22 +58,22 @@ export function DesktopSettings() {
   return (
     <SettingsContainer>
       <h2>
-        Desktop
+        {t("settings.desktop.label")}
       </h2>
 
       {startWithWindowsSupported && (
         <>
           {isMac ? (
             <ToggleSetting
-              title="Open at login"
-              description="Opens Gryt when you log in to your Mac."
+              title="Open at login" titleKey="settings.openAtLogin"
+              description={t("settings.opensGrytWhenYouLogInToYourMac")}
               checked={startWithWindows}
               onCheckedChange={handleStartWithWindowsToggle}
             />
           ) : (
             <ToggleSetting
-              title="Start with Windows"
-              description="Launches Gryt when you sign in to Windows."
+              title="Start with Windows" titleKey="settings.startWithWindows"
+              description={t("settings.launchesGrytWhenYouSignInToWindows")}
               checked={startWithWindows}
               onCheckedChange={handleStartWithWindowsToggle}
             />
@@ -81,8 +83,8 @@ export function DesktopSettings() {
             <>
               <Divider />
               <ToggleSetting
-                title="Start minimized on login"
-                description="Only applies when Gryt is launched automatically on sign-in. Manual launches will still show the window."
+                title="Start minimized on login" titleKey="settings.startMinimizedOnLogin"
+                description={t("settings.onlyAppliesWhenGrytIsLaunchedAutomaticallyOnSignIn")}
                 checked={startMinimizedOnLogin}
                 onCheckedChange={handleStartMinimizedOnLoginToggle}
               />
@@ -93,8 +95,8 @@ export function DesktopSettings() {
       )}
 
       <ToggleSetting
-        title="Minimize to tray on close"
-        description="Closing the window hides Gryt in the system tray instead of quitting it."
+        title="Minimize to tray on close" titleKey="settings.minimizeToTrayOnClose"
+        description={t("settings.closingTheWindowHidesGrytInTheSystemTrayInstead")}
         checked={closeToTray}
         onCheckedChange={handleCloseToTrayToggle}
       />
@@ -102,8 +104,8 @@ export function DesktopSettings() {
       <Divider />
 
       <ToggleSetting
-        title="Hardware acceleration"
-        description="Uses your GPU for rendering. Turn it off if you see visual glitches or high GPU usage. Changing this restarts Gryt."
+        title="Hardware acceleration" titleKey="settings.desktop.hardwareAcceleration"
+        description={t("settings.usesYourGpuForRenderingTurnItOffIfYou")}
         checked={hwAccel}
         onCheckedChange={handleHwAccelToggle}
       />

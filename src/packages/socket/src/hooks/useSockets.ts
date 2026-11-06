@@ -20,7 +20,7 @@ import type {
 } from "@/settings/src/types/server";
 
 import { type EmbeddedServerState, getElectronAPI } from "../../../../lib/electron";
-import { translateLocaleMessage } from "../../../../lib/locale";
+import { translateLocaleMessage } from "../../../../lib/i18n.ts";
 import { showReconnectGaveUpToast } from "../components/connectionToasts";
 import type { MemberInfo } from "../components/MemberSidebar";
 import { claimFakeHost, FAKE_VOICE_CHANNELS, fakeDmsOn, fakeHostNow, fakeMembers } from "../dev/fakeDms";
@@ -763,12 +763,12 @@ function useSocketsHook() {
   const leaveServer = (host: string) => {
     const socket = sockets[host];
     if (!socket) {
-      toast.error(translateLocaleMessage(`Not connected to ${host}, so it cannot be told you are leaving.`));
+      toast.error(translateLocaleMessage("server.leave.disconnected", undefined, { server: host }));
       return;
     }
 
     const toastId = `leave-${host}`;
-    toast.loading(translateLocaleMessage("Leaving {server}…", undefined, { server: host }), { id: toastId });
+    toast.loading(translateLocaleMessage("server.leaving", undefined, { server: host }), { id: toastId });
 
     let settled = false;
     const finish = () => {
@@ -783,7 +783,7 @@ function useSocketsHook() {
       finish();
       removeServerAccessToken(host);
       removeServerRefreshToken(host);
-      toast.success(translateLocaleMessage("Left {server}", undefined, { server: host }), { id: toastId });
+      toast.success(translateLocaleMessage("server.left", undefined, { server: host }), { id: toastId });
       // The sidebar entry lives in useServerManagement, which this layer cannot
       // reach. Same event a kick uses, and it does the same job.
       window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
@@ -801,7 +801,7 @@ function useSocketsHook() {
       let message: string;
       if (typeof info === "string") message = translateLocaleMessage(info);
       else if (info?.message) message = translateLocaleMessage(info.message);
-      else message = translateLocaleMessage("The server refused.");
+      else message = translateLocaleMessage("server.theServerRefused");
       finish();
       toast.error(message, { id: toastId, duration: 8000 });
     };
@@ -810,7 +810,7 @@ function useSocketsHook() {
       if (settled) return;
       finish();
       toast.error(
-        translateLocaleMessage("{server} did not answer, so you are still a member. Try again, or remove it from the sidebar.", undefined, { server: host }),
+        translateLocaleMessage("server.didNotAnswerSoYouAreStillAMemberTry", undefined, { server: host }),
         { id: toastId, duration: 8000 },
       );
     }, 8000);

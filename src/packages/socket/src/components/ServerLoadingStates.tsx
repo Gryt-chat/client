@@ -87,7 +87,7 @@ export const ServerLoadingStates = ({
                 {t(signInHeading)}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-                {t(serverFailure?.message || "Sign in again to reconnect to this server.")}
+                {t(serverFailure?.message || "server.signInAgainToReconnectToThisServer")}
               </span>
             </div>
             {/* A token that ran out and a device somebody signed out want
@@ -96,12 +96,12 @@ export const ServerLoadingStates = ({
                 to say it is allowed back. */}
             {serverFailure?.error === "session_ended" && onResumeHere ? (
               <Button size="small" onClick={onResumeHere} style={{ marginTop: 4 }}>
-                {t("Use this server here again")}
+                {t("server.useThisServerHereAgain")}
               </Button>
             ) : (
               onSignIn && (
                 <Button size="small" onClick={onSignIn} style={{ marginTop: 4 }}>
-                  {t("Sign in")}
+                  {t("server.signIn")}
                 </Button>
               )
             )}
@@ -122,12 +122,12 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                {t(wasRefused ? "You can't join this server" : "Failed to load server")}
+                {t(wasRefused ? "server.youCanTJoinThisServer" : "server.failedToLoadServer")}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 {serverFailure.error === "rate_limited"
-                  ? t("You're being rate limited. Please wait a moment and try again.")
-                  : t(serverFailure.message || "An error occurred while loading server details.")}
+                  ? t("server.youReBeingRateLimitedPleaseWaitAMomentAnd")
+                  : t(serverFailure.message || "server.anErrorOccurredWhileLoadingServerDetails")}
               </span>
             </div>
             {!wasRefused && (
@@ -136,7 +136,7 @@ export const ServerLoadingStates = ({
                 style={{ marginTop: 4 }}
               >
                 <PiArrowsClockwiseFill size={16} />
-                {t("Retry")}
+                {t("settings.retry")}
               </Button>
             )}
           </div>
@@ -158,10 +158,10 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                {t("Reconnecting...")}
+                {t("server.reconnecting2")}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-                {t("Lost connection to the server. Attempting to reconnect automatically.")}
+                {t("server.lostConnectionToTheServerAttemptingToReconnectAutomatically")}
               </span>
             </div>
           </div>
@@ -182,7 +182,7 @@ export const ServerLoadingStates = ({
             </div>
             <div className="flex flex-col gap-2 items-center">
               <span className="text-lg font-bold">
-                {t("Server identity not recognised")}
+                {t("server.serverIdentityNotRecognised")}
               </span>
               <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
                 {t(refusalReason ?? "This server could not prove it is the one you joined before.")}
@@ -194,7 +194,7 @@ export const ServerLoadingStates = ({
                   rel="noreferrer"
                   className="text-sm underline text-gryt-muted hover:text-gryt-text"
                 >
-                  {t("How to fix this")}
+                  {t("server.howToFixThis")}
                 </a>
               )}
             </div>
@@ -223,10 +223,10 @@ export const ServerLoadingStates = ({
           </div>
           <div className="flex flex-col gap-2 items-center">
             <span className="text-lg font-bold">
-              {t("Taking longer than expected")}
+              {t("server.takingLongerThanExpected")}
             </span>
             <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-              {t("The server is taking a while to respond. This could be due to network conditions or the server being under load.")}
+              {t("server.theServerIsTakingAWhileToRespondThisCould")}
             </span>
           </div>
           <Button size="small"
@@ -234,7 +234,7 @@ export const ServerLoadingStates = ({
             style={{ marginTop: 4 }}
           >
             <PiArrowsClockwiseFill size={16} />
-            {t("Retry")}
+            {t("settings.retry")}
           </Button>
         </div>
       </div>

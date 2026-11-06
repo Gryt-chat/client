@@ -18,9 +18,9 @@ function buildLabel(users: TypingUser[], t: (message: string, params?: Record<st
     const tag = tags?.get(u.serverUserId);
     return tag ? `${u.nickname} ${tag}` : u.nickname;
   };
-  if (users.length === 1) return t("{name} is typing…", { name: name(users[0]) });
-  if (users.length === 2) return t("{first} and {second} are typing…", { first: name(users[0]), second: name(users[1]) });
-  return t("Several people are typing…");
+  if (users.length === 1) return t("chat.isTyping", { name: name(users[0]) });
+  if (users.length === 2) return t("chat.andAreTyping", { first: name(users[0]), second: name(users[1]) });
+  return t("chat.severalPeopleAreTyping");
 }
 
 export function TypingIndicator({ typingUsers, serverHost, nameTags }: TypingIndicatorProps) {

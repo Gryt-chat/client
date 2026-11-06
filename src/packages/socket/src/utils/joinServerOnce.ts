@@ -2,6 +2,7 @@ import { io } from "socket.io-client";
 
 import { answerChallenge, clearIdentityCertificate, getServerWsBase } from "@/common";
 
+import { translateLocaleMessage } from "../../../../lib/i18n.ts";
 import { challengeHostMatches } from "./challengeHost";
 import { describeGap, guardSocket, serverProofErrorMessage } from "./serverAuth";
 
@@ -66,7 +67,7 @@ function describeConnectError(err: unknown, host: string): JoinServerOnceError {
   if (/websocket/i.test(raw)) {
     return {
       error: "connect_error",
-      message: `WebSocket connection failed — retrying with fallback. If this persists, the server may be unreachable. (${raw})`,
+      message: translateLocaleMessage("server.connection.fallback", undefined, { reason: raw }),
     };
   }
   if (/timeout/i.test(raw)) {
@@ -82,7 +83,7 @@ function describeConnectError(err: unknown, host: string): JoinServerOnceError {
     };
   }
   if (raw) {
-    return { error: "connect_error", message: `Could not connect to the server: ${raw}` };
+    return { error: "connect_error", message: translateLocaleMessage("server.connection.failed", undefined, { reason: raw }) };
   }
   return { error: "connect_error", message: "Could not connect to the server." };
 }

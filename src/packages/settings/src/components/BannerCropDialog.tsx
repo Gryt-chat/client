@@ -30,7 +30,7 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
     const el = new Image();
     el.onload = () => setImg(el);
     el.onerror = () => {
-      toast.error(t("Couldn't open that picture"));
+      toast.error(t("settings.couldnTOpenThatPicture"));
       onDone(null);
     };
     el.src = next;
@@ -118,7 +118,7 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
     try {
       onDone(await renderBanner(img, crop, frame.w, frame.h));
     } catch (err) {
-      toast.error(t(err instanceof Error ? err.message : "Couldn't crop the banner"));
+      toast.error(t(err instanceof Error ? err.message : "settings.couldnTCropTheBanner"));
     } finally {
       setBusy(false);
     }
@@ -131,9 +131,9 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="flex w-[40rem] max-w-[calc(100vw-2rem)] flex-col gap-4 p-4">
-          <Dialog.Title className="text-lg">{t("Frame your banner")}</Dialog.Title>
+          <Dialog.Title className="text-lg">{t("settings.frameYourBanner")}</Dialog.Title>
           <Dialog.Description className="text-xs text-gryt-muted">
-            {t("Drag to move it, scroll or pinch to zoom. The box is exactly what your card shows.")}
+            {t("settings.dragToMoveItScrollOrPinchToZoomThe")}
           </Dialog.Description>
           <div
             ref={setFrameEl}
@@ -155,7 +155,7 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
             )}
           </div>
           <label className="flex items-center gap-3 text-xs text-gryt-muted">
-            {t("Zoom")}
+            {t("settings.zoom")}
             <input
               type="range"
               min={1}
@@ -167,16 +167,16 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
                 const z = Number(e.target.value);
                 zoomBy(() => z);
               }}
-              aria-label={t("Zoom")}
+              aria-label={t("settings.zoom")}
               className="flex-1 accent-(--gryt-accent)"
             />
           </label>
           <div className="flex flex-wrap justify-end gap-2">
             <Button size="small" tone="neutral" onClick={() => onDone(null)}>
-              {t("Cancel")}
+              {t("common.cancel")}
             </Button>
             <Button size="small" disabled={!crop || busy} onClick={() => void save()}>
-              {t("Use this")}
+              {t("settings.useThis")}
             </Button>
           </div>
         </Dialog.Popup>

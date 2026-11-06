@@ -131,7 +131,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
     {/* Holds the column while the panel grows over it, so the conversation behind doesn't reflow every frame. */}
     {resizable && <div aria-hidden style={{ width: THREAD_PANEL_WIDTH, flexShrink: 0 }} />}
     <aside
-      aria-label={t("Thread")}
+      aria-label={t("chat.thread")}
       className="gryt-thread-panel"
       data-beside={beside ? "yes" : "no"}
       style={{
@@ -157,21 +157,21 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
         {beside ? (
           <PiChatsTeardropFill size={18} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} />
         ) : (
-          <Tooltip title={t("Back to the conversation")}>
-            <IconButton size="xsmall" tone="ghost" aria-label={t("Back to the conversation")} onClick={onClose}>
+          <Tooltip title={t("chat.backToTheConversation")}>
+            <IconButton size="xsmall" tone="ghost" aria-label={t("chat.backToTheConversation")} onClick={onClose}>
               <PiCaretLeftBold size={16} />
             </IconButton>
           </Tooltip>
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: "var(--gryt-neutral-12)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {thread.title ? <EmojiText text={thread.title} /> : t("Thread")}
+            {thread.title ? <EmojiText text={thread.title} /> : t("chat.thread")}
           </div>
           <div style={{ fontSize: 11, color: "var(--gryt-neutral-10)" }}>
-            {expanded && channelName && `${t("In #{channel}", { channel: channelName })} · `}
-            {t(thread.reply_count === 1 ? "{count} reply" : "{count} replies", { count: thread.reply_count })}
-            {thread.status === "solved" && <span style={{ color: "var(--gryt-accent-11)", marginLeft: 8 }}>{t("Solved")}</span>}
-            {!takesReplies && <span style={{ color: "var(--gryt-neutral-11)", marginLeft: 8 }}>{t("Closed")}</span>}
+            {expanded && channelName && `${t("chat.in", { channel: channelName })} · `}
+            {t(thread.reply_count === 1 ? "chat.reply2" : "chat.replies", { count: thread.reply_count })}
+            {thread.status === "solved" && <span style={{ color: "var(--gryt-accent-11)", marginLeft: 8 }}>{t("chat.solved")}</span>}
+            {!takesReplies && <span style={{ color: "var(--gryt-neutral-11)", marginLeft: 8 }}>{t("chat.closed")}</span>}
           </div>
         </div>
         {/* The old "Mark solved" was #5cc79a on a #5cc79a border — a green
@@ -183,20 +183,20 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             size="xsmall"
             tone="neutral"
             className="shrink-0 whitespace-nowrap"
-            title={t("Reopen this topic")}
+            title={t("chat.reopenThisTopic")}
             onClick={() => onSetStatus("open")}
           >
-            {t("Reopen")}
+            {t("chat.reopen")}
           </Button>
         ) : (
           <Button
             size="xsmall"
             className="shrink-0 whitespace-nowrap"
             startIcon={<PiCheck size={14} />}
-            title={t("Mark this topic solved")}
+            title={t("chat.markThisTopicSolved")}
             onClick={() => onSetStatus("solved")}
           >
-            {t("Mark solved")}
+            {t("chat.markSolved")}
           </Button>
         ))}
         {/* Closing was the one status the apps could not set, so the state the
@@ -205,9 +205,9 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           <Menu.Root>
             {/* In a menu rather than beside Mark solved: two buttons left the
                 title 33px of a 380px panel, which drew it as "Th…". */}
-            <Tooltip title={t("More for this topic")}>
+            <Tooltip title={t("chat.moreForThisTopic")}>
               <Menu.Trigger
-                render={<IconButton tone="neutral" size="xsmall" aria-label={t("More for this topic")} />}
+                render={<IconButton tone="neutral" size="xsmall" aria-label={t("chat.moreForThisTopic")} />}
               >
                 <PiDotsThreeVerticalBold size={14} />
               </Menu.Trigger>
@@ -216,10 +216,10 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
               <Menu.Positioner>
                 <Menu.Popup>
                   <Menu.Item
-                    title={t("Nothing is deleted, and you can open it again.")}
+                    title={t("chat.nothingIsDeletedAndYouCanOpenItAgain")}
                     onClick={() => onSetStatus("closed")}
                   >
-                    {t("Close topic")}
+                    {t("chat.closeTopic")}
                   </Menu.Item>
                 </Menu.Popup>
               </Menu.Positioner>
@@ -227,11 +227,11 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           </Menu.Root>
         )}
         {onToggleExpand && (
-          <Tooltip title={t(expanded ? "Back to the small panel" : "Expand thread")}>
+          <Tooltip title={t(expanded ? "chat.backToTheSmallPanel" : "chat.expandThread")}>
             <IconButton
               tone="neutral"
               size="xsmall"
-              aria-label={t(expanded ? "Back to the small panel" : "Expand thread")}
+              aria-label={t(expanded ? "chat.backToTheSmallPanel" : "chat.expandThread")}
               onClick={onToggleExpand}
             >
               {expanded ? <PiArrowsInSimpleBold size={14} /> : <PiArrowsOutSimpleBold size={14} />}
@@ -242,7 +242,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           <Divider orientation="vertical" className="my-1 self-stretch" />
         )}
         {beside && (
-            <IconButton size="xsmall" aria-label={t("Close the thread panel")} onClick={onClose}>
+            <IconButton size="xsmall" aria-label={t("chat.closeTheThreadPanel")} onClick={onClose}>
             <PiX size={16} />
           </IconButton>
         )}
@@ -285,7 +285,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
       <div className="relative flex min-h-0 flex-1 flex-col">
         {loadingOlder && (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-1 py-2 text-center text-xs text-gryt-muted">
-            {t("Loading older replies…")}
+            {t("chat.loadingOlderReplies")}
           </div>
         )}
         {/* 14 inline, matching the header, the tag row and the composer. Without
@@ -300,7 +300,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           /* The root can be gone while the replies are not: deleting it takes
              the thread with it, but a blocked sender only hides it. */
           <div className="mb-1 border-b border-gryt-border pb-1.5" style={{ padding: "12px 2px", fontSize: 13, color: "var(--gryt-neutral-10)" }}>
-            {t("The message this thread started from is gone.")}
+            {t("chat.theMessageThisThreadStartedFromIsGone")}
           </div>
         )}
         {error && (
@@ -308,16 +308,16 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
             <span>{error}</span>
             {onRetry && (
               <Button size="xsmall" tone="neutral" onClick={onRetry}>
-                {t("Try again")}
+                {t("chat.tryAgain")}
               </Button>
             )}
           </div>
         )}
         {!error && loading && (
-          <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>{t("Loading…")}</div>
+          <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>{t("chat.loading")}</div>
         )}
         {!error && !loading && messages.length === 0 && root && (
-          <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>{t("No replies yet. Start the conversation.")}</div>
+          <div style={{ padding: 16, fontSize: 13, color: "var(--gryt-neutral-10)" }}>{t("chat.noRepliesYetStartTheConversation")}</div>
         )}
         {!error && !loading && (messages.length > 0 || !root) && (
           messages.map((m) => (
@@ -339,7 +339,7 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
           </>
         ) : (
           <p className="m-0 py-1.5 text-center text-xs text-gryt-muted">
-            {t("This thread is closed, so you can’t reply to it. Nothing is deleted, and the author or a moderator can open it again.")}
+            {t("chat.thisThreadIsClosedSoYouCanTReplyTo")}
           </p>
         )}
       </div>

@@ -80,14 +80,14 @@ export function ImportThemeDialog({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-          <Dialog.Title>{t("Import a theme")}</Dialog.Title>
+          <Dialog.Title>{t("settings.importATheme")}</Dialog.Title>
           <Dialog.Description>
-            {t("Paste a link from the theme generator, or the JSON it exports.")}
+            {t("settings.pasteALinkFromTheThemeGeneratorOrTheJson")}
           </Dialog.Description>
 
           <div className="mt-4 flex flex-col gap-3">
             <TextField
-              aria-label={t("Theme link or JSON")}
+              aria-label={t("settings.themeLinkOrJson")}
               multiline
               minRows={2}
               placeholder={`${GENERATOR}?accent=…`}
@@ -105,7 +105,7 @@ export function ImportThemeDialog({
                 disabled={input.trim() === ""}
                 onClick={() => read(input)}
               >
-                {t("Read it")}
+                {t("settings.readIt")}
               </Button>
               <a
                 className="gryt-link text-xs"
@@ -113,7 +113,7 @@ export function ImportThemeDialog({
                 rel="noreferrer"
                 target="_blank"
               >
-                {t("Build one on ui.gryt.chat")}
+                {t("settings.buildOneOnUiGrytChat")}
               </a>
             </div>
 
@@ -122,9 +122,9 @@ export function ImportThemeDialog({
             {incoming ? (
               <>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium">{t("Preview")}</span>
+                  <span className="text-sm font-medium">{t("settings.preview2")}</span>
                   <label className="flex items-center gap-2 text-xs text-gryt-muted">
-                    {t("Light")}
+                    {t("settings.light")}
                     <Switch
                       checked={preview === "light"}
                       onCheckedChange={(next) =>
@@ -137,10 +137,10 @@ export function ImportThemeDialog({
                 <ThemePreview appearance={preview} theme={incoming} />
 
                 <TextField
-                  label={t("Name")}
+                  label={t("settings.name")}
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder={t("Imported theme")}
+                  placeholder={t("settings.importedTheme")}
                 />
               </>
             ) : null}
@@ -149,7 +149,7 @@ export function ImportThemeDialog({
           <Dialog.Footer className="flex-wrap justify-between">
             <Dialog.Close render={<span />}>
               <Button size="small" tone="ghost">
-                {t("Cancel")}
+                {t("common.cancel")}
               </Button>
             </Dialog.Close>
             <Button
@@ -162,7 +162,7 @@ export function ImportThemeDialog({
                 reset();
               }}
             >
-              {t("Save and use it")}
+              {t("settings.saveAndUseIt")}
             </Button>
           </Dialog.Footer>
         </Dialog.Popup>
@@ -190,28 +190,28 @@ function ThemePreview({
     >
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="small">{t("Join")}</Button>
+          <Button size="small">{t("settings.join")}</Button>
           <Button size="small" tone="secondary">
-            {t("Invite")}
+            {t("settings.invite")}
           </Button>
           <Button size="small" tone="neutral">
-            {t("Cancel")}
+            {t("common.cancel")}
           </Button>
           <Button size="small" tone="danger">
-            {t("Leave")}
+            {t("server.leave.label")}
           </Button>
           <Chip label="3" tone="danger" />
         </div>
 
         <MessageBubble from="assistant">
-          {t("The SFU is dropping its second rebroadcast layer on Firefox again.")}
+          {t("settings.theSfuIsDroppingItsSecondRebroadcastLayerOnFirefox")}
         </MessageBubble>
         <MessageBubble from="user">
-          {t("Only on the 4-person calls, which is why nobody noticed.")}
+          {t("settings.onlyOnThe4PersonCallsWhichIsWhyNobody")}
         </MessageBubble>
 
         <p className="m-0 text-xs text-gryt-muted">
-          {t("Muted text, on the page it will sit on.")}
+          {t("settings.mutedTextOnThePageItWillSitOn")}
         </p>
       </div>
     </GrytProvider>

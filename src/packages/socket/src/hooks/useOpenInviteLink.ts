@@ -30,7 +30,7 @@ export function useOpenInviteLink(host: string | undefined) {
     if (link.kind === "no-public-address") {
       toast.error(t(NO_PUBLIC_ADDRESS), { duration: 7000 });
       if (link.hosted) {
-        toast(`${t(ADD_PUBLIC_ADDRESS).replace(/\.$/, "")}, ${t("then copy the link again.")}`, {
+        toast(`${t(ADD_PUBLIC_ADDRESS).replace(/\.$/, "")}, ${t("chat.thenCopyTheLinkAgain")}`, {
           duration: 10000,
           icon: createElement(PiInfoFill, { size: 18 }),
         });
@@ -40,9 +40,9 @@ export function useOpenInviteLink(host: string | undefined) {
 
     try {
       await navigator.clipboard.writeText(link.url);
-      toast.success(t("Copied invite link"));
+      toast.success(t("chat.copiedInviteLink"));
     } catch {
-      toast.error(t("Could not copy the link"));
+      toast.error(t("chat.couldNotCopyTheLink"));
     }
   }, [host, t]);
 

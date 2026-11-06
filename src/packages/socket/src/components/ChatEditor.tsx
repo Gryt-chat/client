@@ -307,13 +307,13 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       // Covers paste and drag-and-drop as well as the clip, which is why it is
       // here rather than only on the button.
       if (allowFiles === false) {
-        toast.error(t("You do not have permission to attach files here."));
+        toast.error(t("chat.youDoNotHavePermissionToAttachFilesHere"));
         return;
       }
       for (const file of files) {
         if (maxFileSize && file.size > maxFileSize) {
           const limitMb = (maxFileSize / (1024 * 1024)).toFixed(0);
-          toast.error(t('File "{name}" is too large. Max file size is {limit} MB.', { name: file.name, limit: limitMb }));
+          toast.error(t("chat.fileIsTooLargeMaxFileSizeIsMb", { name: file.name, limit: limitMb }));
           continue;
         }
         const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
@@ -374,12 +374,12 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       // Keep it out of the box and attach the exact clipboard contents instead.
       if (text.length > MESSAGE_MAX_LENGTH) {
         if (isEditing) {
-          toast.error(t("Edited messages are limited to {limit} characters.", { limit: MESSAGE_MAX_LENGTH.toLocaleString(locale) }));
+          toast.error(t("chat.editedMessagesAreLimitedToCharacters", { limit: MESSAGE_MAX_LENGTH.toLocaleString(locale) }));
           return true;
         }
         // The file below would be refused, and the paste gone with it.
         if (allowFiles === false) {
-          toast.error(t("That's too long to paste. Messages can be up to {limit} characters, and you can't attach files here.", { limit: MESSAGE_MAX_LENGTH.toLocaleString(locale) }));
+          toast.error(t("chat.thatSTooLongToPasteMessagesCanBeUp", { limit: MESSAGE_MAX_LENGTH.toLocaleString(locale) }));
           return true;
         }
         addFiles([new File([text], LARGE_PASTE_FILE_NAME, { type: "text/plain;charset=utf-8" })]);
@@ -635,7 +635,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       };
     }, []);
 
-    const hint = placeholder || t("Type a message...");
+    const hint = placeholder || t("chat.typeAMessage");
     const canSend = length > 0 || pendingFiles.length > 0;
     return (
       <div className={`chat-editor-shell ${disabled ? "chat-editor-disabled" : ""}`}>
@@ -643,7 +643,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         {(allowFiles !== false || onCreatePoll) && (
           <Menu.Root>
             <Menu.Trigger
-              render={<button className="chat-editor-plus-btn" type="button" aria-label={t("Add")} disabled={disabled} />}
+              render={<button className="chat-editor-plus-btn" type="button" aria-label={t("chat.add")} disabled={disabled} />}
             >
               <PiPlusBold size={20} />
             </Menu.Trigger>
@@ -653,13 +653,13 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                   {allowFiles !== false && (
                     <Menu.Item onClick={() => fileInputRef.current?.click()}>
                       <span className="chat-editor-plus-icon" data-accent><PiFilePlusFill size={18} /></span>
-                      {t("Attach files")}
+                      {t("chat.attachFiles")}
                     </Menu.Item>
                   )}
                   {onCreatePoll && (
                     <Menu.Item onClick={onCreatePoll}>
                       <span className="chat-editor-plus-icon" data-accent><PiChartBarFill size={18} /></span>
-                      {t("Poll")}
+                      {t("chat.poll")}
                     </Menu.Item>
                   )}
                 </Menu.Popup>
@@ -699,7 +699,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                 onDragEnd={() => { setDragFrom(null); setDropAt(null); }}
               >
                 {pf.previewUrl ? (
-                  <img src={pf.previewUrl} alt={t("Upload preview")} />
+                  <img src={pf.previewUrl} alt={t("chat.uploadPreview")} />
                 ) : (
                   <div className="chat-editor-file-preview-icon">
                     {getFileIcon(pf.file.type)}
@@ -713,7 +713,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                   className="chat-editor-file-delete"
                   onClick={() => removeFile(pf.id)}
                   type="button"
-                  aria-label={t("Remove file")}
+                  aria-label={t("chat.removeFile")}
                 >
                   <PiX size={11} />
                 </button>
@@ -741,7 +741,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           members={channelList || []}
           onSelect={handleChannelSelect}
           onClose={() => setChannelQuery(null)}
-          title={t("Channels")}
+          title={t("chat.channels")}
         />
         <LexicalComposer
           initialConfig={{
@@ -797,7 +797,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               <button
                 className="chat-editor-emoji-btn"
                 type="button"
-                aria-label={t("Insert emoji")}
+                aria-label={t("chat.insertEmoji")}
                 disabled={disabled}
                 onClick={() => setEmojiPickerOpen((v) => !v)}
               >
@@ -817,7 +817,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               <button
                 className="chat-editor-send-btn"
                 type="button"
-                aria-label={t("Send message")}
+                aria-label={t("chat.sendMessage")}
                 disabled={disabled}
                 onClick={handleSend}
               >

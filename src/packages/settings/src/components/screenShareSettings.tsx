@@ -5,6 +5,7 @@ import { type ReactNode, useState } from "react";
 import { type ScalabilityMode, type ScreenShareCodec, useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
+import { useLocale } from "../../../../lib/localeContext";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
 const QUALITY_OPTIONS = [
@@ -64,6 +65,7 @@ function Field({ title, description, children }: { title: string; description: s
 
 /** What a share starts with. The picker sets quality per window on top of these. */
 export function ScreenShareSettings() {
+  const { t } = useLocale();
   const {
     experimentalScreenShare, setExperimentalScreenShare,
     screenShareQuality, setScreenShareQuality,
@@ -80,57 +82,55 @@ export function ScreenShareSettings() {
   const fpsOptions = [...STANDARD_FPS_OPTIONS, ...(experimentalScreenShare ? EXPERIMENTAL_FPS_OPTIONS : [])].map((f) => {
     const needsNative = f > 60;
     let note = "";
-    if (needsNative && nativeScreenCaptureAvailable) note = " (Native)";
-    else if (needsNative) note = isElectron() ? " (Unavailable)" : " (Desktop app)";
+    if (needsNative && nativeScreenCaptureAvailable) note = ` (${t("settings.native")})`;
+    else if (needsNative) note = isElectron() ? ` (${t("settings.unavailable")})` : ` (${t("settings.desktopApp")})`;
     return { value: String(f), label: `${f} FPS${note}`, disabled: needsNative && !nativeScreenCaptureAvailable };
   });
 
   return (
     <SettingsContainer>
-      <h2 className="text-lg">
-        Screen share
-      </h2>
+      <h2 className="text-lg">{t("settings.screenShare")}</h2>
 
-      <Field title="Quality" description="The size a new share starts at. Lower uses less bandwidth.">
-        <Select value={screenShareQuality} onValueChange={(v) => setScreenShareQuality(String(v))} options={QUALITY_OPTIONS} />
+      <Field title={t("settings.quality")} description={t("settings.theSizeANewShareStartsAtLowerUsesLess")}>
+        <Select value={screenShareQuality} onValueChange={(v) => setScreenShareQuality(String(v))} options={QUALITY_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))} />
       </Field>
 
-      <Field title="Frame rate" description="Above 60 uses native capture, which only the Windows desktop app has.">
-        <Select value={String(screenShareFps)} onValueChange={(v) => setScreenShareFps(Number(v))} options={fpsOptions} />
+      <Field title={t("settings.frameRate2")} description={t("settings.above60UsesNativeCaptureWhichOnlyTheWindowsDesktop")}>
+        <Select value={String(screenShareFps)} onValueChange={(v) => setScreenShareFps(Number(v))} options={fpsOptions.map((option) => ({ ...option, label: t(option.label) }))} />
       </Field>
 
-      <Field title="Gaming mode" description="Gives fast-moving content like games 50% more bitrate, so motion stays smooth.">
+      <Field title={t("settings.gamingMode")} description={t("settings.givesFastMovingContentLikeGames50MoreBitrateSo")}>
         <Switch checked={screenShareGamingMode} onCheckedChange={setScreenShareGamingMode} />
       </Field>
 
-      <Field title="Codec" description="H.264 runs on almost any GPU. VP9 and AV1 compress better but need a newer one (RTX 40+, Intel Arc, AMD RX 7000+).">
+      <Field title={t("settings.codec")} description={t("settings.h264RunsOnAlmostAnyGpuVp9AndAv1")}>
         <Select
           value={screenShareCodec}
           onValueChange={(v) => setScreenShareCodec(v as ScreenShareCodec)}
-          options={CODEC_OPTIONS.filter((o) => codecs.includes(o.value)).map((o) => ({ label: o.label, value: o.value }))}
+          options={CODEC_OPTIONS.filter((o) => codecs.includes(o.value)).map((o) => ({ label: t(o.label), value: o.value }))}
         />
       </Field>
 
-      <Field title="Bitrate" description="Auto works it out from quality and frame rate. Higher is sharper but needs more upload.">
-        <Select value={String(screenShareMaxBitrate)} onValueChange={(v) => setScreenShareMaxBitrate(Number(v))} options={BITRATE_OPTIONS} />
+      <Field title={t("settings.bitrate")} description={t("settings.autoWorksItOutFromQualityAndFrameRateHigher")}>
+        <Select value={String(screenShareMaxBitrate)} onValueChange={(v) => setScreenShareMaxBitrate(Number(v))} options={BITRATE_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))} />
       </Field>
 
-      <Field title="SVC layers" description={svcOff ? "Only VP9 and AV1 have these. Pick one of them above to turn it on." : "Sends a few frame rates in one stream, so a slow connection can drop to a lower one."}>
+      <Field title={t("settings.svcLayers")} description={t(svcOff ? "settings.onlyVp9AndAv1HaveThesePickOneOfThem" : "settings.sendsAFewFrameRatesInOneStreamSoA")}>
         <Select
           value={screenShareScalabilityMode}
           onValueChange={(v) => setScreenShareScalabilityMode(v as ScalabilityMode)}
           disabled={svcOff}
-          options={SVC_OPTIONS}
+          options={SVC_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))}
         />
       </Field>
 
       <ToggleSetting
-        title="Experimental screen share"
-        description="Unlock high frame rate options (144, 165, 240 FPS) for screen sharing. These require significant bandwidth and may not work on all hardware."
+        title="Experimental screen share" titleKey="settings.experimentalScreenShare"
+        description={t("settings.unlockHighFrameRateOptions144165240FpsFor")}
         checked={experimentalScreenShare}
         onCheckedChange={setExperimentalScreenShare}
         statusText={experimentalScreenShare
-          ? "High FPS options (144, 165, 240) are available under Frame rate above"
+          ? t("settings.highFpsOptions144165240AreAvailableUnderFrame")
           : undefined
         }
       />

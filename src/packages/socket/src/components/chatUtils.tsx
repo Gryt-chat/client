@@ -148,21 +148,21 @@ function formatMessageTime(d: Date, locale: string, t: (message: string, params?
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (isSameCalendarDay(d, yesterday)) return `${t("Yesterday")} ${t("at")} ${formatTime(d, locale)}`;
+  if (isSameCalendarDay(d, yesterday)) return `${t("chat.yesterday")} ${t("chat.at")} ${formatTime(d, locale)}`;
 
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / 86_400_000);
-  if (diffDays < 7) return t(diffDays === 1 ? "{count} day ago" : "{count} days ago", { count: diffDays });
+  if (diffDays < 7) return t("chat.time.daysAgo", { count: diffDays });
 
   return d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatDateSeparator(d: Date, locale: string, t: (message: string) => string): string {
   const now = new Date();
-  if (isSameCalendarDay(d, now)) return t("Today");
+  if (isSameCalendarDay(d, now)) return t("chat.today");
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (isSameCalendarDay(d, yesterday)) return t("Yesterday");
+  if (isSameCalendarDay(d, yesterday)) return t("chat.yesterday");
   return d.toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
@@ -171,7 +171,7 @@ export const MessageTimestamp = ({ date, receivedAt }: { date: Date; receivedAt?
   const dateLocale = locale === "pt-BR" ? "pt-BR" : undefined;
   return (
   <Tooltip title={receivedAt
-    ? `${t("Sent")} ${formatFullDate(date, dateLocale ?? "en-US")}, ${t("according to the sender")}. ${t("Server received this copy")} ${formatFullDate(new Date(receivedAt), dateLocale ?? "en-US")}.`
+    ? `${t("chat.sent")} ${formatFullDate(date, dateLocale ?? "en-US")}, ${t("chat.accordingToTheSender")}. ${t("chat.serverReceivedThisCopy")} ${formatFullDate(new Date(receivedAt), dateLocale ?? "en-US")}.`
     : formatFullDate(date, dateLocale ?? "en-US")}>
     {/*
       gray-11 is Radix's low-contrast *text* step. gray-9 and gray-10 are solid
@@ -207,6 +207,6 @@ export const NewMessagesDivider = () => {
     lineClassName="bg-gryt-danger-8"
     labelClassName="text-gryt-danger font-medium"
   >
-    {t("New")}
+    {t("chat.new2")}
   </LabelledDivider>
 };

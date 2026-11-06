@@ -55,7 +55,7 @@ export function GroupFaceFields({
       if (!token) throw new Error("Not signed in to this server");
       onIcon(await uploadGroupPicture(getServerHttpBase(serverHost), token, file, file.name || "group.png"));
     } catch (error) {
-      toast.error(t(error instanceof Error ? error.message : "Could not upload that"));
+      toast.error(t(error instanceof Error ? error.message : "chat.couldNotUploadThat"));
     } finally {
       setUploading(false);
     }
@@ -90,22 +90,22 @@ export function GroupFaceFields({
             disabled={uploading}
             onClick={() => fileInput.current?.click()}
           >
-            {uploading ? t("Uploading…") : t("Choose a picture")}
+            {uploading ? t("chat.uploading") : t("chat.chooseAPicture")}
           </Button>
           {icon && (
             <Button size="small" tone="ghost" onClick={() => onIcon(null)}>
-              {t("Use the egg")}
+              {t("chat.useTheEgg")}
             </Button>
           )}
         </div>
 
         <span className="text-xs text-gryt-muted">
-          {icon ? t("Your picture") : t("Drawn from the name")}
+          {icon ? t("chat.yourPicture") : t("chat.drawnFromTheName")}
         </span>
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-bold">{t("Name")}</span>
+        <span className="text-sm font-bold">{t("settings.name")}</span>
         <TextField
           autoFocus={autoFocus}
           placeholder={placeholder}
@@ -118,7 +118,7 @@ export function GroupFaceFields({
           maxLength={80}
         />
         <span className="text-xs text-gryt-muted">
-          {t("Leave it empty and the group is named after whoever is in it.")}
+          {t("chat.leaveItEmptyAndTheGroupIsNamedAfterWhoever")}
         </span>
       </div>
     </>
@@ -219,11 +219,11 @@ export const GroupDialog = ({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-          <Dialog.Title>{t("Group settings")}</Dialog.Title>
+          <Dialog.Title>{t("chat.groupSettings")}</Dialog.Title>
           <Dialog.Description>
             {canAdd
-              ? t("Anybody here can rename it or add people. Nobody can remove anybody else.")
-              : t("Anybody here can rename it. Nobody can remove anybody else.")}
+              ? t("chat.anybodyHereCanRenameItOrAddPeopleNobodyCan")
+              : t("chat.anybodyHereCanRenameItNobodyCanRemoveAnybodyElse")}
           </Dialog.Description>
 
           <div className="flex flex-col gap-4">
@@ -241,7 +241,7 @@ export const GroupDialog = ({
 
             {canAdd && (
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-bold">{t("Add people")}</span>
+                <span className="text-sm font-bold">{t("chat.addPeople")}</span>
                 <div className="flex max-h-60 flex-col gap-1 overflow-y-auto">
                   {candidates.map((member) => {
                     const inAlready = alreadyIn.has(member.serverUserId);
@@ -270,7 +270,7 @@ export const GroupDialog = ({
                           <EmojiText text={member.nickname} />
                         </span>
                         {inAlready && (
-                          <span className="ml-auto text-xs text-gryt-muted">{t("Already in")}</span>
+                          <span className="ml-auto text-xs text-gryt-muted">{t("chat.alreadyIn")}</span>
                         )}
                       </label>
                     );
@@ -288,9 +288,9 @@ export const GroupDialog = ({
                 onOpenChange(false);
               }}
             >
-              {t("Leave group")}
+              {t("chat.leaveGroup")}
             </Button>
-            <Button onClick={() => onOpenChange(false)}>{t("Done")}</Button>
+            <Button onClick={() => onOpenChange(false)}>{t("common.done")}</Button>
           </Dialog.Footer>
         </Dialog.Popup>
       </Dialog.Portal>

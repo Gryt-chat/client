@@ -151,8 +151,8 @@ export function useForum(
     /* A dead socket swallows the emit, so no forum:topic:created and no
        forum:error ever arrive and `creating` never clears (GRYT-1389). */
     if (socket.connected === false) {
-      setCreateError(t("Not connected to this server."));
-      toast.error(t("Not connected to this server"));
+      setCreateError(t("chat.notConnectedToThisServer2"));
+      toast.error(t("chat.notConnectedToThisServer"));
       return;
     }
     creatingRef.current = true;

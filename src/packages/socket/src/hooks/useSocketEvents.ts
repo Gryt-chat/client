@@ -29,8 +29,8 @@ import type {
   Servers,
 } from "@/settings/src/types/server";
 
+import { translateLocaleMessage } from "../../../../lib/i18n.ts";
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
-import { translateLocaleMessage } from "../../../../lib/locale";
 import type { MemberInfo } from "../components/MemberSidebar";
 import { heldRoleIds } from "../lib/permissions";
 import { onMlsDelivered } from "../mls/serverMls";
@@ -325,7 +325,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
                 }
               : {
                   error: "identity_failed",
-                  message: `Could not prove who you are to this server: ${msg}`,
+                  message: translateLocaleMessage("server.session.identityFailed", undefined, { reason: msg }),
                   timestamp: Date.now(),
                 },
           }));
@@ -387,7 +387,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
             // Written down, or the refusal lives only in memory and the next launch
             // rejoins with the keypair as if nothing happened.
             markSignedOut(host);
-            toast.error(translateLocaleMessage(info?.message || `Your session on ${host} was ended.`));
+            toast.error(translateLocaleMessage(info?.message || translateLocaleMessage("server.session.ended", undefined, { server: host })));
             setFailedServerDetails(prev => ({
               ...prev,
               [host]: {
@@ -399,7 +399,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
             return;
           }
 
-          const givenUp = `Stopped reconnecting to ${host}. It keeps ending your session.`;
+          const givenUp = translateLocaleMessage("server.session.reconnectStopped", undefined, { server: host });
           toast.error(translateLocaleMessage(givenUp));
           setFailedServerDetails(prev => ({
             ...prev,
@@ -410,7 +410,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
         // Once, on the first try: the message is about a session being replaced,
         // and five toasts saying so is worse than none.
-        if (plan.retry === 1 && info?.message) toast.error(info.message);
+        if (plan.retry === 1 && info?.message) toast.error(translateLocaleMessage(info.message));
 
         const refreshToken = getServerRefreshToken(host);
         revokedTimersRef.current[host] = setTimeout(() => {
@@ -427,7 +427,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         removeServerAccessToken(host);
         removeServerRefreshToken(host);
         console.warn(`[Auth:Socket] token:invalid for ${host}:`, message);
-        toast.error(translateLocaleMessage("You were signed out of {server}. Reloading to sign you back in…", undefined, { server: host }));
+        toast.error(translateLocaleMessage("server.youWereSignedOutOfReloadingToSignYouBack", undefined, { server: host }));
         setTimeout(() => window.location.reload(), 2000);
       });
 
@@ -446,7 +446,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
         if (TERMINAL.includes(errorInfo.error)) {
           removeServerRefreshToken(host);
-          toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Signed out of {server}.", undefined, { server: host }));
+          toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("server.signedOutOf", undefined, { server: host }));
           return;
         }
 
@@ -456,7 +456,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           socket.emit("token:refresh", { refreshToken });
         } else {
           removeServerRefreshToken(host);
-          toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Couldn't sign you in to {server}. Try joining it again.", undefined, { server: host }));
+          toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("server.couldnTSignYouInToTryJoiningItAgain", undefined, { server: host }));
         }
       });
 

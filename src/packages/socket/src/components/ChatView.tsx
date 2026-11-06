@@ -7,6 +7,7 @@ import { getServerAccessToken, getSuppressEveryone, getUploadsFileUrl, resolveAv
 import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
+import { translateLocaleMessage } from "../../../../lib/i18n";
 import { PiArchiveFill, PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
 import { useLocale } from "../../../../lib/localeContext";
 import { registerThreadCloser, setThreadExpanded, useThreadExpanded } from "../hooks/openThreadMemory";
@@ -68,10 +69,10 @@ function placeholderFor(s: {
   if (s.voiceTextHidden) return "Can't chat here right now";
   if (!s.mayRead) return "This channel is not readable with your role.";
   if (!s.maySend) return READ_ONLY_LINE;
-  if (s.waitSeconds) return `Please wait ${s.waitSeconds} seconds...`;
+  if (s.waitSeconds) return translateLocaleMessage("chat.send.wait", undefined, { count: s.waitSeconds });
   if (!s.channelName) return "Chat with your friends!";
-  if (!s.dm) return t("Message #{channel}", { channel: s.channelName });
-  return t(s.inClear ? "Message {recipient} (not encrypted)" : "Message {recipient}", { recipient: s.channelName });
+  if (!s.dm) return t("chat.message", { channel: s.channelName });
+  return t(s.inClear ? "chat.messageNotEncrypted" : "chat.message2", { recipient: s.channelName });
 }
 
 function HeaderGlyph({ forum, automated, voice }: { forum: boolean; automated: boolean | undefined; voice: boolean }) {
@@ -375,8 +376,8 @@ export const ChatView = memo(({
       : 0;
   const deleteDescription =
     deleteReplyCount > 0
-      ? t(`This deletes the message and the ${deleteReplyCount} ${deleteReplyCount === 1 ? "reply" : "replies"} in its thread. You can't undo it.`)
-      : t("This deletes the message for everyone. You can't undo it.");
+      ? t("chat.delete.withReplies", { count: deleteReplyCount })
+      : t("chat.thisDeletesTheMessageForEveryoneYouCanTUndo");
 
   const { typingUsers, emitTyping, emitStopTyping } = useTypingIndicator(
     socketConnection ?? null,
@@ -829,7 +830,7 @@ export const ChatView = memo(({
         replyingTo={threadReplyingTo}
         editingMessage={threadEditing}
         editorRef={threadEditorRef}
-        placeholder={mayPost ? t("Reply to thread…") : t(READ_ONLY_LINE)}
+        placeholder={mayPost ? t("chat.replyToThread") : t(READ_ONLY_LINE)}
         disabled={!maySend}
         allowFiles={mayHere("attach_files")}
         maxFileSize={maxFileSize}
@@ -900,7 +901,7 @@ export const ChatView = memo(({
         Box and Flex only render as div or span, so the roles go on the existing
         containers rather than restructuring into main/nav/aside.
       */}
-      <div className="grow overflow-hidden" role="main" aria-label={t("Conversation")} data-gryt="chat-view" style={{ minWidth: 0,
+      <div className="grow overflow-hidden" role="main" aria-label={t("chat.conversation")} data-gryt="chat-view" style={{ minWidth: 0,
           background: "var(--gryt-neutral-3)",
           borderRadius: flush ? 0 : "var(--gryt-radius-lg)",
           position: "relative",
@@ -909,7 +910,7 @@ export const ChatView = memo(({
           <div className="chat-view-drop-overlay">
             <div className="chat-view-drop-overlay-content">
               <PiCloudArrowUpFill size={48} />
-              <span>{t("Drop files here")}</span>
+              <span>{t("chat.dropFilesHere")}</span>
             </div>
           </div>
         )}
@@ -937,8 +938,8 @@ export const ChatView = memo(({
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
                 {onSearch && (
-                  <Tooltip title={`${t("Search")} (${SEARCH_SHORTCUT})`}>
-                    <button type="button" aria-label={t("Search")} data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
+                  <Tooltip title={`${t("chat.search")} (${SEARCH_SHORTCUT})`}>
+                    <button type="button" aria-label={t("chat.search")} data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
                       <PiMagnifyingGlassBold size={16} />
                     </button>
                   </Tooltip>
@@ -948,9 +949,9 @@ export const ChatView = memo(({
                 )}
                 {moreMenu && (
                   <Menu.Root>
-                    <Tooltip title={t("More")}>
+                    <Tooltip title={t("chat.more")}>
                       <Menu.Trigger
-                        aria-label={t("More")}
+                        aria-label={t("chat.more")}
                         data-gryt="chat-more"
                         render={<button type="button" className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1" style={{ color: "var(--gryt-neutral-11)" }} />}
                       >
@@ -994,7 +995,7 @@ export const ChatView = memo(({
           {showVoiceDisabled && (
             <div className="flex grow items-center justify-center">
               <span className="text-sm text-gryt-muted" style={{ textAlign: "center", padding: "16px", maxWidth: "300px" }}>
-                {t("There’s no text chat here right now. It’s either switched off for this channel, or you need to join the call first.")}
+                {t("chat.thereSNoTextChatHereRightNowItS")}
               </span>
             </div>
           )}
@@ -1016,7 +1017,7 @@ export const ChatView = memo(({
             >
               {isLoadingOlder && (
                 <div className="flex justify-center py-2">
-                  <span className="text-xs text-gryt-muted">{t("Loading older messages...")}</span>
+                  <span className="text-xs text-gryt-muted">{t("chat.loadingOlderMessages")}</span>
                 </div>
               )}
                 {chatMessages.map((m, i) => {
@@ -1050,14 +1051,14 @@ export const ChatView = memo(({
                     {encryptedHere && (
                       <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
-                        <span className="flex items-center gap-1.5"><PiShieldCheckFill size={11} aria-hidden /> {t("Encrypted from here on")}</span>
+                        <span className="flex items-center gap-1.5"><PiShieldCheckFill size={11} aria-hidden /> {t("chat.encryptedFromHereOn")}</span>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
                       </div>
                     )}
                     {discordEnds && (
                       <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
-                        <span className="flex items-center gap-1.5"><PiArchiveFill size={11} aria-hidden /> {t("Discord history ends here")}</span>
+                        <span className="flex items-center gap-1.5"><PiArchiveFill size={11} aria-hidden /> {t("chat.discordHistoryEndsHere")}</span>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
                       </div>
                     )}
@@ -1105,7 +1106,7 @@ export const ChatView = memo(({
                 })}
               {historyWindow?.loadingNewer && (
                 <div className="flex justify-center py-2">
-                  <span className="text-xs text-gryt-muted">{t("Loading newer messages...")}</span>
+                  <span className="text-xs text-gryt-muted">{t("chat.loadingNewerMessages")}</span>
                 </div>
               )}
             </div>
@@ -1123,11 +1124,11 @@ export const ChatView = memo(({
               >
                 {newBelow > 0 && (
                   <>
-                    <span style={{ color: "var(--gryt-accent-11)", fontWeight: 600 }}>{newBelow > 99 ? "99+" : newBelow} {t("new messages")}</span>
+                    <span style={{ color: "var(--gryt-accent-11)", fontWeight: 600 }}>{newBelow > 99 ? "99+" : newBelow} {t("chat.newMessages")}</span>
                     <span aria-hidden="true" style={{ color: "var(--gryt-neutral-9)" }}>·</span>
                   </>
                 )}
-                {t("Jump to present")}
+                {t("chat.jumpToPresent")}
                 <PiArrowDownBold aria-hidden="true" size={12} />
               </button>
             </div>
@@ -1156,7 +1157,7 @@ export const ChatView = memo(({
               style={{ borderRadius: "var(--gryt-radius-md)", border: "1px dashed var(--gryt-neutral-6)", background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
             >
               <PiRobotFill size={22} style={{ color: "var(--gryt-neutral-9)", flexShrink: 0 }} />
-              <span>{t("This is an automated channel — messages come from bots and the system. You can read here, but not post.")}</span>
+              <span>{t("chat.thisIsAnAutomatedChannelMessagesComeFromBotsAnd")}</span>
             </div>
           ) : (
           <>
@@ -1229,19 +1230,19 @@ export const ChatView = memo(({
       <ConfirmDialog
         open={!!pendingDeleteMessage}
         onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}
-        title={t("Delete message?")}
+        title={t("chat.deleteMessage")}
         description={deleteDescription}
-        confirmLabel={t("Delete")}
+        confirmLabel={t("chat.delete.label")}
         onConfirm={confirmDelete}
       />
       <ConfirmDialog
         open={!!massSend}
         onOpenChange={(open) => { if (!open) setMassSend(null); }}
-        title={t(`Notify up to ${massSend?.here ? massReach.online : massReach.all} people?`)}
+        title={t("chat.mentions.confirmTitle", { count: massSend?.here ? massReach.online : massReach.all })}
         description={massSend?.here
-          ? t("@here pings everyone who's online and can read this channel. Each of them gets a notification.")
-          : t(`@everyone pings everyone who can read this channel, and ${massReach.online} of them are online right now. Each of them gets a notification.`)}
-        confirmLabel={t("Send and notify")}
+          ? t("chat.herePingsEveryoneWhoSOnlineAndCanReadThis")
+          : t("chat.mentions.everyoneExplanation", { count: massReach.online })}
+        confirmLabel={t("chat.sendAndNotify")}
         confirmTone="primary"
         onConfirm={() => { massSend?.send(); setMassSend(null); }}
       />

@@ -81,18 +81,18 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
   const n = picks.length;
   const noun = picks.every((p) => p.sourceId.startsWith("screen:")) ? "screen" : "window";
   const verb = adding ? "Add" : "Share";
-  const goLabel = n
-    ? `${t(verb)} ${n} ${t(`${noun}${n > 1 ? "s" : ""}`)}`
-    : t(verb);
+  let actionKey = noun === "screen" ? "voice.shareScreens" : "voice.shareWindows";
+  if (adding) actionKey = noun === "screen" ? "voice.addScreens" : "voice.addWindows";
+  const goLabel = n ? t(actionKey, { count: n }) : t(verb);
   const hint = t(shareSoundHint(currentPlatform(), picks.some((p) => p.sourceId.startsWith("screen:"))));
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="w-[820px] max-w-[calc(100vw-32px)]" aria-label={t("Share your screen")}>
+        <Dialog.Popup className="w-[820px] max-w-[calc(100vw-32px)]" aria-label={t("voice.shareYourScreen")}>
           <div className="flex h-11 items-center justify-between gap-3">
-            <Dialog.Title className="text-lg font-extrabold">{t(adding ? "Add a window" : "Share your screen")}</Dialog.Title>
+            <Dialog.Title className="text-lg font-extrabold">{t(adding ? "voice.addAWindow" : "voice.shareYourScreen")}</Dialog.Title>
             <div className="flex rounded-full p-[3px] text-[13px] font-bold" style={{ background: "var(--gryt-neutral-3)" }} role="tablist">
               {(["windows", "screens"] as const).map((tabName) => (
                 <button
@@ -104,7 +104,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                   style={tab === tabName ? { background: "var(--color-gryt-accent)", color: "var(--color-gryt-on-accent)" } : { background: "transparent", color: "inherit" }}
                   onClick={() => setTab(tabName)}
                 >
-                  {t(tabName === "windows" ? "Windows" : "Whole screen")}
+                  {t(tabName === "windows" ? "voice.windows" : "voice.wholeScreen")}
                 </button>
               ))}
             </div>
@@ -113,10 +113,10 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
           {screenAccess !== null && screenAccess !== "granted" && (
             <div className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--gryt-warning-3)", border: "1px solid var(--gryt-warning-6)" }}>
               <span className="flex-1 text-sm text-gryt-warning">
-                {t("macOS needs Screen Recording permission. Turn on Gryt in System Settings → Privacy & Security → Screen Recording, then restart the app.")}
+                {t("voice.macosNeedsScreenRecordingPermissionTurnOnGrytInSystem")}
               </span>
               <Button tone="neutral" size="xsmall" onClick={() => window.electronAPI?.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")}>
-                {t("Open Settings")}
+                {t("voice.openSettings")}
               </Button>
             </div>
           )}
@@ -124,7 +124,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
           <div className="mt-3 grid max-h-[474px] grid-cols-3 gap-3 overflow-y-auto">
             {shown.length === 0 && (
               <span className="col-span-3 p-6 text-center text-sm text-gryt-muted">
-                {t(sources.length ? `No ${tab === "screens" ? "screens" : "windows"} found` : "Looking for windows…")}
+                {t(sources.length ? `No ${tab === "screens" ? "screens" : "windows"} found` : "voice.lookingForWindows")}
               </span>
             )}
             {shown.map((src) => {
@@ -181,18 +181,18 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                           <span
                             className="flex flex-none items-center gap-1 pr-1 text-xs"
                             style={{ color: "var(--gryt-muted)" }}
-                            title={t("Gryt can't share its own sound. Everyone would hear the call played back to them.")}
+                            title={t("voice.grytCanTShareItsOwnSoundEveryoneWouldHear")}
                           >
                             <PiSpeakerSlashFill size={16} aria-hidden />
-                            {t("Would echo")}
+                            {t("voice.wouldEcho")}
                           </span>
                         ) : (
                           <>
                             {pick.withAudio
-                              ? <PiSpeakerHighFill size={16} className="flex-none" color="var(--gryt-accent-11)" aria-label={t("Friends hear this window")} />
-                              : <PiSpeakerSlashFill size={16} className="flex-none" color="var(--gryt-muted)" aria-label={t("This window is muted for friends")} />}
+                              ? <PiSpeakerHighFill size={16} className="flex-none" color="var(--gryt-accent-11)" aria-label={t("voice.friendsHearThisWindow")} />
+                              : <PiSpeakerSlashFill size={16} className="flex-none" color="var(--gryt-muted)" aria-label={t("voice.thisWindowIsMutedForFriends")} />}
                             <Switch
-                              aria-label={`${t("Sound from")} ${src.name}`}
+                              aria-label={`${t("voice.soundFrom")} ${src.name}`}
                               checked={pick.withAudio}
                               onCheckedChange={(on) => update(src.id, { withAudio: on })}
                             />
@@ -213,7 +213,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
           <div className="mt-4 flex items-center justify-between gap-4">
             <span className="text-[13px] leading-snug text-gryt-muted">{hint}</span>
             <div className="flex flex-none flex-wrap gap-2">
-              <Button tone="ghost" size="small" onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
+              <Button tone="ghost" size="small" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
               <Button
                 size="small"
                 disabled={!n}

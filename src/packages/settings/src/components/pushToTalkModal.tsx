@@ -63,9 +63,9 @@ export function PushToTalkModal() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-        <Dialog.Title>{t("Bind push to talk")}</Dialog.Title>
+        <Dialog.Title>{t("settings.bindPushToTalk")}</Dialog.Title>
         <Dialog.Description>
-          {t("Push to talk is on, but nothing is bound to it yet. Press a key, or the middle or a side mouse button.")}
+          {t("settings.pushToTalkIsOnButNothingIsBoundTo")}
         </Dialog.Description>
 
         <div className="flex flex-col gap-4 items-center py-4">
@@ -73,22 +73,22 @@ export function PushToTalkModal() {
             color={captured ? "green" : "blue"}
             style={{ fontFamily: "var(--code-font-family)", minWidth: "120px", textAlign: "center", padding: "8px 16px", fontSize: 16 }}
           >
-            {captured ? formatCombo(captured) : t("Press a key or button...")}
+            {captured ? formatCombo(captured) : t("settings.pressAKeyOrButton")}
           </Chip>
 
           {captured && (
             <span className="text-xs text-gryt-muted">
-              {t("Press something else to change it, or confirm below.")}
+              {t("settings.pressSomethingElseToChangeItOrConfirmBelow")}
             </span>
           )}
         </div>
 
         <div className="flex flex-wrap gap-3 justify-end">
           <Button tone="neutral" size="small" onClick={handleCancel}>
-            {t("Cancel")}
+            {t("common.cancel")}
           </Button>
           <Button size="small" onClick={handleConfirm} disabled={!captured}>
-            {t("Confirm")}
+            {t("settings.confirm")}
           </Button>
         </div>
       </Dialog.Popup>

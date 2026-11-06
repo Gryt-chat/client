@@ -23,16 +23,16 @@ export function BrowserBanner() {
       }}>
       <PiDownloadSimpleFill size={14} style={{ flexShrink: 0, color: "var(--gryt-accent-11)" }} />
       <span className="text-xs" style={{ color: "var(--gryt-accent-11)" }}>
-        {t("You're using Gryt in your browser. Some features are limited.")}{" "}
+        {t("common.youReUsingGrytInYourBrowserSomeFeaturesAre")}{" "}
         <a
           className="gryt-link font-medium"
           href="https://github.com/Gryt-chat/gryt/releases"
           target="_blank"
           rel="noreferrer"
         >
-          {t("Download the desktop app")}
+          {t("common.downloadTheDesktopApp")}
         </a>{" "}
-        {t("for the full experience.")}
+        {t("common.forTheFullExperience")}
       </span>
       <IconButton tone="ghost" size="xsmall"
         style={{ marginLeft: "auto", flexShrink: 0 }}
@@ -40,7 +40,7 @@ export function BrowserBanner() {
           localStorage.setItem(STORAGE_KEY, "true");
           setDismissed(true);
         }}
-        aria-label={t("Dismiss banner")}
+        aria-label={t("common.dismissBanner")}
       >
         <PiX size={14} />
       </IconButton>

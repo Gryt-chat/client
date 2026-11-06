@@ -89,7 +89,7 @@ export function MarkAsReadItem({ host, scope, inMenu = false }: { host: string; 
   return (
     <M.Item disabled={waiting === 0} onClick={onClick}>
       {inMenu && <PiChecksBold size={16} />}
-      {t("Mark as read")}
+      {t("chat.markAsRead")}
     </M.Item>
   );
 }

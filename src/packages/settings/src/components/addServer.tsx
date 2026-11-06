@@ -365,7 +365,7 @@ export function AddNewServer({
             <div className="absolute top-2 right-2 z-10">
               <Dialog.Close
                 render={
-                  <IconButton aria-label="Close" />
+                  <IconButton aria-label={t("common.close")} />
                 }
               >
                 <PiX size={16} />
@@ -402,15 +402,15 @@ export function AddNewServer({
                   <EntryCard
                     tour="choose-host"
                     icon={<PiHouseLineFill size={17} />}
-                    name={t(hasOwnServer ? "Create another" : "Create my own")}
-                    hint={t("Runs on this machine. Best for a few friends.")}
+                    name={t(hasOwnServer ? "settings.createAnother" : "settings.createMyOwn")}
+                    hint={t("settings.runsOnThisMachineBestForAFewFriends")}
                     onPick={() => setMode("host")}
                   />
                   <EntryCard
                     tour="choose-join"
                     icon={<PiLinkSimpleBold size={17} />}
-                    name={t("Join with an invite")}
-                    hint={t("Paste a link or an address you were given.")}
+                    name={t("settings.joinWithAnInvite")}
+                    hint={t("settings.pasteALinkOrAnAddressYouWereGiven")}
                     onPick={() => setMode("join")}
                   />
                 </div>
@@ -434,7 +434,7 @@ export function AddNewServer({
                     looking for the other should not have to guess. */}
                 {hasOwnServer && (
                   <span className="text-xs text-center">
-                    {t("Already running")}{" "}
+                    {t("settings.alreadyRunning")}{" "}
                     {hostedServers.length === 1
                       ? "one"
                       : `${hostedServers.length}`}
@@ -444,7 +444,7 @@ export function AddNewServer({
                       onClick={openMyServers}
                       className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
                     >
-                      {t("Manage in settings")}
+                      {t("settings.manageInSettings")}
                     </button>
                   </span>
                 )}
@@ -478,7 +478,7 @@ export function AddNewServer({
                   <TextField
                     autoFocus
                     disabled={isJoining}
-                    aria-label={t("Invite or server address")}
+                    aria-label={t("settings.inviteOrServerAddress")}
                     placeholder={inputExamples[exampleIndex]}
                     value={inviteInput}
                     onChange={(e) => setInviteInput(e.target.value)}
@@ -536,11 +536,11 @@ export function AddNewServer({
                     >
                       <div className="flex flex-col gap-2">
                         <span className="text-sm font-bold">
-                          {t("Invite code")}
+                          {t("settings.inviteCode")}
                         </span>
                         <TextField
                           disabled={isJoining}
-                          placeholder={t("Paste invite code")}
+                          placeholder={t("settings.pasteInviteCode")}
                           value={inviteCode}
                           onChange={(e) =>
                             setManualCode(normalizeCode(e.target.value))
@@ -564,11 +564,11 @@ export function AddNewServer({
                           label carries what the paragraph used to. */}
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-bold">
-                          {t("Say who you are")}
+                          {t("settings.sayWhoYouAre")}
                         </span>
                         <TextField
                           disabled={isJoining}
-                          placeholder={t("Optional")}
+                          placeholder={t("settings.optional")}
                           maxLength={300}
                           value={joinNote}
                           onChange={(e) => setJoinNote(e.target.value)}
@@ -587,7 +587,7 @@ export function AddNewServer({
                       style={{ overflow: "hidden" }}
                     >
                       <Alert severity="info">
-                        {t("Asked. Somebody who runs this server has to let you in. It is in your server list now, marked as waiting, and opens on its own once they do. You can close this.")}
+                        {t("settings.askedSomebodyWhoRunsThisServerHasToLetYou")}
                       </Alert>
                     </motion.div>
                   )}
@@ -622,7 +622,7 @@ export function AddNewServer({
                       disabled={isJoining}
                       onClick={() => setMode(null)}
                     >
-                      {t("Back")}
+                      {t("settings.back")}
                     </Button>
                   ) : (
                     <span />
@@ -640,7 +640,7 @@ export function AddNewServer({
                           width="16px"
                           height="16px"
                         />{" "}
-                        {t("Joining…")}
+                        {t("settings.joining")}
                       </>
                     ) : (
                       t(joinAction.label)
@@ -720,7 +720,7 @@ function OrRule() {
       style={{ color: "var(--gryt-neutral-11)", letterSpacing: "0.08em" }}
     >
       <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
-      {t("or")}
+      {t("settings.or")}
       <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
     </div>
   );
@@ -762,14 +762,14 @@ function OfficialServerCard({
       </span>
 
       <span className="flex flex-col" style={{ minWidth: 0 }}>
-        <span className="text-base font-bold">{info?.name || t("The Gryt server")}</span>
+        <span className="text-base font-bold">{info?.name || t("settings.theGrytServer")}</span>
         {/* The member count when the server gave one, and the address when it
             did not. Both say the same thing — this is a real place — and one
             of them is a number we did not make up. */}
         <span className="text-sm truncate">
           {info
-            ? `${t("Run by us.")} ${info.members} ${t(info.members === "1" ? "member" : "members")}.`
-            : `${t("Run by us.")} ${host}`}
+            ? `${t("settings.runByUs")} ${info.members} ${t(info.members === "1" ? "settings.member" : "settings.members")}.`
+            : `${t("settings.runByUs")} ${host}`}
         </span>
       </span>
 
@@ -801,7 +801,7 @@ function OfficialServerOffer({
           className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-xs underline"
           style={{ color: "var(--gryt-neutral-11)" }}
         >
-          {t("Hide forever")}
+          {t("settings.hideForever")}
         </button>
       </div>
       <OfficialServerCard server={server} onPick={onPick} />
@@ -818,7 +818,7 @@ function PreviewLine({ loading, error, privateInfo, text }: {
   const { t } = useLocale();
   if (loading) return <Skeleton width="5rem" height="0.75rem" />;
   if (error) return <span className="text-xs">{t(error)}</span>;
-  if (privateInfo) return <span className="text-xs">{t("Public info is off. An invite code can still get you in.")}</span>;
+  if (privateInfo) return <span className="text-xs">{t("settings.publicInfoIsOffAnInviteCodeCanStillGet")}</span>;
   return <span className="text-xs line-clamp-2">{text}</span>;
 }
 
@@ -870,7 +870,7 @@ function ServerPreview({
           {alreadyMember && (
             <Chip>
               <PiInfoFill size={12} />
-              {t("Joined")}
+              {t("settings.joined")}
             </Chip>
           )}
           {/*
@@ -884,8 +884,8 @@ function ServerPreview({
               color={info.identityTiers.includes("local") ? "green" : "gray"}
             >
               {info.identityTiers.includes("local")
-                ? t("No account needed")
-                : t("Account required")}
+                ? t("settings.noAccountNeeded")
+                : t("settings.accountRequired")}
             </Chip>
           )}
           {info && !loading && (
@@ -893,7 +893,7 @@ function ServerPreview({
               className="text-xs tabular-nums"
               style={{ color: "var(--gryt-neutral-11)" }}
             >
-              {info.members} {t(info.members === "1" ? "member" : "members")}
+              {info.members} {t(info.members === "1" ? "settings.member" : "settings.members")}
             </span>
           )}
         </div>

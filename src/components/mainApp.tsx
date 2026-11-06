@@ -97,11 +97,11 @@ export function MainApp() {
            the tour's job; somebody who dismissed it still ends up here. */
         <div className="flex grow items-center justify-center">
           <div className="flex flex-col items-center gap-3" style={{ maxWidth: "24rem", textAlign: "center" }}>
-            <h2 className="text-lg">{t("Nothing here yet")}</h2>
+            <h2 className="text-lg">{t("common.nothingHereYet")}</h2>
             <span className="text-sm text-gryt-muted">
-              {t("Gryt is empty until you join a server. Add a friend’s with an invite, or start one of your own.")}
+              {t("common.grytIsEmptyUntilYouJoinAServerAddA")}
             </span>
-            <Button onClick={() => setShowAddServer(true)}>{t("Add a server")}</Button>
+            <Button onClick={() => setShowAddServer(true)}>{t("common.addAServer")}</Button>
           </div>
         </div>
       )}

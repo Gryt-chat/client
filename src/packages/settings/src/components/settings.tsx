@@ -429,7 +429,7 @@ export function Settings() {
 
         <div className="flex flex-col gap-4 h-full">
           <Dialog.Title>
-            {t("Settings")}
+            {t("common.settings")}
           </Dialog.Title>
 
           {showSettings && (
@@ -453,7 +453,7 @@ export function Settings() {
                   />
                   <TextField
                     className="px-10"
-                    placeholder={t("Search settings")}
+                    placeholder={t("settings.searchSettings")}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.currentTarget.value);
@@ -475,7 +475,7 @@ export function Settings() {
                   />
                   {query && (
                     <IconButton
-                      aria-label={t("Clear search")}
+                      aria-label={t("settings.clearSearch")}
                       className="absolute top-1/2 right-2 -translate-y-1/2"
                       size="small"
                       onClick={() => {
@@ -718,7 +718,7 @@ function SearchResults({
   if (results.length === 0) {
     return (
       <span className="text-gryt-muted" style={{ padding: "8px 10px", display: "block" }}>
-        {t("Nothing matches. Try the name of the control, or a word from its description.")}
+        {t("settings.nothingMatchesTryTheNameOfTheControlOrA")}
       </span>
     );
   }

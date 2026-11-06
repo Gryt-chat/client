@@ -78,14 +78,14 @@ function MediaItems({ media }: { media: MediaProps }) {
         <ContextMenu.Item onClick={() => void copyImage()}>
           <div className="flex items-center gap-1">
             <PiImageFill size={14} />
-            {t("Copy Image")}
+            {t("chat.copyImage")}
           </div>
         </ContextMenu.Item>
       )}
       <ContextMenu.Item onClick={() => void save()}>
         <div className="flex items-center gap-1">
           <PiCloudArrowDownFill size={14} />
-          {t("Save As")}
+          {t("chat.saveAs")}
         </div>
       </ContextMenu.Item>
       {src !== null && (
@@ -93,14 +93,14 @@ function MediaItems({ media }: { media: MediaProps }) {
           <ContextMenu.Item onClick={() => copyToClipboard(src)}>
             <div className="flex items-center gap-1">
               <PiCopyFill size={14} />
-              {t("Copy Link")}
+              {t("chat.copyLink")}
             </div>
           </ContextMenu.Item>
           <ContextMenu.Separator />
           <ContextMenu.Item onClick={() => window.open(src, "_blank", "noopener,noreferrer")}>
             <div className="flex items-center gap-1">
               <PiArrowSquareOutFill size={14} />
-              {t("Open in Browser")}
+              {t("chat.openInBrowser")}
             </div>
           </ContextMenu.Item>
         </>
@@ -191,7 +191,7 @@ function QuickReactions({
 function MessageActionItems({ actions }: { actions: MessageActions }) {
   const { t } = useLocale();
   let threadCount = "";
-  if (actions.unreadCount) threadCount = ` (${t("{count} new", { count: actions.unreadCount })})`;
+  if (actions.unreadCount) threadCount = ` (${t("chat.new", { count: actions.unreadCount })})`;
   else if (actions.replyCount) threadCount = ` (${actions.replyCount})`;
   return (
     <>
@@ -199,7 +199,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={() => copyToClipboard(actions.messageText ?? "")}>
           <div className="flex items-center gap-1">
             <PiCopyFill size={14} />
-            {t("Copy Message")}
+            {t("chat.copyMessage")}
           </div>
         </ContextMenu.Item>
       )}
@@ -207,7 +207,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onReply}>
           <div className="flex items-center gap-1">
             <PiArrowBendUpLeftFill size={14} />
-            {t("Reply")}
+            {t("chat.reply")}
           </div>
         </ContextMenu.Item>
       )}
@@ -218,7 +218,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
             {/* What is waiting beats how big it is. The reply count says the
                 thread is nine long, which is the same the tenth time you look
                 at it; the unread count is the reason to open it (GRYT-1026). */}
-            {t("Open thread")}{threadCount}
+            {t("chat.openThread")}{threadCount}
           </div>
         </ContextMenu.Item>
       )}
@@ -226,7 +226,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onStartThread}>
           <div className="flex items-center gap-1">
             <PiChatsTeardropFill size={14} />
-            {t("Start thread")}
+            {t("chat.startThread")}
           </div>
         </ContextMenu.Item>
       )}
@@ -234,7 +234,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onTogglePin}>
           <div className="flex items-center gap-1">
             {actions.pinned ? <PiPushPinSlashFill size={14} /> : <PiPushPinFill size={14} />}
-            {t(actions.pinned ? "Unpin Message" : "Pin Message")}
+            {t(actions.pinned ? "chat.unpinMessage" : "chat.pinMessage")}
           </div>
         </ContextMenu.Item>
       )}
@@ -242,7 +242,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onEdit}>
           <div className="flex items-center gap-1">
             <PiPencilSimpleFill size={14} />
-            {t("Edit Message")}
+            {t("chat.editMessage")}
           </div>
         </ContextMenu.Item>
       )}
@@ -250,7 +250,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onReport}>
           <div className="flex items-center gap-1">
             <PiFlagFill size={14} />
-            {t("Report")}
+            {t("chat.report")}
           </div>
         </ContextMenu.Item>
       )}
@@ -258,7 +258,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onDelete}>
           <div className="flex items-center gap-1">
             <PiTrashSimpleFill size={14} />
-            {t("Delete Message")}
+            {t("chat.deleteMessage2")}
           </div>
         </ContextMenu.Item>
       )}

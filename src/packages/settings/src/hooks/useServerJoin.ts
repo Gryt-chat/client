@@ -15,6 +15,7 @@ import {
 } from "@/common";
 import { joinServerOnce } from "@/socket";
 
+import { translateLocaleMessage } from "../../../../lib/i18n.ts";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { sameServer } from "../serverId";
 import { useSettings } from "./useSettings";
@@ -98,7 +99,7 @@ export async function fetchServerInfo(
 
     if (res.status === 404) return { kind: "private" };
     if (!res.ok) {
-      return { kind: "error", message: `Server responded with ${res.status}` };
+      return { kind: "error", message: translateLocaleMessage("server.connection.statusError", undefined, { status: res.status }) };
     }
 
     return { kind: "info", info: (await res.json()) as FetchInfo };
@@ -201,7 +202,7 @@ function describeJoinError(error: { error: string; message?: string }): JoinOutc
       return {
         ok: false,
         kind: "error",
-        message: error.message || `Failed to join server: ${error.error}`,
+        message: error.message || translateLocaleMessage("server.join.failedWithReason", undefined, { reason: error.error }),
       };
   }
 }

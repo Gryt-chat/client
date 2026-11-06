@@ -57,7 +57,7 @@ export function ServerPluginsModal() {
         <Dialog.Popup className="w-[40rem] max-h-[calc(100dvh-3rem)] overflow-y-auto">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <Dialog.Title>{t("What {server} runs", { server: host || t("this server") })}</Dialog.Title>
+              <Dialog.Title>{t("server.whatRuns", { server: host || t("server.thisServer") })}</Dialog.Title>
               <Dialog.Close>
                 <IconButton tone="ghost" size="xsmall" onClick={close}>
                   <PiX size={16} />
@@ -66,7 +66,7 @@ export function ServerPluginsModal() {
             </div>
 
             <span className="text-sm text-gryt-muted">
-              {t("Plugins run inside the server, so they see what goes through it.")} {t("Whoever runs this server chose these.")}
+              {t("server.pluginsRunInsideTheServerSoTheySeeWhatGoes")} {t("server.whoeverRunsThisServerChoseThese")}
             </span>
 
             {/*
@@ -80,11 +80,11 @@ export function ServerPluginsModal() {
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-bold">
                     {missing.length === 1
-                      ? t("One of these has a part you do not have")
-                      : t("{count} of these have parts you do not have", { count: missing.length })}
+                      ? t("server.oneOfTheseHasAPartYouDoNotHave")
+                      : t("server.ofTheseHavePartsYouDoNotHave", { count: missing.length })}
                   </span>
                   <span className="text-xs text-gryt-muted">
-                    {t("Everything here works without them. You will just not see whatever they add.")}
+                    {t("server.everythingHereWorksWithoutThemYouWillJustNotSee")}
                   </span>
                 </div>
               </Surface>
@@ -100,10 +100,10 @@ export function ServerPluginsModal() {
                       <span className="text-sm font-bold">
                         {plugin.name}
                         {plugin.author ? (
-                          <span className="font-normal text-gryt-muted"> {t("by")} {plugin.author}</span>
+                          <span className="font-normal text-gryt-muted"> {t("server.by")} {plugin.author}</span>
                         ) : null}
                         {missingIds.has(plugin.id) ? (
-                          <span className="font-normal text-gryt-muted"> · {t("not installed here")}</span>
+                          <span className="font-normal text-gryt-muted"> · {t("server.notInstalledHere")}</span>
                         ) : null}
                       </span>
 
@@ -121,7 +121,7 @@ export function ServerPluginsModal() {
                         {describeCapabilities(plugin.capabilities).map((line) => {
                           const unknown = line.match(/^(.*) — this Gryt is too old to say what that means$/);
                           const translated = unknown
-                            ? `${unknown[1]} — ${t("this Gryt is too old to say what that means")}`
+                            ? `${unknown[1]} — ${t("server.thisGrytIsTooOldToSayWhatThatMeans")}`
                             : t(line);
                           return <li key={line}>{translated}</li>;
                         })}
@@ -129,7 +129,7 @@ export function ServerPluginsModal() {
 
                       {plugin.capabilities.length === 0 ? (
                         <span className="text-xs text-gryt-muted">
-                          {t("Asked for nothing, so it only sees what the server tells it.")}
+                          {t("server.askedForNothingSoItOnlySeesWhatTheServer")}
                         </span>
                       ) : null}
 
@@ -139,7 +139,7 @@ export function ServerPluginsModal() {
                           no address. */}
                       {missingIds.has(plugin.id) && !plugin.homepage ? (
                         <span className="text-xs text-gryt-muted">
-                          {t("Whoever runs the server knows where this came from.")}
+                          {t("server.whoeverRunsTheServerKnowsWhereThisCameFrom")}
                         </span>
                       ) : null}
 
@@ -152,7 +152,7 @@ export function ServerPluginsModal() {
                           target="_blank"
                           rel="noreferrer noopener"
                         >
-                          {t(missingIds.has(plugin.id) ? "Where to get it" : "Read about it")}
+                          {t(missingIds.has(plugin.id) ? "server.whereToGetIt" : "server.readAboutIt")}
                         </a>
                       ) : null}
                     </div>

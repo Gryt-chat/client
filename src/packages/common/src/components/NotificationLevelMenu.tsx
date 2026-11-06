@@ -87,18 +87,18 @@ export function NotificationLevelMenu({
   const overruled = globalOverrules(global, resolved);
 
   const choices: { label: string; value: NotificationLevel | null }[] = [
-    { label: t("Everything"), value: "all" },
-    { label: t("Only mentions"), value: "mentions" },
-    { label: t("Nothing"), value: "none" },
+    { label: t("common.everything"), value: "all" },
+    { label: t("common.onlyMentions"), value: "mentions" },
+    { label: t("common.nothing"), value: "none" },
     {
-      label: `${t("Default")} (${t(LEVEL_WORDS[inherited])})`,
+      label: `${t("common.default")} (${t(LEVEL_WORDS[inherited])})`,
       value: null,
     },
   ];
 
   return (
     <M.SubmenuRoot>
-      <M.SubmenuTrigger>{icon}{t("Notifications")}</M.SubmenuTrigger>
+      <M.SubmenuTrigger>{icon}{t("common.notifications")}</M.SubmenuTrigger>
       <M.Portal>
         <M.Positioner>
           <M.Popup>
@@ -134,8 +134,8 @@ export function NotificationLevelMenu({
                 <M.Group>
                   <M.GroupLabel>
                     {global === "none"
-                      ? t("Everything is muted in settings")
-                      : t("Settings limits this to mentions")}
+                      ? t("common.everythingIsMutedInSettings")
+                      : t("common.settingsLimitsThisToMentions")}
                   </M.GroupLabel>
                 </M.Group>
               </>
@@ -158,7 +158,7 @@ export function HideMutedChannelsItem({ host }: { host: string }) {
   );
   return (
     <ContextMenu.CheckboxItem checked={on} onCheckedChange={(next) => setHideMuted(host, next)}>
-      {t("Hide muted channels")}
+      {t("common.hideMutedChannels")}
     </ContextMenu.CheckboxItem>
   );
 }
@@ -173,7 +173,7 @@ export function SuppressEveryoneItem({ host }: { host: string }) {
   );
   return (
     <ContextMenu.CheckboxItem checked={on} onCheckedChange={(next) => setSuppressEveryone(host, next)}>
-      {t("Suppress @everyone and @here")}
+      {t("common.suppressEveryoneAndHere")}
     </ContextMenu.CheckboxItem>
   );
 }

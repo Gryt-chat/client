@@ -39,9 +39,9 @@ import { useVoicePresence,type VoicePresence } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
+import { translateLocaleMessage } from "../lib/i18n.ts";
 import { PiChatsTeardropFill } from "../lib/icons";
 import { PiBroadcastFill, PiBugFill, PiChatTeardropDotsFill, PiGearFill, PiMicrophoneFill, PiMicrophoneSlashFill, PiPlus, PiSignInFill } from "../lib/icons";
-import { translateLocaleMessage } from "../lib/locale";
 import { useLocale } from "../lib/localeContext";
 import { useReportForm } from "../lib/reports/useReportForm";
 import { inVoiceLine, voiceNicknames } from "./serverVoiceLine";
@@ -62,11 +62,11 @@ function openServerSettings(host: string, tab?: string): void {
 async function copyServerAddress(host: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(host);
-    toast.success(translateLocaleMessage("Server address copied"));
+    toast.success(translateLocaleMessage("server.serverAddressCopied"));
   } catch {
     // Clipboard access can be refused, and a row that silently does nothing
     // reads as a broken menu item.
-    toast.error(translateLocaleMessage("Could not copy the address"));
+    toast.error(translateLocaleMessage("server.couldNotCopyTheAddress"));
   }
 }
 
@@ -165,10 +165,10 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
       <div className="flex flex-col gap-4 pt-2 items-center">
         {/* Above the servers, because a conversation is not one of them. The
             count is every unread direct message anywhere (GRYT-1134). */}
-        <Tooltip title={t("Direct messages")} side="right">
+        <Tooltip title={t("server.directMessages")} side="right">
           <div className="relative">
             <IconButton
-              aria-label={t("Direct messages")}
+              aria-label={t("server.directMessages")}
               aria-pressed={dmSpaceOpen}
               tone={dmSpaceOpen ? "primary" : "ghost"}
               /* In, to the conversation you were last in. Again from inside, back to
@@ -222,11 +222,11 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             />
           ))}
         </Reorder.Group>
-        <Tooltip title={t("Add new server")} side="right">
+        <Tooltip title={t("server.addNewServer")} side="right">
           <IconButton tone="neutral" size="xsmall"
             data-tour="add-server"
             // The tooltip is not a name, so without this it reads as "button".
-            aria-label={t("Add new server")}
+            aria-label={t("server.addNewServer")}
             onClick={() => setShowAddServer(true)}
           >
             <PiPlus size={16} />
@@ -237,7 +237,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             would get a destination that can never have anything in it. */}
         {isElectron && (
           <Tooltip
-            title={t("Servers on your network")}
+            title={t("server.serversOnYourNetwork")}
             side="right"
           >
             <div className="relative">
@@ -246,8 +246,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 // or it is not announced at all.
                 aria-label={
                   newLanServers.length > 0 && !showDiscovery
-                    ? `${t("Servers on your network")}, ${newLanServers.length} ${t("new")}`
-                    : t("Servers on your network")
+                    ? `${t("server.serversOnYourNetwork")}, ${newLanServers.length} ${t("server.new")}`
+                    : t("server.serversOnYourNetwork")
                 }
                 onClick={() => setShowDiscovery(!showDiscovery)}
               >
@@ -304,7 +304,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
               React warns about and browsers resolve however they like. render
               merges the two into one element. */}
           <Menu.Trigger
-            render={<IconButton size="xsmall" data-tour="profile" aria-label={t("Settings and account")} />}
+            render={<IconButton size="xsmall" data-tour="profile" aria-label={t("server.settingsAndAccount")} />}
           >
             <Avatar
               fallback={displayNickname[0]}
@@ -320,14 +320,14 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             >
               <div className="flex items-center gap-1">
                 <PiGearFill size={14} />
-                {t("Settings")}
+                {t("common.settings")}
               </div>
             </Menu.Item>
             <Menu.Separator />
             <Menu.Item onClick={() => openReport("feedback")}>
               <div className="flex items-center gap-1">
                 <PiChatTeardropDotsFill size={14} />
-                {t("Give feedback")}
+                {t("server.giveFeedback")}
               </div>
             </Menu.Item>
             {/* Kept separate from feedback rather than folded into it. Both
@@ -338,7 +338,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             <Menu.Item onClick={() => openReport("bug")}>
               <div className="flex items-center gap-1">
                 <PiBugFill size={14} />
-                {t("Report a bug")}
+                {t("server.reportABug")}
               </div>
             </Menu.Item>
             {/* Guest-by-default (GRYT-173) means most people on a first run
@@ -354,21 +354,21 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                   <>
                     {email && (
                       <div className="px-3 py-1 text-xs text-gryt-muted">
-                        {t(`Signed in as ${maskEmail(email)}`)}
+                        {t("server.account.signedInAs", { value: maskEmail(email) })}
                       </div>
                     )}
                     <Menu.Item onClick={() => void loginAnotherAccount()}>
-                      {t("Use another account")}
+                      {t("server.useAnotherAccount")}
                     </Menu.Item>
                     <Menu.Item className="text-gryt-danger" onClick={logout}>
-                      {t("Sign out")}
+                      {t("server.signOut")}
                     </Menu.Item>
                   </>
                 ) : (
                   <Menu.Item onClick={login}>
                     <div className="flex items-center gap-1">
                       <PiSignInFill size={14} />
-                      {t("Sign in")}
+                      {t("server.signIn")}
                     </div>
                   </Menu.Item>
                 )}
@@ -638,11 +638,11 @@ function ServerItem({
               row, so they are gone rather than reordered.
             */}
             <ContextMenu.Item onClick={() => openServerSettings(host, "invites")}>
-              {t("Invite to server")}
+              {t("server.inviteToServer")}
             </ContextMenu.Item>
             {openInvite.available && (
               <ContextMenu.Item onClick={() => void openInvite.copy()}>
-                {t("Copy invite link")}
+                {t("server.copyInviteLink")}
               </ContextMenu.Item>
             )}
             <ContextMenu.Separator />
@@ -660,18 +660,18 @@ function ServerItem({
             <ContextMenu.Separator />
 
             <ContextMenu.Item onClick={() => openServerSettings(host)}>
-              {t("Server settings")}
+              {t("server.serverSettings")}
             </ContextMenu.Item>
             {/* Here too: the header menu needs the server open, and the rail won't open
                 one that has gone offline, so this is how a stopped server gets started. */}
             {onManageServer && (
-              <ContextMenu.Item onClick={onManageServer}>{t("Manage server")}</ContextMenu.Item>
+              <ContextMenu.Item onClick={onManageServer}>{t("server.manageServer")}</ContextMenu.Item>
             )}
             {canClaim(host) && (
               /* For a seed restored onto a device new to this server: nothing
                  local knows there is a membership, and asking is the disclosure. */
               <ContextMenu.Item onClick={() => claim(host)}>
-                {t("I’ve used this server before")}
+                {t("server.iVeUsedThisServerBefore")}
               </ContextMenu.Item>
             )}
             {/* Offered whatever the connection state is, deliberately. A server
@@ -679,15 +679,15 @@ function ServerItem({
                 this for, and hiding it there would leave them with nothing.
                 GRYT-483. */}
             <ContextMenu.Item onClick={() => setDoctorOpen(true)}>
-              {t("Doctor")}
+              {t("server.doctor")}
             </ContextMenu.Item>
             {duplicateHosts.length > 0 && (
               /* Offered, never done for you. Collapsing these deletes a rail
                  entry, and silent is friendlier until it removes the wrong one. */
               <ContextMenu.Item onClick={() => setMergeOpen(true)}>
                 {duplicateHosts.length === 1
-                  ? t("Merge with the other entry…")
-                  : t("Merge the other entries…")}
+                  ? t("server.mergeWithTheOtherEntry")
+                  : t("server.mergeTheOtherEntries")}
               </ContextMenu.Item>
             )}
             <ContextMenu.Separator />
@@ -700,7 +700,7 @@ function ServerItem({
                 setShowRemoveServer({ host, mode: "remove" });
               }}
             >
-              {t("Remove from sidebar")}
+              {t("server.removeFromSidebar")}
             </ContextMenu.Item>
             <ContextMenu.Item
               className="text-gryt-danger"
@@ -708,13 +708,13 @@ function ServerItem({
                 setShowRemoveServer({ host, mode: "leave" });
               }}
             >
-              {t("Leave server")}
+              {t("server.leaveServer")}
             </ContextMenu.Item>
             <ContextMenu.Separator />
             {/* The address rather than an id: it is what identifies a Gryt
                 server, and it is the thing worth pasting to somebody. */}
             <ContextMenu.Item onClick={() => copyServerAddress(host)}>
-              {t("Copy server address")}
+              {t("server.copyServerAddress")}
             </ContextMenu.Item>
           </ContextMenu.Popup>
             </ContextMenu.Positioner>
@@ -723,16 +723,16 @@ function ServerItem({
         <ConfirmDialog
           open={mergeOpen}
           onOpenChange={setMergeOpen}
-          title={t(`Merge into ${host}?`)}
+          title={t("server.merge.title", { server: host })}
           description={
             <>
               {duplicateHosts.length === 1
-                ? t(`${duplicateHosts[0]} is the same server as ${host}, reached at a different address.`)
-                : t(`${duplicateHosts.join(", ")} are the same server as ${host}, reached at different addresses.`)}{" "}
-              {t(`Keeping ${host} removes the ${duplicateHosts.length === 1 ? "other entry" : "other entries"} from your list. You stay a member either way — this is your list, not the server. Your place in the list and the channel you were last in are kept.`)}
+                ? t("server.merge.singleDuplicate", { duplicate: duplicateHosts[0], server: host })
+                : t("server.merge.multipleDuplicates", { duplicates: duplicateHosts.join(", "), server: host })}{" "}
+              {t("server.merge.explanation", { server: host, count: duplicateHosts.length })}
             </>
           }
-          confirmLabel={t(`Keep ${host}`)}
+          confirmLabel={t("server.merge.keep", { server: host })}
           confirmTone="primary"
           onConfirm={() => mergeDuplicates(host)}
         />
@@ -770,17 +770,17 @@ function ServerItem({
               )}
               {awaitingApproval && (
                 <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
-                  • {t("Requested access")}
+                  • {t("server.requestedAccess")}
                 </span>
               )}
               {isUnavailable && !awaitingApproval && (
                 <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
-                  • {t("Can’t reach it")}
+                  • {t("server.canTReachIt")}
                 </span>
               )}
               {isReconnecting && !isStarting && (
                 <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
-                  • {t("Reconnecting")}
+                  • {t("server.reconnecting")}
                 </span>
               )}
               {/* Named for what it is rather than for the state machine.
@@ -788,23 +788,23 @@ function ServerItem({
                   and it is the only one that is going to work. */}
               {isStarting && (
                 <span style={{ color: "var(--gryt-accent-9)", marginLeft: "8px" }}>
-                  • {t("Starting your server")}
+                  • {t("server.startingYourServer")}
                 </span>
               )}
               {isSettling && (
                 <span style={{ color: "var(--gryt-neutral-11)", marginLeft: "8px" }}>
-                  • {t("No answer yet")}
+                  • {t("server.noAnswerYet")}
                 </span>
               )}
               {isConnecting && !isSettling && !isStarting && (
                 <span style={{ color: "var(--gryt-warning-9)", marginLeft: "8px" }}>
-                  • {t("Connecting")}
+                  • {t("server.connecting")}
                 </span>
               )}
             </h2>
             {inVoice.length > 0 && (
               <div className="text-xs" style={{ marginTop: 4 }}>
-                <span className="text-gryt-muted">{t("In voice:")} </span>
+                <span className="text-gryt-muted">{t("server.inVoice")} </span>
                 {inVoiceLine(inVoice)}
               </div>
             )}

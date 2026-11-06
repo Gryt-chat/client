@@ -76,3 +76,8 @@ in one place rather than ten, so it cannot fall out of step across repositories.
 ## License
 
 [AGPL-3.0](https://github.com/Gryt-chat/gryt/blob/main/LICENSE) — Part of [Gryt](https://github.com/Gryt-chat/gryt)
+
+## Translations
+
+See [Contributing translations](docs/translations.md) to edit a language catalog,
+add messages, or add a new language. Run `yarn locales:check` before submitting changes.

@@ -1,6 +1,7 @@
 import { Alert, Button, Dialog, IconButton, Spinner } from "@gryt/ui";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
+import type { LocaleMessage } from "../../../../lib/i18n";
 import {
   PiArrowSquareOutBold,
   PiCheckCircleFill,
@@ -36,7 +37,7 @@ const ICON: Record<CheckStatus, ReactNode> = {
   skipped: <PiMinusCircleFill className="text-gryt-muted" size={18} />,
 };
 
-function CheckRow({ check, t }: { check: CheckResult; t: (message: string) => string }) {
+function CheckRow({ check, t }: { check: CheckResult; t: (message: LocaleMessage) => string }) {
   const dimmed = check.status === "pending" || check.status === "skipped";
 
   return (
@@ -63,7 +64,7 @@ function CheckRow({ check, t }: { check: CheckResult; t: (message: string) => st
                     address.ok ? "text-gryt-success-9" : "text-gryt-danger-9"
                   }
                 >
-                  {t(address.ok ? "reachable" : "unreachable")}
+                  {t(address.ok ? "server.reachable" : "server.unreachable")}
                 </span>{" "}
                 <span className="text-gryt-muted">
                   {address.address}
@@ -198,10 +199,10 @@ export function ServerDoctor({
           </Dialog.Close>
 
           <div className="flex flex-col gap-3">
-            <Dialog.Title>{t("Doctor")} — {serverName}</Dialog.Title>
+            <Dialog.Title>{t("server.doctor")} — {serverName}</Dialog.Title>
 
             <Dialog.Description>
-              {t("Checks each hop between this device and the server, in the order the connection makes them. The first failure is the one to fix; anything after it is not tested.")}
+              {t("server.checksEachHopBetweenThisDeviceAndTheServerIn")}
             </Dialog.Description>
 
             <div className="flex flex-col">
@@ -212,13 +213,13 @@ export function ServerDoctor({
 
             {worst && worst.status === "fail" && (
               <Alert severity="error" role="alert">
-                {t(worst.label)} {t("is the first thing that failed. Fixing it may fix everything after it.")}
+                {t(worst.label)} {t("server.isTheFirstThingThatFailedFixingItMayFix")}
               </Alert>
             )}
 
             {!running && !worst && (
               <Alert severity="success" role="status">
-                {t("Everything this device can test from here works. If voice still fails, the problem is on the other side of the call rather than this end.")}
+                {t("server.everythingThisDeviceCanTestFromHereWorksIfVoice")}
               </Alert>
             )}
 
@@ -228,10 +229,10 @@ export function ServerDoctor({
                   the server's media port and see who answers. Letting people
                   believe otherwise sends them to check the wrong thing. */}
               <span className="text-xs text-gryt-muted">
-                {t("These run from this device, into a room with nobody else in it. A pass means voice works for you, not that it works for everyone.")}
+                {t("server.theseRunFromThisDeviceIntoARoomWithNobody")}
               </span>
               <Button size="small" disabled={running} onClick={run}>
-                {running ? t("Running…") : t("Run again")}
+                {running ? t("server.running") : t("server.runAgain")}
               </Button>
             </div>
           </div>

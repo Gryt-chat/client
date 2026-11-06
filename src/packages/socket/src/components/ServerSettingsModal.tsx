@@ -431,7 +431,7 @@ export function ServerSettingsModal() {
 
         <div className="flex flex-col gap-4 h-full">
           <Dialog.Title>
-            {t("Server settings")}
+            {t("server.serverSettings")}
           </Dialog.Title>
 
           {isOpen && (
@@ -456,7 +456,7 @@ export function ServerSettingsModal() {
                     </div>
                   )}
                   <div hidden={!railFits} style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
-                    <Tabs.List aria-label={t("Server settings")} className="gap-1">
+                    <Tabs.List aria-label={t("server.serverSettings")} className="gap-1">
                       {TAB_GROUPS.map((group, i) => (
                         <Fragment key={group.label}>
                           <span
@@ -483,7 +483,7 @@ export function ServerSettingsModal() {
                   <div style={{ flex: 1, overflow: "auto", minWidth: 0, minHeight: 0 }}>
                     {!permissionKnown ? (
                       <span className="text-sm text-gryt-muted" style={{ marginBottom: 12 }}>
-                        {t("Loading permissions…")}
+                        {t("server.loadingPermissions")}
                       </span>
                     ) : null}
                     {TAB_CONFIG.map(({ value, content }) => (
@@ -497,7 +497,7 @@ export function ServerSettingsModal() {
             ) : (
               <div className="flex flex-col gap-3">
                 <span className="text-sm text-gryt-muted">
-                  {t("Your role does not include any of the permissions these settings need.")}
+                  {t("server.yourRoleDoesNotIncludeAnyOfThePermissionsThese")}
                 </span>
               </div>
             )

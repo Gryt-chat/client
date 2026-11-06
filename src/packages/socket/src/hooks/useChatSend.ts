@@ -301,13 +301,13 @@ export function useChatSend({
       // say something: a message that vanishes silently reads as one that sent.
       if (isRateLimitedRef.current) return;
       if (isVoiceChannelTextChatRef.current && !textInVoiceEnabledRef.current) {
-        toast.error(t("Text chat is switched off in this channel"));
+        toast.error(t("chat.textChatIsSwitchedOffInThisChannel"));
       } else if (isVoiceChannelTextChatRef.current && !isConnectedRef.current) {
-        toast.error(t("Join the call to chat here"));
+        toast.error(t("chat.joinTheCallToChatHere"));
       } else if (!isConnectedRef.current) {
-        toast.error(t("Not connected to this server"));
+        toast.error(t("chat.notConnectedToThisServer"));
       } else {
-        toast.error(t("That message could not be sent"));
+        toast.error(t("chat.thatMessageCouldNotBeSent"));
       }
       return;
     }
@@ -407,7 +407,7 @@ export function useChatSend({
           const keyed = uploaded.flatMap((u) => (u.meta ? [[u.fileId, u.meta] as const] : []));
           attachmentKeys = keyed.length ? Object.fromEntries(keyed) : null;
         } catch (err) {
-          const msg = t(err instanceof Error && err.message ? err.message : "Failed to upload file(s)");
+          const msg = t(err instanceof Error && err.message ? err.message : "chat.failedToUploadFileS");
           toast.error(msg, { duration: 8000 });
           // The draft goes back into the composer, so the row goes; leaving it failed showed it twice.
           const gone = (m: ChatMessage) => m.message_id !== pendingId;

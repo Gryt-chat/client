@@ -38,12 +38,12 @@ export function UnreachableServer({
             <span>{serverName}</span>
             <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--gryt-warning-11)" }}>
               <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--gryt-warning-9)" }} />
-              {t("Can’t reach it")}
+              {t("server.canTReachIt")}
             </span>
           </span>
         </Surface>
         <p className="text-sm text-gryt-muted" style={{ margin: "0 12px", lineHeight: 1.45 }}>
-          {t("The channels show up once it answers.")}
+          {t("server.theChannelsShowUpOnceItAnswers")}
         </p>
       </div>
 
@@ -65,25 +65,25 @@ export function UnreachableServer({
             <PiPlugsFill size={30} />
           </span>
           <span className="text-lg font-bold" style={{ marginTop: 6 }}>
-            {serverName} {t("isn’t answering")}
+            {serverName} {t("server.isnTAnswering")}
           </span>
           <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-            {t("It might be down, or this network can’t see it.")}
+            {t("server.itMightBeDownOrThisNetworkCanTSee")}
           </span>
           <div className="flex gap-2.5" style={{ marginTop: 8 }}>
             <Button size="small" onClick={onTryNow}>
               <PiArrowsClockwiseFill size={16} />
-              {t("Try now")}
+              {t("server.tryNow")}
             </Button>
             <Button size="small" tone="neutral" onClick={() => setDoctorOpen(true)}>
               <PiPulseBold size={16} />
-              {t("Check the connection")}
+              {t("server.checkTheConnection")}
             </Button>
           </div>
           {publicHost && publicHost !== host && onUsePublic && (
             <Button size="small" tone="ghost" onClick={onUsePublic}>
               <PiGlobeSimpleFill size={16} />
-              {t("Connect through")} {publicHost}
+              {t("server.connectThrough")} {publicHost}
             </Button>
           )}
           {serverName !== host && <span className="text-xs text-gryt-muted" style={{ marginTop: 8 }}>{host}</span>}

@@ -19,6 +19,7 @@ jobs:
           node-version: 24
           cache: yarn
       - run: yarn install --frozen-lockfile
+      - run: yarn locales:check
       - run: yarn test:updater-bridge
       - run: yarn test:update-feed-pin
       # A newer release has to replace a download that is waiting or still running,

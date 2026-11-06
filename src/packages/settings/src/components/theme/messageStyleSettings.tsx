@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { type MessageStyle, type OwnMessageSide, useTheme } from "@/common";
 
+import { useLocale } from "../../../../../lib/localeContext";
 import { SettingGroup, SettingsContainer } from "../settingsComponents";
 
 /* The previews are drawn shapes, not real messages: they only need to show the layout. */
@@ -95,6 +96,7 @@ function Choice({ checked, onSelect, label, hint, children }: {
 
 /** How messages are drawn, and which side yours go on. Both only change this device. */
 export function MessageStyleSettings() {
+  const { t } = useLocale();
   const { messageStyle, setMessageStyle, ownMessageSide, setOwnMessageSide } = useTheme();
 
   const styles: { value: MessageStyle; label: string; hint: string }[] = [
@@ -109,12 +111,12 @@ export function MessageStyleSettings() {
 
   return (
     <SettingsContainer>
-      <h2 className="text-lg">Messages</h2>
+      <h2 className="text-lg">{t("settings.messages")}</h2>
 
       <SettingGroup title="Message style" description="How messages look in channels and direct messages, on this device only.">
-        <div role="radiogroup" aria-label="Message style" className="flex flex-wrap" style={{ gap: 12 }}>
+        <div role="radiogroup" aria-label={t("settings.messageStyle")} className="flex flex-wrap" style={{ gap: 12 }}>
           {styles.map((s) => (
-            <Choice key={s.value} checked={messageStyle === s.value} onSelect={() => setMessageStyle(s.value)} label={s.label} hint={s.hint}>
+            <Choice key={s.value} checked={messageStyle === s.value} onSelect={() => setMessageStyle(s.value)} label={t(s.label)} hint={t(s.hint)}>
               <Preview style={s.value} side={ownMessageSide} />
             </Choice>
           ))}
@@ -122,9 +124,9 @@ export function MessageStyleSettings() {
       </SettingGroup>
 
       <SettingGroup title="Your messages" description="Where the messages you send sit. Everyone else's stay on the left.">
-        <div role="radiogroup" aria-label="Your messages" className="flex flex-wrap" style={{ gap: 12 }}>
+        <div role="radiogroup" aria-label={t("settings.yourMessages")} className="flex flex-wrap" style={{ gap: 12 }}>
           {sides.map((s) => (
-            <Choice key={s.value} checked={ownMessageSide === s.value} onSelect={() => setOwnMessageSide(s.value)} label={s.label} hint={s.hint}>
+            <Choice key={s.value} checked={ownMessageSide === s.value} onSelect={() => setOwnMessageSide(s.value)} label={t(s.label)} hint={t(s.hint)}>
               <Preview style={messageStyle} side={s.value} />
             </Choice>
           ))}

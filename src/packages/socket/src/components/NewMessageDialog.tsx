@@ -40,9 +40,9 @@ type Waiting =
   | { kind: "group"; host: string; picked: string[]; before: ReadonlySet<string> };
 
 function noOneText(s: { canMessageSomewhere: boolean; groupBlocked: boolean; nobody: boolean; query: string }, t: (message: string, params?: Record<string, string | number>) => string): string {
-  if (!s.canMessageSomewhere) return t("None of your servers let you start a conversation.");
-  if (s.groupBlocked) return t("None of your servers let you start a group.");
-  return s.nobody ? t("There’s nobody else on your servers yet.") : t("Nobody matches “{query}”.", { query: s.query });
+  if (!s.canMessageSomewhere) return t("chat.noneOfYourServersLetYouStartAConversation");
+  if (s.groupBlocked) return t("chat.noneOfYourServersLetYouStartAGroup");
+  return s.nobody ? t("chat.thereSNobodyElseOnYourServersYet") : t("chat.nobodyMatches", { query: s.query });
 }
 
 export function NewMessageDialog() {
@@ -149,7 +149,7 @@ export function NewMessageDialog() {
     socket.on("server:error", refused);
     const timer = setTimeout(() => {
       stop();
-      setProblem(t("{server} didn’t answer. Try again in a moment.", { server: serverName(host) }));
+      setProblem(t("chat.didnTAnswerTryAgainInAMoment", { server: serverName(host) }));
     }, ANSWER_MS);
     return () => {
       socket.off("dm:error", stop);
@@ -174,7 +174,7 @@ export function NewMessageDialog() {
       .then((sent) => {
         if (sent) return;
         setWaiting(null);
-        setProblem(t("You’re not signed in to {server}.", { server: serverName(candidate.host) }));
+        setProblem(t("chat.youReNotSignedInTo", { server: serverName(candidate.host) }));
       });
   };
 
@@ -198,7 +198,7 @@ export function NewMessageDialog() {
     void emitAuthenticated(socket, "dm:group:create", { memberIds: picked }, groupHost).then((sent) => {
       if (sent) return;
       setWaiting(null);
-      setProblem(t("You’re not signed in to {server}.", { server: serverName(groupHost) }));
+      setProblem(t("chat.youReNotSignedInTo", { server: serverName(groupHost) }));
     });
   };
 
@@ -299,7 +299,7 @@ export function NewMessageDialog() {
       >
         {face(candidate)}
         {label}
-        {asking && <Spinner size={14} aria-label="Opening the conversation" />}
+        {asking && <Spinner size={14} aria-label={t("chat.openingTheConversation")} />}
       </Button>
     );
   };
@@ -324,14 +324,14 @@ export function NewMessageDialog() {
         <Dialog.Popup>
           {made ? (
             <>
-              <Dialog.Title>{t("Name and picture")}</Dialog.Title>
+              <Dialog.Title>{t("chat.nameAndPicture")}</Dialog.Title>
               <Dialog.Description>
-                {t("Both are optional, and you can change them later in Group settings.")}
+                {t("chat.bothAreOptionalAndYouCanChangeThemLaterIn")}
               </Dialog.Description>
               <div className="flex flex-col gap-4">
                 <GroupFaceFields
                   serverHost={made.host}
-                  seed={name.trim() || (madeGroup ? conversationTitle(madeGroup) : t("New group"))}
+                  seed={name.trim() || (madeGroup ? conversationTitle(madeGroup) : t("chat.newGroup"))}
                   icon={icon}
                   onIcon={(fileId) => {
                     setIcon(fileId);
@@ -340,19 +340,19 @@ export function NewMessageDialog() {
                   name={name}
                   onName={setName}
                   onNameDone={sendName}
-                  placeholder={madeGroup ? conversationTitle(madeGroup) : t("Optional")}
+                  placeholder={madeGroup ? conversationTitle(madeGroup) : t("settings.optional")}
                   autoFocus
                 />
               </div>
               <Dialog.Footer>
-                <Button onClick={close}>{t("Done")}</Button>
+                <Button onClick={close}>{t("common.done")}</Button>
               </Dialog.Footer>
             </>
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <Dialog.Title>{t(mode === "group" ? "New group" : "New message")}</Dialog.Title>
-                <Dialog.Close render={<IconButton tone="ghost" size="small" aria-label={t("Close")} />}>
+                <Dialog.Title>{t(mode === "group" ? "chat.newGroup" : "chat.newMessage")}</Dialog.Title>
+                <Dialog.Close render={<IconButton tone="ghost" size="small" aria-label={t("common.close")} />}>
                   <PiXBold size={14} />
                 </Dialog.Close>
               </div>
@@ -360,9 +360,9 @@ export function NewMessageDialog() {
               <div className="flex flex-col gap-3">
                 {canGroupSomewhere && (
                   <Tabs value={mode} onValueChange={(v) => switchTo(v as NewMessageMode)}>
-                    <Tabs.List aria-label={t("A message or a group")} className="grid w-full grid-cols-2">
-                      <Tabs.Tab value="message" disabled={waiting !== null}>{t("Message")}</Tabs.Tab>
-                      <Tabs.Tab value="group" disabled={waiting !== null}>{t("Group")}</Tabs.Tab>
+                    <Tabs.List aria-label={t("chat.aMessageOrAGroup")} className="grid w-full grid-cols-2">
+                      <Tabs.Tab value="message" disabled={waiting !== null}>{t("chat.message3")}</Tabs.Tab>
+                      <Tabs.Tab value="group" disabled={waiting !== null}>{t("chat.group")}</Tabs.Tab>
                       <Tabs.Indicator />
                     </Tabs.List>
                   </Tabs>
@@ -384,8 +384,8 @@ export function NewMessageDialog() {
                   ))}
                   <input
                     autoFocus
-                    aria-label={t("Search people")}
-                    placeholder={t("Search people")}
+                    aria-label={t("chat.searchPeople")}
+                    placeholder={t("chat.searchPeople")}
                     className="min-w-24 flex-1 border-0 bg-transparent px-1 py-1 text-sm outline-none"
                     style={{ color: "var(--gryt-neutral-12)" }}
                     value={query}
@@ -407,8 +407,8 @@ export function NewMessageDialog() {
                 {mode === "group" && (
                   <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.5 }}>
                     {picked.length === 1
-                      ? t("Pick one more. With only two of you, it’s a direct message.")
-                      : t("Everybody in a group has to be on the same server, so people from other servers can’t be added to this one.")}
+                      ? t("chat.pickOneMoreWithOnlyTwoOfYouItS")
+                      : t("chat.everybodyInAGroupHasToBeOnTheSame")}
                   </span>
                 )}
                 {problem && <span className="text-xs text-gryt-danger">{problem}</span>}
@@ -417,10 +417,10 @@ export function NewMessageDialog() {
               {mode === "group" && (
                 <Dialog.Footer className="items-center justify-between">
                   <span className="text-sm">
-                    {t("Name and picture")} <span className="text-gryt-muted">&middot; {t("Optional")}</span>
+                    {t("chat.nameAndPicture")} <span className="text-gryt-muted">&middot; {t("settings.optional")}</span>
                   </span>
                   <Button onClick={createGroup} disabled={picked.length < 2 || waiting !== null}>
-                    {waiting?.kind === "group" ? t("Creating…") : t("Create group")}
+                    {waiting?.kind === "group" ? t("chat.creating") : t("chat.createGroup")}
                   </Button>
                 </Dialog.Footer>
               )}

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSettings } from "@/settings";
 
 import { PiArrowsClockwiseFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { SettingsContainer, ToggleSetting } from "./settingsComponents";
 
 const QUALITY_OPTIONS = [
@@ -39,6 +40,7 @@ function resolutionTip(sent: Resolution | null, actual: Resolution | null | unde
 }
 
 export function CameraSettings() {
+  const { t } = useLocale();
   const {
     cameraID,
     setCameraID,
@@ -222,7 +224,7 @@ export function CameraSettings() {
 
   return (
     <SettingsContainer>
-      <h2>Camera</h2>
+      <h2>{t("settings.camera.label")}</h2>
 
       <div className="flex flex-col gap-2">
         <span className="font-medium">Preview</span>
@@ -275,12 +277,12 @@ export function CameraSettings() {
           ) : (
             <div className="flex flex-col items-center gap-2 p-4">
               <span color={activeError ? "red" : "gray"}>
-                {activeError ?? "No camera detected"}
+                {activeError ?? t("settings.noCameraDetected")}
               </span>
               {activeError && (
                 <Button tone="neutral" size="xsmall" onClick={startPreview}>
                   <PiArrowsClockwiseFill size={14} />
-                  Retry
+                  {t("settings.retry")}
                 </Button>
               )}
             </div>
@@ -291,16 +293,16 @@ export function CameraSettings() {
       <Divider />
 
       <div className="flex flex-col gap-2">
-        <span className="font-medium">Camera Device</span>
+        <span className="font-medium">{t("settings.cameraDevice")}</span>
         <Select
           value={cameraID || ""}
           onValueChange={(value) => setCameraID(String(value))}
-          placeholder="Select a camera"
+          placeholder={t("settings.selectACamera")}
           options={
             devices.length === 0
-              ? [{ label: "No cameras found", value: "__none__", disabled: true }]
+              ? [{ label: t("settings.noCamerasFound"), value: "__none__", disabled: true }]
               : devices.map((device, index) => ({
-                  label: device.label || `Camera ${index + 1}`,
+                  label: device.label || `${t("settings.camera.label")} ${index + 1}`,
                   value: device.deviceId || `device-${device.label}`,
                 }))
           }
@@ -308,19 +310,19 @@ export function CameraSettings() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="font-medium">Video Quality</span>
+        <span className="font-medium">{t("settings.videoQuality")}</span>
         <Select
           value={cameraQuality}
           onValueChange={(value) => setCameraQuality(String(value))}
           options={filteredOptions.map((opt) => ({
-            label: opt.label,
+            label: t(opt.label),
             value: opt.value,
           }))}
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="font-medium">Frame Rate</span>
+        <span className="font-medium">{t("settings.frameRate")}</span>
         <Select
           value={String(cameraFps)}
           onValueChange={(v) => setCameraFps(Number(v))}
@@ -333,14 +335,14 @@ export function CameraSettings() {
 
       <ToggleSetting
         title="Flip camera"
-        description="Flips the video everyone else sees. This changes the stream itself, not just your preview."
+        description={t("settings.flipsTheVideoEveryoneElseSeesThisChangesTheStream")}
         checked={cameraFlipped}
         onCheckedChange={setCameraFlipped}
       />
 
       <ToggleSetting
         title="Keep my face centered"
-        description="Cameras get cropped to fit a tile, so a face off to one side gets cut off. This checks where yours is every few seconds and moves everyone else's crop when you've moved. Detection runs on this machine; only two numbers are sent, never video."
+        description={t("settings.camerasGetCroppedToFitATileSoAFace")}
         checked={faceFramingEnabled}
         onCheckedChange={setFaceFramingEnabled}
       />
@@ -348,7 +350,7 @@ export function CameraSettings() {
 
       <ToggleSetting
         title="Mirror preview"
-        description="Mirrors your own preview. Nobody else sees any difference."
+        description={t("settings.mirrorsYourOwnPreviewNobodyElseSeesAnyDifference")}
         checked={cameraMirrored}
         onCheckedChange={setCameraMirrored}
       />

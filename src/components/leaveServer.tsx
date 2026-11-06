@@ -45,28 +45,28 @@ export function LeaveServer() {
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)]">
           <Dialog.Title>
-            {t(leaving ? "Leave" : "Remove")} <strong>{name}</strong>
+            {t(leaving ? "server.leave.label" : "server.remove")} <strong>{name}</strong>
           </Dialog.Title>
           <Dialog.Description className="mt-2">
             {leaving ? (
               <>
-                {t("You stop being a member of {server}. Your messages stay and keep your name on them, but your picture there is deleted, and if the server is invite-only you will need a new invite to come back.").replace("{server}", name ?? "")}
+                {t("server.youStopBeingAMemberOfYourMessagesStayAnd").replace("{server}", name ?? "")}
               </>
             ) : (
               <>
-                {t("{server} goes from your sidebar. You are still a member, so you keep your roles and anything you own there. You just will not be connected: nobody sees you online, and changing your picture will not change it there.").replace("{server}", name ?? "")}
+                {t("server.goesFromYourSidebarYouAreStillAMemberSo").replace("{server}", name ?? "")}
               </>
             )}
           </Dialog.Description>
 
           <Dialog.Footer className="flex-wrap">
             <Button tone="ghost" onClick={close}>
-              {t("Cancel")}
+              {t("common.cancel")}
             </Button>
             {/* Danger for leaving only. Removing is reversible by adding the
                 server back, and painting it red says otherwise. */}
             <Button tone={leaving ? "danger" : "primary"} onClick={confirm}>
-              {t(leaving ? "Leave server" : "Remove from sidebar")}
+              {t(leaving ? "server.leaveServer" : "server.removeFromSidebar")}
             </Button>
           </Dialog.Footer>
         </Dialog.Popup>

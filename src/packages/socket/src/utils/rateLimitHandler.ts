@@ -1,6 +1,6 @@
 import toast from "react-hot-toast";
 
-import { translateLocaleMessage } from "../../../../lib/locale";
+import { translateLocaleMessage } from "../../../../lib/i18n.ts";
 
 // Track recent rate limit messages to prevent duplicates
 const recentRateLimitMessages = new Set<string>();
@@ -30,9 +30,9 @@ export const handleRateLimitError = (
     if (error.retryAfterMs && error.retryAfterMs > 0) {
       const seconds = Math.ceil(error.retryAfterMs / 1000);
       if (seconds > 1) {
-        displayMessage += ` ${translateLocaleMessage("Please wait {seconds} seconds before trying again.", undefined, { seconds })}`;
+        displayMessage += ` ${translateLocaleMessage("chat.pleaseWaitSecondsBeforeTryingAgain", undefined, { seconds })}`;
       } else {
-        displayMessage += ` ${translateLocaleMessage("Please wait a moment before trying again.")}`;
+        displayMessage += ` ${translateLocaleMessage("chat.pleaseWaitAMomentBeforeTryingAgain")}`;
       }
     }
     
@@ -48,6 +48,6 @@ export const handleRateLimitError = (
 
   // The server's sentence when it sent one; a bare code like "unidentified" means nothing to a reader.
   console.warn(`[${context}] error:`, error);
-  const message = typeof error === 'object' && error.message ? translateLocaleMessage(error.message) : translateLocaleMessage("Something went wrong. Try again in a moment.");
+  const message = typeof error === 'object' && error.message ? translateLocaleMessage(error.message) : translateLocaleMessage("chat.somethingWentWrongTryAgainInAMoment");
   toast.error(message, { id: `error:${message}` });
 };

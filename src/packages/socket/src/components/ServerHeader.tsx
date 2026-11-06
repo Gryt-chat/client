@@ -62,11 +62,11 @@ export const ServerHeader = ({
     if (!serverHost) return;
     try {
       await navigator.clipboard.writeText(serverHost);
-      toast.success(t("Server address copied"));
+      toast.success(t("server.serverAddressCopied"));
     } catch {
       // Clipboard access can be refused, and a silent no-op looks like a menu
       // item that does nothing.
-      toast.error(t("Could not copy the address"));
+      toast.error(t("server.couldNotCopyTheAddress"));
     }
   };
 
@@ -87,7 +87,7 @@ export const ServerHeader = ({
           <div className="flex justify-center items-center">
             <Menu.Trigger
               render={
-                <IconButton tone="neutral" size="xsmall" aria-label={t("Server menu")} className="w-auto px-1 text-base font-semibold" />
+                <IconButton tone="neutral" size="xsmall" aria-label={t("server.serverMenu")} className="w-auto px-1 text-base font-semibold" />
               }
             >
               {initialsOf(serverName)}
@@ -95,7 +95,7 @@ export const ServerHeader = ({
           </div>
         ) : (
           <Menu.Trigger
-            aria-label={t("Server menu")}
+            aria-label={t("server.serverMenu")}
             className="flex w-full items-center gap-2 min-w-0 rounded-lg px-2 py-1 -mx-2 text-left hover:bg-gryt-neutral-3"
           >
             <span className="flex flex-col flex-1 min-w-0">
@@ -114,14 +114,14 @@ export const ServerHeader = ({
           <Menu.Positioner>
             <Menu.Popup>
               {canManage && onOpenInvites && (
-                <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />{t("Invite people")}</Menu.Item>
+                <Menu.Item onClick={onOpenInvites}><PiUserPlusFill size={16} />{t("server.invitePeople")}</Menu.Item>
               )}
               {openInvite.available && (
-                <Menu.Item onClick={() => void openInvite.copy()}><PiLinkSimpleBold size={16} />{t("Copy invite link")}</Menu.Item>
+                <Menu.Item onClick={() => void openInvite.copy()}><PiLinkSimpleBold size={16} />{t("server.copyInviteLink")}</Menu.Item>
               )}
               {/* The address is what identifies a Gryt server and what somebody else needs to reach it. */}
               {serverHost && (
-                <Menu.Item onClick={copyHost}><PiCopySimpleBold size={16} />{t("Copy server address")}</Menu.Item>
+                <Menu.Item onClick={copyHost}><PiCopySimpleBold size={16} />{t("server.copyServerAddress")}</Menu.Item>
               )}
 
               {serverHost && (
@@ -136,16 +136,16 @@ export const ServerHeader = ({
               {adminItems && <Menu.Separator />}
               {/* Discord calls it a category. The sidebar already says folder, so this does too. */}
               {canManageChannels && onCreateChannel && (
-                <Menu.Item onClick={onCreateChannel}><PiHashBold size={16} />{t("Create channel")}</Menu.Item>
+                <Menu.Item onClick={onCreateChannel}><PiHashBold size={16} />{t("chat.createChannel")}</Menu.Item>
               )}
               {canManageChannels && onCreateFolder && (
-                <Menu.Item onClick={onCreateFolder}><PiFolderFill size={16} />{t("Create folder")}</Menu.Item>
+                <Menu.Item onClick={onCreateFolder}><PiFolderFill size={16} />{t("chat.createFolder")}</Menu.Item>
               )}
               {canManage && onOpenSettings && (
                 <Menu.Item onClick={onOpenSettings}>
                   <div className="flex items-center gap-2">
                     <PiGearSixFill size={16} />
-                    {t("Server settings")}
+                    {t("server.serverSettings")}
                     {updateAvailable && (
                       <Chip tone="warning" label="!" />
                     )}
@@ -157,7 +157,7 @@ export const ServerHeader = ({
               )}
               {/* Not gated on role. It is this machine's process, which the server's roles have no say over. */}
               {onManageServer && !(canManage && onOpenSettings) && (
-                <Menu.Item onClick={onManageServer}><PiHardDrivesFill size={16} />{t("Manage server")}</Menu.Item>
+                <Menu.Item onClick={onManageServer}><PiHardDrivesFill size={16} />{t("server.manageServer")}</Menu.Item>
               )}
 
               <Menu.Separator />
@@ -171,16 +171,16 @@ export const ServerHeader = ({
                   }
                 >
                   <PiPuzzlePieceFill size={16} />
-                  {t("Plugins")}
+                  {t("server.plugins")}
                 </Menu.Item>
               )}
               <Menu.Item onClick={() => onLeave("remove")}>
                 <PiMinusCircleFill size={16} />
-                {t("Remove from sidebar")}
+                {t("server.removeFromSidebar")}
               </Menu.Item>
               <Menu.Item className="text-gryt-danger" onClick={() => onLeave("leave")}>
                 <PiDoorOpenBold size={16} />
-                {t("Leave server")}
+                {t("server.leaveServer")}
               </Menu.Item>
             </Menu.Popup>
           </Menu.Positioner>

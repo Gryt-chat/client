@@ -1,5 +1,6 @@
 import { getServerAccessToken, getServerHttpBase, type SealedAttachmentKey } from "@/common";
 
+import { translateLocaleMessage } from "../../../../lib/i18n.ts";
 import type { ImageDimensions } from "../utils/imageUtils";
 
 /** What an upload came back as, and how to read it again if it was sealed. */
@@ -67,7 +68,7 @@ export async function uploadChatFile(
   });
   if (!resp.ok) {
     const raw = await resp.text().catch(() => "");
-    let msg = `Upload failed (${resp.status})`;
+    let msg = translateLocaleMessage("chat.upload.statusError", undefined, { status: resp.status });
     try {
       const err = raw ? JSON.parse(raw) : {};
       if (err.message && !/S3_BUCKET|DISABLE_S3/.test(err.message)) msg = err.message;

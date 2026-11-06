@@ -188,7 +188,7 @@ export function ServiceStatusBanner() {
               target="_blank"
               rel="noreferrer"
             >
-              {t("Status page")}
+              {t("common.statusPage")}
             </a>
           </>
         )}
@@ -196,7 +196,7 @@ export function ServiceStatusBanner() {
       <IconButton
         tone="ghost"
         size="xsmall"
-        aria-label="Dismiss"
+        aria-label={t("common.dismiss")}
         style={{ marginLeft: "auto", flexShrink: 0 }}
         onClick={() => {
           localStorage.setItem(DISMISSED_KEY, message);
