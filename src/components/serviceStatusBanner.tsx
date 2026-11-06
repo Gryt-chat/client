@@ -10,6 +10,7 @@ import {
   PiWarningFill,
   PiX,
 } from "../lib/icons";
+import { useLocale } from "../lib/localeContext";
 import {
   type AnnouncementType,
   checkAccountServices,
@@ -65,6 +66,7 @@ const UNANNOUNCED = {
  * day has nothing that breaks when the account services go down.
  */
 export function ServiceStatusBanner() {
+  const { t } = useLocale();
   const { isSignedIn } = useAccount();
   const [banner, setBanner] = useState<ServiceBanner | null>(null);
   const launchTrouble = useSyncExternalStore(subscribeLaunchTrouble, getLaunchTrouble);
@@ -174,7 +176,7 @@ export function ServiceStatusBanner() {
         style={{ flexShrink: 0, color: `var(--gryt-${tone}-11)` }}
       />
       <span className="text-xs" style={{ color: `var(--gryt-${tone}-11)` }}>
-        {message}
+        {banner.kind === "announced" ? message : t(message)}
         {/* No status page to open without a connection. */}
         {banner.kind !== "offline" && (
           <>
@@ -186,7 +188,7 @@ export function ServiceStatusBanner() {
               target="_blank"
               rel="noreferrer"
             >
-              Status page
+              {t("Status page")}
             </a>
           </>
         )}

@@ -2,6 +2,7 @@ import { Button, Dialog } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
+import { useLocale } from "../../../../lib/localeContext";
 import { BANNER_H, BANNER_W, clampCrop, type Crop, initialCrop, MAX_ZOOM, renderBanner, zoomAbout } from "./bannerCrop";
 
 /**
@@ -9,6 +10,7 @@ import { BANNER_H, BANNER_W, clampCrop, type Crop, initialCrop, MAX_ZOOM, render
  * zooms, and it can never leave a gap. Save hands back exactly what the card will show.
  */
 export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: (cropped: File | null) => void }) {
+  const { t } = useLocale();
   const [url, setUrl] = useState<string | null>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<Crop | null>(null);
@@ -28,7 +30,7 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
     const el = new Image();
     el.onload = () => setImg(el);
     el.onerror = () => {
-      toast.error("Couldn't open that picture");
+      toast.error(t("Couldn't open that picture"));
       onDone(null);
     };
     el.src = next;
@@ -116,7 +118,7 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
     try {
       onDone(await renderBanner(img, crop, frame.w, frame.h));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't crop the banner");
+      toast.error(t(err instanceof Error ? err.message : "Couldn't crop the banner"));
     } finally {
       setBusy(false);
     }
@@ -129,9 +131,9 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="flex w-[40rem] max-w-[calc(100vw-2rem)] flex-col gap-4 p-4">
-          <Dialog.Title className="text-lg">Frame your banner</Dialog.Title>
+          <Dialog.Title className="text-lg">{t("Frame your banner")}</Dialog.Title>
           <Dialog.Description className="text-xs text-gryt-muted">
-            Drag to move it, scroll or pinch to zoom. The box is exactly what your card shows.
+            {t("Drag to move it, scroll or pinch to zoom. The box is exactly what your card shows.")}
           </Dialog.Description>
           <div
             ref={setFrameEl}
@@ -153,7 +155,7 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
             )}
           </div>
           <label className="flex items-center gap-3 text-xs text-gryt-muted">
-            Zoom
+            {t("Zoom")}
             <input
               type="range"
               min={1}
@@ -165,16 +167,16 @@ export function BannerCropDialog({ file, onDone }: { file: File | null; onDone: 
                 const z = Number(e.target.value);
                 zoomBy(() => z);
               }}
-              aria-label="Zoom"
+              aria-label={t("Zoom")}
               className="flex-1 accent-(--gryt-accent)"
             />
           </label>
           <div className="flex flex-wrap justify-end gap-2">
             <Button size="small" tone="neutral" onClick={() => onDone(null)}>
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button size="small" disabled={!crop || busy} onClick={() => void save()}>
-              Use this
+              {t("Use this")}
             </Button>
           </div>
         </Dialog.Popup>

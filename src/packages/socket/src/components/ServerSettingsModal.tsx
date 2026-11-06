@@ -7,6 +7,7 @@ import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt } from "@/settings/src/hostedServers";
 
 import { PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
@@ -53,6 +54,7 @@ const GROUPS = ["General", "People", "Channels", "Moderation", "Integrations", "
 type Group = (typeof GROUPS)[number];
 
 export function ServerSettingsModal() {
+  const { t } = useLocale();
   const { sockets, serverDetailsList, tokenRevision, memberLists } = useSockets();
   const { servers: hostedServers } = useEmbeddedServer();
 
@@ -315,8 +317,8 @@ export function ServerSettingsModal() {
     (t) => !permissionKnown || !t.needs || t.needs.some((p) => hasPermission(p)),
   ).sort((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group));
   const TAB_GROUPS = GROUPS.map((label) => ({
-    label,
-    options: TAB_CONFIG.filter((t) => t.group === label),
+    label: t(label),
+    options: TAB_CONFIG.filter((tab) => tab.group === label).map((tab) => ({ ...tab, label: t(tab.label) })),
   })).filter((g) => g.options.length > 0);
 
   /*
@@ -429,7 +431,7 @@ export function ServerSettingsModal() {
 
         <div className="flex flex-col gap-4 h-full">
           <Dialog.Title>
-            Server settings
+            {t("Server settings")}
           </Dialog.Title>
 
           {isOpen && (
@@ -454,7 +456,7 @@ export function ServerSettingsModal() {
                     </div>
                   )}
                   <div hidden={!railFits} style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
-                    <Tabs.List aria-label="Server settings" className="gap-1">
+                    <Tabs.List aria-label={t("Server settings")} className="gap-1">
                       {TAB_GROUPS.map((group, i) => (
                         <Fragment key={group.label}>
                           <span
@@ -466,7 +468,7 @@ export function ServerSettingsModal() {
                           {group.options.map(({ value, label, icon: Icon }) => (
                             <Tabs.Tab key={value} value={value}>
                               <Icon size={16} />
-                              {label}
+                              {t(label)}
                             </Tabs.Tab>
                           ))}
                         </Fragment>
@@ -481,7 +483,7 @@ export function ServerSettingsModal() {
                   <div style={{ flex: 1, overflow: "auto", minWidth: 0, minHeight: 0 }}>
                     {!permissionKnown ? (
                       <span className="text-sm text-gryt-muted" style={{ marginBottom: 12 }}>
-                        Loading permissions…
+                        {t("Loading permissions…")}
                       </span>
                     ) : null}
                     {TAB_CONFIG.map(({ value, content }) => (
@@ -495,7 +497,7 @@ export function ServerSettingsModal() {
             ) : (
               <div className="flex flex-col gap-3">
                 <span className="text-sm text-gryt-muted">
-                  Your role does not include any of the permissions these settings need.
+                  {t("Your role does not include any of the permissions these settings need.")}
                 </span>
               </div>
             )
@@ -516,4 +518,3 @@ export function ServerSettingsModal() {
     </Dialog.Root>
   );
 }
-

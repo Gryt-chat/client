@@ -2,6 +2,7 @@ import { Button, Dialog, IconButton, TextField } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
 import { PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 
 /** Names a folder before it exists, the way Create channel does (GRYT-1787). */
 export function NewFolderDialog({
@@ -13,6 +14,7 @@ export function NewFolderDialog({
   onOpenChange: (open: boolean) => void;
   onCreate: (name: string) => void;
 }) {
+  const { t } = useLocale();
   const [name, setName] = useState("");
   useEffect(() => {
     if (open) setName("");
@@ -32,20 +34,20 @@ export function NewFolderDialog({
         <Dialog.Popup>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <Dialog.Title style={{ margin: 0 }}>New folder</Dialog.Title>
+              <Dialog.Title style={{ margin: 0 }}>{t("New folder")}</Dialog.Title>
               <Dialog.Close>
-                <IconButton size="xsmall" aria-label="Close"><PiX size={16} /></IconButton>
+                <IconButton size="xsmall" aria-label={t("Close")}><PiX size={16} /></IconButton>
               </Dialog.Close>
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Folder name</span>
+              <span className="text-sm font-medium">{t("Folder name")}</span>
               <TextField
-                aria-label="Folder name"
+                aria-label={t("Folder name")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); create(); } }}
-                placeholder="Games"
+                placeholder={t("Games")}
                 maxLength={100}
                 autoFocus
               />
@@ -53,10 +55,10 @@ export function NewFolderDialog({
 
             <div className="flex flex-wrap justify-end gap-3" style={{ marginTop: 4 }}>
               <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button size="small" onClick={create} disabled={!trimmed}>
-                Create folder
+                {t("Create folder")}
               </Button>
             </div>
           </div>

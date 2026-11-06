@@ -5,6 +5,7 @@ import type { NotificationLevel } from "@/common";
 import type { SidebarItem } from "@/settings/src/types/server";
 
 import { PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { type ChannelKind, defaultLevelForKind, kindToFields, NOTIFICATION_LEVEL_OPTIONS } from "./channelKind";
 import { ChannelKindPicker } from "./ChannelKindPicker";
 import { EmojiText } from "./EmojiText";
@@ -41,6 +42,7 @@ interface CreateChannelDialogProps {
 }
 
 export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", placement, editor }: CreateChannelDialogProps) {
+  const { t } = useLocale();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [kind, setKind] = useState<ChannelKind>(initialType);
@@ -94,18 +96,18 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
         <Dialog.Popup>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <Dialog.Title style={{ margin: 0 }}>Create channel</Dialog.Title>
+              <Dialog.Title style={{ margin: 0 }}>{t("Create channel")}</Dialog.Title>
               <Dialog.Close>
                 <IconButton size="xsmall"><PiX size={16} /></IconButton>
               </Dialog.Close>
             </div>
 
             <span className="text-sm" style={{ color: "var(--gryt-neutral-11)", marginTop: -8 }}>
-              Set it up here &mdash; the channel is created only when you hit Create.
+              {t("Set it up here — the channel is created only when you hit Create.")}
             </span>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Channel name</span>
+              <span className="text-sm font-medium">{t("Channel name")}</span>
               <TextField
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -116,14 +118,14 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Channel type</span>
+              <span className="text-sm font-medium">{t("Channel type")}</span>
               <ChannelKindPicker value={kind} onChange={setKind} />
             </div>
 
             {kind === "forum" && (
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">
-                  Tags <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span>
+                  {t("Tags")} <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>({t("optional")})</span>
                 </span>
                 <ForumTagsField tags={tags} onChange={setTags} />
               </div>
@@ -131,7 +133,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
 
             {folders.length > 0 && (
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Folder</span>
+                <span className="text-sm font-medium">{t("Folder")}</span>
                 <Select
                   value={pickedFolder ? FOLDER_VALUE + pickedFolder : TOP_LEVEL}
                   onValueChange={(v) => {
@@ -139,7 +141,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
                     setFolderId(v.startsWith(FOLDER_VALUE) ? v.slice(FOLDER_VALUE.length) : null);
                   }}
                   options={[
-                    { label: "No folder", value: TOP_LEVEL },
+                    { label: t("No folder"), value: TOP_LEVEL },
                     ...folders.map((f) => ({
                       label: <EmojiText text={f.label || "Folder"} disableTooltip />,
                       value: FOLDER_VALUE + f.id,
@@ -150,7 +152,7 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
             )}
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Default notifications</span>
+                <span className="text-sm font-medium">{t("Default notifications")}</span>
               <Select
                 value={effectiveLevel}
                 onValueChange={(v) => {
@@ -159,28 +161,28 @@ export function CreateChannelDialog({ open, onOpenChange, initialType = "chat", 
                 options={NOTIFICATION_LEVEL_OPTIONS}
               />
               <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
-                What members get from this channel until they pick their own level for it.
+                {t("What members get from this channel until they pick their own level for it.")}
               </span>
             </div>
 
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">
-                Description <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span>
+                {t("Description")} <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>({t("optional")})</span>
               </span>
               <TextField
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); create(); } }}
-                placeholder="What's this channel for?"
+                placeholder={t("What's this channel for?")}
               />
             </div>
 
             <div className="flex flex-wrap justify-end gap-3" style={{ marginTop: 4 }}>
               <Button tone="neutral" size="small" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button size="small" onClick={create} disabled={!canCreate}>
-                Create channel
+                {t("Create channel")}
               </Button>
             </div>
           </div>

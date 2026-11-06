@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { type DesktopSource, isElectron } from "../../../../lib/electron";
 import { PiMonitorFill, PiSpeakerHighFill, PiSpeakerSlashFill, PiSquaresFourFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { currentPlatform, shareSoundHint } from "../../../../lib/screenShareAudio";
 import { rememberedPreset, rememberPreset } from "../utils/shareQualityByApp";
 import { presetKey, SCREEN_PRESETS, screenPresetName } from "../utils/streamQuality";
@@ -33,6 +34,7 @@ interface ScreenSharePickerModalProps {
 type Tab = "windows" | "screens";
 
 export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode = "start", shared = [], onStart }: ScreenSharePickerModalProps) {
+  const { t } = useLocale();
   const adding = mode === "add";
   const [sources, setSources] = useState<DesktopSource[]>([]);
   const [tab, setTab] = useState<Tab>("windows");
@@ -79,28 +81,30 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
   const n = picks.length;
   const noun = picks.every((p) => p.sourceId.startsWith("screen:")) ? "screen" : "window";
   const verb = adding ? "Add" : "Share";
-  const goLabel = n ? `${verb} ${n} ${noun}${n > 1 ? "s" : ""}` : verb;
-  const hint = shareSoundHint(currentPlatform(), picks.some((p) => p.sourceId.startsWith("screen:")));
+  const goLabel = n
+    ? `${t(verb)} ${n} ${t(`${noun}${n > 1 ? "s" : ""}`)}`
+    : t(verb);
+  const hint = t(shareSoundHint(currentPlatform(), picks.some((p) => p.sourceId.startsWith("screen:"))));
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="w-[820px] max-w-[calc(100vw-32px)]" aria-label="Share your screen">
+        <Dialog.Popup className="w-[820px] max-w-[calc(100vw-32px)]" aria-label={t("Share your screen")}>
           <div className="flex h-11 items-center justify-between gap-3">
-            <Dialog.Title className="text-lg font-extrabold">{adding ? "Add a window" : "Share your screen"}</Dialog.Title>
+            <Dialog.Title className="text-lg font-extrabold">{t(adding ? "Add a window" : "Share your screen")}</Dialog.Title>
             <div className="flex rounded-full p-[3px] text-[13px] font-bold" style={{ background: "var(--gryt-neutral-3)" }} role="tablist">
-              {(["windows", "screens"] as const).map((t) => (
+              {(["windows", "screens"] as const).map((tabName) => (
                 <button
-                  key={t}
+                  key={tabName}
                   type="button"
                   role="tab"
-                  aria-selected={tab === t}
+                  aria-selected={tab === tabName}
                   className="cursor-pointer rounded-full border-0 px-3.5 py-1.5"
-                  style={tab === t ? { background: "var(--color-gryt-accent)", color: "var(--color-gryt-on-accent)" } : { background: "transparent", color: "inherit" }}
-                  onClick={() => setTab(t)}
+                  style={tab === tabName ? { background: "var(--color-gryt-accent)", color: "var(--color-gryt-on-accent)" } : { background: "transparent", color: "inherit" }}
+                  onClick={() => setTab(tabName)}
                 >
-                  {t === "windows" ? "Windows" : "Whole screen"}
+                  {t(tabName === "windows" ? "Windows" : "Whole screen")}
                 </button>
               ))}
             </div>
@@ -109,10 +113,10 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
           {screenAccess !== null && screenAccess !== "granted" && (
             <div className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: "var(--gryt-warning-3)", border: "1px solid var(--gryt-warning-6)" }}>
               <span className="flex-1 text-sm text-gryt-warning">
-                macOS needs Screen Recording permission. Turn on Gryt in <strong>System Settings &rarr; Privacy &amp; Security &rarr; Screen Recording</strong>, then restart the app.
+                {t("macOS needs Screen Recording permission. Turn on Gryt in System Settings → Privacy & Security → Screen Recording, then restart the app.")}
               </span>
               <Button tone="neutral" size="xsmall" onClick={() => window.electronAPI?.openExternal("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")}>
-                Open Settings
+                {t("Open Settings")}
               </Button>
             </div>
           )}
@@ -120,7 +124,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
           <div className="mt-3 grid max-h-[474px] grid-cols-3 gap-3 overflow-y-auto">
             {shown.length === 0 && (
               <span className="col-span-3 p-6 text-center text-sm text-gryt-muted">
-                {sources.length ? `No ${tab === "screens" ? "screens" : "windows"} found` : "Looking for windows…"}
+                {t(sources.length ? `No ${tab === "screens" ? "screens" : "windows"} found` : "Looking for windows…")}
               </span>
             )}
             {shown.map((src) => {
@@ -177,18 +181,18 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
                           <span
                             className="flex flex-none items-center gap-1 pr-1 text-xs"
                             style={{ color: "var(--gryt-muted)" }}
-                            title="Gryt can't share its own sound. Everyone would hear the call played back to them."
+                            title={t("Gryt can't share its own sound. Everyone would hear the call played back to them.")}
                           >
                             <PiSpeakerSlashFill size={16} aria-hidden />
-                            Would echo
+                            {t("Would echo")}
                           </span>
                         ) : (
                           <>
                             {pick.withAudio
-                              ? <PiSpeakerHighFill size={16} className="flex-none" color="var(--gryt-accent-11)" aria-label="Friends hear this window" />
-                              : <PiSpeakerSlashFill size={16} className="flex-none" color="var(--gryt-muted)" aria-label="This window is muted for friends" />}
+                              ? <PiSpeakerHighFill size={16} className="flex-none" color="var(--gryt-accent-11)" aria-label={t("Friends hear this window")} />
+                              : <PiSpeakerSlashFill size={16} className="flex-none" color="var(--gryt-muted)" aria-label={t("This window is muted for friends")} />}
                             <Switch
-                              aria-label={`Sound from ${src.name}`}
+                              aria-label={`${t("Sound from")} ${src.name}`}
                               checked={pick.withAudio}
                               onCheckedChange={(on) => update(src.id, { withAudio: on })}
                             />
@@ -209,7 +213,7 @@ export function ScreenSharePickerModal({ open, onOpenChange, quality, fps, mode 
           <div className="mt-4 flex items-center justify-between gap-4">
             <span className="text-[13px] leading-snug text-gryt-muted">{hint}</span>
             <div className="flex flex-none flex-wrap gap-2">
-              <Button tone="ghost" size="small" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button tone="ghost" size="small" onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
               <Button
                 size="small"
                 disabled={!n}

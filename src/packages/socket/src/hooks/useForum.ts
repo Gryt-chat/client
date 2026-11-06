@@ -4,6 +4,8 @@ import type { Socket } from "socket.io-client";
 
 import { getServerAccessToken } from "@/common";
 
+import { useLocale } from "../../../../lib/localeContext";
+
 /**
  * A forum channel's topic index, fetched as summary rows. It refetches on create,
  * update and delete, so the list stays live without holding every topic.
@@ -70,6 +72,7 @@ export function useForum(
   conversationId: string,
   serverHost: string | undefined,
 ): UseForumResult {
+  const { t } = useLocale();
   const [topics, setTopics] = useState<ForumTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -148,15 +151,15 @@ export function useForum(
     /* A dead socket swallows the emit, so no forum:topic:created and no
        forum:error ever arrive and `creating` never clears (GRYT-1389). */
     if (socket.connected === false) {
-      setCreateError("Not connected to this server.");
-      toast.error("Not connected to this server");
+      setCreateError(t("Not connected to this server."));
+      toast.error(t("Not connected to this server"));
       return;
     }
     creatingRef.current = true;
     setCreating(true);
     setCreateError(null);
     socket.emit("forum:topic:create", { conversationId, title: title.trim(), text: text.trim(), tagIds, accessToken });
-  }, [socketConnection, conversationId, serverHost]);
+  }, [socketConnection, conversationId, serverHost, t]);
 
   const clearCreateError = useCallback(() => setCreateError(null), []);
 

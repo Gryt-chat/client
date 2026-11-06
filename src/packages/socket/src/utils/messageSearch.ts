@@ -43,8 +43,8 @@ export function activeFilterToken(text: string): { key: SearchFilterKey; partial
 export function parseSearchDate(input: string, now = new Date()): Date | null {
   const s = input.trim().toLowerCase();
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  if (s === "today") return startOfDay(now);
-  if (s === "yesterday") return startOfDay(new Date(now.getTime() - 86_400_000));
+  if (s === "today" || s === "hoje") return startOfDay(now);
+  if (s === "yesterday" || s === "ontem") return startOfDay(new Date(now.getTime() - 86_400_000));
   const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
   if (!iso) return null;
   const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));

@@ -2,16 +2,12 @@ import { ContextMenu } from "@gryt/ui";
 import React, { type ReactNode, useCallback, useMemo, useState } from "react";
 
 import { PiArrowBendUpLeftFill, PiArrowSquareOutFill, PiChatsTeardropFill, PiCloudArrowDownFill, PiCopyFill, PiFlagFill, PiImageFill, PiPencilSimpleFill, PiPushPinFill, PiPushPinSlashFill, PiSmileyWinkFill, PiTrashSimpleFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { saveOpenedFile, triggerDownload } from "../utils/downloadFile";
 import { copyImageToClipboard } from "../utils/mediaClipboard";
 import { getFrequentReactions } from "../utils/recentReactions";
 import { EmojiPickerContent } from "./EmojiPicker";
 import { EmojiText } from "./EmojiText";
-
-function threadCount(unread: number | undefined, replies: number | undefined): string {
-  if (unread) return ` (${unread} new)`;
-  return replies ? ` (${replies})` : "";
-}
 
 export interface MessageActions {
   messageText?: string | null;
@@ -68,6 +64,7 @@ async function copyToClipboard(text: string) {
 }
 
 function MediaItems({ media }: { media: MediaProps }) {
+  const { t } = useLocale();
   const copyImage = "open" in media
     ? () => media.open().then(copyImageToClipboard)
     : () => copyImageToClipboard(media.src);
@@ -81,14 +78,14 @@ function MediaItems({ media }: { media: MediaProps }) {
         <ContextMenu.Item onClick={() => void copyImage()}>
           <div className="flex items-center gap-1">
             <PiImageFill size={14} />
-            Copy Image
+            {t("Copy Image")}
           </div>
         </ContextMenu.Item>
       )}
       <ContextMenu.Item onClick={() => void save()}>
         <div className="flex items-center gap-1">
           <PiCloudArrowDownFill size={14} />
-          Save As
+          {t("Save As")}
         </div>
       </ContextMenu.Item>
       {src !== null && (
@@ -96,14 +93,14 @@ function MediaItems({ media }: { media: MediaProps }) {
           <ContextMenu.Item onClick={() => copyToClipboard(src)}>
             <div className="flex items-center gap-1">
               <PiCopyFill size={14} />
-              Copy Link
+              {t("Copy Link")}
             </div>
           </ContextMenu.Item>
           <ContextMenu.Separator />
           <ContextMenu.Item onClick={() => window.open(src, "_blank", "noopener,noreferrer")}>
             <div className="flex items-center gap-1">
               <PiArrowSquareOutFill size={14} />
-              Open in Browser
+              {t("Open in Browser")}
             </div>
           </ContextMenu.Item>
         </>
@@ -192,13 +189,17 @@ function QuickReactions({
 }
 
 function MessageActionItems({ actions }: { actions: MessageActions }) {
+  const { t } = useLocale();
+  let threadCount = "";
+  if (actions.unreadCount) threadCount = ` (${t("{count} new", { count: actions.unreadCount })})`;
+  else if (actions.replyCount) threadCount = ` (${actions.replyCount})`;
   return (
     <>
       {actions.messageText && (
         <ContextMenu.Item onClick={() => copyToClipboard(actions.messageText ?? "")}>
           <div className="flex items-center gap-1">
             <PiCopyFill size={14} />
-            Copy Message
+            {t("Copy Message")}
           </div>
         </ContextMenu.Item>
       )}
@@ -206,7 +207,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onReply}>
           <div className="flex items-center gap-1">
             <PiArrowBendUpLeftFill size={14} />
-            Reply
+            {t("Reply")}
           </div>
         </ContextMenu.Item>
       )}
@@ -217,7 +218,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
             {/* What is waiting beats how big it is. The reply count says the
                 thread is nine long, which is the same the tenth time you look
                 at it; the unread count is the reason to open it (GRYT-1026). */}
-            Open thread{threadCount(actions.unreadCount, actions.replyCount)}
+            {t("Open thread")}{threadCount}
           </div>
         </ContextMenu.Item>
       )}
@@ -225,7 +226,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onStartThread}>
           <div className="flex items-center gap-1">
             <PiChatsTeardropFill size={14} />
-            Start thread
+            {t("Start thread")}
           </div>
         </ContextMenu.Item>
       )}
@@ -233,7 +234,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onTogglePin}>
           <div className="flex items-center gap-1">
             {actions.pinned ? <PiPushPinSlashFill size={14} /> : <PiPushPinFill size={14} />}
-            {actions.pinned ? "Unpin Message" : "Pin Message"}
+            {t(actions.pinned ? "Unpin Message" : "Pin Message")}
           </div>
         </ContextMenu.Item>
       )}
@@ -241,7 +242,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onEdit}>
           <div className="flex items-center gap-1">
             <PiPencilSimpleFill size={14} />
-            Edit Message
+            {t("Edit Message")}
           </div>
         </ContextMenu.Item>
       )}
@@ -249,7 +250,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onReport}>
           <div className="flex items-center gap-1">
             <PiFlagFill size={14} />
-            Report
+            {t("Report")}
           </div>
         </ContextMenu.Item>
       )}
@@ -257,7 +258,7 @@ function MessageActionItems({ actions }: { actions: MessageActions }) {
         <ContextMenu.Item onClick={actions.onDelete}>
           <div className="flex items-center gap-1">
             <PiTrashSimpleFill size={14} />
-            Delete Message
+            {t("Delete Message")}
           </div>
         </ContextMenu.Item>
       )}

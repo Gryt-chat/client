@@ -1,6 +1,7 @@
 import { Slider, Switch } from "@gryt/ui";
 import React from "react";
 
+import { useLocale } from "../../../../lib/localeContext";
 import { settingAnchorId,SETTINGS_INDEX } from "../hooks/settingsSearch";
 import { useSettings } from "../hooks/useSettings";
 
@@ -24,6 +25,7 @@ interface SettingGroupProps {
 
 export function SettingGroup({ title, description, children, advanced }: SettingGroupProps) {
   const { showAdvanced } = useSettings();
+  const { t } = useLocale();
   // Anchor for search results to scroll to. Derived from the title by the same
   // function the index uses, and it ignores any ": value" suffix.
   const anchor = settingAnchorId(title);
@@ -41,11 +43,15 @@ export function SettingGroup({ title, description, children, advanced }: Setting
   // Rendered nowhere rather than hidden with CSS, so search cannot find a
   // setting the panel is not currently offering.
   if (advanced && !showAdvanced) return null;
+  const splitTitle = title.match(/^([^:]+):\s*([+-]?\d+(?:\.\d+)?)(.*)$/);
+  const displayTitle = splitTitle
+    ? `${t(splitTitle[1])}: ${splitTitle[2]}${splitTitle[3].replace(/\bminutes?\b/g, (unit) => t(unit))}`
+    : t(title);
 
   return (
     <div className="flex flex-col gap-2" id={anchor} data-setting={anchor} data-advanced={advanced || undefined}>
-      <span className="font-medium text-sm" color={advanced ? ADVANCED_COLOR : undefined}>{title}</span>
-      <span className="text-xs text-gryt-muted">{description}</span>
+      <span className="font-medium text-sm" color={advanced ? ADVANCED_COLOR : undefined}>{displayTitle}</span>
+      <span className="text-xs text-gryt-muted">{t(description)}</span>
       {children}
     </div>
   );
@@ -85,13 +91,14 @@ interface ToggleSettingProps {
 }
 
 export function ToggleSetting({ title, description, checked, onCheckedChange, statusText, advanced }: ToggleSettingProps) {
+  const { t } = useLocale();
   return (
     <SettingGroup title={title} description={description} advanced={advanced}>
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-gryt-muted">Enable {title}</span>
+          <span className="text-sm text-gryt-muted">{t(`Enable ${title}`)}</span>
           {statusText && (
-            <span className="text-xs text-gryt-muted">{statusText}</span>
+            <span className="text-xs text-gryt-muted">{t(statusText)}</span>
           )}
         </div>
         <Switch checked={checked} onCheckedChange={onCheckedChange} />

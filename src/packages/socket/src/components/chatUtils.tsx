@@ -1,5 +1,6 @@
 import { Tooltip } from "@gryt/ui";
 
+import { useLocale } from "../../../../lib/localeContext";
 import type { PublicPoll } from "../utils/polls";
 import { LabelledDivider } from "./LabelledDivider";
 
@@ -125,12 +126,12 @@ function isSameCalendarDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function formatTime(d: Date): string {
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+function formatTime(d: Date, locale: string): string {
+  return d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
 }
 
-function formatFullDate(d: Date): string {
-  return d.toLocaleString(undefined, {
+function formatFullDate(d: Date, locale: string): string {
+  return d.toLocaleString(locale, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -141,34 +142,37 @@ function formatFullDate(d: Date): string {
   });
 }
 
-function formatMessageTime(d: Date): string {
+function formatMessageTime(d: Date, locale: string, t: (message: string, params?: Record<string, string | number>) => string): string {
   const now = new Date();
-  if (isSameCalendarDay(d, now)) return formatTime(d);
+  if (isSameCalendarDay(d, now)) return formatTime(d, locale);
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (isSameCalendarDay(d, yesterday)) return `Yesterday at ${formatTime(d)}`;
+  if (isSameCalendarDay(d, yesterday)) return `${t("Yesterday")} ${t("at")} ${formatTime(d, locale)}`;
 
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / 86_400_000);
-  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  if (diffDays < 7) return t(diffDays === 1 ? "{count} day ago" : "{count} days ago", { count: diffDays });
 
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatDateSeparator(d: Date): string {
+function formatDateSeparator(d: Date, locale: string, t: (message: string) => string): string {
   const now = new Date();
-  if (isSameCalendarDay(d, now)) return "Today";
+  if (isSameCalendarDay(d, now)) return t("Today");
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (isSameCalendarDay(d, yesterday)) return "Yesterday";
-  return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  if (isSameCalendarDay(d, yesterday)) return t("Yesterday");
+  return d.toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
 }
 
-export const MessageTimestamp = ({ date, receivedAt }: { date: Date; receivedAt?: string }) => (
+export const MessageTimestamp = ({ date, receivedAt }: { date: Date; receivedAt?: string }) => {
+  const { locale, t } = useLocale();
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : undefined;
+  return (
   <Tooltip title={receivedAt
-    ? `Sent ${formatFullDate(date)}, according to the sender. Server received this copy ${formatFullDate(new Date(receivedAt))}.`
-    : formatFullDate(date)}>
+    ? `${t("Sent")} ${formatFullDate(date, dateLocale ?? "en-US")}, ${t("according to the sender")}. ${t("Server received this copy")} ${formatFullDate(new Date(receivedAt), dateLocale ?? "en-US")}.`
+    : formatFullDate(date, dateLocale ?? "en-US")}>
     {/*
       gray-11 is Radix's low-contrast *text* step. gray-9 and gray-10 are solid
       steps meant for backgrounds and borders, and against the message surface
@@ -180,23 +184,29 @@ export const MessageTimestamp = ({ date, receivedAt }: { date: Date; receivedAt?
       margin, and a timestamp nobody can read is not doing its job.
     */}
     <span style={{ fontSize: 12, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-11)" }}>
-      {formatMessageTime(date)}
+      {formatMessageTime(date, dateLocale ?? "en-US", t)}
     </span>
   </Tooltip>
-);
+  );
+};
 
-export const DateSeparator = ({ date }: { date: Date }) => (
-  <LabelledDivider className="py-2" labelClassName="text-gryt-muted font-medium">
-    {formatDateSeparator(date)}
-  </LabelledDivider>
-);
+export const DateSeparator = ({ date }: { date: Date }) => {
+  const { locale, t } = useLocale();
+  const dateLocale = locale === "pt-BR" ? "pt-BR" : "en-US";
+  return (
+    <LabelledDivider className="py-2" labelClassName="text-gryt-muted font-medium">
+      {formatDateSeparator(date, dateLocale, t)}
+    </LabelledDivider>
+  );
+};
 
-export const NewMessagesDivider = () => (
-  <LabelledDivider
+export const NewMessagesDivider = () => {
+  const { t } = useLocale();
+  return <LabelledDivider
     className="py-2"
     lineClassName="bg-gryt-danger-8"
     labelClassName="text-gryt-danger font-medium"
   >
-    New
+    {t("New")}
   </LabelledDivider>
-);
+};

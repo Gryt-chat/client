@@ -7,6 +7,7 @@ import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
 import { PiChatsTeardropFill, PiDevicesFill, PiFadersHorizontalFill, PiFlaskFill, PiGiftFill, PiHardDrivesFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { SettingsPicker } from "../../../socket/src/components/SettingsPicker";
 import { useRoomForSettingsRail } from "../../../socket/src/hooks/useNarrowWindow";
 import { USER_SETTINGS_CHROME } from "../../../socket/src/lib/narrowLayout";
@@ -228,15 +229,11 @@ const MAIN_DESTINATIONS = DESTINATIONS.filter((d) => !d.pinBottom);
 const PINNED_DESTINATIONS = DESTINATIONS.filter((d) => d.pinBottom);
 
 /** The rail as one Select, for a window too narrow for it. A category's pages are a group. */
-const PICKER_OPTIONS = DESTINATIONS.map(({ value, label, icon, pages }) =>
-  pages
-    ? { label, options: pages.map((page) => ({ value: `${value}/${page.value}`, label: page.label, icon })) }
-    : { value, label, icon },
-);
-
 const DEFAULT_DESTINATION = "profile";
 
 export function Settings() {
+  const locale = useLocale();
+  const { t } = locale;
   const {
     setLoopbackEnabled,
     setShowSettings,
@@ -256,8 +253,13 @@ export function Settings() {
   const pendingScroll = useRef<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => searchSettings(query), [query]);
+  const results = useMemo(() => searchSettings(query, locale), [query, locale]);
   const searching = query.trim().length > 0;
+  const pickerOptions = DESTINATIONS.map(({ value, label, icon, pages }) =>
+    pages
+      ? { label: t(label), options: pages.map((page) => ({ value: `${value}/${page.value}`, label: t(page.label), icon })) }
+      : { value, label: t(label), icon },
+  );
 
   const railFits = useRoomForSettingsRail(USER_SETTINGS_CHROME);
   // Without the rail the results take the page's place, so picking one hides them until the field is used again.
@@ -427,7 +429,7 @@ export function Settings() {
 
         <div className="flex flex-col gap-4 h-full">
           <Dialog.Title>
-            Settings
+            {t("Settings")}
           </Dialog.Title>
 
           {showSettings && (
@@ -451,7 +453,7 @@ export function Settings() {
                   />
                   <TextField
                     className="px-10"
-                    placeholder="Search settings"
+                    placeholder={t("Search settings")}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.currentTarget.value);
@@ -473,7 +475,7 @@ export function Settings() {
                   />
                   {query && (
                     <IconButton
-                      aria-label="Clear search"
+                      aria-label={t("Clear search")}
                       className="absolute top-1/2 right-2 -translate-y-1/2"
                       size="small"
                       onClick={() => {
@@ -490,13 +492,13 @@ export function Settings() {
                   <SettingsPicker
                     value={activePage ? `${active}/${activePage}` : active}
                     onValueChange={changeDestination}
-                    options={PICKER_OPTIONS}
+                    options={pickerOptions}
                   />
                 )}
 
                 <div hidden={!railFits} style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
                   {searching && railFits ? (
-                    <SearchResults results={results} onPick={jumpTo} picked={picked} />
+                    <SearchResults results={results} onPick={jumpTo} picked={picked} t={t} />
                   ) : (
                     <div className="flex flex-col gap-1 h-full">
                       {MAIN_DESTINATIONS.map(({ value, label, icon: Icon, pages, section }, i) => (
@@ -506,7 +508,7 @@ export function Settings() {
                               className="text-xs font-bold text-gryt-muted"
                               style={{ padding: "0 12px", marginTop: i ? 12 : 0 }}
                             >
-                              {section}
+                              {t(section)}
                             </span>
                           )}
                           {/* A category holding the page you are on is marked
@@ -522,7 +524,7 @@ export function Settings() {
                             aria-expanded={pages?.length ? value === active : undefined}
                           >
                             <Icon size={16} />
-                            {label}
+                            {t(label)}
                           </button>
 
                           {/* Only the category you are in opens. All ten at
@@ -546,7 +548,7 @@ export function Settings() {
                                     data-active={page.value === activePage}
                                     aria-current={page.value === activePage ? "page" : undefined}
                                   >
-                                    {page.label}
+                                    {t(page.label)}
                                   </button>
                                 ))}
                               </motion.div>
@@ -566,7 +568,7 @@ export function Settings() {
                           data-active={value === active}
                         >
                           <Icon size={16} />
-                          {label}
+                          {t(label)}
                         </button>
                       ))}
                     </div>
@@ -576,7 +578,7 @@ export function Settings() {
 
               {resultsInPage && (
                 <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
-                  <SearchResults results={results} onPick={jumpTo} picked={picked} />
+                  <SearchResults results={results} onPick={jumpTo} picked={picked} t={t} />
                 </div>
               )}
 
@@ -706,16 +708,17 @@ function SearchResults({
   results,
   onPick,
   picked,
+  t,
 }: {
   results: SettingsIndexEntry[];
   onPick: (entry: SettingsIndexEntry) => void;
   picked: string | null;
+  t: (message: string) => string;
 }) {
   if (results.length === 0) {
     return (
       <span className="text-gryt-muted" style={{ padding: "8px 10px", display: "block" }}>
-        Nothing matches. Try the name of the control, or a word from its
-        description.
+        {t("Nothing matches. Try the name of the control, or a word from its description.")}
       </span>
     );
   }
@@ -730,8 +733,8 @@ function SearchResults({
           className="gryt-settings-result"
           data-picked={entry.id === picked}
         >
-          <span>{entry.title}</span>
-          <span className="text-gryt-muted">{entry.section}</span>
+          <span>{t(entry.title)}</span>
+          <span className="text-gryt-muted">{t(entry.section)}</span>
         </button>
       ))}
     </div>

@@ -9,6 +9,7 @@ import {
   PiX,
   PiXCircleFill,
 } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { useSockets } from "../hooks/useSockets";
 import {
   type CheckResult,
@@ -35,7 +36,7 @@ const ICON: Record<CheckStatus, ReactNode> = {
   skipped: <PiMinusCircleFill className="text-gryt-muted" size={18} />,
 };
 
-function CheckRow({ check }: { check: CheckResult }) {
+function CheckRow({ check, t }: { check: CheckResult; t: (message: string) => string }) {
   const dimmed = check.status === "pending" || check.status === "skipped";
 
   return (
@@ -43,11 +44,11 @@ function CheckRow({ check }: { check: CheckResult }) {
       <span className="mt-0.5 shrink-0">{ICON[check.status]}</span>
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         <span className={`text-sm ${dimmed ? "text-gryt-muted" : ""}`}>
-          {check.label}
+          {t(check.label)}
         </span>
 
         {check.detail && (
-          <span className="text-xs text-gryt-muted">{check.detail}</span>
+          <span className="text-xs text-gryt-muted">{t(check.detail)}</span>
         )}
 
         {/* Every advertised address, pass or fail. The failures are the point,
@@ -62,12 +63,12 @@ function CheckRow({ check }: { check: CheckResult }) {
                     address.ok ? "text-gryt-success-9" : "text-gryt-danger-9"
                   }
                 >
-                  {address.ok ? "reachable" : "unreachable"}
+                  {t(address.ok ? "reachable" : "unreachable")}
                 </span>{" "}
                 <span className="text-gryt-muted">
                   {address.address}
                   {address.ok && ` — ${address.latencyMs} ms`}
-                  {!address.ok && address.error && ` — ${address.error}`}
+                  {!address.ok && address.error && ` — ${t(address.error)}`}
                 </span>
               </span>
             ))}
@@ -81,7 +82,7 @@ function CheckRow({ check }: { check: CheckResult }) {
             target="_blank"
             rel="noreferrer"
           >
-            {check.help.label}
+            {t(check.help.label)}
             <PiArrowSquareOutBold size={11} />
           </a>
         )}
@@ -107,6 +108,7 @@ export function ServerDoctor({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useLocale();
   const [checks, setChecks] = useState<CheckResult[]>(initialChecks);
   const [running, setRunning] = useState(false);
   const { sockets } = useSockets();
@@ -196,32 +198,27 @@ export function ServerDoctor({
           </Dialog.Close>
 
           <div className="flex flex-col gap-3">
-            <Dialog.Title>Doctor — {serverName}</Dialog.Title>
+            <Dialog.Title>{t("Doctor")} — {serverName}</Dialog.Title>
 
             <Dialog.Description>
-              Checks each hop between this device and the server, in the order
-              the connection makes them. The first failure is the one to fix;
-              anything after it is not tested.
+              {t("Checks each hop between this device and the server, in the order the connection makes them. The first failure is the one to fix; anything after it is not tested.")}
             </Dialog.Description>
 
             <div className="flex flex-col">
               {checks.map((check) => (
-                <CheckRow key={check.id} check={check} />
+                <CheckRow key={check.id} check={check} t={t} />
               ))}
             </div>
 
             {worst && worst.status === "fail" && (
               <Alert severity="error" role="alert">
-                {worst.label} is the first thing that failed. Fixing it may fix
-                everything after it.
+                {t(worst.label)} {t("is the first thing that failed. Fixing it may fix everything after it.")}
               </Alert>
             )}
 
             {!running && !worst && (
               <Alert severity="success" role="status">
-                Everything this device can test from here works. If voice still
-                fails, the problem is on the other side of the call rather than
-                this end.
+                {t("Everything this device can test from here works. If voice still fails, the problem is on the other side of the call rather than this end.")}
               </Alert>
             )}
 
@@ -231,11 +228,10 @@ export function ServerDoctor({
                   the server's media port and see who answers. Letting people
                   believe otherwise sends them to check the wrong thing. */}
               <span className="text-xs text-gryt-muted">
-                These run from this device, into a room with nobody else in it.
-                A pass means voice works for you, not that it works for everyone.
+                {t("These run from this device, into a room with nobody else in it. A pass means voice works for you, not that it works for everyone.")}
               </span>
               <Button size="small" disabled={running} onClick={run}>
-                {running ? "Running…" : "Run again"}
+                {running ? t("Running…") : t("Run again")}
               </Button>
             </div>
           </div>

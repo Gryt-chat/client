@@ -2,6 +2,7 @@ import { Button } from "@gryt/ui";
 import type { RefObject } from "react";
 
 import { PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { ChatEditor, type ChatEditorHandle } from "./ChatEditor";
 import type { ChatMessage } from "./chatUtils";
 import { getReplyPreview } from "./chatViewHelpers";
@@ -56,6 +57,7 @@ export function ChatEditorBar({
   serverHost,
   confirmMassMention,
 }: ChatEditorBarProps) {
+  const { t } = useLocale();
   return (
     <>
       {replyingTo && (
@@ -68,7 +70,7 @@ export function ChatEditorBar({
             fontSize: "13px",
           }}>
           <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-            <span className="text-sm text-gryt-muted">Replying to</span>
+            <span className="text-sm text-gryt-muted">{t("Replying to")}</span>
             <span className="text-sm font-bold">{getSenderName(replyingTo)}</span>
             <span className="text-xs text-gryt-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               <ReplyPreviewText text={getReplyPreview(replyingTo, 80)} />
@@ -76,7 +78,7 @@ export function ChatEditorBar({
           </div>
           <Button tone="ghost" size="xsmall"
             onClick={onCancelReply}
-            aria-label="Cancel reply"
+            aria-label={t("Cancel reply")}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
             <PiX size={14} />
@@ -94,14 +96,14 @@ export function ChatEditorBar({
             fontSize: "13px",
           }}>
           <div className="flex items-center gap-1" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-            <span className="text-sm text-gryt-muted">Editing message</span>
+            <span className="text-sm text-gryt-muted">{t("Editing message")}</span>
             <span className="text-xs text-gryt-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 4 }}>
-              press Escape to cancel
+              {t("press Escape to cancel")}
             </span>
           </div>
           <Button tone="ghost" size="xsmall"
             onClick={onCancelEditing}
-            aria-label="Cancel editing"
+            aria-label={t("Cancel editing")}
             style={{ padding: "2px 6px", minWidth: "auto", cursor: "pointer" }}
           >
             <PiX size={14} />

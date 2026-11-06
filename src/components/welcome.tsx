@@ -6,6 +6,7 @@ import { useAccount } from "@/common";
 import { useSettings } from "@/settings";
 
 import { PiSignpost, PiX } from "../lib/icons";
+import { useLocale } from "../lib/localeContext";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 
 /**
@@ -13,6 +14,7 @@ import { useLinkDevice } from "../lib/pairing/useLinkDevice";
  * first-run person learns the app's main idiom by being greeted in it.
  */
 export function Welcome() {
+  const { t } = useLocale();
   const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();
   const { isSignedIn } = useAccount();
   const { open: openLinkDevice } = useLinkDevice();
@@ -36,7 +38,7 @@ export function Welcome() {
         <Dialog.Popup className="w-[27rem] max-w-[calc(100vw-2rem)]">
           <Dialog.Close
             className="absolute top-3 right-3"
-            render={<IconButton size="small" aria-label="Close" />}
+            render={<IconButton size="small" aria-label={t("Close")} />}
           >
             <PiX size={16} />
           </Dialog.Close>
@@ -47,13 +49,13 @@ export function Welcome() {
             <Avatar src="/logo.svg" alt="" fallback="G" />
             <span className="flex min-w-0 flex-col">
               <span className="text-sm font-semibold">Sivert</span>
-              <span className="text-xs text-gryt-muted">Maintains Gryt</span>
+              <span className="text-xs text-gryt-muted">{t("Maintains Gryt")}</span>
             </span>
           </div>
 
           {/* The heading is the sender, which tells you who is talking but not
               what this is. Screen readers get the missing half. */}
-          <Dialog.Title className="sr-only">Welcome to Gryt</Dialog.Title>
+          <Dialog.Title className="sr-only">{t("Welcome to Gryt")}</Dialog.Title>
 
           {/* Two overrides, both forced by the surroundings rather than taste:
               the bubble's own max-width assumes a wide conversation pane, and
@@ -63,21 +65,10 @@ export function Welcome() {
             {/* Description defaults to muted, which is right for a subtitle
                 under a title and wrong here — this is the whole message. */}
             <Dialog.Description className="text-gryt-text" render={<div />}>
-              <p>Hey there! 👋 Welcome to Gryt!</p>
-              <p className="mt-2.5">
-                I&rsquo;m really glad you&rsquo;re here, and that you decided to
-                give it a go. It&rsquo;s all built by me, a senior product
-                engineer from Norway 🇳🇴
-              </p>
-              <p className="mt-2.5">
-                It&rsquo;s just me keeping it running, so some things are still
-                a bit rough around the edges. If something breaks, please tell
-                me. There&rsquo;s a Give feedback button in settings.
-              </p>
-              <p className="mt-2.5">
-                If you&rsquo;re ready, I&rsquo;d be happy to show you around.
-                Enjoy Gryt! 😊
-              </p>
+              <p>{t("Hey there! 👋 Welcome to Gryt!")}</p>
+              <p className="mt-2.5">{t("I’m really glad you’re here, and that you decided to give it a go. It’s all built by me, a senior product engineer from Norway 🇳🇴")}</p>
+              <p className="mt-2.5">{t("It’s just me keeping it running, so some things are still a bit rough around the edges. If something breaks, please tell me. There’s a Give feedback button in settings.")}</p>
+              <p className="mt-2.5">{t("If you’re ready, I’d be happy to show you around. Enjoy Gryt! 😊")}</p>
             </Dialog.Description>
           </MessageBubble>
 
@@ -89,16 +80,16 @@ export function Welcome() {
               startIcon={<PiSignpost size={18} />}
               onClick={() => completeWelcome({ startTour: true })}
             >
-              Show me around
+              {t("Show me around")}
             </Button>
             <Button tone="ghost" onClick={() => completeWelcome()}>
-              I&rsquo;ll look myself
+              {t("I’ll look myself")}
             </Button>
           </div>
 
           {isSignedIn === false && (
             <p className="m-0 text-xs text-gryt-muted">
-              Already use Gryt on another device?{" "}
+              {t("Already use Gryt on another device?")}{" "}
               <button
                 type="button"
                 className="cursor-pointer border-0 bg-transparent p-0 text-xs text-gryt-accent underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-gryt-accent-light"
@@ -107,7 +98,7 @@ export function Welcome() {
                   openLinkDevice();
                 }}
               >
-                Link with another device
+                {t("Link with another device")}
               </button>
             </p>
           )}

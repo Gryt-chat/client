@@ -2,6 +2,7 @@ import { Button, Surface } from "@gryt/ui";
 import { useState } from "react";
 
 import { PiArrowsClockwiseFill, PiGlobeSimpleFill, PiPlugsFill, PiPulseBold } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { ServerDoctor } from "./ServerDoctor";
 
 /**
@@ -27,6 +28,7 @@ export function UnreachableServer({
   onUsePublic?: () => void;
 }) {
   const [doctorOpen, setDoctorOpen] = useState(false);
+  const { t } = useLocale();
 
   return (
     <div className="flex w-full h-full min-w-0 gap-4" data-gryt="server-unreachable">
@@ -36,12 +38,12 @@ export function UnreachableServer({
             <span>{serverName}</span>
             <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--gryt-warning-11)" }}>
               <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--gryt-warning-9)" }} />
-              Can&rsquo;t reach it
+              {t("Can’t reach it")}
             </span>
           </span>
         </Surface>
         <p className="text-sm text-gryt-muted" style={{ margin: "0 12px", lineHeight: 1.45 }}>
-          The channels show up once it answers.
+          {t("The channels show up once it answers.")}
         </p>
       </div>
 
@@ -63,25 +65,25 @@ export function UnreachableServer({
             <PiPlugsFill size={30} />
           </span>
           <span className="text-lg font-bold" style={{ marginTop: 6 }}>
-            {serverName} isn&rsquo;t answering
+            {serverName} {t("isn’t answering")}
           </span>
           <span className="text-sm text-gryt-muted" style={{ lineHeight: 1.5 }}>
-            It might be down, or this network can&rsquo;t see it.
+            {t("It might be down, or this network can’t see it.")}
           </span>
           <div className="flex gap-2.5" style={{ marginTop: 8 }}>
             <Button size="small" onClick={onTryNow}>
               <PiArrowsClockwiseFill size={16} />
-              Try now
+              {t("Try now")}
             </Button>
             <Button size="small" tone="neutral" onClick={() => setDoctorOpen(true)}>
               <PiPulseBold size={16} />
-              Check the connection
+              {t("Check the connection")}
             </Button>
           </div>
           {publicHost && publicHost !== host && onUsePublic && (
             <Button size="small" tone="ghost" onClick={onUsePublic}>
               <PiGlobeSimpleFill size={16} />
-              Connect through {publicHost}
+              {t("Connect through")} {publicHost}
             </Button>
           )}
           {serverName !== host && <span className="text-xs text-gryt-muted" style={{ marginTop: 8 }}>{host}</span>}

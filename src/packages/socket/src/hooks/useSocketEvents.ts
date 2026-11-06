@@ -30,6 +30,7 @@ import type {
 } from "@/settings/src/types/server";
 
 import { PiMicrophoneFill, PiMicrophoneSlashFill, PiSpeakerHighFill, PiSpeakerSlashFill } from "../../../../lib/icons";
+import { translateLocaleMessage } from "../../../../lib/locale";
 import type { MemberInfo } from "../components/MemberSidebar";
 import { heldRoleIds } from "../lib/permissions";
 import { onMlsDelivered } from "../mls/serverMls";
@@ -386,7 +387,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
             // Written down, or the refusal lives only in memory and the next launch
             // rejoins with the keypair as if nothing happened.
             markSignedOut(host);
-            toast.error(info?.message || `Your session on ${host} was ended.`);
+            toast.error(translateLocaleMessage(info?.message || `Your session on ${host} was ended.`));
             setFailedServerDetails(prev => ({
               ...prev,
               [host]: {
@@ -399,7 +400,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           }
 
           const givenUp = `Stopped reconnecting to ${host}. It keeps ending your session.`;
-          toast.error(givenUp);
+          toast.error(translateLocaleMessage(givenUp));
           setFailedServerDetails(prev => ({
             ...prev,
             [host]: { error: "revocation_loop", message: givenUp, timestamp: Date.now() },
@@ -426,7 +427,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
         removeServerAccessToken(host);
         removeServerRefreshToken(host);
         console.warn(`[Auth:Socket] token:invalid for ${host}:`, message);
-        toast.error(`You were signed out of ${host}. Reloading to sign you back in…`);
+        toast.error(translateLocaleMessage("You were signed out of {server}. Reloading to sign you back in…", undefined, { server: host }));
         setTimeout(() => window.location.reload(), 2000);
       });
 
@@ -445,7 +446,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
 
         if (TERMINAL.includes(errorInfo.error)) {
           removeServerRefreshToken(host);
-          toast.error(errorInfo.message || `Signed out of ${host}.`);
+          toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Signed out of {server}.", undefined, { server: host }));
           return;
         }
 
@@ -455,7 +456,7 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           socket.emit("token:refresh", { refreshToken });
         } else {
           removeServerRefreshToken(host);
-          toast.error(errorInfo.message || `Couldn't sign you in to ${host}. Try joining it again.`);
+          toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Couldn't sign you in to {server}. Try joining it again.", undefined, { server: host }));
         }
       });
 

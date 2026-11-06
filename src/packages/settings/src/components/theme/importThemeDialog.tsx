@@ -16,6 +16,8 @@ import { useState } from "react";
 
 import { useCustomThemes, useTheme } from "@/common";
 
+import { useLocale } from "../../../../../lib/localeContext";
+
 const GENERATOR = "https://ui.gryt.chat/theme/generator";
 
 /**
@@ -29,6 +31,7 @@ export function ImportThemeDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useLocale();
   const { saveTheme } = useCustomThemes();
   const { resolvedAppearance } = useTheme();
 
@@ -77,14 +80,14 @@ export function ImportThemeDialog({
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-          <Dialog.Title>Import a theme</Dialog.Title>
+          <Dialog.Title>{t("Import a theme")}</Dialog.Title>
           <Dialog.Description>
-            Paste a link from the theme generator, or the JSON it exports.
+            {t("Paste a link from the theme generator, or the JSON it exports.")}
           </Dialog.Description>
 
           <div className="mt-4 flex flex-col gap-3">
             <TextField
-              aria-label="Theme link or JSON"
+              aria-label={t("Theme link or JSON")}
               multiline
               minRows={2}
               placeholder={`${GENERATOR}?accent=…`}
@@ -102,7 +105,7 @@ export function ImportThemeDialog({
                 disabled={input.trim() === ""}
                 onClick={() => read(input)}
               >
-                Read it
+                {t("Read it")}
               </Button>
               <a
                 className="gryt-link text-xs"
@@ -110,7 +113,7 @@ export function ImportThemeDialog({
                 rel="noreferrer"
                 target="_blank"
               >
-                Build one on ui.gryt.chat
+                {t("Build one on ui.gryt.chat")}
               </a>
             </div>
 
@@ -119,9 +122,9 @@ export function ImportThemeDialog({
             {incoming ? (
               <>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium">Preview</span>
+                  <span className="text-sm font-medium">{t("Preview")}</span>
                   <label className="flex items-center gap-2 text-xs text-gryt-muted">
-                    Light
+                    {t("Light")}
                     <Switch
                       checked={preview === "light"}
                       onCheckedChange={(next) =>
@@ -134,10 +137,10 @@ export function ImportThemeDialog({
                 <ThemePreview appearance={preview} theme={incoming} />
 
                 <TextField
-                  label="Name"
+                  label={t("Name")}
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  placeholder="Imported theme"
+                  placeholder={t("Imported theme")}
                 />
               </>
             ) : null}
@@ -146,7 +149,7 @@ export function ImportThemeDialog({
           <Dialog.Footer className="flex-wrap justify-between">
             <Dialog.Close render={<span />}>
               <Button size="small" tone="ghost">
-                Cancel
+                {t("Cancel")}
               </Button>
             </Dialog.Close>
             <Button
@@ -159,7 +162,7 @@ export function ImportThemeDialog({
                 reset();
               }}
             >
-              Save and use it
+              {t("Save and use it")}
             </Button>
           </Dialog.Footer>
         </Dialog.Popup>
@@ -179,6 +182,7 @@ function ThemePreview({
   theme: GrytTheme;
   appearance: GrytAppearance;
 }) {
+  const { t } = useLocale();
   return (
     <GrytProvider
       className="rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-bg p-4"
@@ -186,28 +190,28 @@ function ThemePreview({
     >
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="small">Join</Button>
+          <Button size="small">{t("Join")}</Button>
           <Button size="small" tone="secondary">
-            Invite
+            {t("Invite")}
           </Button>
           <Button size="small" tone="neutral">
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button size="small" tone="danger">
-            Leave
+            {t("Leave")}
           </Button>
           <Chip label="3" tone="danger" />
         </div>
 
         <MessageBubble from="assistant">
-          The SFU is dropping its second rebroadcast layer on Firefox again.
+          {t("The SFU is dropping its second rebroadcast layer on Firefox again.")}
         </MessageBubble>
         <MessageBubble from="user">
-          Only on the 4-person calls, which is why nobody noticed.
+          {t("Only on the 4-person calls, which is why nobody noticed.")}
         </MessageBubble>
 
         <p className="m-0 text-xs text-gryt-muted">
-          Muted text, on the page it will sit on.
+          {t("Muted text, on the page it will sit on.")}
         </p>
       </div>
     </GrytProvider>

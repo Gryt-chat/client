@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { type AnnouncedPlugin,pluginsOn, useAddons } from "@/addons";
 
 import { PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import {
   describeCapabilities,
   missingHalves,
@@ -18,6 +19,7 @@ import {
 type OpenDetail = { host: string };
 
 export function ServerPluginsModal() {
+  const { t } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const [host, setHost] = useState("");
   const [plugins, setPlugins] = useState<AnnouncedPlugin[]>([]);
@@ -55,7 +57,7 @@ export function ServerPluginsModal() {
         <Dialog.Popup className="w-[40rem] max-h-[calc(100dvh-3rem)] overflow-y-auto">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <Dialog.Title>What {host || "this server"} runs</Dialog.Title>
+              <Dialog.Title>{t("What {server} runs", { server: host || t("this server") })}</Dialog.Title>
               <Dialog.Close>
                 <IconButton tone="ghost" size="xsmall" onClick={close}>
                   <PiX size={16} />
@@ -64,8 +66,7 @@ export function ServerPluginsModal() {
             </div>
 
             <span className="text-sm text-gryt-muted">
-              Plugins run inside the server, so they see what goes through it.
-              Whoever runs this server chose these.
+              {t("Plugins run inside the server, so they see what goes through it.")} {t("Whoever runs this server chose these.")}
             </span>
 
             {/*
@@ -79,19 +80,18 @@ export function ServerPluginsModal() {
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-bold">
                     {missing.length === 1
-                      ? "One of these has a part you do not have"
-                      : `${missing.length} of these have parts you do not have`}
+                      ? t("One of these has a part you do not have")
+                      : t("{count} of these have parts you do not have", { count: missing.length })}
                   </span>
                   <span className="text-xs text-gryt-muted">
-                    Everything here works without them. You will just not see
-                    whatever they add.
+                    {t("Everything here works without them. You will just not see whatever they add.")}
                   </span>
                 </div>
               </Surface>
             ) : null}
 
             {plugins.length === 0 ? (
-              <span className="text-sm text-gryt-muted">{NOTHING_NAMED}</span>
+            <span className="text-sm text-gryt-muted">{t(NOTHING_NAMED)}</span>
             ) : (
               <div className="flex flex-col gap-2">
                 {plugins.map((plugin) => (
@@ -100,10 +100,10 @@ export function ServerPluginsModal() {
                       <span className="text-sm font-bold">
                         {plugin.name}
                         {plugin.author ? (
-                          <span className="font-normal text-gryt-muted"> by {plugin.author}</span>
+                          <span className="font-normal text-gryt-muted"> {t("by")} {plugin.author}</span>
                         ) : null}
                         {missingIds.has(plugin.id) ? (
-                          <span className="font-normal text-gryt-muted"> · not installed here</span>
+                          <span className="font-normal text-gryt-muted"> · {t("not installed here")}</span>
                         ) : null}
                       </span>
 
@@ -118,14 +118,18 @@ export function ServerPluginsModal() {
                         lose whichever one mattered.
                       */}
                       <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-xs text-gryt-muted">
-                        {describeCapabilities(plugin.capabilities).map((line) => (
-                          <li key={line}>{line}</li>
-                        ))}
+                        {describeCapabilities(plugin.capabilities).map((line) => {
+                          const unknown = line.match(/^(.*) — this Gryt is too old to say what that means$/);
+                          const translated = unknown
+                            ? `${unknown[1]} — ${t("this Gryt is too old to say what that means")}`
+                            : t(line);
+                          return <li key={line}>{translated}</li>;
+                        })}
                       </ul>
 
                       {plugin.capabilities.length === 0 ? (
                         <span className="text-xs text-gryt-muted">
-                          Asked for nothing, so it only sees what the server tells it.
+                          {t("Asked for nothing, so it only sees what the server tells it.")}
                         </span>
                       ) : null}
 
@@ -135,7 +139,7 @@ export function ServerPluginsModal() {
                           no address. */}
                       {missingIds.has(plugin.id) && !plugin.homepage ? (
                         <span className="text-xs text-gryt-muted">
-                          Whoever runs the server knows where this came from.
+                          {t("Whoever runs the server knows where this came from.")}
                         </span>
                       ) : null}
 
@@ -148,7 +152,7 @@ export function ServerPluginsModal() {
                           target="_blank"
                           rel="noreferrer noopener"
                         >
-                          {missingIds.has(plugin.id) ? "Where to get it" : "Read about it"}
+                          {t(missingIds.has(plugin.id) ? "Where to get it" : "Read about it")}
                         </a>
                       ) : null}
                     </div>

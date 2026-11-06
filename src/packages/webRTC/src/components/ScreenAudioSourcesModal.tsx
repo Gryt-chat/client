@@ -2,6 +2,7 @@ import { Button, Checkbox, Dialog } from "@gryt/ui";
 import { useEffect } from "react";
 
 import { PiSquaresFourFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { useScreenAudioSources } from "../adapters/useScreenAudioSources";
 
 interface ScreenAudioSourcesModalProps {
@@ -14,6 +15,7 @@ interface ScreenAudioSourcesModalProps {
  * opens this is hidden where the OS cannot do it, so nothing here explains that.
  */
 export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourcesModalProps) {
+  const { t } = useLocale();
   const { wholeMachine, apps, refresh, setCaptured, captureWholeMachine } = useScreenAudioSources();
 
   // Windows come and go while a call is running, so the list is read when it
@@ -27,10 +29,9 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28.75rem]">
-          <Dialog.Title>Audio you&apos;re sharing</Dialog.Title>
+          <Dialog.Title>{t("Audio you’re sharing")}</Dialog.Title>
           <Dialog.Description>
-            Pick the applications to send. Anything you leave out stays out of the share,
-            including a voice app you're in.
+            {t("Pick the applications to send. Anything you leave out stays out of the share, including a voice app you're in.")}
           </Dialog.Description>
 
           <div className="flex flex-col gap-2 py-3">
@@ -52,7 +53,7 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
                   if (v === true) void captureWholeMachine();
                 }}
               />
-              Everything except Gryt
+              {t("Everything except Gryt")}
             </label>
 
             <div
@@ -61,7 +62,7 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
             >
               {apps.length === 0 && (
                 <span className="text-sm text-gryt-muted" style={{ padding: 12, textAlign: "center" }}>
-                  No open windows found
+                  {t("No open windows found")}
                 </span>
               )}
 
@@ -96,7 +97,7 @@ export function ScreenAudioSourcesModal({ open, onOpenChange }: ScreenAudioSourc
 
           <div className="flex justify-end">
             <Button size="small" onClick={() => onOpenChange(false)}>
-              Done
+              {t("Done")}
             </Button>
           </div>
         </Dialog.Popup>

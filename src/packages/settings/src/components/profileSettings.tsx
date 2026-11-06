@@ -8,6 +8,7 @@ import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { RichPresenceSettings } from "./richPresence";
@@ -181,12 +182,19 @@ function ProfileEditor({
   serverLabel,
   scopedToServer,
 }: ProfileEditorProps) {
+  const { t } = useLocale();
   const [draft, setDraft] = useState(nickname);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   // From the box, not what is saved: the nickname is the seed, so this is the
   // only way to see what you are about to look like.
   const previewSrc = resolveAvatarSrc(avatarUrl, draft, worn) || generatedAvatarUrl;
+  let removeAvatarDescription = "Your avatar will be removed. This action cannot be undone.";
+  if (scopedToServer && serverLabel) {
+    removeAvatarDescription = `Your avatar will be removed from ${serverLabel}. This action cannot be undone.`;
+  } else if (serverLabel) {
+    removeAvatarDescription = "Your avatar will be removed from all servers. This action cannot be undone.";
+  }
 
   useEffect(() => {
     setDraft(nickname);
@@ -213,7 +221,7 @@ function ProfileEditor({
           type="button"
           disabled={uploading || removing}
           onClick={onPickAvatar}
-          aria-label="Change avatar"
+          aria-label={t("Change avatar")}
           style={{
             all: "unset",
             cursor: uploading || removing ? "default" : "pointer",
@@ -243,7 +251,7 @@ function ProfileEditor({
           </div>
         </button>
         <span className="text-xs">
-          {avatarHint(uploading, removing)}
+          {t(avatarHint(uploading, removing))}
         </span>
       </div>
 
@@ -253,14 +261,14 @@ function ProfileEditor({
             disabled={uploading || removing}
             onClick={() => setShowRemoveConfirm(true)}
           >
-            Remove avatar
+            {t("Remove avatar")}
           </Button>
           <ConfirmDialog
             open={showRemoveConfirm}
             onOpenChange={(open) => { if (!open) setShowRemoveConfirm(false); }}
-            title="Remove avatar?"
-            description={`Your avatar will be removed${serverLabel ? ` from ${serverLabel}` : ""}. This action cannot be undone.`}
-            confirmLabel="Remove"
+            title={t("Remove avatar?")}
+            description={t(removeAvatarDescription)}
+            confirmLabel={t("Remove")}
             onConfirm={onRemoveAvatar}
           />
         </>
@@ -269,7 +277,7 @@ function ProfileEditor({
       <div className="flex items-center justify-center" style={{ width: "100%" }}>
         <div className="flex flex-col gap-2" style={{ maxWidth: 400, width: "100%" }}>
           <span className="font-medium text-sm">
-            Nickname
+            {t("Nickname")}
           </span>
           {/*
             On a server tab this is a statement of fact — the value comes from
@@ -282,11 +290,11 @@ function ProfileEditor({
           */}
           <span className="text-xs">
             {scopedToServer
-              ? `This is how other people on ${scopedToServer} see you.`
-              : "This is your main identity. It follows the first server in your sidebar, and servers you join get it. Use Sync to apply it to servers you're already on."}
+              ? t(`This is how other people on ${scopedToServer} see you.`)
+              : t("This is your main identity. It follows the first server in your sidebar, and servers you join get it. Use Sync to apply it to servers you're already on.")}
           </span>
           <TextField
-            placeholder="Enter a nickname"
+            placeholder={t("Enter a nickname")}
             maxLength={20}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -309,6 +317,7 @@ function ProfileEditor({
  * this is not. A server whose role refuses it simply does not show the line.
  */
 function ActivityField() {
+  const { t } = useLocale();
   const { activity, setActivity } = useSettings();
   const [draft, setDraft] = useState(activity);
 
@@ -323,12 +332,12 @@ function ActivityField() {
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-sm font-bold">What you are doing</span>
+      <span className="text-sm font-bold">{t("What you are doing")}</span>
       <span className="text-xs text-gryt-muted">
-        Shown under your name on every server you are on. Leave it empty for nothing.
+        {t("Shown under your name on every server you are on. Leave it empty for nothing.")}
       </span>
       <TextField
-        placeholder="What are you up to?"
+        placeholder={t("What are you up to?")}
         /* The server caps at 96 and truncates, so this says the same number
            earlier: a box that stops is clearer than one that loses the end. */
         maxLength={96}
@@ -362,6 +371,7 @@ function avatarHint(uploading: boolean, removing: boolean): string {
 }
 
 export function ProfileSettings() {
+  const { t } = useLocale();
   const userId = useUserId();
   const { nickname, setNickname, avatarDataUrl, setAvatarDataUrl, setAvatarFile } =
     useSettings();
@@ -404,7 +414,7 @@ export function ProfileSettings() {
     const minAvatarMaxBytes = getAvatarMaxBytes(hosts);
 
     if (file.size > 25 * 1024 * 1024) {
-      toast.error("Avatar file too large (max 25MB).");
+      toast.error(t("Avatar file too large (max 25MB)."));
       return;
     }
 
@@ -414,13 +424,13 @@ export function ProfileSettings() {
     let localFile: File = file;
     if (isVideo) {
       if (hosts.length === 0) {
-        toast.error("A video avatar lives on a server, so connect to one first.");
+        toast.error(t("A video avatar lives on a server, so connect to one first."));
         return;
       }
       try {
         localFile = await posterOfVideo(file);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "That video can't be played here");
+        toast.error(t(err instanceof Error ? err.message : "That video can't be played here"));
         return;
       }
     }
@@ -454,11 +464,11 @@ export function ProfileSettings() {
           }));
         });
       } else if (permitted.length === 0) {
-        toast.error(
+        toast.error(t(
           hosts.length === 1
             ? "This server does not let you upload a picture. Designing an owl still works."
             : "None of these servers let you upload a picture. Designing an owl still works.",
-        );
+        ));
         return;
       }
     }
@@ -469,11 +479,11 @@ export function ProfileSettings() {
     if (isVideo) {
       const takesVideo = hosts.filter((h) => serverDetailsList?.[h]?.server_info?.video_profiles === true);
       if (takesVideo.length === 0) {
-        toast.error(hosts.length === 1 ? "This server doesn't take video avatars. Pick a picture instead." : "None of these servers take video avatars. Pick a picture instead.");
+        toast.error(t(hosts.length === 1 ? "This server doesn't take video avatars. Pick a picture instead." : "None of these servers take video avatars. Pick a picture instead."));
         return;
       }
       if (takesVideo.length < hosts.length) {
-        toast(`Your video goes to the ${takesVideo.length} of ${hosts.length} servers that take one. The others keep your current avatar.`);
+        toast(t(`Your video goes to the ${takesVideo.length} of ${hosts.length} servers that take one. The others keep your current avatar.`));
       }
       hosts = takesVideo;
     }
@@ -483,7 +493,7 @@ export function ProfileSettings() {
       if (hosts.length === 0) {
         await setAvatarFile(uploadFile);
         setStoredWorn(worn);
-        toast("Avatar saved. Your servers get it next time you connect.");
+        toast(t("Avatar saved. Your servers get it next time you connect."));
         return;
       }
 
@@ -536,16 +546,16 @@ export function ProfileSettings() {
       if (failed.length > 0) {
         console.warn("[Avatar] upload failed:", failed);
         if (hosts.length === 1) {
-          toast.error("Your avatar didn't upload. Try again in a moment.");
+          toast.error(t("Your avatar didn't upload. Try again in a moment."));
         } else {
-          toast.error(`Your avatar didn't upload to ${failed.length} of your ${hosts.length} servers. Try again in a moment.`);
+          toast.error(t(`Your avatar didn't upload to ${failed.length} of your ${hosts.length} servers. Try again in a moment.`));
         }
       } else if (anySuccess && isVideo) {
-        toast("Your video is uploaded. It shows on your card once the server has converted it.");
+        toast(t("Your video is uploaded. It shows on your card once the server has converted it."));
       } else if (anySuccess && anyProcessing) {
-        toast("Your avatar has been uploaded. It's being processed by the server \u2014 once done, your avatar will be animated.");
+        toast(t("Your avatar has been uploaded. It's being processed by the server — once done, your avatar will be animated."));
       } else if (anySuccess) {
-        toast.success("Avatar updated");
+        toast.success(t("Avatar updated"));
       }
     } finally {
       setUploading(false);
@@ -560,7 +570,7 @@ export function ProfileSettings() {
       if (hosts.length === 0) {
         await setAvatarFile(null);
         setAvatarDataUrl(null);
-        toast("Avatar removed. Your servers catch up next time you connect.");
+        toast(t("Avatar removed. Your servers catch up next time you connect."));
         return;
       }
 
@@ -597,7 +607,7 @@ export function ProfileSettings() {
 
       if (!anySuccess) {
         console.warn("[Avatar] remove failed:", failed);
-        toast.error("Your avatar couldn't be removed. Try again in a moment.");
+        toast.error(t("Your avatar couldn't be removed. Try again in a moment."));
         return;
       }
 
@@ -607,9 +617,9 @@ export function ProfileSettings() {
       }
 
       if (failed.length > 0) {
-        toast.error(`Avatar removed, but ${failed.length} of your ${hosts.length} servers still show the old one.`);
+        toast.error(t(`Avatar removed, but ${failed.length} of your ${hosts.length} servers still show the old one.`));
       } else {
-        toast.success("Avatar removed");
+        toast.success(t("Avatar removed"));
       }
     } finally {
       setRemoving(false);
@@ -678,7 +688,7 @@ export function ProfileSettings() {
     const rest = targets.filter((h) => !takes.includes(h));
     if (takes.length) await processAndUpload(video, takes, null);
     if (rest.length) await processAndUpload(await posterOfVideo(video), rest, null);
-    if (!targets.length) toast("That server is the only one you're on, so there's nowhere to copy it to.");
+    if (!targets.length) toast(t("That server is the only one you're on, so there's nowhere to copy it to."));
   };
 
 /**
@@ -694,7 +704,7 @@ export function ProfileSettings() {
     const source = profile?.avatarUrl;
 
     if (!source) {
-      toast.error("Nothing to copy: this server has no avatar of its own yet.");
+      toast.error(t("Nothing to copy: this server has no avatar of its own yet."));
       return;
     }
 
@@ -715,9 +725,9 @@ export function ProfileSettings() {
       // settles a copy that is out of date with its own worn string.
       await processAndUpload(file, connectedHosts, worn);
     } catch (error) {
-      toast.error(
+      toast.error(t(
         `Could not copy that avatar: ${error instanceof Error ? error.message : "unknown error"}`,
-      );
+      ));
     } finally {
       setSyncing(false);
     }
@@ -791,9 +801,9 @@ export function ProfileSettings() {
         });
 
         if (avatarFailed > 0) {
-          toast.error(`Synced, but avatar failed on ${avatarFailed}/${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+          toast.error(t(`Synced, but avatar failed on ${avatarFailed}/${hosts.length} server${hosts.length > 1 ? "s" : ""}`));
         } else {
-          toast.success(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+          toast.success(t(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`));
         }
       } else {
         // No avatar here means none anywhere: syncing only the nickname made
@@ -818,13 +828,13 @@ export function ProfileSettings() {
         });
 
         if (removeFailed > 0) {
-          toast.error(`Synced, but the avatar could not be cleared on ${removeFailed}/${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+          toast.error(t(`Synced, but the avatar could not be cleared on ${removeFailed}/${hosts.length} server${hosts.length > 1 ? "s" : ""}`));
         } else {
-          toast.success(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`);
+          toast.success(t(`Profile synced to ${hosts.length} server${hosts.length > 1 ? "s" : ""}`));
         }
       }
     } catch {
-      toast.error("Sync failed");
+      toast.error(t("Sync failed"));
     } finally {
       setSyncing(false);
     }
@@ -854,7 +864,7 @@ export function ProfileSettings() {
   return (
     <SettingsContainer>
       <h2 className="text-lg">
-        Profile
+        {t("Profile")}
       </h2>
 
       {serverHosts.length > 0 && (
@@ -868,12 +878,12 @@ export function ProfileSettings() {
             <Select
               value={selectedTab}
               onValueChange={(v) => setSelectedTab(String(v))}
-              placeholder="Which server"
+              placeholder={t("Which server")}
               options={serverTabs}
             />
           ) : (
             <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(String(v))}>
-              <Tabs.List aria-label="Which server">
+              <Tabs.List aria-label={t("Which server")}>
                 {serverTabs.map((tab) => (
                   <Tabs.Tab key={tab.value} value={tab.value}>
                     {tab.label}
@@ -899,7 +909,7 @@ export function ProfileSettings() {
             onSaveNickname={(name) => handleSaveNickname(name, serverHosts)}
             onPickAvatar={() => setChoosingFor(null)}
             onRemoveAvatar={() => handleRemoveAvatar(serverHosts)}
-            serverLabel={serverHosts.length > 0 ? "Changes apply to all servers" : undefined}
+            serverLabel={serverHosts.length > 0 ? t("Changes apply to all servers") : undefined}
           />
           {connectedHosts.length > 0 && (
             <div className="flex justify-center" style={{ paddingTop: 4 }}>
@@ -908,7 +918,7 @@ export function ProfileSettings() {
                 onClick={handleSyncToAll}
               >
                 <PiArrowsClockwiseFill size={16} style={syncing ? { animation: "spin 1s linear infinite" } : undefined} />
-                {syncing ? "Syncing..." : "Sync to all servers"}
+                {syncing ? t("Syncing...") : t("Sync to all servers")}
               </Button>
             </div>
           )}
@@ -955,10 +965,10 @@ export function ProfileSettings() {
                       size={16}
                       style={syncing ? { animation: "spin 1s linear infinite" } : undefined}
                     />
-                    {syncing ? "Copying..." : "Use this avatar everywhere"}
+                    {syncing ? t("Copying...") : t("Use this avatar everywhere")}
                   </Button>
                   <span className="text-xs text-gryt-muted">
-                    Your name on each server stays as it is.
+                    {t("Your name on each server stays as it is.")}
                   </span>
                 </div>
               )}
@@ -971,9 +981,9 @@ export function ProfileSettings() {
       <ActivityField />
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-base font-bold">What you&rsquo;re playing</span>
+          <span className="text-base font-bold">{t("What you’re playing")}</span>
           <span className="text-xs text-gryt-muted">
-            Two ways to show it: games that report it themselves, and programs you add by hand.
+            {t("Two ways to show it: games that report it themselves, and programs you add by hand.")}
           </span>
         </div>
         <RichPresenceSettings />
@@ -985,14 +995,14 @@ export function ProfileSettings() {
           <span className="text-xs" style={{ fontFamily: "var(--code-font-family)", userSelect: "all" }}>
             {userId}
           </span>
-          <Tooltip title={copied ? "Copied!" : "Copy User ID"}>
+          <Tooltip title={copied ? t("Copied!") : t("Copy User ID")}>
             <IconButton tone="ghost" size="xsmall"
               style={{ flexShrink: 0 }}
               onClick={() => {
                 navigator.clipboard.writeText(userId).then(() => {
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
-                }, () => toast.error("Failed to copy"));
+                }, () => toast.error(t("Failed to copy")));
               }}
             >
               {copied ? <PiCheck size={12} /> : <PiCopyFill size={12} />}
@@ -1023,11 +1033,11 @@ export function ProfileSettings() {
           const target = choosingFor ?? null;
           const hosts = target ? [target] : serverHosts;
           if (hosts.length > 0 && !hosts.some(mayUploadPicture)) {
-            toast.error(
+            toast.error(t(
               hosts.length === 1
                 ? "This server does not let you upload a picture. Designing an owl still works."
                 : "None of your servers let you upload a picture. Designing an owl still works.",
-            );
+            ));
             return;
           }
           triggerFilePick(target);

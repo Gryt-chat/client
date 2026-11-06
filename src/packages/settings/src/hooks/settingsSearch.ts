@@ -4,6 +4,7 @@
  */
 
 import { isElectron, isMacDesktop } from "../../../../lib/electron";
+import type { LocaleContextValue } from "../../../../lib/localeContext";
 import { matchSettings } from "./settingsMatch";
 
 export interface SettingsIndexEntry {
@@ -79,6 +80,7 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "the-server-we-run", title: "The server we run", description: "Gryt runs one server itself, and the dialog for adding a server offers it when you have nothing to paste. Turning this off hides that row for good on this device, and turning it back on is what this is for.", page: "adding-servers", destination: "servers", section: "Adding servers" },
   { id: "typefaces-from-google", title: "Typefaces from Google", description: "A theme can name any typeface. Letting Gryt fetch the ones you do not already have means Google sees your address and that you are running Gryt. Off, a theme that names one falls back to a face you have.", page: "theme", destination: "appearance", section: "Theme" },
   { id: "ui-scale", title: "UI scale", description: "How large Gryt draws everything. Ctrl+Plus and Ctrl+Minus do the same, and Ctrl+0 puts it back to 100%.", page: "display", destination: "appearance", section: "Display", keywords: ["zoom", "size", "bigger", "smaller"] },
+  { id: "language", title: "Language", description: "Choose English or Brazilian Portuguese, or follow your system language.", page: "display", destination: "appearance", section: "Display", keywords: ["idioma", "português", "pt-br", "locale"] },
   { id: "chat-font-size", title: "Chat font size", description: "The size messages are set in, with a preview underneath.", page: "display", destination: "appearance", section: "Display", keywords: ["text size", "zoom", "bigger", "smaller"] },
   { id: "standalone-emoji-size", title: "Standalone emoji size", description: "How big an emoji is drawn when a message is nothing but emoji.", page: "display", destination: "appearance", section: "Display" },
   { id: "message-style", title: "Message style", description: "Cozy with pictures and names, Compact with one line per message, or Bubbles like most messaging apps. Only changes this device.", page: "messages", destination: "appearance", section: "Messages" },
@@ -140,6 +142,20 @@ export const SETTINGS_INDEX: SettingsIndexEntry[] = [
   { id: "support-gryt", title: "Support Gryt", description: "Ways to support the project.", destination: "support", section: "Support", panel: true, keywords: ["donate", "sponsor"] }
 ];
 
-export function searchSettings(query: string): SettingsIndexEntry[] {
-  return matchSettings(SETTINGS_INDEX, query);
+export function searchSettings(query: string, locale: Pick<LocaleContextValue, "locale" | "t">): SettingsIndexEntry[] {
+  if (locale.locale !== "pt-BR") return matchSettings(SETTINGS_INDEX, query);
+  const localized = SETTINGS_INDEX.map((entry) => ({
+    ...entry,
+    title: locale.t(entry.title),
+    description: locale.t(entry.description),
+    section: locale.t(entry.section),
+    keywords: [...(entry.keywords ?? []), locale.t(entry.title), locale.t(entry.section)],
+  }));
+  const matched = matchSettings([...localized, ...SETTINGS_INDEX], query);
+  const seen = new Set<string>();
+  return matched.filter((entry) => {
+    if (seen.has(entry.id)) return false;
+    seen.add(entry.id);
+    return true;
+  });
 }

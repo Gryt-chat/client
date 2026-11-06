@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useSettings } from "@/settings";
 
 import { buildKeyCombo, buildMouseCombo, formatCombo } from "../../../../lib/hotkeys";
+import { useLocale } from "../../../../lib/localeContext";
 
 export function PushToTalkModal() {
+  const { t } = useLocale();
   const { inputMode, setInputMode, pushToTalkKey, setPushToTalkKey } = useSettings();
   const isOpen = inputMode === "push_to_talk" && !pushToTalkKey;
 
@@ -61,10 +63,9 @@ export function PushToTalkModal() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup>
-        <Dialog.Title>Bind push to talk</Dialog.Title>
+        <Dialog.Title>{t("Bind push to talk")}</Dialog.Title>
         <Dialog.Description>
-          Push to talk is on, but nothing is bound to it yet. Press a key, or the middle or a
-          side mouse button.
+          {t("Push to talk is on, but nothing is bound to it yet. Press a key, or the middle or a side mouse button.")}
         </Dialog.Description>
 
         <div className="flex flex-col gap-4 items-center py-4">
@@ -72,22 +73,22 @@ export function PushToTalkModal() {
             color={captured ? "green" : "blue"}
             style={{ fontFamily: "var(--code-font-family)", minWidth: "120px", textAlign: "center", padding: "8px 16px", fontSize: 16 }}
           >
-            {captured ? formatCombo(captured) : "Press a key or button..."}
+            {captured ? formatCombo(captured) : t("Press a key or button...")}
           </Chip>
 
           {captured && (
             <span className="text-xs text-gryt-muted">
-              Press something else to change it, or confirm below.
+              {t("Press something else to change it, or confirm below.")}
             </span>
           )}
         </div>
 
         <div className="flex flex-wrap gap-3 justify-end">
           <Button tone="neutral" size="small" onClick={handleCancel}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button size="small" onClick={handleConfirm} disabled={!captured}>
-            Confirm
+            {t("Confirm")}
           </Button>
         </div>
       </Dialog.Popup>

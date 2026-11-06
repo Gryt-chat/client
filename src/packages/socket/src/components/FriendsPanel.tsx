@@ -4,6 +4,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { getUploadsFileUrl, resolveAvatarSrc, serverIconSrc } from "@/common";
 
 import { PiChatTeardropTextFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { confirmServerFriend, friendAction, useAllFriends } from "../hooks/friendsStore";
 import { useMessagePerson } from "../hooks/useMessagePerson";
 import { useServerManagement } from "../hooks/useServerManagement";
@@ -30,11 +31,12 @@ interface Row {
 }
 
 function Section({ title, count, children }: { title: string; count: number; children: ReactNode }) {
+  const { t } = useLocale();
   if (count === 0) return null;
   return (
     <section className="flex flex-col">
       <h2 className="flex px-2.5 pb-1 pt-3 text-xs font-semibold text-gryt-muted">
-        <span>{title}</span>
+        <span>{t(title)}</span>
         <span className="ml-auto tabular-nums">{count}</span>
       </h2>
       {children}
@@ -43,6 +45,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
 }
 
 export function FriendsPanel({ query }: { query: string }) {
+  const { t } = useLocale();
   const all = useAllFriends();
   const { servers } = useServerManagement();
   const { memberLists, serverDetailsList } = useSockets();
@@ -128,7 +131,7 @@ export function FriendsPanel({ query }: { query: string }) {
           render={
             <button
               type="button"
-              aria-label={`Open ${r.name}’s card`}
+              aria-label={t("Open {name}’s card", { name: r.name })}
               className="-ml-1 -mt-1 flex min-w-0 cursor-pointer items-center rounded-(--gryt-radius-md) border-0 p-1 pr-1.5 text-gryt-text hover:bg-gryt-neutral-3"
               style={{ background: open ? "var(--gryt-neutral-4)" : undefined }}
             />
@@ -162,9 +165,9 @@ export function FriendsPanel({ query }: { query: string }) {
   function statusLine(r: Row): string {
     const m = r.member;
     const where = clashes.has(r.name) ? ` · ${serverName(r.host)}` : "";
-    if (!m) return `Not on ${serverName(r.host)} right now`;
-    if (m.status !== "offline" && m.richActivity?.name) return `Playing ${m.richActivity.name}`;
-    return `${statusConfig[m.status].label}${where}`;
+    if (!m) return t("Not on {server} right now", { server: serverName(r.host) });
+    if (m.status !== "offline" && m.richActivity?.name) return t("Playing {activity}", { activity: m.richActivity.name });
+    return `${t(statusConfig[m.status].label)}${where}`;
   }
 
   function friend(r: Row) {
@@ -180,7 +183,7 @@ export function FriendsPanel({ query }: { query: string }) {
             <IconButton
               size="small"
               tone="neutral"
-              aria-label={`Message ${r.name}`}
+              aria-label={t("Message {recipient}", { recipient: r.name })}
               onClick={() => messagePerson(r.host, r.person.serverUserId)}
             >
               <PiChatTeardropTextFill size={14} />
@@ -193,9 +196,9 @@ export function FriendsPanel({ query }: { query: string }) {
               <ContextMenu.Group>
                 <ContextMenu.GroupLabel>{r.name}</ContextMenu.GroupLabel>
               </ContextMenu.Group>
-              <ContextMenu.Item onClick={() => messagePerson(r.host, r.person.serverUserId)}>Message</ContextMenu.Item>
+              <ContextMenu.Item onClick={() => messagePerson(r.host, r.person.serverUserId)}>{t("Message")}</ContextMenu.Item>
               <ContextMenu.Separator />
-              <ContextMenu.Item onClick={() => friendAction(r.host, "remove", r.person.serverUserId)}>Remove friend</ContextMenu.Item>
+              <ContextMenu.Item onClick={() => friendAction(r.host, "remove", r.person.serverUserId)}>{t("Remove friend")}</ContextMenu.Item>
             </ContextMenu.Popup>
           </ContextMenu.Positioner>
         </ContextMenu.Portal>
@@ -209,7 +212,7 @@ export function FriendsPanel({ query }: { query: string }) {
   if (incoming.length + unconfirmed.length + friends.length === 0) {
     return (
       <p className="px-4 py-2 text-xs text-gryt-muted">
-        No friends yet. Right-click somebody on a server, or open your conversation with them, and pick Add friend.
+        {t("No friends yet. Right-click somebody on a server, or open your conversation with them, and pick Add friend.")}
       </p>
     );
   }
@@ -218,19 +221,19 @@ export function FriendsPanel({ query }: { query: string }) {
     <div data-gryt="friends-panel" className="flex flex-col overflow-y-auto px-2 pb-2">
       <Section title="Requests" count={visibleRequests.length}>
         {incoming.filter(keep).map((r) =>
-          request(r, "Wants to be friends", (
+          request(r, t("Wants to be friends"), (
             <>
-              <Button size="xsmall" onClick={() => friendAction(r.host, "accept", r.person.serverUserId)}>Accept</Button>
-              <Button size="xsmall" tone="neutral" onClick={() => friendAction(r.host, "decline", r.person.serverUserId)}>Decline</Button>
+              <Button size="xsmall" onClick={() => friendAction(r.host, "accept", r.person.serverUserId)}>{t("Accept")}</Button>
+              <Button size="xsmall" tone="neutral" onClick={() => friendAction(r.host, "decline", r.person.serverUserId)}>{t("Decline")}</Button>
             </>
           )),
         )}
         {/* friendList.ts: the server lists a friendship this device never asked for or accepted. */}
         {unconfirmed.filter(keep).map((r) =>
-          request(r, "The server says you’re friends. Until you add them here, they can’t call you on this device.", (
+          request(r, t("The server says you’re friends. Until you add them here, they can’t call you on this device."), (
             <>
-              <Button size="xsmall" onClick={() => confirmServerFriend(r.host, r.person)}>Add</Button>
-              <Button size="xsmall" tone="neutral" onClick={() => friendAction(r.host, "remove", r.person.serverUserId)}>Remove</Button>
+              <Button size="xsmall" onClick={() => confirmServerFriend(r.host, r.person)}>{t("Add")}</Button>
+              <Button size="xsmall" tone="neutral" onClick={() => friendAction(r.host, "remove", r.person.serverUserId)}>{t("Remove")}</Button>
             </>
           )),
         )}
@@ -239,7 +242,7 @@ export function FriendsPanel({ query }: { query: string }) {
         {visibleFriends.map(friend)}
       </Section>
       {needle && visibleRequests.length + visibleFriends.length === 0 && (
-        <p className="px-2.5 py-2 text-xs text-gryt-muted">Nobody matches &ldquo;{query}&rdquo;.</p>
+        <p className="px-2.5 py-2 text-xs text-gryt-muted">{t("Nobody matches “{query}”.", { query })}</p>
       )}
     </div>
   );

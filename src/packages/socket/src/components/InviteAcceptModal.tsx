@@ -10,6 +10,7 @@ import {
 } from "@/settings/src/hooks/useServerJoin";
 
 import { PiEnvelopeFill, PiSignInFill, PiUsersThreeFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { type InviteDialogMessage, inviteDialogView } from "../lib/inviteDialog";
 
 export interface InviteJoinRequest {
@@ -52,6 +53,7 @@ export function InviteAcceptModal({
   onDismiss,
   onGoToServer,
 }: InviteAcceptModalProps) {
+  const { t } = useLocale();
   const host = invite?.host ?? "";
   const linkCode = invite?.code ?? "";
 
@@ -96,7 +98,7 @@ export function InviteAcceptModal({
   });
 
   const displayName = info?.name || host;
-  const message = MESSAGES[view.message];
+  const message = t(MESSAGES[view.message]);
 
   async function join() {
     if (joining) return;
@@ -136,7 +138,7 @@ export function InviteAcceptModal({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <PiEnvelopeFill size={16} />
-              <Dialog.Title>Server Invite</Dialog.Title>
+              <Dialog.Title>{t("Server Invite")}</Dialog.Title>
             </div>
             <Dialog.Close
               disabled={joining}
@@ -180,7 +182,7 @@ export function InviteAcceptModal({
                 <div className="flex items-center gap-1">
                   <PiUsersThreeFill size={14} style={{ color: "var(--gryt-neutral-9)" }} />
                   <span className="text-sm text-gryt-muted">
-                    {info.members} members
+                {info.members} {t("members")}
                   </span>
                 </div>
               )}
@@ -188,7 +190,7 @@ export function InviteAcceptModal({
           )}
 
           {lookup.kind === "error" && !alreadyMember && (
-            <span className="text-sm text-gryt-muted text-center">{lookup.message}</span>
+            <span className="text-sm text-gryt-muted text-center">{t(lookup.message)}</span>
           )}
 
           {message && lookup.kind !== "loading" && (
@@ -199,14 +201,14 @@ export function InviteAcceptModal({
 
           {view.needsAccount && !alreadyMember && (
             <span className="text-sm text-center">
-              You need a Gryt account to join. Sign in and you&rsquo;ll come back to this invite.
+              {t("You need a Gryt account to join. Sign in and you’ll come back to this invite.")}
             </span>
           )}
 
           {view.showCodeField && !awaitingApproval && (
             <TextField
-              aria-label="Invite code"
-              placeholder="Paste invite code"
+              aria-label={t("Invite code")}
+              placeholder={t("Paste invite code")}
               disabled={joining}
               value={typedCode}
               onChange={(e) => setTypedCode(normalizeCode(e.target.value))}
@@ -215,8 +217,8 @@ export function InviteAcceptModal({
 
           {view.showNote && (
             <TextField
-              aria-label="Say who you are"
-              placeholder="Say who you are (optional)"
+              aria-label={t("Say who you are")}
+              placeholder={t("Say who you are (optional)")}
               maxLength={300}
               disabled={joining}
               value={note}
@@ -226,33 +228,32 @@ export function InviteAcceptModal({
 
           {awaitingApproval && (
             <Alert severity="info">
-              Asked. Somebody who runs this server has to let you in. It&rsquo;s in your server
-              list now, marked as waiting, and opens on its own once they do.
+              {t("Asked. Somebody who runs this server has to let you in. It’s in your server list now, marked as waiting, and opens on its own once they do.")}
             </Alert>
           )}
 
           {!alreadyMember && joinError && !view.needsAccount ? (
-            <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{joinError}</span></Alert>
+            <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{t(joinError)}</span></Alert>
           ) : null}
 
           <div className="flex flex-wrap justify-end gap-2">
             <Button tone="neutral" size="small" disabled={joining} onClick={dismiss}>
-              {alreadyMember || awaitingApproval ? "Close" : "Cancel"}
+              {t(alreadyMember || awaitingApproval ? "Close" : "Cancel")}
             </Button>
             {view.action.kind === "go-to-server" && (
-              <Button size="small" onClick={() => onGoToServer?.()}>Go to Server</Button>
+              <Button size="small" onClick={() => onGoToServer?.()}>{t("Go to Server")}</Button>
             )}
             {view.action.kind === "sign-in" && (
               <Button size="small" disabled={signingIn} onClick={onSignIn}>
                 <PiSignInFill size={16} />
-                {signingIn ? "Signing in…" : "Sign in to join"}
+                {signingIn ? t("Signing in…") : t("Sign in to join")}
               </Button>
             )}
             {view.action.kind === "join" && (
               <Button size="small" disabled={view.action.disabled || joining} onClick={() => void join()}>
                 {joining ? (
                   <>
-                    <Spinner size={20} /> Joining…
+                  <Spinner size={20} /> {t("Joining…")}
                   </>
                 ) : (
                   view.action.label

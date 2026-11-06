@@ -5,6 +5,7 @@ import { type CSSProperties, forwardRef, memo, type ReactNode, useCallback, useL
 import { type MessageStyle, useTheme } from "@/common";
 
 import { PiChatsTeardropFill, PiDoorOpenBold,PiPushPinFill, PiSignInBold } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { TINY_MAX_WIDTH } from "../lib/narrowLayout";
@@ -51,13 +52,13 @@ function sendStateOf(m: { failed?: boolean; waiting?: boolean; pending?: boolean
   return m.waiting ? "waiting" : "pending";
 }
 
-function addedHistoryLine(you: boolean, encrypted: boolean, added: string): string {
+function addedHistoryLine(you: boolean, encrypted: boolean, added: string, t: (message: string, params?: Record<string, string | number>) => string): string {
   if (you && encrypted) {
-    return "You\u2019ll see what\u2019s said from now on. Messages from before you were added stay with the people who were there, since they were encrypted for them.";
+    return t("You’ll see what’s said from now on. Messages from before you were added stay with the people who were there, since they were encrypted for them.");
   }
-  if (you) return "This conversation isn\u2019t encrypted, so you can read what was said before you were added.";
-  if (encrypted) return `${added} only sees messages from here on. What was said before stays encrypted for the people who were here.`;
-  return `This conversation isn\u2019t encrypted, so ${added} can read what was said before.`;
+  if (you) return t("This conversation isn’t encrypted, so you can read what was said before you were added.");
+  if (encrypted) return t("{name} only sees messages from here on. What was said before stays encrypted for the people who were here.", { name: added });
+  return t("This conversation isn’t encrypted, so {name} can read what was said before.", { name: added });
 }
 
 export interface MessageMeta {
@@ -180,6 +181,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   pinned,
   onTogglePin,
 }, forwardedRef) => {
+  const { locale, t } = useLocale();
   const [isHovered, setIsHovered] = useState(false);
   const [isCtxMenuOpen, setIsCtxMenuOpen] = useState(false);
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
@@ -379,21 +381,21 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} receivedAt={m.received_at} />
                 {m.imported_from && (
-                  <Tooltip title="Imported from Discord">
+                  <Tooltip title={t("Imported from Discord")}>
                     <span className="discord-import-tag">Discord</span>
                   </Tooltip>
                 )}
                 {m.shared_by && (
-                  <Tooltip title={`From ${m.shared_by}\u2019s copy of this conversation`}>
+                  <Tooltip title={t("From {name}’s copy of this conversation", { name: m.shared_by })}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-                      shared by {m.shared_by}
+                      {t("shared by {name}", { name: m.shared_by })}
                     </span>
                   </Tooltip>
                 )}
                 {meta.isFirstEdited && m.edited_at && (
-                  <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
+                  <Tooltip title={t("Edited {date}", { date: new Date(m.edited_at).toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US") })}>
                     <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-                      (edited)
+                      ({t("edited")})
                     </span>
                   </Tooltip>
                 )}
@@ -402,8 +404,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
 
   const tiny = useMiniWindow();
   const compactTime = (
-    <span title={toDate(m.created_at).toLocaleString()} style={{ fontSize: 11, color: "var(--gryt-neutral-9)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-      {toDate(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+    <span title={toDate(m.created_at).toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US")} style={{ fontSize: 11, color: "var(--gryt-neutral-9)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+      {toDate(m.created_at).toLocaleTimeString(locale === "pt-BR" ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" })}
     </span>
   );
 
@@ -444,7 +446,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                 highlighted={highlighted}
                 onMore={handleMore}
                 onThread={messageActions.onOpenThread ?? messageActions.onStartThread}
-                threadLabel={messageActions.onOpenThread ? "Open thread" : "Start thread"}
+                threadLabel={t(messageActions.onOpenThread ? "Open thread" : "Start thread")}
                 messageActions={messageActions}
                 threadUnread={threadUnread}
                 threadMentions={threadMentions}
@@ -487,7 +489,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           {/* Compact: the time in the messages' column and the icon where their names start, so the line sits on the same grid. */}
           <div ref={rowRef} data-message-id={m.message_id} className="text-sm" style={{ width: "100%", padding: "4px 0", color: "var(--gryt-neutral-11)", wordBreak: "break-word", ...(tiny ? { display: "flow-root", paddingInline: 8 } : { display: "flex", gap: 8, alignItems: "baseline" }) }}>
             <span style={tiny ? { float: "left", display: "inline-flex", alignItems: "baseline", gap: 6, marginRight: 6 } : { display: "contents" }}>
-              <span style={tiny ? undefined : { width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, textAlign: "right" }}>{compactTime}</span>
+              <span style={tiny ? undefined : { width: compactTimeWidth, flex: "none", fontSize: 11, textAlign: "right" }}>{compactTime}</span>
               <span aria-hidden="true" style={{ flex: "none", color: "var(--gryt-neutral-9)", position: "relative", top: 2 }}>{meta.systemEvent === "left" ? <PiDoorOpenBold size={13} /> : <PiSignInBold size={13} />}</span>
             </span>
             <span style={{ minWidth: 0 }}>
@@ -553,7 +555,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
           <div className="flex" style={{ width: "100%", gap: 8, marginTop: meta.isFirstInGroup ? 6 : 0, flexDirection: alignRight ? "row-reverse" : "row", alignItems: m.text && drawsMessageText(m) ? "baseline" : "flex-start" }}>
             {/* Lined up on the text, or on the top when there's no text, like pictures or a card. */}
             {/* Always shown, in a column: times scan down one line and names start at one x. Hidden, it was just a gap. */}
-            <span style={{ width: COMPACT_TIME_WIDTH, flex: "none", fontSize: 11, textAlign: alignRight ? "left" : "right" }}>{compactTime}</span>
+            <span style={{ width: compactTimeWidth, flex: "none", fontSize: 11, textAlign: alignRight ? "left" : "right" }}>{compactTime}</span>
             <span className="text-sm font-bold" style={{ flex: "none", color: nameColor }}>{meta.senderName}</span>
             {meta.isBot && <BotTag />}
             <div className="flex flex-col" style={{ flex: 1, minWidth: 0 }}>
@@ -626,8 +628,6 @@ function useMiniWindow(): boolean {
 }
 
 /** Compact's time column, as wide as this locale's latest time. In `ch` of the 11px time, so set 11px where it's used. */
-const COMPACT_TIME_WIDTH = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
-
 function MessageContent({
   leading,
   m,
@@ -717,6 +717,8 @@ function MessageContent({
   threadUnread?: number;
   threadMentions?: number;
 }) {
+  const { locale, t } = useLocale();
+  const compactTimeWidth = `${new Date(2000, 0, 1, 23, 59).toLocaleTimeString(locale === "pt-BR" ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" }).length + 0.5}ch`;
   const hasReactions = !!(m.reactions && m.reactions.length > 0);
   const hasThreadNews = (threadUnread ?? 0) > 0 || (threadMentions ?? 0) > 0;
   const sealedNote = sealedPlaceholder(m);
@@ -808,7 +810,7 @@ function MessageContent({
             whiteSpace: "nowrap",
           }}
         >
-          <span className="text-xs">{replyPreviewText ? <ReplyPreviewText text={replyPreviewText} /> : "Original message"}</span>
+          <span className="text-xs">{replyPreviewText ? <ReplyPreviewText text={replyPreviewText} /> : t("Original message")}</span>
         </div>
       )}
       <motion.div
@@ -850,13 +852,13 @@ function MessageContent({
         {messageActions.pinned && (
           <span className="flex items-center gap-1" style={{ fontSize: 10, userSelect: "none", color: "var(--gryt-neutral-9)" }}>
             <PiPushPinFill size={10} />
-            pinned
+            {t("Pinned")}
           </span>
         )}
         {m.edited_at && !isFirstInGroup && (
-          <Tooltip title={`Edited ${new Date(m.edited_at).toLocaleString()}`}>
+          <Tooltip title={t("Edited {date}", { date: new Date(m.edited_at).toLocaleString(locale === "pt-BR" ? "pt-BR" : "en-US") })}>
             <span style={{ fontSize: 10, cursor: "default", whiteSpace: "nowrap", userSelect: "none", color: "var(--gryt-neutral-8)" }}>
-              (edited)
+            ({t("edited")})
             </span>
           </Tooltip>
         )}
@@ -924,12 +926,12 @@ function MessageContent({
         )}
         {m.failed && (
           <span className="text-xs" style={{ color: "var(--gryt-danger-9)", marginTop: "2px" }}>
-            {m.failure ?? "Failed to send"}
+            {t(m.failure ?? "Failed to send")}
           </span>
         )}
         {m.pending && m.waiting && (
           <span className="text-xs" style={{ color: "var(--gryt-neutral-9)", marginTop: "2px" }}>
-            {m.waitingNote ?? "Waiting for the server"}
+            {t(m.waitingNote ?? "Waiting for the server")}
           </span>
         )}
       </motion.div>
@@ -951,7 +953,7 @@ function MessageContent({
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
           <PiChatsTeardropFill size={14} />
-          {messageActions.replyCount ?? 0} {(messageActions.replyCount ?? 0) === 1 ? "reply" : "replies"}
+          {t((messageActions.replyCount ?? 0) === 1 ? "{count} reply" : "{count} replies", { count: messageActions.replyCount ?? 0 })}
           {/* The same badge a forum topic row draws, for the same reason. A
               thread on a text channel had the counts and nowhere to put them:
               the reply count says how big the thread is, not whether any of it
@@ -1148,14 +1150,15 @@ function AddedLine({
   messageId: string;
 }) {
   const parts = ADDED_LINE.exec(text);
+  const { locale, t } = useLocale();
   const name = (id: string, fallback: string) => memberList?.[id]?.nickname ?? fallback;
   const by = parts ? name(parts[2], parts[1]) : "Somebody";
   const addedId = parts?.[4];
   const added = parts && addedId ? name(addedId, parts[3]) : "somebody";
   const you = !!addedId && addedId === currentUserId;
-  const time = new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const time = new Date(at).toLocaleTimeString(locale === "pt-BR" ? "pt-BR" : "en-US", { hour: "2-digit", minute: "2-digit" });
 
-  const history = addedHistoryLine(you, encrypted, added);
+  const history = addedHistoryLine(you, encrypted, added, t);
 
   return (
     <div ref={rowRef} data-message-id={messageId} role="note" className="flex items-center gap-3 py-3 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
@@ -1163,11 +1166,11 @@ function AddedLine({
       <span className="text-center" style={{ maxWidth: 460, lineHeight: 1.55 }}>
         {you ? (
           <>
-            <b style={{ color: "var(--gryt-neutral-12)" }}>{by}</b> added you{title ? <> to <b style={{ color: "var(--gryt-neutral-12)" }}>{title}</b></> : null} &middot; {time}
+            {t("{name} added you", { name: by })}{title ? <> {t("to")} <b style={{ color: "var(--gryt-neutral-12)" }}>{title}</b></> : null} &middot; {time}
           </>
         ) : (
           <>
-            <b style={{ color: "var(--gryt-neutral-12)" }}>{by}</b> added <b style={{ color: "var(--gryt-neutral-12)" }}>{added}</b> &middot; {time}
+            {t("{by} added {name}", { by, name: added })} &middot; {time}
           </>
         )}
         <br />
@@ -1180,11 +1183,12 @@ function AddedLine({
 
 /** Board 5: a small red dot beside a message that went out in the clear. */
 function UnencryptedDot({ side }: { side: "left" | "right" }) {
+  const { t } = useLocale();
   return (
-    <Tooltip title="Not encrypted. Whoever runs this server can read this message.">
+    <Tooltip title={t("Not encrypted. Whoever runs this server can read this message.")}>
       <span
         role="img"
-        aria-label="Not encrypted"
+        aria-label={t("Not encrypted")}
         style={{
           position: "absolute",
           top: "calc(50% - 10px)",

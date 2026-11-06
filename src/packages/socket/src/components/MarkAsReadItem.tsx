@@ -16,6 +16,7 @@ import {
 } from "@/common";
 
 import { PiChecksBold } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { useSockets } from "../hooks/useSockets";
 
 /**
@@ -32,6 +33,7 @@ export type MarkReadScope =
  * one badge, two the client's and two the server's, so each scope clears both.
  */
 export function MarkAsReadItem({ host, scope, inMenu = false }: { host: string; scope: MarkReadScope; inMenu?: boolean }) {
+  const { t } = useLocale();
   const M = (inMenu ? Menu : ContextMenu) as typeof ContextMenu;
   const { sockets } = useSockets();
   const { serverUnreadCount, channelUnreadCount } = useUnreadTracker();
@@ -87,7 +89,7 @@ export function MarkAsReadItem({ host, scope, inMenu = false }: { host: string; 
   return (
     <M.Item disabled={waiting === 0} onClick={onClick}>
       {inMenu && <PiChecksBold size={16} />}
-      Mark as read
+      {t("Mark as read")}
     </M.Item>
   );
 }

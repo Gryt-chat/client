@@ -1,6 +1,7 @@
 import { AlertDialog, Button, TextField } from "@gryt/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { useLocale } from "../../../../lib/localeContext";
 import { phraseMatches } from "../lib/confirmPhrase";
 
 /**
@@ -58,6 +59,7 @@ export function ConfirmDialog({
   /** Extra fields -- a reason, a duration, a checkbox. */
   children?: ReactNode;
 }) {
+  const { t } = useLocale();
   const [typed, setTyped] = useState("");
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -99,7 +101,7 @@ export function ConfirmDialog({
           )}
 
           <div className="flex flex-wrap gap-3 mt-4 justify-end">
-            <AlertDialog.Close ref={cancelRef} render={<Button size="small" tone="neutral">{cancelLabel}</Button>} />
+            <AlertDialog.Close ref={cancelRef} render={<Button size="small" tone="neutral">{t(cancelLabel)}</Button>} />
             {/* Close above routes through onOpenChange, so onCancel runs there
                 rather than on this button. */}
             {/* Deliberately not wrapped in AlertDialog.Close: it has to be able

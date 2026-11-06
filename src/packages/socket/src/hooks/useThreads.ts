@@ -4,6 +4,7 @@ import type { Socket } from "socket.io-client";
 
 import { clearThreadMentions, getServerAccessToken, setOpenThread } from "@/common";
 
+import { useLocale } from "../../../../lib/localeContext";
 import type { ChatMessage } from "../components/chatUtils";
 import { mergeSender, mergeSenders } from "../utils/mergeSender";
 import { type ChatErrorPayload, type ChatErrorRef, isMutedError, isNonRetryableError } from "./chatEventHandlers";
@@ -90,9 +91,16 @@ function refusedReply(queue: Map<string, ThreadRetryEntry>, ref?: ChatErrorRef):
   return nonce ? queue.get(nonce) ?? null : latestPending(queue);
 }
 
-function errorText(e: ChatErrorPayload): string {
-  if (typeof e === "string") return e || "Something went wrong.";
-  return e?.message || e?.error || "Something went wrong.";
+function errorText(e: ChatErrorPayload, t: (message: string) => string): string {
+  if (typeof e === "string") return t(e || "Something went wrong.");
+  if (e?.message) return t(e.message);
+  const known: Record<string, string> = {
+    forbidden: "You do not have permission to do that.",
+    not_found: "That thread or message could not be found.",
+    rate_limited: "Please wait a moment before trying again.",
+  };
+  const code = e?.error ?? "";
+  return t(known[code] ?? (code ? `Thread error: ${code}` : "Something went wrong."));
 }
 
 // The slice of a socket.io client this hook touches, so nothing has to be typed
@@ -152,6 +160,7 @@ export function useThreads(
   currentUserId: string | undefined,
   currentUserNickname: string | undefined,
 ): UseThreadsResult {
+  const { t } = useLocale();
   const [summaries, setSummaries] = useState<Record<string, ThreadSummary>>({});
   const [open, setOpen] = useState<OpenThread | null>(null);
 
@@ -450,7 +459,7 @@ export function useThreads(
     /* A refused fetch is drawn where the replies would be. Toasted only when
        there is no panel to draw it in, or nothing was on its way. */
     const onError = (e: ChatErrorPayload) => {
-      const message = errorText(e);
+      const message = errorText(e, t);
       const cur = openRef.current;
       if (cur && (cur.loading || cur.loadingOlder)) {
         setOpen((o) => (o ? { ...o, loading: false, loadingOlder: false, error: message } : o));
@@ -476,7 +485,7 @@ export function useThreads(
 
       failReply(entry.payload.nonce);
       // The composer draws the mute, and the server's own wording carries a raw ISO date.
-      if (!isMutedError(e)) toast.error(errorText(e));
+      if (!isMutedError(e)) toast.error(errorText(e, t));
     };
 
     /* The panel was open before the window was resized and this hook was mounted
@@ -512,7 +521,7 @@ export function useThreads(
       socket.off("chat:deleted", onMessageDeleted as (p: never) => void);
       socket.off("chat:merge_user", onMergeUser as (p: never) => void);
     };
-  }, [socketConnection, conversationId, serverHost, failReply]);
+  }, [socketConnection, conversationId, serverHost, failReply, t]);
 
   const startThread = useCallback((message: ChatMessage) => {
     const socket = asSocket(socketConnection);
@@ -521,7 +530,7 @@ export function useThreads(
     /* A dead socket swallows the emit, and the root stays queued to open a panel
        that no thread:created ever arrives for. Say so instead (GRYT-1389). */
     if (socket.connected === false) {
-      toast.error("Not connected to this server");
+      toast.error(t("Not connected to this server"));
       return;
     }
     // Already threaded — just open it.
@@ -536,7 +545,7 @@ export function useThreads(
     }
     pendingOpenRoot.current = message.message_id;
     socket.emit("thread:create", { conversationId, rootMessageId: message.message_id, accessToken });
-  }, [socketConnection, conversationId, serverHost, summaries]);
+  }, [socketConnection, conversationId, serverHost, summaries, t]);
 
   const openThread = useCallback((rootMessageId: string) => {
     const socket = asSocket(socketConnection);

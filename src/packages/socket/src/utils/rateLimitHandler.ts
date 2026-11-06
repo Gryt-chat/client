@@ -1,5 +1,7 @@
 import toast from "react-hot-toast";
 
+import { translateLocaleMessage } from "../../../../lib/locale";
+
 // Track recent rate limit messages to prevent duplicates
 const recentRateLimitMessages = new Set<string>();
 const RATE_LIMIT_DEBOUNCE_MS = 2000; // 2 seconds
@@ -22,15 +24,15 @@ export const handleRateLimitError = (
     }, RATE_LIMIT_DEBOUNCE_MS);
     
     // Format the message with proper time display
-    let displayMessage = error.message;
+    let displayMessage = translateLocaleMessage(error.message);
     
     // If retryAfterMs is provided and > 0, add time information
     if (error.retryAfterMs && error.retryAfterMs > 0) {
       const seconds = Math.ceil(error.retryAfterMs / 1000);
       if (seconds > 1) {
-        displayMessage += ` Please wait ${seconds} seconds before trying again.`;
+        displayMessage += ` ${translateLocaleMessage("Please wait {seconds} seconds before trying again.", undefined, { seconds })}`;
       } else {
-        displayMessage += ` Please wait a moment before trying again.`;
+        displayMessage += ` ${translateLocaleMessage("Please wait a moment before trying again.")}`;
       }
     }
     
@@ -40,12 +42,12 @@ export const handleRateLimitError = (
   
   // Somebody's contact setting explains itself (GRYT-1470).
   if (typeof error === 'object' && error.error === 'contact_refused' && error.message) {
-    toast.error(error.message, { id: `contact-refused:${error.message}` });
+    toast.error(translateLocaleMessage(error.message), { id: `contact-refused:${error.message}` });
     return;
   }
 
   // The server's sentence when it sent one; a bare code like "unidentified" means nothing to a reader.
   console.warn(`[${context}] error:`, error);
-  const message = typeof error === 'object' && error.message ? error.message : "Something went wrong. Try again in a moment.";
+  const message = typeof error === 'object' && error.message ? translateLocaleMessage(error.message) : translateLocaleMessage("Something went wrong. Try again in a moment.");
   toast.error(message, { id: `error:${message}` });
 };

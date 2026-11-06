@@ -2,11 +2,14 @@ import { Button, Dialog } from "@gryt/ui";
 
 import { useServerManagement, useSockets } from "@/socket";
 
+import { useLocale } from "../lib/localeContext";
+
 /**
  * Confirms one of the two ways out of a server. Removing is local and reversible;
  * leaving ends the membership, and an invite-only server may have no way back.
  */
 export function LeaveServer() {
+  const { t } = useLocale();
   const { removeServer, showRemoveServer, setShowRemoveServer, servers } =
     useServerManagement();
   const { leaveServer } = useSockets();
@@ -42,33 +45,28 @@ export function LeaveServer() {
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)]">
           <Dialog.Title>
-            {leaving ? "Leave" : "Remove"} <strong>{name}</strong>
+            {t(leaving ? "Leave" : "Remove")} <strong>{name}</strong>
           </Dialog.Title>
           <Dialog.Description className="mt-2">
             {leaving ? (
               <>
-                You stop being a member of {name}. Your messages stay and keep
-                your name on them, but your picture there is deleted, and if the
-                server is invite-only you will need a new invite to come back.
+                {t("You stop being a member of {server}. Your messages stay and keep your name on them, but your picture there is deleted, and if the server is invite-only you will need a new invite to come back.").replace("{server}", name ?? "")}
               </>
             ) : (
               <>
-                {name} goes from your sidebar. You are still a member, so you
-                keep your roles and anything you own there. You just will not be
-                connected: nobody sees you online, and changing your picture
-                will not change it there.
+                {t("{server} goes from your sidebar. You are still a member, so you keep your roles and anything you own there. You just will not be connected: nobody sees you online, and changing your picture will not change it there.").replace("{server}", name ?? "")}
               </>
             )}
           </Dialog.Description>
 
           <Dialog.Footer className="flex-wrap">
             <Button tone="ghost" onClick={close}>
-              Cancel
+              {t("Cancel")}
             </Button>
             {/* Danger for leaving only. Removing is reversible by adding the
                 server back, and painting it red says otherwise. */}
             <Button tone={leaving ? "danger" : "primary"} onClick={confirm}>
-              {leaving ? "Leave server" : "Remove from sidebar"}
+              {t(leaving ? "Leave server" : "Remove from sidebar")}
             </Button>
           </Dialog.Footer>
         </Dialog.Popup>

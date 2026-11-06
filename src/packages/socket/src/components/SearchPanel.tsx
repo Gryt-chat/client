@@ -6,6 +6,7 @@ import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 import type { Channel } from "@/settings/src/types/server";
 
 import { PiFileFill, PiMagnifyingGlassBold, PiXBold } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { type LocalConversation, useLocalDmSearch } from "../hooks/useLocalDmSearch";
 import { type MessageSearchHit, type SearchKind, useMessageSearch } from "../hooks/useMessageSearch";
 import { formatFileSize } from "../utils/formatFileSize";
@@ -31,25 +32,25 @@ const FILTER_HINTS: Record<SearchFilterKey, string> = {
   after: "a date",
 };
 
-const formatTime = (d: Date) => d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+const formatTime = (d: Date, locale: string) => d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
 
-function dayLabel(d: Date): string {
+function dayLabel(d: Date, locale: string, t: (message: string) => string): string {
   const today = new Date();
   const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return "Today";
-  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "long", ...(d.getFullYear() === today.getFullYear() ? {} : { year: "numeric" }) });
+  if (d.toDateString() === today.toDateString()) return t("Today");
+  if (d.toDateString() === yesterday.toDateString()) return t("Yesterday");
+  return d.toLocaleDateString(locale, { day: "numeric", month: "long", ...(d.getFullYear() === today.getFullYear() ? {} : { year: "numeric" }) });
 }
 
 type Option = { filter: SearchFilter; detail?: string };
 
-function noHitsLine(error: string | null | undefined, local: boolean, tab: SearchKind): string {
+function noHitsLine(error: string | null | undefined, local: boolean, tab: SearchKind, t: (message: string) => string): string {
   if (error === "unsupported") {
-    return local ? "This device has no message history to search." : "This server doesn't support search yet. It needs an update.";
+    return local ? t("This device has no message history to search.") : t("This server doesn't support search yet. It needs an update.");
   }
-  if (error === "rate_limited") return "Searching too fast. Give it a few seconds.";
-  if (error) return "Search didn't work this time. Try again.";
-  return tab === "files" ? "No files match." : "No messages match.";
+  if (error === "rate_limited") return t("Searching too fast. Give it a few seconds.");
+  if (error) return t("Search didn't work this time. Try again.");
+  return tab === "files" ? t("No files match.") : t("No messages match.");
 }
 
 /** The search side panel (GRYT-1738): messages and file names on this server, with
@@ -81,6 +82,7 @@ export function SearchPanel({
   /** A filter to start with on a server: the channel whose header opened it. */
   startIn?: SearchFilter;
 }) {
+  const { locale, t } = useLocale();
   const [text, setText] = useState("");
   const [filters, setFilters] = useState<SearchFilter[]>(() => {
     const first = local ? local.startIn : startIn;
@@ -136,12 +138,13 @@ export function SearchPanel({
     return dates.flatMap((d) => {
       const date = parseSearchDate(d);
       if (!date) return [];
-      const label = date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+      const label = date.toLocaleDateString(locale === "pt-BR" ? "pt-BR" : "en-US", { day: "numeric", month: "short", year: "numeric" });
       // after: a day means from the end of it, so "after yesterday" is today.
       const at = token.key === "after" ? new Date(date.getTime() + 86_400_000 - 1) : date;
-      return [{ filter: { key: token.key, value: at.toISOString(), label }, detail: d === label ? undefined : d }];
+      const detail = ["today", "yesterday", "hoje", "ontem"].includes(d) ? t(d.toLowerCase()) : d;
+      return [{ filter: { key: token.key, value: at.toISOString(), label }, detail: d === label ? undefined : detail }];
     });
-  }, [token, memberList, textChannels, local]);
+  }, [token, memberList, textChannels, local, locale, t]);
 
   useEffect(() => setOption(0), [token?.key, token?.partial]);
   useEffect(() => setActive(0), [query, filters, tab]);
@@ -211,14 +214,14 @@ export function SearchPanel({
     return resolveAvatarSrc(uploaded, nameOf(hit), member?.avatarWorn);
   };
   const count = (n: number) => (n >= 1000 ? "1000+" : String(n));
-  const searchPrompt = local ? "Search messages" : `Search ${serverName}`;
+  const searchPrompt = local ? t("Search messages") : t("Search {server}", { server: serverName });
   const muted = { color: "var(--gryt-neutral-11)" };
   let index = -1;
 
   return (
     <div
       role="complementary"
-      aria-label="Search"
+      aria-label={t("Search")}
       data-gryt="search-panel"
       className="flex h-full shrink-0 flex-col overflow-hidden"
       style={{ width: PANEL_WIDTH, background: "var(--gryt-neutral-3)", borderRadius: "var(--gryt-radius-lg)" }}
@@ -242,7 +245,7 @@ export function SearchPanel({
                 {f.label}
                 <button
                   type="button"
-                  aria-label={`Remove ${f.key}: ${f.label}`}
+                  aria-label={t("Remove {filter}: {value}", { filter: f.key, value: f.label })}
                   className="flex cursor-pointer border-0 bg-transparent p-0.5"
                   style={{ color: "var(--gryt-accent-11)" }}
                   onClick={() => setFilters((prev) => prev.filter((x) => x.key !== f.key))}
@@ -257,7 +260,7 @@ export function SearchPanel({
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={filters.length ? "" : searchPrompt}
-              aria-label={local ? "Search direct messages" : `Search ${serverName}`}
+              aria-label={local ? t("Search direct messages") : t("Search {server}", { server: serverName })}
               data-gryt="search-input"
               className="min-w-[80px] grow border-0 bg-transparent py-0.5 text-sm outline-none"
               style={{ color: "var(--gryt-neutral-12)" }}
@@ -265,7 +268,7 @@ export function SearchPanel({
           </div>
           <button
             type="button"
-            aria-label="Close search"
+            aria-label={t("Close search")}
             data-gryt="search-close"
             className="flex cursor-pointer rounded border-0 bg-transparent p-1"
             style={muted}
@@ -294,19 +297,19 @@ export function SearchPanel({
                 }}
                 onClick={() => setTab(k)}
               >
-                {k === "messages" ? "Messages" : "Files"} {tabs[k].loading && tabs[k].items.length === 0 ? "" : count(tabs[k].total)}
+                {t(k === "messages" ? "Messages" : "Files")} {tabs[k].loading && tabs[k].items.length === 0 ? "" : count(tabs[k].total)}
               </button>
             ))}
-            <span className="ml-auto text-xs" style={muted}>Newest first</span>
+            <span className="ml-auto text-xs" style={muted}>{t("Newest first")}</span>
           </div>
         )}
       </div>
 
       {token && (
-        <div className="flex flex-col py-1" role="listbox" aria-label={`Pick ${token.key}`} data-gryt="search-options">
+        <div className="flex flex-col py-1" role="listbox" aria-label={t("Pick {filter}", { filter: token.key })} data-gryt="search-options">
           {options.length === 0 ? (
             <div className="px-3 py-2 text-sm" style={muted}>
-              {token.key === "before" || token.key === "after" ? "Type a date like 2026-10-01, or today." : "Nothing matches that."}
+              {t(token.key === "before" || token.key === "after" ? "Type a date like 2026-10-01, or today." : "Nothing matches that.")}
             </div>
           ) : (
             options.map((o, i) => (
@@ -330,7 +333,7 @@ export function SearchPanel({
       )}
       {!token && !searching && (
         <div className="flex flex-col gap-2 p-3">
-          <div className="text-xs font-semibold uppercase" style={muted}>Narrow it down</div>
+          <div className="text-xs font-semibold uppercase" style={muted}>{t("Narrow it down")}</div>
           <div className="flex flex-wrap gap-1.5">
             {SEARCH_FILTER_KEYS.map((k) => (
               <button
@@ -344,14 +347,14 @@ export function SearchPanel({
                   inputRef.current?.focus();
                 }}
               >
-                <span style={{ color: "var(--gryt-accent-11)" }}>{k}:</span> {FILTER_HINTS[k]}
+                <span style={{ color: "var(--gryt-accent-11)" }}>{k}:</span> {t(FILTER_HINTS[k])}
               </button>
             ))}
           </div>
           <div className="mt-2 text-xs" style={muted}>
-            {local
+            {t(local
               ? "Searched on this device, in history it has decrypted. Nothing is sent to the server."
-              : "Searches the channels you can read here. Direct messages aren\u2019t included."}
+              : "Searches the channels you can read here. Direct messages aren’t included.")}
           </div>
         </div>
       )}
@@ -359,7 +362,7 @@ export function SearchPanel({
         <div ref={listRef} className="flex min-h-0 grow flex-col gap-1.5 overflow-y-auto px-2.5 pb-3" data-gryt="search-results">
           {groupByDay(hits).map((group) => (
             <div key={group.day} className="flex flex-col gap-1.5">
-              <div className="px-0.5 pt-2 text-xs font-semibold" style={muted}>{dayLabel(new Date(group.hits[0].created_at))}</div>
+              <div className="px-0.5 pt-2 text-xs font-semibold" style={muted}>{dayLabel(new Date(group.hits[0].created_at), locale === "pt-BR" ? "pt-BR" : "en-US", t)}</div>
               {group.hits.map((hit) => {
                 index += 1;
                 const i = index;
@@ -391,13 +394,13 @@ export function SearchPanel({
                     )}
                     <span className="flex min-w-0 grow flex-col gap-0.5">
                       <span className="flex items-baseline gap-1.5 text-xs">
-                        <span className="truncate text-sm font-semibold">{hit.file ? hit.file.name || "Unnamed file" : nameOf(hit)}</span>
-                        {!hit.file && <span className="shrink-0" style={muted}>{formatTime(new Date(hit.created_at))}</span>}
+                        <span className="truncate text-sm font-semibold">{hit.file ? hit.file.name || t("Unnamed file") : nameOf(hit)}</span>
+                        {!hit.file && <span className="shrink-0" style={muted}>{formatTime(new Date(hit.created_at), locale === "pt-BR" ? "pt-BR" : "en-US")}</span>}
                         <span className="ml-auto shrink-0" style={muted}>{local ? "" : "#"}{channelById.get(hit.conversation_id)?.name}</span>
                       </span>
                       {hit.file ? (
                         <span className="text-xs" style={muted}>
-                          {[formatFileSize(hit.file.size), nameOf(hit), formatTime(new Date(hit.created_at))].filter(Boolean).join(" · ")}
+                          {[formatFileSize(hit.file.size), nameOf(hit), formatTime(new Date(hit.created_at), locale === "pt-BR" ? "pt-BR" : "en-US")].filter(Boolean).join(" · ")}
                         </span>
                       ) : (
                         <span className="line-clamp-3 text-sm" style={{ color: "var(--gryt-neutral-11)", overflowWrap: "anywhere" }}>
@@ -408,10 +411,10 @@ export function SearchPanel({
                               <span key={k}>{p.text}</span>
                             ),
                           )}
-                          {!hit.snippet && <span style={muted}>Attachment</span>}
+                          {!hit.snippet && <span style={muted}>{t("Attachment")}</span>}
                         </span>
                       )}
-                      {hit.thread_id && <span className="text-xs" style={muted}>In a thread</span>}
+                      {hit.thread_id && <span className="text-xs" style={muted}>{t("In a thread")}</span>}
                     </span>
                   </button>
                 );
@@ -420,16 +423,16 @@ export function SearchPanel({
           ))}
           {hits.length === 0 && !shown.loading && (
             <div className="px-1 py-6 text-center text-sm" style={muted}>
-              {noHitsLine(shown.error, Boolean(local), tab)}
+              {noHitsLine(shown.error, Boolean(local), tab, t)}
             </div>
           )}
-          {shown.loading && <div className="px-1 py-3 text-center text-xs" style={muted}>Searching…</div>}
+          {shown.loading && <div className="px-1 py-3 text-center text-xs" style={muted}>{t("Searching…")}</div>}
           <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
       )}
       {local && (
         <p className="mt-auto flex gap-1.5 px-3.5 pb-3.5 pt-2.5 text-xs" style={{ ...muted, borderTop: "1px solid var(--gryt-neutral-6)" }}>
-          Searched on this device, in history it has decrypted. Nothing is sent to the server. Messages from before this device joined a conversation aren&rsquo;t here.
+          {t("Searched on this device, in history it has decrypted. Nothing is sent to the server. Messages from before this device joined a conversation aren’t here.")}
         </p>
       )}
     </div>

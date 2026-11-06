@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 
 import { getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
+import { useLocale } from "../../../../lib/localeContext";
 import type { TypingUser } from "../hooks/useTypingIndicator";
 
 interface TypingIndicatorProps {
@@ -12,17 +13,18 @@ interface TypingIndicatorProps {
   nameTags?: Map<string, string>;
 }
 
-function buildLabel(users: TypingUser[], tags?: Map<string, string>): string {
+function buildLabel(users: TypingUser[], t: (message: string, params?: Record<string, string | number>) => string, tags?: Map<string, string>): string {
   const name = (u: TypingUser) => {
     const tag = tags?.get(u.serverUserId);
     return tag ? `${u.nickname} ${tag}` : u.nickname;
   };
-  if (users.length === 1) return `${name(users[0])} is typing...`;
-  if (users.length === 2) return `${name(users[0])} and ${name(users[1])} are typing...`;
-  return "Several people are typing...";
+  if (users.length === 1) return t("{name} is typing…", { name: name(users[0]) });
+  if (users.length === 2) return t("{first} and {second} are typing…", { first: name(users[0]), second: name(users[1]) });
+  return t("Several people are typing…");
 }
 
 export function TypingIndicator({ typingUsers, serverHost, nameTags }: TypingIndicatorProps) {
+  const { t } = useLocale();
   const first = typingUsers[0] as TypingUser | undefined;
 
   return (
@@ -48,7 +50,7 @@ export function TypingIndicator({ typingUsers, serverHost, nameTags }: TypingInd
               />
             )}
             <span className="text-xs" style={{ color: "var(--gryt-neutral-11)", fontSize: 13 }}>
-              {buildLabel(typingUsers, nameTags)}
+              {buildLabel(typingUsers, t, nameTags)}
             </span>
           </div>
         </motion.div>

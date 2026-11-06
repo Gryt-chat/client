@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
+import { useLocale } from "../../../../lib/localeContext";
 import type { MemberInfo } from "../components/MemberSidebar";
 import { emitAuthenticated } from "../utils/tokenManager";
 
@@ -29,6 +30,7 @@ interface UseAdminActionsParams {
 export function useAdminActions({
   currentConnection, currentlyViewingServer, memberLists,
 }: UseAdminActionsParams) {
+  const { t } = useLocale();
   const [pendingDisconnectUser, setPendingDisconnectUser] = useState<PendingUser | null>(null);
   const [pendingKickUser, setPendingKickUser] = useState<PendingUser | null>(null);
   const [pendingBanUser, setPendingBanUser] = useState<PendingUser | null>(null);
@@ -47,10 +49,10 @@ export function useAdminActions({
         currentlyViewingServer.host,
       );
       if (!sent) {
-        toast.error("Not signed in to this server — try reconnecting.");
+        toast.error(t("Not signed in to this server — try reconnecting."));
       }
     },
-    [currentConnection, currentlyViewingServer],
+    [currentConnection, currentlyViewingServer, t],
   );
 
   const handleDisconnectUser = useCallback((targetServerUserId: string) => {

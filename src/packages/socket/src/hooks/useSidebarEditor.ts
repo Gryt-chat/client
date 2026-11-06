@@ -15,6 +15,7 @@ import {
 import { type ChannelScopeState, folderMoveAction } from "@/settings/src/folderPermissionRules";
 import type { Channel, serverDetailsList as ServerDetailsList, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
+import { useLocale } from "../../../../lib/localeContext";
 import { type ChannelKind, fieldsToKind, kindToFields } from "../components/channelKind";
 import type { ForumTagDraft } from "../components/ForumTagsField";
 import { type ChannelPlacement, folderOf, orderBelow, placeNewChannel } from "../components/sidebarTree";
@@ -32,6 +33,7 @@ export function useSidebarEditor({
   accessToken: _accessTokenProp,
   serverDetailsList,
 }: UseSidebarEditorParams) {
+  const { t } = useLocale();
   const getFreshAccessToken = () =>
     currentlyViewingServer ? getServerAccessToken(currentlyViewingServer.host) : _accessTokenProp;
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -238,9 +240,9 @@ export function useSidebarEditor({
   const saveScope = useCallback((choice?: string, rules?: ChannelRule[]) => {
     const item = selectedItemRef.current;
     if (!currentlyViewingServer || (item?.kind !== "channel" && item?.kind !== "folder")) return;
-    if (!currentConnection?.connected) return toast.error("Not connected to the server yet.");
+    if (!currentConnection?.connected) return toast.error(t("Not connected to the server yet."));
     const accessToken = getFreshAccessToken();
-    if (!accessToken) return toast.error("Join the server first.");
+    if (!accessToken) return toast.error(t("Join the server first."));
 
     const payload = scopeSetPayload(scopeChoiceFromValue(choice ?? sheetScopeChoice), rules ?? sheetScopeRules);
     if (item.kind === "folder") {
@@ -258,9 +260,9 @@ export function useSidebarEditor({
   const followFolder = useCallback(() => {
     const item = selectedItemRef.current;
     if (!currentlyViewingServer || item?.kind !== "channel") return;
-    if (!currentConnection?.connected) return toast.error("Not connected to the server yet.");
+    if (!currentConnection?.connected) return toast.error(t("Not connected to the server yet."));
     const accessToken = getFreshAccessToken();
-    if (!accessToken) return toast.error("Join the server first.");
+    if (!accessToken) return toast.error(t("Join the server first."));
     currentConnection.emit("server:channels:scope:follow", { accessToken, channelId: item.channelId ?? item.id });
     // The reply brings the folder's rules; the choice is already made.
     setSheetScopeFollowsFolder(true);
@@ -280,9 +282,9 @@ export function useSidebarEditor({
     (order: SidebarReorderEntry[]) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected)
-        return toast.error("Not connected to the server yet.");
+        return toast.error(t("Not connected to the server yet."));
       const accessToken = getFreshAccessToken();
-      if (!accessToken) return toast.error("Join the server first.");
+      if (!accessToken) return toast.error(t("Join the server first."));
       currentConnection.emit("server:sidebar:reorder", { accessToken, order });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -376,9 +378,9 @@ export function useSidebarEditor({
     async (paletteKind: string, index: number, label?: string) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected)
-        return toast.error("Not connected to the server yet.");
+        return toast.error(t("Not connected to the server yet."));
       const accessToken = getFreshAccessToken();
-      if (!accessToken) return toast.error("Join the server first.");
+      if (!accessToken) return toast.error(t("Join the server first."));
 
       const getNextPosition = () => {
         const maxPos = Math.max(
@@ -492,12 +494,12 @@ export function useSidebarEditor({
     async (opts: { name: string; type: "text" | "voice"; layout?: "chat" | "forum"; automated?: boolean; description?: string | null; forumTags?: { id: string; name: string; emoji?: string | null; color?: string | null }[]; defaultNotificationLevel?: NotificationLevel; placement?: ChannelPlacement }) => {
       if (!currentlyViewingServer) return;
       if (!currentConnection || !currentConnection.connected) {
-        toast.error("Not connected to the server yet.");
+        toast.error(t("Not connected to the server yet."));
         return;
       }
       const accessToken = getFreshAccessToken();
       if (!accessToken) {
-        toast.error("Join the server first.");
+        toast.error(t("Join the server first."));
         return;
       }
       const spot = placeNewChannel(effectiveSidebarItems, opts.placement);
@@ -550,9 +552,9 @@ export function useSidebarEditor({
 
     if (!currentlyViewingServer) return;
     if (!currentConnection || !currentConnection.connected)
-      return toast.error("Not connected to the server yet.");
+      return toast.error(t("Not connected to the server yet."));
     const accessToken = getFreshAccessToken();
-    if (!accessToken) return toast.error("Join the server first.");
+    if (!accessToken) return toast.error(t("Join the server first."));
 
     if (selectedSidebarItemId === item.id) {
       setSelectedSidebarItemId(null);
@@ -582,9 +584,9 @@ export function useSidebarEditor({
     if (!currentlyViewingServer) return;
     if (!selectedSidebarItem) return;
     if (!currentConnection || !currentConnection.connected)
-      return toast.error("Not connected to the server yet.");
+      return toast.error(t("Not connected to the server yet."));
     const accessToken = getFreshAccessToken();
-    if (!accessToken) return toast.error("Join the server first.");
+    if (!accessToken) return toast.error(t("Join the server first."));
 
     if (selectedSidebarItem.kind === "channel") {
       const chId = selectedSidebarItem.channelId ?? selectedSidebarItem.id;

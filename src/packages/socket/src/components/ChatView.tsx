@@ -8,6 +8,7 @@ import { nameTagsFor } from "@/lib/nameTags";
 import { useSettings } from "@/settings";
 
 import { PiArchiveFill, PiArrowDownBold, PiChatsTeardropFill, PiChatTeardropTextFill, PiCloudArrowUpFill, PiDotsThreeBold, PiMagnifyingGlassBold, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { registerThreadCloser, setThreadExpanded, useThreadExpanded } from "../hooks/openThreadMemory";
 import { draftKey, returnDraft, type ReturnedDraft, saveDraftToDisk, takeReturnedDraft, useReturnedDraft } from "../hooks/returnedDrafts";
 import { muteLiftsAt, useTextMute } from "../hooks/textMute";
@@ -61,7 +62,7 @@ function placeholderFor(s: {
   channelName: string | undefined;
   dm: boolean;
   inClear: boolean | undefined;
-}): string {
+}, t: (message: string, params?: Record<string, string | number>) => string): string {
   if (s.offlineLine) return s.offlineLine;
   /* A placeholder, so short. The notice in the body says why. */
   if (s.voiceTextHidden) return "Can't chat here right now";
@@ -69,8 +70,8 @@ function placeholderFor(s: {
   if (!s.maySend) return READ_ONLY_LINE;
   if (s.waitSeconds) return `Please wait ${s.waitSeconds} seconds...`;
   if (!s.channelName) return "Chat with your friends!";
-  if (!s.dm) return `Message #${s.channelName}`;
-  return `Message ${s.channelName}${s.inClear ? " (not encrypted)" : ""}`;
+  if (!s.dm) return t("Message #{channel}", { channel: s.channelName });
+  return t(s.inClear ? "Message {recipient} (not encrypted)" : "Message {recipient}", { recipient: s.channelName });
 }
 
 function HeaderGlyph({ forum, automated, voice }: { forum: boolean; automated: boolean | undefined; voice: boolean }) {
@@ -219,6 +220,7 @@ export const ChatView = memo(({
   /** Whether an open thread shares the pane with the conversation, or takes it. */
   threadBeside?: boolean;
 }) => {
+  const { t } = useLocale();
   const { chatMediaVolume, setChatMediaVolume, blurProfanity, smileyConversion, disabledSmileys } = useSettings();
   const editorRef = useRef<ChatEditorHandle>(null);
   /* Its own handle: sharing the channel's would show a half-typed channel draft
@@ -373,8 +375,8 @@ export const ChatView = memo(({
       : 0;
   const deleteDescription =
     deleteReplyCount > 0
-      ? `This deletes the message and the ${deleteReplyCount} ${deleteReplyCount === 1 ? "reply" : "replies"} in its thread. You can't undo it.`
-      : "This deletes the message for everyone. You can't undo it.";
+      ? t(`This deletes the message and the ${deleteReplyCount} ${deleteReplyCount === 1 ? "reply" : "replies"} in its thread. You can't undo it.`)
+      : t("This deletes the message for everyone. You can't undo it.");
 
   const { typingUsers, emitTyping, emitStopTyping } = useTypingIndicator(
     socketConnection ?? null,
@@ -827,7 +829,7 @@ export const ChatView = memo(({
         replyingTo={threadReplyingTo}
         editingMessage={threadEditing}
         editorRef={threadEditorRef}
-        placeholder={mayPost ? "Reply to thread…" : READ_ONLY_LINE}
+        placeholder={mayPost ? t("Reply to thread…") : t(READ_ONLY_LINE)}
         disabled={!maySend}
         allowFiles={mayHere("attach_files")}
         maxFileSize={maxFileSize}
@@ -854,7 +856,7 @@ export const ChatView = memo(({
         serverHost={serverHost}
       />
     ),
-    [maySend, mayPost, mayHere, maxFileSize, composerMentions, composerChannels, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage],
+    [maySend, mayPost, mayHere, maxFileSize, composerMentions, composerChannels, getSenderName, threads, emitThreadTyping, emitThreadStopTyping, serverHost, threadReplyingTo, threadEditing, cancelThreadEditing, editMessage, t],
   );
 
 
@@ -882,7 +884,7 @@ export const ChatView = memo(({
     channelName,
     dm: conversationKind === "dm",
     inClear,
-  });
+  }, t);
 
   const editorDisabled = !!offlineLine || (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
 
@@ -898,7 +900,7 @@ export const ChatView = memo(({
         Box and Flex only render as div or span, so the roles go on the existing
         containers rather than restructuring into main/nav/aside.
       */}
-      <div className="grow overflow-hidden" role="main" aria-label="Conversation" data-gryt="chat-view" style={{ minWidth: 0,
+      <div className="grow overflow-hidden" role="main" aria-label={t("Conversation")} data-gryt="chat-view" style={{ minWidth: 0,
           background: "var(--gryt-neutral-3)",
           borderRadius: flush ? 0 : "var(--gryt-radius-lg)",
           position: "relative",
@@ -907,7 +909,7 @@ export const ChatView = memo(({
           <div className="chat-view-drop-overlay">
             <div className="chat-view-drop-overlay-content">
               <PiCloudArrowUpFill size={48} />
-              <span>Drop files here</span>
+              <span>{t("Drop files here")}</span>
             </div>
           </div>
         )}
@@ -935,8 +937,8 @@ export const ChatView = memo(({
               {headerDetail}
               <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
                 {onSearch && (
-                  <Tooltip title={`Search (${SEARCH_SHORTCUT})`}>
-                    <button type="button" aria-label="Search" data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
+                  <Tooltip title={`${t("Search")} (${SEARCH_SHORTCUT})`}>
+                    <button type="button" aria-label={t("Search")} data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
                       <PiMagnifyingGlassBold size={16} />
                     </button>
                   </Tooltip>
@@ -946,9 +948,9 @@ export const ChatView = memo(({
                 )}
                 {moreMenu && (
                   <Menu.Root>
-                    <Tooltip title="More">
+                    <Tooltip title={t("More")}>
                       <Menu.Trigger
-                        aria-label="More"
+                        aria-label={t("More")}
                         data-gryt="chat-more"
                         render={<button type="button" className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1" style={{ color: "var(--gryt-neutral-11)" }} />}
                       >
@@ -977,7 +979,7 @@ export const ChatView = memo(({
               currentUserId={currentUserId}
               forumTags={forumTags ?? []}
               onOpenTopic={threads.openSummary}
-              readOnlyLine={mayPost ? undefined : READ_ONLY_LINE}
+              readOnlyLine={mayPost ? undefined : t(READ_ONLY_LINE)}
             />
           ) : (
           <>
@@ -992,8 +994,7 @@ export const ChatView = memo(({
           {showVoiceDisabled && (
             <div className="flex grow items-center justify-center">
               <span className="text-sm text-gryt-muted" style={{ textAlign: "center", padding: "16px", maxWidth: "300px" }}>
-                There&rsquo;s no text chat here right now. It&rsquo;s either switched off for this
-                channel, or you need to join the call first.
+                {t("There’s no text chat here right now. It’s either switched off for this channel, or you need to join the call first.")}
               </span>
             </div>
           )}
@@ -1015,7 +1016,7 @@ export const ChatView = memo(({
             >
               {isLoadingOlder && (
                 <div className="flex justify-center py-2">
-                  <span className="text-xs text-gryt-muted">Loading older messages...</span>
+                  <span className="text-xs text-gryt-muted">{t("Loading older messages...")}</span>
                 </div>
               )}
                 {chatMessages.map((m, i) => {
@@ -1049,14 +1050,14 @@ export const ChatView = memo(({
                     {encryptedHere && (
                       <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
-                        <span className="flex items-center gap-1.5"><PiShieldCheckFill size={11} aria-hidden /> Encrypted from here on</span>
+                        <span className="flex items-center gap-1.5"><PiShieldCheckFill size={11} aria-hidden /> {t("Encrypted from here on")}</span>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
                       </div>
                     )}
                     {discordEnds && (
                       <div role="note" className="flex items-center gap-3 py-2 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
-                        <span className="flex items-center gap-1.5"><PiArchiveFill size={11} aria-hidden /> Discord history ends here</span>
+                        <span className="flex items-center gap-1.5"><PiArchiveFill size={11} aria-hidden /> {t("Discord history ends here")}</span>
                         <span className="h-px flex-1" style={{ background: "var(--gryt-neutral-5)" }} />
                       </div>
                     )}
@@ -1104,7 +1105,7 @@ export const ChatView = memo(({
                 })}
               {historyWindow?.loadingNewer && (
                 <div className="flex justify-center py-2">
-                  <span className="text-xs text-gryt-muted">Loading newer messages...</span>
+                  <span className="text-xs text-gryt-muted">{t("Loading newer messages...")}</span>
                 </div>
               )}
             </div>
@@ -1122,11 +1123,11 @@ export const ChatView = memo(({
               >
                 {newBelow > 0 && (
                   <>
-                    <span style={{ color: "var(--gryt-accent-11)", fontWeight: 600 }}>{newBelow > 99 ? "99+" : newBelow} new</span>
+                    <span style={{ color: "var(--gryt-accent-11)", fontWeight: 600 }}>{newBelow > 99 ? "99+" : newBelow} {t("new messages")}</span>
                     <span aria-hidden="true" style={{ color: "var(--gryt-neutral-9)" }}>·</span>
                   </>
                 )}
-                Jump to present
+                {t("Jump to present")}
                 <PiArrowDownBold aria-hidden="true" size={12} />
               </button>
             </div>
@@ -1155,7 +1156,7 @@ export const ChatView = memo(({
               style={{ borderRadius: "var(--gryt-radius-md)", border: "1px dashed var(--gryt-neutral-6)", background: "var(--gryt-neutral-3)", color: "var(--gryt-neutral-11)" }}
             >
               <PiRobotFill size={22} style={{ color: "var(--gryt-neutral-9)", flexShrink: 0 }} />
-              <span>This is an automated channel &mdash; messages come from bots and the system. You can read here, but not post.</span>
+              <span>{t("This is an automated channel — messages come from bots and the system. You can read here, but not post.")}</span>
             </div>
           ) : (
           <>
@@ -1228,19 +1229,19 @@ export const ChatView = memo(({
       <ConfirmDialog
         open={!!pendingDeleteMessage}
         onOpenChange={(open) => { if (!open) setPendingDeleteMessage(null); }}
-        title="Delete message?"
+        title={t("Delete message?")}
         description={deleteDescription}
-        confirmLabel="Delete"
+        confirmLabel={t("Delete")}
         onConfirm={confirmDelete}
       />
       <ConfirmDialog
         open={!!massSend}
         onOpenChange={(open) => { if (!open) setMassSend(null); }}
-        title={`Notify up to ${massSend?.here ? massReach.online : massReach.all} people?`}
+        title={t(`Notify up to ${massSend?.here ? massReach.online : massReach.all} people?`)}
         description={massSend?.here
-          ? "@here pings everyone who's online and can read this channel. Each of them gets a notification."
-          : `@everyone pings everyone who can read this channel, and ${massReach.online} of them are online right now. Each of them gets a notification.`}
-        confirmLabel="Send and notify"
+          ? t("@here pings everyone who's online and can read this channel. Each of them gets a notification.")
+          : t(`@everyone pings everyone who can read this channel, and ${massReach.online} of them are online right now. Each of them gets a notification.`)}
+        confirmLabel={t("Send and notify")}
         confirmTone="primary"
         onConfirm={() => { massSend?.send(); setMassSend(null); }}
       />

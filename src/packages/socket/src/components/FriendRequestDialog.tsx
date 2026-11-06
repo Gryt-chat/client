@@ -1,5 +1,6 @@
 import { Button, Dialog } from "@gryt/ui";
 
+import { useLocale } from "../../../../lib/localeContext";
 import { friendAction, useFriendState } from "../hooks/friendsStore";
 import { useServerManagement } from "../hooks/useServerManagement";
 import { useSockets } from "../hooks/useSockets";
@@ -8,6 +9,7 @@ import { MemberIdentityCard } from "./MemberIdentityCard";
 
 /** Their whole card, the server it came through, and Accept / Decline right there. */
 export function FriendRequestDialog() {
+  const { t } = useLocale();
   const current = useOpenFriendRequest();
   const { memberLists } = useSockets();
   const { servers } = useServerManagement();
@@ -26,17 +28,17 @@ export function FriendRequestDialog() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[24rem] max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto">
-          <Dialog.Title>{member ? `${member.nickname} wants to be friends` : "Friend request"}</Dialog.Title>
+          <Dialog.Title>{member ? `${member.nickname} ${t("wants to be friends")}` : t("Friend request")}</Dialog.Title>
           <div className="mt-3 flex flex-col gap-3 text-sm">
-            <span className="text-gryt-muted">On {serverName}</span>
+            <span className="text-gryt-muted">{t("On")} {serverName}</span>
             {member ? <MemberIdentityCard member={member} serverHost={current?.host} inline /> : null}
             {state === "incoming" || state === null ? (
               <div className="flex flex-wrap gap-2">
-                <Button className="flex-1" onClick={() => answer("accept")}>Accept</Button>
-                <Button className="flex-1" tone="neutral" onClick={() => answer("decline")}>Decline</Button>
+                <Button className="flex-1" onClick={() => answer("accept")}>{t("Accept")}</Button>
+                <Button className="flex-1" tone="neutral" onClick={() => answer("decline")}>{t("Decline")}</Button>
               </div>
             ) : (
-              <span className="text-gryt-muted">You&rsquo;ve already answered this one.</span>
+              <span className="text-gryt-muted">{t("You’ve already answered this one.")}</span>
             )}
           </div>
         </Dialog.Popup>

@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { SealDecision, SealedAttachmentKey } from "@/common";
 import { getServerAccessToken, getServerRefreshToken } from "@/common";
 
+import { useLocale } from "../../../../lib/localeContext";
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
 import { getMediaDimensions } from "../utils/imageUtils";
 import { shouldRefreshToken } from "../utils/tokenManager";
@@ -114,6 +115,7 @@ export function useChatSend({
   seal,
   sealFile,
 }: UseChatSendParams): UseChatSendReturn {
+  const { t } = useLocale();
   const sealDecisionRef = useRef(sealDecision);
   const activeConversationIdRef = useRef(activeConversationId);
   activeConversationIdRef.current = activeConversationId;
@@ -299,13 +301,13 @@ export function useChatSend({
       // say something: a message that vanishes silently reads as one that sent.
       if (isRateLimitedRef.current) return;
       if (isVoiceChannelTextChatRef.current && !textInVoiceEnabledRef.current) {
-        toast.error("Text chat is switched off in this channel");
+        toast.error(t("Text chat is switched off in this channel"));
       } else if (isVoiceChannelTextChatRef.current && !isConnectedRef.current) {
-        toast.error("Join the call to chat here");
+        toast.error(t("Join the call to chat here"));
       } else if (!isConnectedRef.current) {
-        toast.error("Not connected to this server");
+        toast.error(t("Not connected to this server"));
       } else {
-        toast.error("That message could not be sent");
+        toast.error(t("That message could not be sent"));
       }
       return;
     }
@@ -405,7 +407,7 @@ export function useChatSend({
           const keyed = uploaded.flatMap((u) => (u.meta ? [[u.fileId, u.meta] as const] : []));
           attachmentKeys = keyed.length ? Object.fromEntries(keyed) : null;
         } catch (err) {
-          const msg = err instanceof Error && err.message ? err.message : "Failed to upload file(s)";
+          const msg = t(err instanceof Error && err.message ? err.message : "Failed to upload file(s)");
           toast.error(msg, { duration: 8000 });
           // The draft goes back into the composer, so the row goes; leaving it failed showed it twice.
           const gone = (m: ChatMessage) => m.message_id !== pendingId;
@@ -455,7 +457,7 @@ export function useChatSend({
     doSend();
     // `sealFile` is in here rather than behind a ref: a stale one is not a stale
     // flag — a newly sealable conversation sends the file in the clear (GRYT-761).
-  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, seal, sealFile, markLatestPendingFailed, setChatMessages, setMessageCache, plaintextGateKey]);
+  }, [currentConnection, currentlyViewingServer?.host, activeConversationId, serverHost, cacheKeyFor, seal, sealFile, markLatestPendingFailed, setChatMessages, setMessageCache, plaintextGateKey, t]);
 
   const editMessage = useCallback((messageId: string, conversationId: string, newText: string) => {
     const text = newText.trim();

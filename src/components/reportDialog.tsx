@@ -9,6 +9,7 @@ import { Alert, Button, Checkbox, Dialog, Divider, TextField } from "@gryt/ui";
 import { useMemo, useState } from "react";
 
 import { PiArrowCircleUpFill,PiBugFill, PiChatTeardropDotsFill } from "../lib/icons";
+import { useLocale } from "../lib/localeContext";
 import { callTimeline } from "../lib/reports/callTimeline";
 import { useDiagnostics } from "../lib/reports/diagnostics";
 import { recentLogs } from "../lib/reports/logs";
@@ -62,6 +63,7 @@ const COPY: Record<ReportType, { title: string; description: string; placeholder
 };
 
 function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; onDone: () => void }) {
+  const { t } = useLocale();
   const diagnostics = useDiagnostics();
 
   const [message, setMessage] = useState(draft);
@@ -86,7 +88,7 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
 
   const attached = useMemo(() => describeAttached(report), [report]);
 
-  const copy = COPY[type];
+  const copy = Object.fromEntries(Object.entries(COPY[type]).map(([key, value]) => [key, t(value)])) as typeof COPY[ReportType];
   const empty = message.trim() === "";
 
   async function send() {
@@ -144,10 +146,10 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
         <Divider />
 
         <div className="flex justify-end gap-3">
-          <Dialog.Close render={<Button tone="neutral" size="small">Cancel</Button>} />
+          <Dialog.Close render={<Button tone="neutral" size="small">{t("Cancel")}</Button>} />
           <Button size="small" disabled={empty || sending} onClick={() => void send()}>
             <PiArrowCircleUpFill size={14} />
-            {sending ? "Sending…" : copy.send}
+          {sending ? t("Sending…") : copy.send}
           </Button>
         </div>
       </div>
@@ -170,12 +172,13 @@ function Attached({
   includeLogs: boolean;
   onIncludeLogs: (on: boolean) => void;
 }) {
+  const { t } = useLocale();
   return (
     <div className="flex flex-col gap-2">
       {lines.length > 0 && (
         <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
           <summary className="cursor-pointer text-sm text-gryt-muted">
-            What gets sent with this
+            {t("What gets sent with this")}
           </summary>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
             {lines.map((line) => (
@@ -190,7 +193,7 @@ function Attached({
 
       <details className="rounded-(--gryt-radius-lg) border border-gryt-neutral-6 px-3 py-2">
         <summary className="cursor-pointer text-sm text-gryt-muted">
-          Read the exact data
+          {t("Read the exact data")}
         </summary>
         <pre
           className="mt-2 max-h-64 overflow-auto text-xs leading-relaxed"
@@ -203,9 +206,7 @@ function Attached({
       <label className="flex cursor-pointer items-start gap-2 text-xs text-gryt-muted">
         <Checkbox checked={includeLogs} onCheckedChange={onIncludeLogs} />
         <span>
-          Include the app&rsquo;s recent log. It makes a bug far easier to find, and it
-          can contain personal information — a failed connection records the address of
-          the server, which for a self-hosted one is often a home address.
+          {t("Include the app’s recent log. It makes a bug far easier to find, and it can contain personal information — a failed connection records the address of the server, which for a self-hosted one is often a home address.")}
         </span>
       </label>
 
@@ -213,8 +214,8 @@ function Attached({
           server's version is a number about software; its address is not. */}
       <span className="text-xs text-gryt-muted">
         {includeLogs
-          ? "No messages and no names. The log may name servers you connect to."
-          : "No messages, no names, and nothing about who you talk to."}
+          ? t("No messages and no names. The log may name servers you connect to.")
+          : t("No messages, no names, and nothing about who you talk to.")}
       </span>
     </div>
   );
@@ -225,15 +226,16 @@ function Attached({
  * **The title is the words mobile's toast already uses.**
  */
 function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
+  const { t } = useLocale();
   const bug = type === "bug";
 
   return (
     <>
-      <Dialog.Title>{bug ? "Bug report received" : "Feedback received"}</Dialog.Title>
+      <Dialog.Title>{t(bug ? "Bug report received" : "Feedback received")}</Dialog.Title>
       <Dialog.Description>
         {bug
-          ? "Thanks for your bug report, we greatly appreciate it."
-          : "Thanks for your feedback, we greatly appreciate it."}
+          ? t("Thanks for your bug report, we greatly appreciate it.")
+          : t("Thanks for your feedback, we greatly appreciate it.")}
       </Dialog.Description>
 
       {/* Focused on mount so Enter closes it without reaching for the mouse,
@@ -241,7 +243,7 @@ function Sent({ type, onDone }: { type: ReportType; onDone: () => void }) {
           the backdrop already close it through Dialog.Root. */}
       <div className="mt-6 flex justify-end">
         <Button size="small" autoFocus onClick={onDone}>
-          Done
+          {t("Done")}
         </Button>
       </div>
     </>

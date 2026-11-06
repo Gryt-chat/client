@@ -45,6 +45,7 @@ import type {
 } from "@/settings/src/types/server";
 
 import { PiArrowsClockwiseFill, PiClockFill, PiInfoFill } from "../../../../lib/icons";
+import { translateLocaleMessage } from "../../../../lib/locale";
 import { type DmKeyFix, dmKeyWarningsOff, showDmKeyWarning } from "../components/dmKeyWarningToast";
 import type { MemberInfo } from "../components/MemberSidebar";
 import {
@@ -413,9 +414,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // No guest left there now, so stop offering to move one. Sign-out clears the answers, not this list.
     if (guestIsGone(joinInfo.identityClaim)) forgetGuestScope(identityScopeFor(host));
     const claimed = takeClaimOutcome(host) ? claimOutcomeToast(joinInfo.identityClaim) : null;
-    if (claimed?.tone === "success") toast.success(claimed.message, { duration: 6000 });
-    else if (claimed?.tone === "error") toast.error(claimed.message, { duration: 8000 });
-    else if (claimed) toast(claimed.message, { duration: 6000, icon: createElement(PiInfoFill, { size: 18 }) });
+    if (claimed?.tone === "success") toast.success(translateLocaleMessage(claimed.message), { duration: 6000 });
+    else if (claimed?.tone === "error") toast.error(translateLocaleMessage(claimed.message), { duration: 8000 });
+    else if (claimed) toast(translateLocaleMessage(claimed.message), { duration: 6000, icon: createElement(PiInfoFill, { size: 18 }) });
 
     // Said out loud, because the request was made in a dialog that has long since
     // closed and grey going to normal is a change nobody is watching for.
@@ -425,7 +426,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       const updated = { ...serversRef.current, [host]: rest };
       serversRef.current = updated;
       setServers(updated);
-      toast.success(`You were let in to ${rest.name || host}`, { duration: 8000 });
+      toast.success(translateLocaleMessage("You were let in to {server}", undefined, { server: rest.name || host }), { duration: 8000 });
     }
 
     setServerProfiles(prev => ({
@@ -498,7 +499,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
      the old one (GRYT-1667). Asking for the profile again puts it back in settings. */
   socket.on("profile:media-refused", (data: { purpose?: unknown }) => {
     const what = data?.purpose === "banner" ? "banner" : "avatar";
-    toast.error(`That ${what} couldn't be processed, so you still have your old one. Try a different file.`);
+    toast.error(translateLocaleMessage(what === "banner"
+      ? "That banner couldn't be processed, so you still have your old one. Try a different file."
+      : "That avatar couldn't be processed, so you still have your old one. Try a different file."));
     socket.emit("avatar:updated");
   });
 
@@ -538,7 +541,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   socket.on("server:kicked", (data: { reason?: string; action?: "kick" | "ban" }) => {
     const serverName = serversRef.current[host]?.name || host;
-    toast.error(data?.reason ? `${serverName}: ${data.reason}` : `You were removed from ${serverName}.`);
+    toast.error(data?.reason ? `${serverName}: ${data.reason}` : translateLocaleMessage("You were removed from {server}.", undefined, { server: serverName }));
 
     // Both, not just the access token: keeping the refresh token let a kicked
     // client mint a new one and walk straight back in.
@@ -556,7 +559,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("server:session:replaced", (data: { message?: string }) => {
-    toast(data?.message || "You signed in from another device or tab.", {
+    toast(data?.message ? translateLocaleMessage(data.message) : translateLocaleMessage("You signed in from another device or tab."), {
       icon: createElement(PiArrowsClockwiseFill, { size: 18 }),
       duration: 8000,
     });
@@ -575,14 +578,14 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       const last = nonceRetryLastAttempt.get(host) ?? 0;
       if (Date.now() - last >= TOKEN_HEAL_COOLDOWN_MS) {
         nonceRetryLastAttempt.set(host, Date.now());
-        toast("Still joining…", { id: `still-joining:${host}`, duration: 3000 });
+        toast(translateLocaleMessage("Still joining…"), { id: `still-joining:${host}`, duration: 3000 });
         socket.emit("server:join", {
           nickname,
           inviteCode: serversRef.current[host]?.token || undefined,
         });
         return;
       }
-      toast.error(errorInfo.message || `Couldn't join ${host}. Try again in a moment.`, { id: `still-joining:${host}` });
+      toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Couldn't join {server}. Try again in a moment.", undefined, { server: host }), { id: `still-joining:${host}` });
       return;
     }
 
@@ -602,7 +605,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }
 
     if (errorInfo.error === 'invalid_invite') {
-      const message = errorInfo.message || 'Invalid invite code.';
+      const message = errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Invalid invite code.");
       toast.error(message, { duration: 6000 });
 
       const currentServers = serversRef.current;
@@ -613,12 +616,12 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         lastInviteJoinAttemptRef.current[host] = undefined;
       }
 
-      toast(`Open a fresh invite link to re-join ${host}.`, { duration: 8000 });
+      toast(translateLocaleMessage("Open a fresh invite link to re-join {server}.", undefined, { server: host }), { duration: 8000 });
       return;
     }
 
     if (errorInfo.error === "invite_rate_limited") {
-      const message = errorInfo.message || "Too many incorrect invite attempts. Please wait.";
+      const message = errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Too many incorrect invite attempts. Please wait.");
       toast.error(message, { duration: 6000 });
       return;
     }
@@ -627,30 +630,30 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // denial reads the same, because the server will not say which it is.
     if (errorInfo.error === "approval_pending") {
       const message =
-        errorInfo.message || "This server admits people by request. Yours is with the moderators.";
+        errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("This server admits people by request. Yours is with the moderators.");
       toast(message, { duration: 8000, icon: createElement(PiClockFill, { size: 18 }) });
       return;
     }
 
     if (errorInfo.error === "invite_required") {
-      const message = errorInfo.message || "This server is invite-only.";
+      const message = errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("This server is invite-only.");
       toast.error(message, { duration: 6000 });
-      toast(`Open an invite link to join ${host}.`, { duration: 8000 });
+      toast(translateLocaleMessage("Open an invite link to join {server}.", undefined, { server: host }), { duration: 8000 });
       return;
     }
 
     if (errorInfo.error === 'user_not_authorized' || errorInfo.error === 'join_token_invalid' || errorInfo.error === 'join_verification_failed') {
-      const message = errorInfo.message || 'You are not authorized to join this server.';
+      const message = errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("You are not authorized to join this server.");
       toast.error(message, { duration: 6000 });
       setTimeout(() => {
         if (errorInfo.canReapply) {
           toast(
-            `You can re-apply to join this server or remove it from your list. Check the server settings for more options.`,
+            translateLocaleMessage("You can re-apply to join this server or remove it from your list. Check the server settings for more options."),
             { duration: 8000, icon: createElement(PiInfoFill, { size: 18 }) }
           );
         } else {
           toast(
-            `You can remove this server from your list if you no longer need access.`,
+            translateLocaleMessage("You can remove this server from your list if you no longer need access."),
             { duration: 6000, icon: createElement(PiInfoFill, { size: 18 }) }
           );
         }
@@ -665,7 +668,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       errorInfo.error === "leave_failed" ||
       errorInfo.error === "not_registered"
     ) {
-      toast.error(errorInfo.message || "Could not leave this server.", { duration: 8000 });
+      toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Could not leave this server."), { duration: 8000 });
       return;
     }
 
@@ -682,7 +685,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       "bans_failed",
     ];
     if (MODERATION_ERRORS.includes(errorInfo.error)) {
-      toast.error(errorInfo.message || "That action was refused.");
+      toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("That action was refused."));
       return;
     }
 
@@ -690,7 +693,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // the network. Tokens are left alone: the identity was rejected, not them.
     if (errorInfo.error === "identity_tier_refused") {
       const message =
-        errorInfo.message || "This server requires a Gryt account to join.";
+        errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("This server requires a Gryt account to join.");
       toast.error(message, { duration: 6000 });
 
       setFailedServerDetails((prev) => ({
@@ -713,7 +716,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     ) {
       removeServerAccessToken(host);
       removeServerRefreshToken(host);
-      toast.error(errorInfo.message || `Sorry, you can't join ${host}.`);
+      toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Sorry, you can't join {server}.", undefined, { server: host }));
 
       // Recording it here is what stops the retry loops asking again every few
       // seconds; without it the refusal repeats for as long as the app is open.
@@ -721,7 +724,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         ...prev,
         [host]: {
           error: errorInfo.error,
-          message: errorInfo.message || "Sorry, you can't join this server.",
+          message: errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Sorry, you can't join this server."),
           timestamp: Date.now(),
         },
       }));
@@ -745,7 +748,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       }
       return;
     }
-    toast.error(errorInfo.message || `Couldn't join ${host}. Try again in a moment.`);
+    toast.error(errorInfo.message ? translateLocaleMessage(errorInfo.message) : translateLocaleMessage("Couldn't join {server}. Try again in a moment.", undefined, { server: host }));
   });
 
   /** Sent into that call's own room and nowhere else, so receiving it is the
@@ -914,6 +917,6 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
 
   socket.on("error", (msg: unknown) => {
     console.error(`[${host}] socket error:`, msg);
-    toast.error(`Something went wrong talking to ${host}. Try again in a moment.`, { id: `socket-error:${host}` });
+    toast.error(translateLocaleMessage("Something went wrong talking to {server}. Try again in a moment.", undefined, { server: host }), { id: `socket-error:${host}` });
   });
 }

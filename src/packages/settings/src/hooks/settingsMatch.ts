@@ -9,7 +9,7 @@ export interface Searchable {
 }
 
 function words(text: string): string[] {
-  return text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 }
 
 /** Levenshtein distance, giving up once it passes `max`. */
@@ -37,13 +37,14 @@ function fuzzy(term: string, text: string): boolean {
 }
 
 function termScore(term: string, entry: Searchable): number {
-  const keywords = (entry.keywords ?? []).join(" ").toLowerCase();
-  const title = entry.title.toLowerCase();
-  const section = entry.section.toLowerCase();
+  const keywords = words((entry.keywords ?? []).join(" ")).join(" ");
+  const title = words(entry.title).join(" ");
+  const section = words(entry.section).join(" ");
+  const description = words(entry.description).join(" ");
   if (title.includes(term)) return 8;
   if (keywords.includes(term)) return 6;
   if (section.includes(term)) return 4;
-  if (entry.description.toLowerCase().includes(term)) return 2;
+  if (description.includes(term)) return 2;
   // Typos only count in the short fields. Across a description they match nearly anything.
   if (fuzzy(term, title)) return 5;
   if (fuzzy(term, keywords)) return 3;

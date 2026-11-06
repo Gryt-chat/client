@@ -50,6 +50,7 @@ import {
 import toast from "react-hot-toast";
 
 import { PiArrowUpBold, PiChartBarFill, PiCode, PiFileAudioFill, PiFileFill, PiFilePlusFill, PiFileTextFill, PiFileVideoFill, PiFileZipFill, PiImageFill, PiPlusBold, PiSmileyWinkFill, PiX } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { termsGate } from "../../../../lib/termsGate";
 const FaFilePdf = PiFileTextFill;
 
@@ -74,10 +75,6 @@ const COUNTER_VISIBLE_FROM = MESSAGE_MAX_LENGTH - 500;
 
 /** A paste that cannot fit in one message becomes an ordinary text attachment. */
 const LARGE_PASTE_FILE_NAME = "pasted-text.txt";
-
-/** Said instead, where the attachment would be refused. */
-const LONG_PASTE_NO_FILES =
-  `That's too long to paste. Messages can be up to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters, and you can't attach files here.`;
 
 const THEME = {
   text: { bold: "lx-bold", italic: "lx-italic", strikethrough: "lx-strike", code: "lx-code" },
@@ -222,6 +219,7 @@ function $replaceQuery(start: (before: string) => number | null, nodes: LexicalN
 
 export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
   ({ placeholder, unencrypted, disabled, allowFiles, maxFileSize, onSend, onCreatePoll, onArrowUpEmpty, onCancel, onTyping, onStopTyping, onChange, isEditing, memberList, channelList, serverHost, confirmMassMention }, ref) => {
+    const { locale, t } = useLocale();
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [dragFrom, setDragFrom] = useState<number | null>(null);
     const [dropAt, setDropAt] = useState<number | null>(null);
@@ -309,20 +307,20 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       // Covers paste and drag-and-drop as well as the clip, which is why it is
       // here rather than only on the button.
       if (allowFiles === false) {
-        toast.error("You do not have permission to attach files here.");
+        toast.error(t("You do not have permission to attach files here."));
         return;
       }
       for (const file of files) {
         if (maxFileSize && file.size > maxFileSize) {
           const limitMb = (maxFileSize / (1024 * 1024)).toFixed(0);
-          toast.error(`File "${file.name}" is too large. Max file size is ${limitMb} MB.`);
+          toast.error(t('File "{name}" is too large. Max file size is {limit} MB.', { name: file.name, limit: limitMb }));
           continue;
         }
         const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
         const id = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         setPendingFiles((prev) => [...prev, { id, file, previewUrl }]);
       }
-    }, [maxFileSize, allowFiles]);
+    }, [maxFileSize, allowFiles, t]);
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent) => {
@@ -376,12 +374,12 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       // Keep it out of the box and attach the exact clipboard contents instead.
       if (text.length > MESSAGE_MAX_LENGTH) {
         if (isEditing) {
-          toast.error(`Edited messages are limited to ${MESSAGE_MAX_LENGTH.toLocaleString("en")} characters.`);
+          toast.error(t("Edited messages are limited to {limit} characters.", { limit: MESSAGE_MAX_LENGTH.toLocaleString(locale) }));
           return true;
         }
         // The file below would be refused, and the paste gone with it.
         if (allowFiles === false) {
-          toast.error(LONG_PASTE_NO_FILES);
+          toast.error(t("That's too long to paste. Messages can be up to {limit} characters, and you can't attach files here.", { limit: MESSAGE_MAX_LENGTH.toLocaleString(locale) }));
           return true;
         }
         addFiles([new File([text], LARGE_PASTE_FILE_NAME, { type: "text/plain;charset=utf-8" })]);
@@ -404,7 +402,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         caret.insertNodes(holder.getChildren());
       });
       return true;
-    }, [addFiles, isEditing, allowFiles, transformers]);
+    }, [addFiles, isEditing, allowFiles, transformers, locale, t]);
     const handlePasteRef = useRef(handlePaste);
     handlePasteRef.current = handlePaste;
     const addFilesRef = useRef(addFiles);
@@ -637,7 +635,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
       };
     }, []);
 
-    const hint = placeholder || "Type a message...";
+    const hint = placeholder || t("Type a message...");
     const canSend = length > 0 || pendingFiles.length > 0;
     return (
       <div className={`chat-editor-shell ${disabled ? "chat-editor-disabled" : ""}`}>
@@ -645,7 +643,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
         {(allowFiles !== false || onCreatePoll) && (
           <Menu.Root>
             <Menu.Trigger
-              render={<button className="chat-editor-plus-btn" type="button" aria-label="Add" disabled={disabled} />}
+              render={<button className="chat-editor-plus-btn" type="button" aria-label={t("Add")} disabled={disabled} />}
             >
               <PiPlusBold size={20} />
             </Menu.Trigger>
@@ -655,13 +653,13 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                   {allowFiles !== false && (
                     <Menu.Item onClick={() => fileInputRef.current?.click()}>
                       <span className="chat-editor-plus-icon" data-accent><PiFilePlusFill size={18} /></span>
-                      Attach files
+                      {t("Attach files")}
                     </Menu.Item>
                   )}
                   {onCreatePoll && (
                     <Menu.Item onClick={onCreatePoll}>
                       <span className="chat-editor-plus-icon" data-accent><PiChartBarFill size={18} /></span>
-                      Poll
+                      {t("Poll")}
                     </Menu.Item>
                   )}
                 </Menu.Popup>
@@ -701,7 +699,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                 onDragEnd={() => { setDragFrom(null); setDropAt(null); }}
               >
                 {pf.previewUrl ? (
-                  <img src={pf.previewUrl} alt="Upload preview" />
+                  <img src={pf.previewUrl} alt={t("Upload preview")} />
                 ) : (
                   <div className="chat-editor-file-preview-icon">
                     {getFileIcon(pf.file.type)}
@@ -715,7 +713,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                   className="chat-editor-file-delete"
                   onClick={() => removeFile(pf.id)}
                   type="button"
-                  aria-label="Remove file"
+                  aria-label={t("Remove file")}
                 >
                   <PiX size={11} />
                 </button>
@@ -743,7 +741,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           members={channelList || []}
           onSelect={handleChannelSelect}
           onClose={() => setChannelQuery(null)}
-          title="Channels"
+          title={t("Channels")}
         />
         <LexicalComposer
           initialConfig={{
@@ -792,14 +790,14 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                    assertive live region would interrupt the typing it counts. */
                 aria-live="polite"
               >
-                {(MESSAGE_MAX_LENGTH - length).toLocaleString("en")}
+                {(MESSAGE_MAX_LENGTH - length).toLocaleString(locale)}
               </span>
             )}
             <div style={{ position: "relative" }}>
               <button
                 className="chat-editor-emoji-btn"
                 type="button"
-                aria-label="Insert emoji"
+                aria-label={t("Insert emoji")}
                 disabled={disabled}
                 onClick={() => setEmojiPickerOpen((v) => !v)}
               >
@@ -819,7 +817,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               <button
                 className="chat-editor-send-btn"
                 type="button"
-                aria-label="Send message"
+                aria-label={t("Send message")}
                 disabled={disabled}
                 onClick={handleSend}
               >

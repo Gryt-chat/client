@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getOwnServerUserId, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
 import { PiXBold } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { useDirectory, useDmsOffHosts } from "../hooks/dmDirectory";
 import { requestConversation } from "../hooks/dmSpace";
 import { setNewMessageOpen, useNewMessageOpen } from "../hooks/newMessageDialog";
@@ -38,13 +39,14 @@ type Waiting =
   | { kind: "dm"; host: string; serverUserId: string }
   | { kind: "group"; host: string; picked: string[]; before: ReadonlySet<string> };
 
-function noOneText(s: { canMessageSomewhere: boolean; groupBlocked: boolean; nobody: boolean; query: string }): string {
-  if (!s.canMessageSomewhere) return "None of your servers let you start a conversation.";
-  if (s.groupBlocked) return "None of your servers let you start a group.";
-  return s.nobody ? "There\u2019s nobody else on your servers yet." : `Nobody matches \u201c${s.query}\u201d.`;
+function noOneText(s: { canMessageSomewhere: boolean; groupBlocked: boolean; nobody: boolean; query: string }, t: (message: string, params?: Record<string, string | number>) => string): string {
+  if (!s.canMessageSomewhere) return t("None of your servers let you start a conversation.");
+  if (s.groupBlocked) return t("None of your servers let you start a group.");
+  return s.nobody ? t("There’s nobody else on your servers yet.") : t("Nobody matches “{query}”.", { query: s.query });
 }
 
 export function NewMessageDialog() {
+  const { t } = useLocale();
   const open = useNewMessageOpen();
   const { sockets, memberLists, serverDetailsList, serverConnectionStatus } = useSockets();
   const { servers, currentlyViewingServer, viewServerBehindDmSpace } = useServerManagement();
@@ -147,7 +149,7 @@ export function NewMessageDialog() {
     socket.on("server:error", refused);
     const timer = setTimeout(() => {
       stop();
-      setProblem(`${serverName(host)} didn’t answer. Try again in a moment.`);
+      setProblem(t("{server} didn’t answer. Try again in a moment.", { server: serverName(host) }));
     }, ANSWER_MS);
     return () => {
       socket.off("dm:error", stop);
@@ -155,7 +157,7 @@ export function NewMessageDialog() {
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waiting, sockets]);
+  }, [waiting, sockets, t, servers]);
 
   const message = (candidate: Candidate) => {
     setProblem(null);
@@ -172,7 +174,7 @@ export function NewMessageDialog() {
       .then((sent) => {
         if (sent) return;
         setWaiting(null);
-        setProblem(`You’re not signed in to ${serverName(candidate.host)}.`);
+        setProblem(t("You’re not signed in to {server}.", { server: serverName(candidate.host) }));
       });
   };
 
@@ -196,7 +198,7 @@ export function NewMessageDialog() {
     void emitAuthenticated(socket, "dm:group:create", { memberIds: picked }, groupHost).then((sent) => {
       if (sent) return;
       setWaiting(null);
-      setProblem(`You’re not signed in to ${serverName(groupHost)}.`);
+      setProblem(t("You’re not signed in to {server}.", { server: serverName(groupHost) }));
     });
   };
 
@@ -306,7 +308,7 @@ export function NewMessageDialog() {
     ? picked.map((id) => everyone.find((c) => c.host === groupHost && c.serverUserId === id)).filter((c): c is Candidate => !!c)
     : [];
 
-  const emptyText = noOneText({ canMessageSomewhere, groupBlocked: mode === "group" && !canGroupSomewhere, nobody: everyone.length === 0, query });
+  const emptyText = noOneText({ canMessageSomewhere, groupBlocked: mode === "group" && !canGroupSomewhere, nobody: everyone.length === 0, query }, t);
 
   const switchTo = (next: NewMessageMode) => {
     setMode(next);
@@ -322,14 +324,14 @@ export function NewMessageDialog() {
         <Dialog.Popup>
           {made ? (
             <>
-              <Dialog.Title>Name and picture</Dialog.Title>
+              <Dialog.Title>{t("Name and picture")}</Dialog.Title>
               <Dialog.Description>
-                Both are optional, and you can change them later in Group settings.
+                {t("Both are optional, and you can change them later in Group settings.")}
               </Dialog.Description>
               <div className="flex flex-col gap-4">
                 <GroupFaceFields
                   serverHost={made.host}
-                  seed={name.trim() || (madeGroup ? conversationTitle(madeGroup) : "New group")}
+                  seed={name.trim() || (madeGroup ? conversationTitle(madeGroup) : t("New group"))}
                   icon={icon}
                   onIcon={(fileId) => {
                     setIcon(fileId);
@@ -338,19 +340,19 @@ export function NewMessageDialog() {
                   name={name}
                   onName={setName}
                   onNameDone={sendName}
-                  placeholder={madeGroup ? conversationTitle(madeGroup) : "Optional"}
+                  placeholder={madeGroup ? conversationTitle(madeGroup) : t("Optional")}
                   autoFocus
                 />
               </div>
               <Dialog.Footer>
-                <Button onClick={close}>Done</Button>
+                <Button onClick={close}>{t("Done")}</Button>
               </Dialog.Footer>
             </>
           ) : (
             <>
               <div className="flex items-center justify-between">
-                <Dialog.Title>{mode === "group" ? "New group" : "New message"}</Dialog.Title>
-                <Dialog.Close render={<IconButton tone="ghost" size="small" aria-label="Close" />}>
+                <Dialog.Title>{t(mode === "group" ? "New group" : "New message")}</Dialog.Title>
+                <Dialog.Close render={<IconButton tone="ghost" size="small" aria-label={t("Close")} />}>
                   <PiXBold size={14} />
                 </Dialog.Close>
               </div>
@@ -358,9 +360,9 @@ export function NewMessageDialog() {
               <div className="flex flex-col gap-3">
                 {canGroupSomewhere && (
                   <Tabs value={mode} onValueChange={(v) => switchTo(v as NewMessageMode)}>
-                    <Tabs.List aria-label="A message or a group" className="grid w-full grid-cols-2">
-                      <Tabs.Tab value="message" disabled={waiting !== null}>Message</Tabs.Tab>
-                      <Tabs.Tab value="group" disabled={waiting !== null}>Group</Tabs.Tab>
+                    <Tabs.List aria-label={t("A message or a group")} className="grid w-full grid-cols-2">
+                      <Tabs.Tab value="message" disabled={waiting !== null}>{t("Message")}</Tabs.Tab>
+                      <Tabs.Tab value="group" disabled={waiting !== null}>{t("Group")}</Tabs.Tab>
                       <Tabs.Indicator />
                     </Tabs.List>
                   </Tabs>
@@ -382,8 +384,8 @@ export function NewMessageDialog() {
                   ))}
                   <input
                     autoFocus
-                    aria-label="Search people"
-                    placeholder="Search people"
+                    aria-label={t("Search people")}
+                    placeholder={t("Search people")}
                     className="min-w-24 flex-1 border-0 bg-transparent px-1 py-1 text-sm outline-none"
                     style={{ color: "var(--gryt-neutral-12)" }}
                     value={query}
@@ -405,8 +407,8 @@ export function NewMessageDialog() {
                 {mode === "group" && (
                   <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.5 }}>
                     {picked.length === 1
-                      ? "Pick one more. With only two of you, it\u2019s a direct message."
-                      : "Everybody in a group has to be on the same server, so people from other servers can\u2019t be added to this one."}
+                      ? t("Pick one more. With only two of you, it’s a direct message.")
+                      : t("Everybody in a group has to be on the same server, so people from other servers can’t be added to this one.")}
                   </span>
                 )}
                 {problem && <span className="text-xs text-gryt-danger">{problem}</span>}
@@ -415,10 +417,10 @@ export function NewMessageDialog() {
               {mode === "group" && (
                 <Dialog.Footer className="items-center justify-between">
                   <span className="text-sm">
-                    Name and picture <span className="text-gryt-muted">&middot; Optional</span>
+                    {t("Name and picture")} <span className="text-gryt-muted">&middot; {t("Optional")}</span>
                   </span>
                   <Button onClick={createGroup} disabled={picked.length < 2 || waiting !== null}>
-                    {waiting?.kind === "group" ? "Creating\u2026" : "Create group"}
+                    {waiting?.kind === "group" ? t("Creating…") : t("Create group")}
                   </Button>
                 </Dialog.Footer>
               )}

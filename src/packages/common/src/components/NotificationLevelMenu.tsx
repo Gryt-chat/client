@@ -1,6 +1,7 @@
 import { ContextMenu, Menu } from "@gryt/ui";
 import { type ReactNode, useSyncExternalStore } from "react";
 
+import { useLocale } from "../../../../lib/localeContext";
 import {
   getGlobalLevel,
   getHideMuted,
@@ -59,6 +60,7 @@ export function NotificationLevelMenu({
   inMenu?: boolean;
   icon?: ReactNode;
 }) {
+  const { t } = useLocale();
   // The two share their parts' names and props, so one tree draws either.
   const M = (inMenu ? Menu : ContextMenu) as typeof ContextMenu;
   /* Subscribed to the whole store rather than the servers map, so picking a
@@ -85,18 +87,18 @@ export function NotificationLevelMenu({
   const overruled = globalOverrules(global, resolved);
 
   const choices: { label: string; value: NotificationLevel | null }[] = [
-    { label: "Everything", value: "all" },
-    { label: "Only mentions", value: "mentions" },
-    { label: "Nothing", value: "none" },
+    { label: t("Everything"), value: "all" },
+    { label: t("Only mentions"), value: "mentions" },
+    { label: t("Nothing"), value: "none" },
     {
-      label: `Default (${LEVEL_WORDS[inherited]})`,
+      label: `${t("Default")} (${t(LEVEL_WORDS[inherited])})`,
       value: null,
     },
   ];
 
   return (
     <M.SubmenuRoot>
-      <M.SubmenuTrigger>{icon}Notifications</M.SubmenuTrigger>
+      <M.SubmenuTrigger>{icon}{t("Notifications")}</M.SubmenuTrigger>
       <M.Portal>
         <M.Positioner>
           <M.Popup>
@@ -132,8 +134,8 @@ export function NotificationLevelMenu({
                 <M.Group>
                   <M.GroupLabel>
                     {global === "none"
-                      ? "Everything is muted in settings"
-                      : "Settings limits this to mentions"}
+                      ? t("Everything is muted in settings")
+                      : t("Settings limits this to mentions")}
                   </M.GroupLabel>
                 </M.Group>
               </>
@@ -148,6 +150,7 @@ export function NotificationLevelMenu({
 /** The server menu's switch for leaving muted channels out of its sidebar. Both
     server menus show it, and it is the same setting in each. */
 export function HideMutedChannelsItem({ host }: { host: string }) {
+  const { t } = useLocale();
   const on = useSyncExternalStore(
     subscribeToPrefs,
     () => getHideMuted(host),
@@ -155,13 +158,14 @@ export function HideMutedChannelsItem({ host }: { host: string }) {
   );
   return (
     <ContextMenu.CheckboxItem checked={on} onCheckedChange={(next) => setHideMuted(host, next)}>
-      Hide muted channels
+      {t("Hide muted channels")}
     </ContextMenu.CheckboxItem>
   );
 }
 
 /** Per server and per device. Role mentions and being named still get through. */
 export function SuppressEveryoneItem({ host }: { host: string }) {
+  const { t } = useLocale();
   const on = useSyncExternalStore(
     subscribeToPrefs,
     () => getSuppressEveryone(host),
@@ -169,7 +173,7 @@ export function SuppressEveryoneItem({ host }: { host: string }) {
   );
   return (
     <ContextMenu.CheckboxItem checked={on} onCheckedChange={(next) => setSuppressEveryone(host, next)}>
-      Suppress @everyone and @here
+      {t("Suppress @everyone and @here")}
     </ContextMenu.CheckboxItem>
   );
 }

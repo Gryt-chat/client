@@ -11,10 +11,12 @@ import {
 
 import { getElectronAPI } from "../../../../lib/electron";
 import { PiInfoFill } from "../../../../lib/icons";
+import { useLocale } from "../../../../lib/localeContext";
 import { useServerJoinPolicy } from "./useServerJoinPolicy";
 
 /** "Copy invite link", offered only where the server has said anyone can join. */
 export function useOpenInviteLink(host: string | undefined) {
+  const { t } = useLocale();
   const policy = useServerJoinPolicy(host);
 
   const copy = useCallback(async () => {
@@ -26,9 +28,9 @@ export function useOpenInviteLink(host: string | undefined) {
     const link = openServerLink(host, hostedAdvertisement(host, embedded));
 
     if (link.kind === "no-public-address") {
-      toast.error(NO_PUBLIC_ADDRESS, { duration: 7000 });
+      toast.error(t(NO_PUBLIC_ADDRESS), { duration: 7000 });
       if (link.hosted) {
-        toast(`${ADD_PUBLIC_ADDRESS.slice(0, -1)}, then copy the link again.`, {
+        toast(`${t(ADD_PUBLIC_ADDRESS).replace(/\.$/, "")}, ${t("then copy the link again.")}`, {
           duration: 10000,
           icon: createElement(PiInfoFill, { size: 18 }),
         });
@@ -38,11 +40,11 @@ export function useOpenInviteLink(host: string | undefined) {
 
     try {
       await navigator.clipboard.writeText(link.url);
-      toast.success("Copied invite link");
+      toast.success(t("Copied invite link"));
     } catch {
-      toast.error("Could not copy the link");
+      toast.error(t("Could not copy the link"));
     }
-  }, [host]);
+  }, [host, t]);
 
   return { available: !!host && policy === "open", copy };
 }

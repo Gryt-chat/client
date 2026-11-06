@@ -42,6 +42,7 @@ import { installAiToolkit } from "./devtools/aiToolkit";
 import { drawsWindowChrome, isElectron, setNativeZoom } from "./lib/electron";
 import { initGlobalStorage } from "./lib/globalStorage";
 import { syncGoogleFonts } from "./lib/googleFonts";
+import { LocaleProvider } from "./lib/locale";
 import { captureLogs } from "./lib/reports/logs";
 import { pushTitlebarOverlay } from "./lib/titlebarOverlay";
 
@@ -231,7 +232,9 @@ initGlobalStorage().then(() => {
       <VoiceProvider>
         {/* Popups flip below their trigger rather than open over the title bar (GRYT-1784). */}
         <OverlayInsetProvider top={isElectron() && drawsWindowChrome() ? TITLEBAR_HEIGHT : 0}>
-          <ThemedApp />
+          <LocaleProvider>
+            <ThemedApp />
+          </LocaleProvider>
         </OverlayInsetProvider>
       </VoiceProvider>
     </React.StrictMode>,
