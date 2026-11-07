@@ -88,3 +88,6 @@ e2e/soak/test-results/
 # A soak run's logs, a JSONL file per client and probe.
 e2e/soak/runs/
 
+
+# Third-party art for the motion film, fetched by scripts/render-motion.mjs
+public/motion-assets/
