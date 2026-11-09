@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 import { QrCode } from "./linkDevice";
 
+const SCANNED = new Set(["comparing", "signing_in", "joining", "linked", "done"]);
+
 /**
  * Sign in by scanning with your phone: the link's QR, shown in place. Your phone brings the
  * account, servers and messages. Once it's scanned, the rest carries on in the link dialog.
@@ -23,7 +25,7 @@ export function ScanToSignIn({ onScanned }: { onScanned?: () => void }) {
 
   const phase = state?.phase;
   useEffect(() => {
-    if (!phase || phase === "idle" || phase === "opening" || phase === "showing") return;
+    if (!phase || !SCANNED.has(phase)) return;
     reveal();
     scanned.current?.();
   }, [phase, reveal]);
@@ -33,6 +35,17 @@ export function ScanToSignIn({ onScanned }: { onScanned?: () => void }) {
       <Button size="small" tone="neutral" style={{ alignSelf: "flex-start" }} onClick={open}>
         Sign in with your phone
       </Button>
+    );
+  }
+
+  if (state?.phase === "ended") {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-sm">Couldn&rsquo;t get a code to sign in with your phone.</span>
+        <Button size="small" tone="neutral" style={{ alignSelf: "flex-start" }} onClick={() => setNeedsWarning(!startInline())}>
+          Try again
+        </Button>
+      </div>
     );
   }
 
