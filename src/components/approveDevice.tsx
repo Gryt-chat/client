@@ -8,9 +8,9 @@ import { useState } from "react";
 import { useAccount } from "@/common";
 
 import { PiX } from "../lib/icons";
-import { approverEndText, sendingHistoryText, sentHistoryText } from "../lib/pairing/approverWords";
+import { approverEndText, sentHistoryText } from "../lib/pairing/approverWords";
 import { deviceCapLine } from "../lib/pairing/deviceCap";
-import { stepsAt, useWakeLock } from "../lib/pairing/linkSteps";
+import { type ApproverInFlight, approverSteps, useWakeLock } from "../lib/pairing/linkSteps";
 import { useApproveDevice } from "../lib/pairing/useApproveDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
 import { openUserSettings } from "../packages/socket/src/components/dmKeyWarningToast";
@@ -115,26 +115,9 @@ function Confirm({ state }: { state: Extract<ApproverState, { phase: "confirming
   );
 }
 
-type InFlight = Extract<ApproverState, { phase: "signing_in" | "browser" | "waiting_ready" | "adding" | "sending" }>;
-const ORDER: InFlight["phase"][] = ["signing_in", "waiting_ready", "adding", "sending"];
-
-function Progressing({ state }: { state: InFlight }) {
+function Progressing({ state }: { state: ApproverInFlight }) {
   const { history } = useApproveDevice();
   const { isSignedIn } = useAccount();
-  const name = state.device.name || "the new device";
-  const at = ORDER.indexOf(state.phase === "browser" ? "signing_in" : state.phase);
-  const labels = [
-    { label: "Checked it\u2019s yours", detail: "The pictures matched" },
-    ...(isSignedIn ? [{ label: `Signing in ${name}` }] : []),
-    { label: `Waiting for ${name} to join your servers` },
-    {
-      label: "Adding it to your chats",
-      detail: state.phase === "adding" && state.total ? `${state.done} of ${state.total}` : undefined,
-    },
-    ...(history ? [{ label: "Copying older messages", detail: state.phase === "sending" && history.total !== 0 ? sendingHistoryText(history) : undefined }] : []),
-  ];
-  // Without the sign-in row everything after it moves up one.
-  const index = 1 + at - (isSignedIn ? 0 : 1);
   return (
     <div className="flex flex-col gap-3">
       {state.phase === "browser" && (
@@ -143,7 +126,7 @@ function Progressing({ state }: { state: InFlight }) {
           there, then come back here.
         </Dialog.Description>
       )}
-      <LinkSteps steps={stepsAt(labels, index)} />
+      <LinkSteps steps={approverSteps(state, history, isSignedIn === true)} />
       {state.phase === "sending" && history?.total ? (
         <Progress value={(Math.min(history.messages, history.total) / history.total) * 100} aria-label="History sent" />
       ) : null}

@@ -6,7 +6,7 @@ import { useMemo, useRef } from "react";
 import { encode } from "uqr";
 
 import { PiX } from "../lib/icons";
-import { stepsAt, useWakeLock } from "../lib/pairing/linkSteps";
+import { type NewDeviceInFlight, newDeviceSteps, useWakeLock } from "../lib/pairing/linkSteps";
 import { historyLines, newDeviceEndText } from "../lib/pairing/newDeviceWords";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
@@ -49,22 +49,12 @@ function History({ progress }: { progress: HistoryProgress | null }) {
   );
 }
 
-type Signed = Extract<NewDeviceState, { phase: "signing_in" | "joining" | "linked" }>;
-
-function NewDeviceSteps({ state, history }: { state: Signed; history: HistoryProgress | null }) {
+function NewDeviceSteps({ state, history }: { state: NewDeviceInFlight; history: HistoryProgress | null }) {
   const signedIn = useRef(false);
   if (state.phase === "signing_in") signedIn.current = true;
-  const servers = state.phase === "joining" ? state.servers.length : 0;
-  const labels = [
-    { label: "Checked it\u2019s yours", detail: `The pictures matched on ${state.from}` },
-    ...(signedIn.current ? [{ label: state.phase === "signing_in" ? `Signing in as ${state.username}` : "Signed in" }] : []),
-    { label: servers === 1 ? "Joining your server" : "Joining your servers", detail: servers > 1 ? `${servers} servers` : undefined },
-    { label: "Getting added to your chats", detail: "Your other device does this" },
-  ];
-  const at = { signing_in: 1, joining: 2, linked: 3 }[state.phase] - (signedIn.current ? 0 : 1);
   return (
     <div className="flex flex-col gap-3">
-      <LinkSteps steps={stepsAt(labels, at)} />
+      <LinkSteps steps={newDeviceSteps(state, signedIn.current)} />
       <History progress={history} />
     </div>
   );
