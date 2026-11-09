@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useAccount } from "@/common";
 
 import { PiX } from "../lib/icons";
-import { approverEndText, sentHistoryText } from "../lib/pairing/approverWords";
+import { approverEndText, HISTORY_STAYS_HERE, sentHistoryText } from "../lib/pairing/approverWords";
 import { deviceCapLine } from "../lib/pairing/deviceCap";
 import { type ApproverInFlight, approverSteps, useWakeLock } from "../lib/pairing/linkSteps";
 import { useApproveDevice } from "../lib/pairing/useApproveDevice";
@@ -116,7 +116,7 @@ function Confirm({ state }: { state: Extract<ApproverState, { phase: "confirming
 }
 
 function Progressing({ state }: { state: ApproverInFlight }) {
-  const { history } = useApproveDevice();
+  const { history, historyLeftBehind } = useApproveDevice();
   const { isSignedIn } = useAccount();
   return (
     <div className="flex flex-col gap-3">
@@ -127,6 +127,7 @@ function Progressing({ state }: { state: ApproverInFlight }) {
         </Dialog.Description>
       )}
       <LinkSteps steps={approverSteps(state, history, isSignedIn === true)} />
+      {historyLeftBehind && <span className="text-sm text-gryt-muted">{HISTORY_STAYS_HERE}</span>}
       {state.phase === "sending" && history?.total ? (
         <Progress value={(Math.min(history.messages, history.total) / history.total) * 100} aria-label="History sent" />
       ) : null}
@@ -135,7 +136,7 @@ function Progressing({ state }: { state: ApproverInFlight }) {
 }
 
 function Body() {
-  const { state, failure, history, open, close } = useApproveDevice();
+  const { state, failure, history, open, close, historyLeftBehind } = useApproveDevice();
 
   if (failure) {
     return (
@@ -168,6 +169,7 @@ function Body() {
           <Dialog.Description className="m-0">
             {state.device.name} is linked.
             {sent && ` ${sent}`}
+            {historyLeftBehind && ` ${HISTORY_STAYS_HERE}`}
             {failed > 0 &&
               ` It couldn't be added to ${failed === 1 ? "one conversation" : `${failed} conversations`} yet. It joins ${failed === 1 ? "that one" : "those"} the next time someone sends a message there.`}
           </Dialog.Description>

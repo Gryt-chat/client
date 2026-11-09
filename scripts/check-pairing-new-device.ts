@@ -10,7 +10,7 @@ import { asIdentityScope, base64Url } from "@gryt/crypto";
 
 import type { ArchivedMessage } from "@/common";
 
-import { ISSUER, memoryKeycloak, memoryRelay, waitFor } from "./pairing-fakes.ts";
+import { ISSUER, memoryHistoryServer, memoryKeycloak, memoryRelay, waitFor } from "./pairing-fakes.ts";
 
 const { createPairingOidc } = await import("../src/lib/pairing/oidc.ts");
 const { describeThisDevice } = await import("../src/lib/pairing/device.ts");
@@ -71,18 +71,21 @@ type Link = {
 
 async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), added = [], history, sink }: Link) {
   const relay = memoryRelay();
+  const server = memoryHistoryServer();
   const n = createNewDevicePairing({
     relay,
     device: describeThisDevice("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/140.0 Safari/537.36", true),
     storage: createLinkStorage(deps.deps),
     oidc: createPairingOidc(keycloak.fetch),
     history: sink,
+    historyStore: server.open,
   });
   const a = createApproverPairing({
     relay,
     relayOrigin: "https://id.gryt.chat",
     fetch: keycloak.fetch,
     history,
+    historyStore: server.choose,
     lateWindowMs: 10,
     devices: (host: string) => ({
       addOwnDevice: async (deviceId: string) => (added.push([host, deviceId]), []),

@@ -7,7 +7,7 @@ import { encode } from "uqr";
 
 import { PiX } from "../lib/icons";
 import { type NewDeviceInFlight, newDeviceSteps, useWakeLock } from "../lib/pairing/linkSteps";
-import { historyLines, newDeviceEndText } from "../lib/pairing/newDeviceWords";
+import { historyLines, historyStaysThere, newDeviceEndText } from "../lib/pairing/newDeviceWords";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
 import { EmojiRow, LinkSteps, Waiting } from "./pairingParts";
@@ -53,6 +53,11 @@ function History({ progress }: { progress: HistoryProgress | null }) {
   );
 }
 
+function HistoryLeftBehind({ from }: { from: string }) {
+  const { historyLeftBehind } = useLinkDevice();
+  return historyLeftBehind ? <span className="text-sm text-gryt-muted">{historyStaysThere(from)}</span> : null;
+}
+
 function NewDeviceSteps({ state, history }: { state: NewDeviceInFlight; history: HistoryProgress | null }) {
   const signedIn = useRef(false);
   if (state.phase === "signing_in") signedIn.current = true;
@@ -60,6 +65,7 @@ function NewDeviceSteps({ state, history }: { state: NewDeviceInFlight; history:
     <div className="flex flex-col gap-3">
       <LinkSteps steps={newDeviceSteps(state, signedIn.current)} />
       <History progress={history} />
+      <HistoryLeftBehind from={state.from} />
     </div>
   );
 }
@@ -80,6 +86,7 @@ function Linked({ state, replaces, history, close }: {
             This device is linked to {state.from}.{replaces > 0 && " Restarting Gryt\u2026"}
           </Dialog.Description>
           <History progress={history} />
+          <HistoryLeftBehind from={state.from} />
         </>
       )}
       <div className="flex flex-wrap gap-2">

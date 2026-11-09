@@ -4,6 +4,7 @@ import {
   type HistoryProgress,
   type NewDevicePairing,
   type NewDeviceState,
+  openServerHistory,
   type PairedServerDevice,
   type PairingFetch,
 } from "@gryt/core";
@@ -32,6 +33,7 @@ import { describeThisDevice } from "./device";
 import { historySink } from "./historySink";
 import { createLinkStorage } from "./install";
 import { createPairingOidc } from "./oidc";
+import { historyFetch, serverAccess } from "./serverAccess";
 
 /* The new-device side of linking (GRYT-1484). A singleton, so the pairing outlives the
    screen that opened it: signing in swaps half the app out from under it. */
@@ -51,6 +53,8 @@ export interface LinkDevice {
   replaces: number;
   /** The history coming in, once the other device sends some. */
   history: HistoryProgress | null;
+  /** The other device had servers but sent no history, so the old messages stayed there. */
+  historyLeftBehind: boolean;
   open(): void;
   /** Starts a code to show inline, as on the welcome screen. False when linking here needs the warning first. */
   startInline(): boolean;
@@ -68,6 +72,7 @@ const init: LinkDevice = {
   state: null,
   replaces: 0,
   history: null,
+  historyLeftBehind: false,
   open: () => {},
   startInline: () => false,
   stopInline: () => {},
@@ -131,6 +136,7 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       relayOrigin: relayOrigin === DEFAULT_RELAY ? undefined : relayOrigin,
       // Opened when the first batch arrives, which is after the identity is in place.
       history: historySink(async () => (await openLocalArchive()).messages),
+      historyStore: openServerHistory(serverAccess, historyFetch),
     });
     pairing.current = next;
     next.subscribe((s) => {
@@ -219,5 +225,6 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     pairing.current?.mismatch().catch(() => undefined);
   }, []);
 
-  return { isOpen, state, replaces, history, open, startInline, stopInline, reveal, start, close, mismatch };
+  const historyLeftBehind = pairing.current?.historyLeftBehind ?? false;
+  return { isOpen, state, replaces, history, historyLeftBehind, open, startInline, stopInline, reveal, start, close, mismatch  };
 });
