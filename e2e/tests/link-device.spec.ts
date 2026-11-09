@@ -56,14 +56,17 @@ test.describe("linking a device", () => {
     const oldUserId = await serverUserIdOf(old.page, host);
     expect(oldUserId).toBeTruthy();
 
-    const fresh = await newMember({ label: "new device", join: false, welcome: true });
+    const fresh = await newMember({ label: "new device", join: false });
     await fresh.page.evaluate((relay) => localStorage.setItem("gryt_custom_identity", relay), RELAY!);
     await fresh.page.reload();
-    // The welcome shows the code itself: no button to find first.
-    const welcome = fresh.page.getByRole("dialog", { name: "Welcome to Gryt" });
-    await expect(welcome.getByRole("img", { name: "Code to scan with your phone" })).toBeVisible();
-    if (process.env.SHOTS) await welcome.screenshot({ path: `${process.env.SHOTS}/showing.png` });
-    const code = (await welcome.locator("code").textContent()) ?? "";
+    // Settings > Account shows the code itself: no button to find first.
+    await fresh.page.locator('[data-tour="profile"]').click();
+    await fresh.page.getByRole("menuitem", { name: "Settings" }).click();
+    const account = fresh.page.getByRole("dialog", { name: "Settings", exact: true });
+    await account.getByRole("button", { name: "Account", exact: true }).first().click();
+    await expect(account.getByRole("img", { name: "Code to scan with your phone" })).toBeVisible();
+    if (process.env.SHOTS) await account.screenshot({ path: `${process.env.SHOTS}/showing.png` });
+    const code = (await account.locator("code").textContent()) ?? "";
     expect(code).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
 
     // The old device's side, from core, with the old browser's seed and scope.
