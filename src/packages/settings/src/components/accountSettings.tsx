@@ -282,7 +282,7 @@ export function AccountSettings() {
               style={{ alignSelf: "flex-start" }}
               onClick={openLinkDevice}
             >
-              Link with another device
+              Link this device
             </Button>
           </div>
         </div>

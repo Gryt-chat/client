@@ -2,14 +2,15 @@
  * states carried by @gryt/ui Button, Spinner and Alert; the QR is the one new element. */
 import type { HistoryProgress, NewDeviceState } from "@gryt/core";
 import { Alert, Button, Dialog, IconButton, Progress } from "@gryt/ui";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { encode } from "uqr";
 
 import { PiX } from "../lib/icons";
+import { type NewDeviceInFlight, newDeviceSteps, useWakeLock } from "../lib/pairing/linkSteps";
 import { historyLines, newDeviceEndText } from "../lib/pairing/newDeviceWords";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
-import { EmojiRow, Waiting } from "./pairingParts";
+import { EmojiRow, LinkSteps, Waiting } from "./pairingParts";
 
 /** Black on white whatever the theme: phone cameras read a light-on-dark code badly. */
 export function QrCode({ text, label = "Code to scan from your other device" }: { text: string; label?: string }) {
@@ -44,6 +45,51 @@ function History({ progress }: { progress: HistoryProgress | null }) {
         <span key={line} className="text-sm">{line}</span>
       ))}
       {!progress.complete && <Progress value={share === null ? null : share * 100} aria-label="History received" />}
+    </div>
+  );
+}
+
+function NewDeviceSteps({ state, history }: { state: NewDeviceInFlight; history: HistoryProgress | null }) {
+  const signedIn = useRef(false);
+  if (state.phase === "signing_in") signedIn.current = true;
+  return (
+    <div className="flex flex-col gap-3">
+      <LinkSteps steps={newDeviceSteps(state, signedIn.current)} />
+      <History progress={history} />
+    </div>
+  );
+}
+
+function Linked({ state, replaces, history, close }: {
+  state: Extract<NewDeviceState, { phase: "linked" | "done" }>;
+  replaces: number;
+  history: HistoryProgress | null;
+  close: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      {state.phase === "linked" ? (
+        <NewDeviceSteps state={state} history={history} />
+      ) : (
+        <>
+          <Dialog.Description className="m-0">
+            This device is linked to {state.from}.{replaces > 0 && " Restarting Gryt\u2026"}
+          </Dialog.Description>
+          <History progress={history} />
+        </>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {replaces > 0 && state.phase === "linked" && (
+          // A restart now would leave the rest of the history behind.
+          <span className="text-sm text-gryt-muted">Gryt restarts by itself once it&rsquo;s done.</span>
+        )}
+        {replaces > 0 && state.phase === "done" && (
+          <Button size="small" onClick={() => window.location.reload()}>Restart now</Button>
+        )}
+        {replaces === 0 && (
+          <Button size="small" onClick={close}>{state.phase === "linked" ? "Use Gryt while this finishes" : "Done"}</Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -109,37 +155,12 @@ function Body({ state, replaces, history }: { state: NewDeviceState | null; repl
       );
 
     case "signing_in":
-      return <Waiting>Signing in as {state.username}…</Waiting>;
-
     case "joining":
-      return (
-        <Waiting>
-          Joining your {state.servers.length === 1 ? "server" : `${state.servers.length} servers`}…
-        </Waiting>
-      );
+      return <NewDeviceSteps state={state} history={history} />;
 
     case "linked":
     case "done":
-      return (
-        <div className="flex flex-col gap-3">
-          <Dialog.Description className="m-0">
-            This device is linked to {state.from}.
-            {state.phase === "linked" && " Your other device is adding it to your conversations. You can use Gryt while that finishes."}
-            {replaces > 0 && (state.phase === "linked" ? " Gryt restarts by itself once it's done." : " Restarting Gryt…")}
-          </Dialog.Description>
-          <History progress={history} />
-          <div className="flex flex-wrap gap-2">
-            {replaces > 0 ? (
-              // A restart now would leave the rest of the history behind.
-              <Button size="small" disabled={state.phase === "linked"} onClick={() => window.location.reload()}>
-                Restart now
-              </Button>
-            ) : (
-              <Button size="small" onClick={close}>Done</Button>
-            )}
-          </div>
-        </div>
-      );
+      return <Linked state={state} replaces={replaces} history={history} close={close} />;
 
     case "ended":
       return (
@@ -163,6 +184,7 @@ function Body({ state, replaces, history }: { state: NewDeviceState | null; repl
 /** Link this device to one already signed in (GRYT-1484), from the new device's side. */
 export function LinkDeviceDialog() {
   const { isOpen, state, replaces, history, close } = useLinkDevice();
+  useWakeLock(isOpen && !!state && state.phase !== "done" && state.phase !== "ended");
   const titles: Partial<Record<NonNullable<typeof state>["phase"], string>> = {
     showing: "Approve this computer from your phone",
     comparing: "Check the pictures match",
