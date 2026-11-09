@@ -94,10 +94,9 @@ test.describe("linking a device", () => {
       from: "Old laptop",
     });
 
-    await expect(fresh.page.getByRole("dialog", { name: "Link this device" })).toContainText(
-      "This device is linked to Old laptop.",
-      { timeout: 60_000 },
-    );
+    const linking = fresh.page.getByRole("dialog", { name: "Link this device" });
+    await expect(linking).toContainText("The pictures matched on Old laptop", { timeout: 60_000 });
+    await expect(linking).toContainText("This device is linked to Old laptop.", { timeout: 60_000 });
     await expect.poll(() => approver.state.phase).toBe("done");
     // "ready" named the new browser's own MLS device on the server, once its KeyPackages were up.
     expect(added).toEqual([[host, expect.any(String)]]);
