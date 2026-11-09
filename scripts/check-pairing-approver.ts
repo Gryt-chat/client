@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { createApproverPairing, createNewDevicePairing, type PairingRelay } from "@gryt/core";
 import { asIdentityScope, base64Url, encodePairingEnvelope } from "@gryt/crypto";
 
-import { ISSUER, type KeycloakReply, memoryKeycloak, memoryRelay, waitFor } from "./pairing-fakes.ts";
+import { ISSUER, type KeycloakReply, memoryHistoryServer, memoryKeycloak, memoryRelay, waitFor } from "./pairing-fakes.ts";
 
 const { accountFromToken, buildEnvelope } = await import("../src/lib/pairing/envelope.ts");
 const { fromHistoryRecord, toHistoryRecord } = await import("../src/lib/pairing/historyRecords.ts");
@@ -66,7 +66,7 @@ assert.equal(accountFromToken(undefined, config), null);
 /** The new device's side, as small as core allows: Keycloak straight through `fetch`. */
 type NewDeviceOptions = Parameters<typeof createNewDevicePairing>[0];
 
-function newDevice(relay: PairingRelay, keycloak: ReturnType<typeof memoryKeycloak>, sink: NewDeviceOptions["history"]) {
+function newDevice(relay: PairingRelay, keycloak: ReturnType<typeof memoryKeycloak>, sink: NewDeviceOptions["history"], open?: NewDeviceOptions["historyStore"]) {
   const post = async (path: string, form: Record<string, string>) => {
     const res = await keycloak.fetch(`${ISSUER}/protocol/openid-connect/${path}`, { body: new URLSearchParams(form).toString() });
     // What Keycloak answers these two calls with; a pending poll leaves the token fields out.
@@ -79,6 +79,7 @@ function newDevice(relay: PairingRelay, keycloak: ReturnType<typeof memoryKeyclo
       relay,
       device: { name: "Pixel", app: "Gryt for Android", platform: "Android" },
       history: sink,
+      historyStore: open,
       storage: { commit: async (e, tokens) => void committed.push({ e, tokens }) },
       oidc: {
         async deviceAuthorization(r) {
@@ -109,12 +110,14 @@ type ApproveOne = {
 
 async function approveOne({ env, keycloak = memoryKeycloak(), accessToken, added = [], progress = [], history, sink }: ApproveOne) {
   const relay = memoryRelay();
-  const n = newDevice(relay, keycloak, sink);
+  const server = memoryHistoryServer();
+  const n = newDevice(relay, keycloak, sink, server.open);
   const a = createApproverPairing({
     relay,
     relayOrigin: "https://id.gryt.chat",
     fetch: keycloak.fetch,
     history,
+    historyStore: server.choose,
     lateWindowMs: 10,
     devices: (host: string) =>
       host === "chat.example"
@@ -352,4 +355,49 @@ console.log("pairing, approving device: ok");
     "done:Joining your servers",
     "busy:Getting added to your chats",
   ]);
+}
+
+// ── history on the user's own server (GRYT-2055) ─────────────────────
+
+{
+  const { chooseHistoryServer, errorFor, serverHistoryStore } = await import("../src/lib/pairing/historyStore.ts");
+  const { HistoryStoreError } = await import("@gryt/core");
+  const access = {
+    base: (host: string) => `https://${host}`,
+    token: (host: string) => (host === "off.example" ? null : `token-for-${host}`),
+  };
+  const calls: string[] = [];
+  const fakeFetch = async (url: string, init: RequestInit) => {
+    calls.push(`${init.method ?? "GET"} ${url} ${(init.headers as Record<string, string> | undefined)?.authorization ?? ""}`.trim());
+    if (url.endsWith("/info")) {
+      return new Response(JSON.stringify({ linkHistory: !url.includes("closed.example") }), { status: 200 });
+    }
+    if (init.method === "GET") return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
+    return new Response(null, { status: 204 });
+  };
+
+  const choose = chooseHistoryServer(access, fakeFetch);
+  const servers = [{ host: "off.example" }, { host: "closed.example" }, { host: "open.example" }] as never;
+  const held = await choose(servers);
+  assert.equal(held?.host, "open.example", "skips a server with no session here and one that said no");
+  assert.match(held?.transfer ?? "", /^[A-Za-z0-9_-]{24}$/);
+  assert.equal(await choose([{ host: "closed.example" }] as never), null, "none that will hold it is null, never the relay");
+
+  calls.length = 0;
+  const store = serverHistoryStore(access, "open.example", "T".repeat(24), fakeFetch);
+  await store.put(3, new Uint8Array([9]));
+  assert.deepEqual(await store.get(3), new Uint8Array([1, 2, 3]));
+  await store.delete(3);
+  assert.deepEqual(calls, [
+    `PUT https://open.example/api/link-history/${"T".repeat(24)}/3 Bearer token-for-open.example`,
+    `GET https://open.example/api/link-history/${"T".repeat(24)}/3 Bearer token-for-open.example`,
+    `DELETE https://open.example/api/link-history/${"T".repeat(24)}/3 Bearer token-for-open.example`,
+  ]);
+
+  const code = (status: number) => errorFor(status).code;
+  assert.deepEqual([404, 413, 429, 401, 500, 503, 403].map(code), ["missing", "full", "full", "network", "network", "refused", "refused"]);
+  const offline = serverHistoryStore(access, "open.example", "T".repeat(24), async () => {
+    throw new TypeError("Failed to fetch");
+  });
+  await assert.rejects(offline.get(0), (e: Error) => e instanceof HistoryStoreError && e.code === "network");
 }

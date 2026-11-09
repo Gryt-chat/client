@@ -11,6 +11,8 @@ import { useCallback, useRef, useState } from "react";
 import {
   freshAccessToken,
   getRememberedScheme,
+  getServerAccessToken,
+  getServerHttpBase,
   identityScopeFor,
   initKeycloak,
   listPeerPins,
@@ -30,6 +32,7 @@ import { serversAtDeviceCap } from "./deviceCap";
 import { accountFromToken, buildEnvelope } from "./envelope";
 import { historyArchive } from "./historyArchive";
 import { toHistoryRecord } from "./historyRecords";
+import { chooseHistoryServer } from "./historyStore";
 
 /* The approving side of linking (GRYT-1484): this device claims the new one's code, shows
    the emoji, and on Approve hands over its identity, signs the new device in and adds it. */
@@ -46,6 +49,8 @@ export interface ApproveDevice {
   history: HistoryProgress | null;
   /** Servers where the new device would be a sixth, read while confirming. */
   fullServers: { host: string; name: string }[];
+  /** No server would hold the history, so the old messages stay here. */
+  historyLeftBehind: boolean;
   open(): void;
   claim(code: string): void;
   approve(): void;
@@ -60,6 +65,7 @@ const init: ApproveDevice = {
   failure: null,
   history: null,
   fullServers: [],
+  historyLeftBehind: false,
   open: () => {},
   claim: () => {},
   approve: () => {},
@@ -119,6 +125,7 @@ export const useApproveDevice = singletonHook<ApproveDevice>(init, () => {
         fetch: pairingFetch,
         devices: ownDeviceAdder,
         history: opened ? historyArchive(opened.messages) : undefined,
+        historyStore: chooseHistoryServer({ base: getServerHttpBase, token: getServerAccessToken }),
       });
       pairing.current = next;
       let release: (() => void) | null = null;
@@ -199,7 +206,8 @@ export const useApproveDevice = singletonHook<ApproveDevice>(init, () => {
     setIsOpen(false);
   }, [reset]);
 
-  return { isOpen, state, failure, history, fullServers, open, claim, approve, deny, mismatch, close };
+  const historyLeftBehind = pairing.current?.historyLeftBehind ?? false;
+  return { isOpen, state, failure, history, fullServers, historyLeftBehind, open, claim, approve, deny, mismatch, close };
 });
 
 const inFlight = (phase: ApproverState["phase"] | undefined) =>
