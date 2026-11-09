@@ -59,12 +59,11 @@ test.describe("linking a device", () => {
     const fresh = await newMember({ label: "new device", join: false, welcome: true });
     await fresh.page.evaluate((relay) => localStorage.setItem("gryt_custom_identity", relay), RELAY!);
     await fresh.page.reload();
-    await fresh.page.getByRole("button", { name: "Link with another device" }).click();
-
-    const dialog = fresh.page.getByRole("dialog", { name: "Approve this computer from your phone" });
-    await expect(dialog.getByRole("img", { name: "Code to scan from your other device" })).toBeVisible();
-    if (process.env.SHOTS) await dialog.screenshot({ path: `${process.env.SHOTS}/showing.png` });
-    const code = (await dialog.getByLabel("Code to type").textContent()) ?? "";
+    // The welcome shows the code itself: no button to find first.
+    const welcome = fresh.page.getByRole("dialog", { name: "Welcome to Gryt" });
+    await expect(welcome.getByRole("img", { name: "Code to scan with your phone" })).toBeVisible();
+    if (process.env.SHOTS) await welcome.screenshot({ path: `${process.env.SHOTS}/showing.png` });
+    const code = (await welcome.locator("code").textContent()) ?? "";
     expect(code).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
 
     // The old device's side, from core, with the old browser's seed and scope.

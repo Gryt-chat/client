@@ -6,7 +6,7 @@ import { useAccount } from "@/common";
 import { useSettings } from "@/settings";
 
 import { PiSignpost, PiX } from "../lib/icons";
-import { useLinkDevice } from "../lib/pairing/useLinkDevice";
+import { ScanToSignIn } from "./scanToSignIn";
 
 /**
  * The first thing anybody sees, drawn as a message rather than a dialog, so a
@@ -15,7 +15,6 @@ import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 export function Welcome() {
   const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();
   const { isSignedIn } = useAccount();
-  const { open: openLinkDevice } = useLinkDevice();
 
   return (
     /* Guarded on `open` rather than passed straight through: `completeWelcome`
@@ -97,19 +96,9 @@ export function Welcome() {
           </div>
 
           {isSignedIn === false && (
-            <p className="m-0 text-xs text-gryt-muted">
-              Already use Gryt on another device?{" "}
-              <button
-                type="button"
-                className="cursor-pointer border-0 bg-transparent p-0 text-xs text-gryt-accent underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-gryt-accent-light"
-                onClick={() => {
-                  completeWelcome();
-                  openLinkDevice();
-                }}
-              >
-                Link with another device
-              </button>
-            </p>
+            <div className="rounded-[var(--gryt-radius-lg)] border border-gryt-border p-3">
+              <ScanToSignIn onScanned={completeWelcome} />
+            </div>
           )}
         </Dialog.Popup>
       </Dialog.Portal>
