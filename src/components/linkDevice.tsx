@@ -13,7 +13,11 @@ import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
 import { EmojiRow, LinkSteps, Waiting } from "./pairingParts";
 
 /** Black on white whatever the theme: phone cameras read a light-on-dark code badly. */
-export function QrCode({ text, label = "Code to scan from your other device" }: { text: string; label?: string }) {
+export function QrCode({
+  text,
+  label = "Code to scan from your other device",
+  className = "h-52 w-52",
+}: { text: string; label?: string; className?: string }) {
   const path = useMemo(() => {
     const { data } = encode(text, { ecc: "M", border: 0 });
     let d = "";
@@ -26,7 +30,7 @@ export function QrCode({ text, label = "Code to scan from your other device" }: 
       role="img"
       aria-label={label}
       viewBox={`-3 -3 ${path.size + 6} ${path.size + 6}`}
-      className="h-52 w-52 rounded-[var(--gryt-radius-md)]"
+      className={`${className} rounded-[var(--gryt-radius-md)]`}
       shapeRendering="crispEdges"
     >
       <rect x={-3} y={-3} width={path.size + 6} height={path.size + 6} fill="#fff" />

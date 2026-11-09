@@ -52,6 +52,12 @@ export interface LinkDevice {
   /** The history coming in, once the other device sends some. */
   history: HistoryProgress | null;
   open(): void;
+  /** Starts a code to show inline, as on the welcome screen. False when linking here needs the warning first. */
+  startInline(): boolean;
+  /** Drops an inline code nobody scanned. A link that got past the QR keeps going. */
+  stopInline(): void;
+  /** Moves an inline link into the dialog once somebody scans it. */
+  reveal(): void;
   start(): void;
   close(): void;
   mismatch(): void;
@@ -63,6 +69,9 @@ const init: LinkDevice = {
   replaces: 0,
   history: null,
   open: () => {},
+  startInline: () => false,
+  stopInline: () => {},
+  reveal: () => {},
   start: () => {},
   close: () => {},
   mismatch: () => {},
@@ -171,6 +180,30 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     if (listGuestScopes().length === 0) start();
   }, [start]);
 
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
+  const notScannedYet = () => {
+    const phase = pairing.current?.state.phase;
+    return phase === "idle" || phase === "opening" || phase === "showing";
+  };
+
+  const startInline = useCallback(() => {
+    if (listGuestScopes().length > 0) return false;
+    if (pairing.current && notScannedYet()) return true;
+    setReplaces(Object.keys(live.current.servers).length);
+    start();
+    return true;
+  }, [start]);
+
+  const stopInline = useCallback(() => {
+    if (isOpenRef.current || !notScannedYet()) return;
+    pairing.current?.cancel().catch(() => undefined);
+    pairing.current = null;
+    setState(null);
+  }, []);
+
+  const reveal = useCallback(() => setIsOpen(true), []);
+
   const close = useCallback(() => {
     const phase = pairing.current?.state.phase;
     // Closing once it's written leaves the rest running: the other device is still adding this one.
@@ -186,5 +219,5 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     pairing.current?.mismatch().catch(() => undefined);
   }, []);
 
-  return { isOpen, state, replaces, history, open, start, close, mismatch };
+  return { isOpen, state, replaces, history, open, startInline, stopInline, reveal, start, close, mismatch };
 });
