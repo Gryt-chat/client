@@ -10,10 +10,11 @@ import { useAccount } from "@/common";
 import { PiX } from "../lib/icons";
 import { approverEndText, sendingHistoryText, sentHistoryText } from "../lib/pairing/approverWords";
 import { deviceCapLine } from "../lib/pairing/deviceCap";
+import { stepsAt, useWakeLock } from "../lib/pairing/linkSteps";
 import { useApproveDevice } from "../lib/pairing/useApproveDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
 import { openUserSettings } from "../packages/socket/src/components/dmKeyWarningToast";
-import { EmojiRow, Waiting } from "./pairingParts";
+import { EmojiRow, LinkSteps, Waiting } from "./pairingParts";
 
 function CodeEntry() {
   const { claim, close } = useApproveDevice();
@@ -34,7 +35,7 @@ function CodeEntry() {
       }}
     >
       <Dialog.Description className="m-0">
-        On the new device, choose Link with another device. Type the code it shows under the QR code.
+        On the new device, choose Link this device. Type the code it shows under the QR code.
       </Dialog.Description>
       <TextField
         label="Code"
@@ -114,6 +115,42 @@ function Confirm({ state }: { state: Extract<ApproverState, { phase: "confirming
   );
 }
 
+type InFlight = Extract<ApproverState, { phase: "signing_in" | "browser" | "waiting_ready" | "adding" | "sending" }>;
+const ORDER: InFlight["phase"][] = ["signing_in", "waiting_ready", "adding", "sending"];
+
+function Progressing({ state }: { state: InFlight }) {
+  const { history } = useApproveDevice();
+  const { isSignedIn } = useAccount();
+  const name = state.device.name || "the new device";
+  const at = ORDER.indexOf(state.phase === "browser" ? "signing_in" : state.phase);
+  const labels = [
+    { label: "Checked it\u2019s yours", detail: "The pictures matched" },
+    ...(isSignedIn ? [{ label: `Signing in ${name}` }] : []),
+    { label: `Waiting for ${name} to join your servers` },
+    {
+      label: "Adding it to your chats",
+      detail: state.phase === "adding" && state.total ? `${state.done} of ${state.total}` : undefined,
+    },
+    ...(history ? [{ label: "Copying older messages", detail: state.phase === "sending" && history.total !== 0 ? sendingHistoryText(history) : undefined }] : []),
+  ];
+  // Without the sign-in row everything after it moves up one.
+  const index = 1 + at - (isSignedIn ? 0 : 1);
+  return (
+    <div className="flex flex-col gap-3">
+      {state.phase === "browser" && (
+        <Dialog.Description className="m-0">
+          Your sign-in server can&rsquo;t approve this from inside Gryt, so it opened in your browser. Choose Yes
+          there, then come back here.
+        </Dialog.Description>
+      )}
+      <LinkSteps steps={stepsAt(labels, index)} />
+      {state.phase === "sending" && history?.total ? (
+        <Progress value={(Math.min(history.messages, history.total) / history.total) * 100} aria-label="History sent" />
+      ) : null}
+    </div>
+  );
+}
+
 function Body() {
   const { state, failure, history, open, close } = useApproveDevice();
 
@@ -135,38 +172,11 @@ function Body() {
     case "confirming":
       return <Confirm state={state} />;
     case "signing_in":
-      return <Waiting>Signing in {state.device.name}…</Waiting>;
     case "browser":
-      return (
-        <div className="flex flex-col gap-3">
-          <Dialog.Description className="m-0">
-            Your sign-in server can&rsquo;t approve this from inside Gryt, so it opened in your browser. Choose Yes
-            there, then come back here.
-          </Dialog.Description>
-          <Waiting>Waiting for {state.device.name} to sign in…</Waiting>
-        </div>
-      );
     case "waiting_ready":
-      return <Waiting>Waiting for {state.device.name} to join your servers…</Waiting>;
     case "adding":
-      return (
-        <div className="flex flex-col gap-2" role="status">
-          <span className="text-sm">
-            Adding {state.device.name} to your conversations: {state.done} of {state.total}.
-          </span>
-          <Progress value={state.total ? (state.done / state.total) * 100 : null} aria-label="Conversations done" />
-        </div>
-      );
     case "sending":
-      return (
-        <div className="flex flex-col gap-2" role="status">
-          <span className="text-sm">{sendingHistoryText(history)}</span>
-          <Progress
-            value={history?.total ? (Math.min(history.messages, history.total) / history.total) * 100 : null}
-            aria-label="History sent"
-          />
-        </div>
-      );
+      return <Progressing state={state} />;
     case "done": {
       const failed = Object.values(state.added).flat().filter((a) => a.outcome === "failed").length;
       const sent = sentHistoryText(history);
@@ -200,6 +210,7 @@ function Body() {
 /** Link a new device to this one (GRYT-1484), from the side that's already signed in. */
 export function ApproveDeviceDialog() {
   const { isOpen, state, close } = useApproveDevice();
+  useWakeLock(isOpen && !!state && state.phase !== "idle" && state.phase !== "done" && state.phase !== "ended");
   const title = state?.phase === "confirming" ? "Link this device?" : "Link a new device";
 
   return (

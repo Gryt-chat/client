@@ -107,7 +107,7 @@ export function Welcome() {
                   openLinkDevice();
                 }}
               >
-                Link with another device
+                Link this device
               </button>
             </p>
           )}
