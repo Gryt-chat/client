@@ -306,6 +306,6 @@
     "dmg-license": "1.0.11"
   },
   "resolutions": {
-    "@gryt/core/@gryt/crypto": "0.13.0"
+    "@gryt/core/@gryt/crypto": "0.14.0"
   }
 }
