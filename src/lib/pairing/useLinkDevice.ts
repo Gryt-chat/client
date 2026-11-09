@@ -4,6 +4,7 @@ import {
   type HistoryProgress,
   type NewDevicePairing,
   type NewDeviceState,
+  openServerHistory,
   type PairedServerDevice,
   type PairingFetch,
 } from "@gryt/core";
@@ -11,8 +12,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   expectServerLineage,
-  getServerAccessToken,
-  getServerHttpBase,
   installPairedIdentity,
   listGuestScopes,
   localPeerPinStore,
@@ -32,9 +31,9 @@ import { getGrytConfig, setCustomAuthIssuer, setCustomIdentityUrl } from "../../
 import { isElectron } from "../electron";
 import { describeThisDevice } from "./device";
 import { historySink } from "./historySink";
-import { serverHistoryStore } from "./historyStore";
 import { createLinkStorage } from "./install";
 import { createPairingOidc } from "./oidc";
+import { historyFetch, serverAccess } from "./serverAccess";
 
 /* The new-device side of linking (GRYT-1484). A singleton, so the pairing outlives the
    screen that opened it: signing in swaps half the app out from under it. */
@@ -137,8 +136,7 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       relayOrigin: relayOrigin === DEFAULT_RELAY ? undefined : relayOrigin,
       // Opened when the first batch arrives, which is after the identity is in place.
       history: historySink(async () => (await openLocalArchive()).messages),
-      historyStore: (host, transfer) =>
-        serverHistoryStore({ base: getServerHttpBase, token: getServerAccessToken }, host, transfer),
+      historyStore: openServerHistory(serverAccess, historyFetch),
     });
     pairing.current = next;
     next.subscribe((s) => {

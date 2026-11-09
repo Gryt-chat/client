@@ -1,6 +1,7 @@
 import {
   type ApproverPairing,
   type ApproverState,
+  chooseHistoryServer,
   createApproverPairing,
   createPairingRelay,
   type HistoryProgress,
@@ -11,8 +12,6 @@ import { useCallback, useRef, useState } from "react";
 import {
   freshAccessToken,
   getRememberedScheme,
-  getServerAccessToken,
-  getServerHttpBase,
   identityScopeFor,
   initKeycloak,
   listPeerPins,
@@ -32,7 +31,7 @@ import { serversAtDeviceCap } from "./deviceCap";
 import { accountFromToken, buildEnvelope } from "./envelope";
 import { historyArchive } from "./historyArchive";
 import { toHistoryRecord } from "./historyRecords";
-import { chooseHistoryServer } from "./historyStore";
+import { historyFetch, serverAccess } from "./serverAccess";
 
 /* The approving side of linking (GRYT-1484): this device claims the new one's code, shows
    the emoji, and on Approve hands over its identity, signs the new device in and adds it. */
@@ -125,7 +124,7 @@ export const useApproveDevice = singletonHook<ApproveDevice>(init, () => {
         fetch: pairingFetch,
         devices: ownDeviceAdder,
         history: opened ? historyArchive(opened.messages) : undefined,
-        historyStore: chooseHistoryServer({ base: getServerHttpBase, token: getServerAccessToken }),
+        historyStore: chooseHistoryServer(serverAccess, historyFetch),
       });
       pairing.current = next;
       let release: (() => void) | null = null;
