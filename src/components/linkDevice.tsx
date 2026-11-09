@@ -125,13 +125,14 @@ function Body({ state, replaces, history }: { state: NewDeviceState | null; repl
           <Dialog.Description className="m-0">
             This device is linked to {state.from}.
             {state.phase === "linked" && " Your other device is adding it to your conversations. You can use Gryt while that finishes."}
+            {replaces > 0 && (state.phase === "linked" ? " Gryt restarts by itself once it's done." : " Restarting Gryt…")}
           </Dialog.Description>
           <History progress={history} />
           <div className="flex flex-wrap gap-2">
             {replaces > 0 ? (
               // A restart now would leave the rest of the history behind.
               <Button size="small" disabled={state.phase === "linked"} onClick={() => window.location.reload()}>
-                Restart Gryt
+                Restart now
               </Button>
             ) : (
               <Button size="small" onClick={close}>Done</Button>

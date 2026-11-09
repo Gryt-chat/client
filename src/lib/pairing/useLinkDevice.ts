@@ -21,7 +21,7 @@ import {
   useAccount,
 } from "@/common";
 import { useServerSettings } from "@/settings";
-import { updateStoredValueFor } from "@/settings/src/hooks/userStorage";
+import { loadedUserId, updateStoredValueFor } from "@/settings/src/hooks/userStorage";
 import type { Server, Servers } from "@/settings/src/types/server";
 import { seenOnMlsFor } from "@/socket/src/mls/seenOnMls";
 import { forgetOwnMlsDevices, whenOwnMlsDevice } from "@/socket/src/mls/serverMls";
@@ -39,6 +39,7 @@ import { createPairingOidc } from "./oidc";
 const DEFAULT_RELAY = "https://id.gryt.chat";
 /** How long each server gets to publish this device's KeyPackages before "ready" goes without it. */
 const JOIN_WAIT_MS = 45_000;
+const RESTART_AFTER_MS = 3_000;
 
 const pairingFetch: PairingFetch = (url, init) => fetch(url, init);
 
@@ -96,7 +97,8 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       markSeenOnMls: (scope, memberId) => seenOnMlsFor(scope).add(memberId),
       async writeServers(list, account) {
         for (const s of list) if (s.scheme) rememberScheme(s.host, s.scheme);
-        if (account) {
+        // Already signed in as this account, nothing reloads the list, so it has to change live.
+        if (account && loadedUserId() !== account.sub) {
           await updateStoredValueFor<Servers>(account.sub, "servers", (current) => toServerEntries(current, list));
         } else {
           live.current.setServers(toServerEntries(live.current.servers, list));
@@ -150,6 +152,13 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       cancelled = true;
     };
   }, [state]);
+
+  // The swapped identity only takes over on a restart, and restarting earlier would cut the history off.
+  useEffect(() => {
+    if (state?.phase !== "done" || replaces === 0) return;
+    const timer = setTimeout(() => window.location.reload(), RESTART_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [state?.phase, replaces]);
 
   const open = useCallback(() => {
     const phase = pairing.current?.state.phase;
