@@ -2,11 +2,9 @@
  * states carried by @gryt/ui Button, IconButton and Avatar; no new controls here. */
 import { Avatar, Button, Dialog, IconButton, MessageBubble } from "@gryt/ui";
 
-import { useAccount } from "@/common";
 import { useSettings } from "@/settings";
 
 import { PiSignpost, PiX } from "../lib/icons";
-import { ScanToSignIn } from "./scanToSignIn";
 
 /**
  * The first thing anybody sees, drawn as a message rather than a dialog, so a
@@ -14,7 +12,6 @@ import { ScanToSignIn } from "./scanToSignIn";
  */
 export function Welcome() {
   const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();
-  const { isSignedIn } = useAccount();
 
   return (
     /* Guarded on `open` rather than passed straight through: `completeWelcome`
@@ -95,11 +92,6 @@ export function Welcome() {
             </Button>
           </div>
 
-          {isSignedIn === false && (
-            <div className="rounded-[var(--gryt-radius-lg)] border border-gryt-border p-3">
-              <ScanToSignIn onScanned={completeWelcome} />
-            </div>
-          )}
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
