@@ -1,11 +1,13 @@
+import { useState } from "react";
+
 import type { ForumTag } from "@/settings/src/types/server";
 
 import { avatarSeed, generatedAvatarUrl } from "../packages/common/src/utils/owlAvatar";
 import type { ChatMessage } from "../packages/socket/src/components/chatUtils";
 import { ForumView } from "../packages/socket/src/components/ForumView";
 import { type MessageMeta, MessageRow } from "../packages/socket/src/components/MessageRow";
-import { customOwlUrl, FRIENDS } from "./people";
 import { getCustomEmojis } from "../packages/socket/src/utils/emojiData";
+import { customOwlUrl, FRIENDS } from "./people";
 
 const noop = () => {};
 const pictureUrl = (who: string) => { const id = FRIENDS.find((f) => f.nickname === who)?.avatarFileId; return id ? `/api/uploads/files/${id}` : null; };
@@ -14,7 +16,7 @@ const at = (min: number) => new Date(Date.UTC(2026, 10, 6, 20, min)).toISOString
 
 export type Line = { id: string; who: string; text: string | null; min: number; bot?: boolean; webhook?: boolean; first?: boolean; system?: boolean } & Partial<ChatMessage>;
 
-function Row({ line, serverHost = "motion.gryt", onReaction = noop }: { line: Line; serverHost?: string; onReaction?: (src: string, m: ChatMessage) => void }) {
+function Row({ line, serverHost = "motion.gryt", onReaction = noop, isNew = false }: { line: Line; serverHost?: string; onReaction?: (src: string, m: ChatMessage) => void; isNew?: boolean }) {
   const { id, who, text, min, bot, webhook, first = true, system, ...rest } = line;
   const message: ChatMessage = {
     conversation_id: "motion", message_id: id, sender_server_id: `u-${who}`, text, attachments: null, created_at: at(min),
@@ -29,13 +31,15 @@ function Row({ line, serverHost = "motion.gryt", onReaction = noop }: { line: Li
       message={message} meta={meta} replyPreviewText={null} isMentioned={false} customEmojiList={getCustomEmojis(serverHost) as never} memberNicknames={[]}
       blurProfanity={false} smileyConversion disabledSmileys={new Set()} serverHost={serverHost} currentUserId="u-me"
       currentUserNickname="me" canDeleteAny={false} chatMediaVolume={1} setChatMediaVolume={noop} onReaction={onReaction}
-      onReply={noop} onEdit={noop} onReport={noop} onDelete={noop} scrollToMessage={noop} onLightboxOpen={noop}
+      onReply={noop} onEdit={noop} onReport={noop} onDelete={noop} scrollToMessage={noop} onLightboxOpen={noop} isNew={isNew}
     />
   );
 }
 
 export function Messages({ lines, serverHost, onReaction }: { lines: Line[]; serverHost?: string; onReaction?: (src: string, m: ChatMessage) => void }) {
-  return <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{lines.map((l) => <Row key={l.id} line={l} serverHost={serverHost} onReaction={onReaction} />)}</div>;
+  // Like the client: what was there when the chat opened sits still, and anything after it arrives.
+  const [initial] = useState(() => new Set(lines.map((l) => l.id)));
+  return <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{lines.map((l) => <Row key={l.id} line={l} serverHost={serverHost} onReaction={onReaction} isNew={!initial.has(l.id)} />)}</div>;
 }
 
 export const PEOPLE: Line[] = [

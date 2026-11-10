@@ -6,7 +6,6 @@ export function Cursor() {
   useFrame();
   const x = get("cur.x", 2100);
   const y = get("cur.y", 1200);
-  const press = get("cur.press", 0);
   const ring = get("cur.ring", 0);
   const dbg = new URLSearchParams(location.search).has("dbg");
   return (
@@ -82,8 +81,6 @@ export async function click(el?: HTMLElement, dur = 700) {
   setMood("open");
   await wait(160);
 }
-
-export async function leave(_dur = 600) {}
 
 /** A force tap that only hovers: what brings a message's reaction bar up. */
 export async function touch(el: HTMLElement, dur = 520) {

@@ -1,4 +1,4 @@
-import { type Accessory, ACCESSORIES, owlPalette } from "@gryt/owl";
+import { ACCESSORIES, type Accessory, owlPalette } from "@gryt/owl";
 
 import { owlPosition, pointAt, relax, say, setMood, wave } from "./guide";
 import { Owl } from "./owl";

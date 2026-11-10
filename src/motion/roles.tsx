@@ -2,9 +2,9 @@ import { useState } from "react";
 
 import type { ChannelRule } from "@/settings/src/channelPermissionRules";
 
-import { useFrame } from "./stage";
 import { ChannelPermissionMatrix } from "../packages/socket/src/components/ChannelPermissionMatrix";
 import { ServerRoleEditorTab } from "../packages/socket/src/components/ServerRoleEditorTab";
+import { useFrame } from "./stage";
 
 const SERVER_PERMS = ["send_messages", "attach_files", "add_reactions", "join_voice", "speak", "share_screen", "manage_messages", "kick_members"];
 const CHANNEL_PERMS = ["read_messages", "send_messages", "attach_files", "add_reactions"];

@@ -1,8 +1,8 @@
 // Serves motion.html for render-motion.mjs with live reload off, so editing the film never reloads a render mid-run.
-import { defineConfig, mergeConfig } from "vite";
-
 import { createReadStream, existsSync } from "node:fs";
 import { extname, join } from "node:path";
+
+import { defineConfig, mergeConfig } from "vite";
 
 import base from "./vite.config";
 

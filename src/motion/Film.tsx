@@ -3,27 +3,25 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { GeneratedServerIcon } from "@/common";
-
 import type { Channel, SidebarItem } from "@/settings/src/types/server";
 import type { Clients } from "@/socket/src/types/clients";
 
 import { PiChatsTeardropFill, PiChatTeardropTextFill, PiGearFill, PiLinkFill, PiPlus, PiShieldCheckFill, PiUsersThreeFill } from "../lib/icons";
 import { AddNewServer } from "../packages/settings/src/components/addServer";
-import { ServerHeader } from "../packages/socket/src/components/ServerHeader";
 import { ChannelList } from "../packages/socket/src/components/ChannelList";
 import { ChatEditor } from "../packages/socket/src/components/ChatEditor";
-import { getCustomEmojis, setCustomEmojis } from "../packages/socket/src/utils/emojiData";
 import { CreateChannelDialog, type NewChannelOptions } from "../packages/socket/src/components/CreateChannelDialog";
-import { click, Cursor, leave, moveTo, touch } from "./cursor";
+import { ServerHeader } from "../packages/socket/src/components/ServerHeader";
+import { getCustomEmojis, setCustomEmojis } from "../packages/socket/src/utils/emojiData";
+import { Caret } from "./caret";
+import { click, Cursor, moveTo, touch } from "./cursor";
 import { AUTOMATED, Forum, type Line, Messages, PEOPLE } from "./examples";
+import { Guide, meditate, owlPosition, place, placeOn, point, pointAt, quiet, relax, say, setMood, stagePoint, watchActivity, wave } from "./guide";
+import { LiveCard, LiveMembers } from "./liveOwl";
 import { Card, FRIENDS, ME, Members, Typing } from "./people";
 import { FolderPermissions, RoleEditor } from "./roles";
-import { aimAt, Guide, lookAt, meditate, watchActivity, owlPosition, place, placeOn, pointAt, relax, setStiffness, stagePoint, point, quiet, say, setMood, wave } from "./guide";
-import { LiveCard, LiveMembers } from "./liveOwl";
-import { dressUp, Wardrobe } from "./wardrobe";
 import { VoiceGrid } from "./voice";
-import { Caret } from "./caret";
-import { avatarSeed, owlAvatarDataUri } from "@gryt/owl";
+import { dressUp, Wardrobe } from "./wardrobe";
 
 /** Marks a storyboard beat: its time and where the owl is, for the boards Sivert positions the owl on. */
 // Owl spots per beat from Sivert's storyboard (owl centre, and the bubble's offset from the owl's top-left).
@@ -55,8 +53,9 @@ function beat(id: string) {
   console.error(`motion: beat ${id} t=${(performance.now() / 1000).toFixed(2)} owl=${o.x},${o.y}`);
 }
 import "./animatedImages";
+
 import { sfx } from "./sfx";
-import { $, byText, ease, flat, until, get, H, hold, set, to, useFrame, W, wait } from "./stage";
+import { $, byText, ease, flat, get, H, hold, set, to, until, useFrame, W, wait } from "./stage";
 import { key, type, typeInput } from "./typing";
 
 const PERSPECTIVE = 1600;
@@ -358,7 +357,6 @@ export function Film() {
       await frame(["#s-rail [aria-label='Direct messages']", "#addserver", "#channels button"], { fill: 0.17, dur: 1100, at: { x: 0.34, y: 0.3 }, rx: 6, ry: 9 });
       await until(() => $(DIALOG));
       await centerGroup(700);
-      aimAt("#s-rail");
       await until(() => $(DIALOG));
       await hold(400);
       await click(await until(() => byText("Create my own", dialogHost.current).closest("button")!), 560);
@@ -403,7 +401,6 @@ export function Film() {
         await hold(350);
       };
       await make("lounge", "Voice");
-      await leave(400);
       await hold(300);
       // The rest pour in while Gryt meditates them into being.
       meditate(true);
@@ -414,7 +411,7 @@ export function Film() {
         ["game-night", "game night", { type: "voice" }],
       ];
       const pos: Record<string, number> = { clips: 12, memes: 13, "late-night": 22, art: 30, music: 31, photos: 32, lfg: 40, "deep-rock": 41, minecraft: 42, "game-night": 43 };
-      for (const [n, [id, name, fields]] of extra.entries()) {
+      for (const [id, name, fields] of extra) {
         setChannels((cs) => [...cs, ch(id, name, fields)]);
         setItems((is) => [...is, { id: `i-${id}`, kind: "channel", channelId: id, position: pos[id] }]);
         sfx("create");
@@ -460,7 +457,6 @@ export function Film() {
       reveal("s-chat", 800);
       await hold(700);
       beat("05-chat");
-      await leave(400);
 
       // Act 4: back to general, the member list attaches, and you invite your friends.
       beat("07-invite");
@@ -499,7 +495,6 @@ export function Film() {
         await hold(400);
         setMood("open");
       }
-      await leave(350);
       to("ov.invite", 0, 300);
       to("dim", 0, 400);
       beat("08-friends");
@@ -640,7 +635,9 @@ export function Film() {
       void frame(["#s-chat"], { fill: 0.62, dur: 1200, rx: 4, ry: -5 });
       place(1500, 300, { dx: -60, dy: -80 });
       // Cameras come on one at a time; Sivert stays on his picture.
-      const cam = async (n: string, ms: number) => { await hold(ms); setCams((c) => [...c, n]); sfx("cam"); };
+      const clientOf: Record<string, string> = { Gryt: "me", ...Object.fromEntries(FRIENDS.slice(0, 3).map((f, i) => [f.nickname, `c-${i}`])) };
+      const flag = (n: string, f: Record<string, unknown>) => setClients((c) => ({ ...c, [clientOf[n]]: { ...c[clientOf[n]], ...f } }));
+      const cam = async (n: string, ms: number) => { await hold(ms); setCams((c) => [...c, n]); flag(n, { cameraEnabled: true }); sfx("cam"); };
       await cam("Carlo", 500);
       void say("We're all here!", undefined, undefined, "happy");
       await cam("Justin", 700);
@@ -648,6 +645,7 @@ export function Film() {
       await hold(900);
       // Sivert shares his game, and it takes the top of the call.
       setSharing(true);
+      flag("Sivert", { screenShareEnabled: true });
       sfx("share");
       await hold(600);
       // Gryt flies over beside the quality pill, points at it smiling, then touches it for the details.
@@ -680,7 +678,8 @@ export function Film() {
             <Slot id="s-channels" width={200} from="left" style={{ background: "transparent", borderRadius: 0, overflow: "visible" }}>
               <div id="channels" className="flex flex-col h-full w-full items-center gap-4">
                 <ServerHeader serverName={servers[0] ?? "Owl City"} serverHost="motion.gryt" onLeave={() => {}} role="owner" canManageChannels onOpenSettings={() => { to("dim", 1, 400); to("ov.settings", 1, 700, ease.expo); sfx("open"); }} onOpenInvites={() => { to("dim", 1, 400); to("ov.invite", 1, 600, ease.expo); sfx("open"); }} />
-                <div style={{ width: "100%" }}>
+                {/* ServerSidebar's own wrapper: the list scrolls inside the panel rather than running past it. */}
+                <div style={{ flex: 1, width: "100%", minHeight: 0, display: "flex", flexDirection: "column", overflowY: "auto", padding: "2px 6px" }}>
                 <ChannelList
                   channels={channels} items={items} serverHost={location.host} clients={clients} members={members as never} currentChannelId={view === "voice" ? "lounge" : ""} currentServerConnected={view === "voice" ? location.host : null}
                   showVoiceView={view === "voice"} isConnecting={false} selectedChannelId={selected} onChannelClick={(c) => setSelected(c.id)} clientsSpeaking={{}}

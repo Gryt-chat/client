@@ -1,11 +1,10 @@
 import { avatarSeed, decodeWorn, owlAvatarSvg, owlPartPaths, resolveOwl, wornToOptions } from "@gryt/owl";
-
-import { CUSTOM_OWLS, FRIENDS, hasPicture } from "./people";
 import { useRef } from "react";
 import { createPortal } from "react-dom";
 
 import { blinkAt, owlPosition } from "./guide";
 import { Owl } from "./owl";
+import { CUSTOM_OWLS, FRIENDS, hasPicture } from "./people";
 import { ease, useFrame } from "./stage";
 
 type P = { d: string; fill: string; stroke?: string; strokeWidth?: string };

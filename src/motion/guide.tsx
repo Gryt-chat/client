@@ -1,9 +1,9 @@
 import { useRef } from "react";
 
 import { Owl } from "./owl";
-import { worn } from "./wardrobe";
 import { sfx } from "./sfx";
 import { ease, flat, get, H, hold, set, to, useFrame, W } from "./stage";
+import { worn } from "./wardrobe";
 
 export type Expression =
   | "eyes-happy" | "eyes-big" | "eyes-starry" | "eyes-star" | "eyes-wink-right" | "eyes-wink-left"
@@ -122,8 +122,6 @@ export async function point(text: string, at: Anchor) {
   await say(text);
   relax();
 }
-
-export function aimAt(_at: Anchor) {}
 
 export function quiet() {
   to("guide.o", 0, 300, ease.out);

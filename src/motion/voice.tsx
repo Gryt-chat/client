@@ -1,15 +1,19 @@
 import { avatarSeed, owlAvatarColour } from "@gryt/owl";
 import { Avatar } from "@gryt/ui";
+import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
+import type { InboundDiagnostics } from "../components/videoDebugStats";
+import { ShareTileBar } from "../packages/socket/src/components/ShareTileBar";
+import { speakingRingStyle, tileGradientFrom, tileHue, tileTint } from "../packages/socket/src/components/speakingIndicator";
+import { ON_VIDEO, qualityDetails, qualityPill } from "../packages/socket/src/components/streamQuality";
+import { TILE_RADIUS, VideoCard } from "../packages/socket/src/components/VoiceParticipantCard";
 import { avatarOf } from "./examples";
 import { blinkAt, isTalking } from "./guide";
 import { parse } from "./liveOwl";
 import { Owl } from "./owl";
 import { get, useFrame } from "./stage";
 import { worn } from "./wardrobe";
-import { speakingRingStyle, tileGradientFrom, tileHue, tileTint } from "../packages/socket/src/components/speakingIndicator";
-import { TILE_RADIUS, VideoCard } from "../packages/socket/src/components/VoiceParticipantCard";
 
 const CAM_W = 640, CAM_H = 360;
 
@@ -162,13 +166,14 @@ function useClipShare(src: string): MediaStream | null {
   return stream;
 }
 
-// The stream quality pill from client#1173 (StreamQualityPill.tsx), drawn with the film's numbers:
-// the real one reads getStats from the SFU, which the film doesn't have.
-const ON_VIDEO = { glass: "rgba(17,19,24,.8)", text: "#e0e0e6", fpsBg: "#2b2a47", fps: "#c3c1ff" };
-const DETAILS: [string, string][] = [
-  ["Size", "1920 × 1080"], ["Frame rate", "240 fps"], ["Codec", "AV1"], ["Bitrate", "18.2 Mbit/s"],
-  ["Packet loss", "0.3%"], ["Dropped frames", "0.0%"], ["Jitter", "4 ms"], ["Freezes", "none"],
-];
+// The film has no SFU to read getStats from, so the share's numbers are made up; the labels and
+// the pill's colours come from the client's own streamQuality.ts.
+const STATS = {
+  frameWidth: 1920, frameHeight: 1080, framesPerSecond: 240, codec: "video/AV1", bitrateKbps: 18200,
+  recentLossPct: 0.3, recentDropPct: 0, jitterMs: 4, freezeCount: 0,
+} as unknown as InboundDiagnostics;
+const PILL = qualityPill(STATS)!;
+const DETAILS = qualityDetails(STATS);
 
 function QualityPill() {
   const open = get("pill.tip", 0);
@@ -176,8 +181,8 @@ function QualityPill() {
     <>
       <button id="share-pill" type="button" className="absolute left-2.5 top-2.5 flex cursor-pointer items-center overflow-hidden rounded-full border-0 p-0 text-xs font-semibold"
         style={{ background: ON_VIDEO.glass, fontFamily: "var(--font-mono)", lineHeight: "18px", zIndex: 2 }}>
-        <span style={{ padding: "2px 6px 2px 9px", color: ON_VIDEO.text }}>1080p</span>
-        <span style={{ padding: "2px 9px 2px 6px", background: ON_VIDEO.fpsBg, color: ON_VIDEO.fps }}>240 fps</span>
+        <span style={{ padding: "2px 6px 2px 9px", color: ON_VIDEO.text }}>{PILL.resolution}</span>
+        <span style={{ padding: "2px 9px 2px 6px", background: ON_VIDEO.fpsBg, color: ON_VIDEO.fps }}>{PILL.fps}</span>
       </button>
       {open > 0.01 && (
         <div className="gryt-tooltip rounded-(--gryt-radius-md) border border-gryt-border bg-gryt-surface-raised px-2.5 py-1.5 text-xs text-gryt-text"
@@ -199,9 +204,14 @@ function QualityPill() {
 function Share({ src, title }: { src: string; title: string }) {
   const stream = useClipShare(src);
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    // The same pieces VoiceParticipantCard puts on a share you watch.
+    <div className="group relative h-full w-full" data-share-tile style={{ position: "relative", width: "100%", height: "100%" }}>
       <VideoCard stream={stream} nickname={title} objectFit="contain" />
       <QualityPill />
+      <span className="pointer-events-none absolute bottom-2.5 right-2.5 rounded-full px-2 py-0.5 text-xs" style={{ background: ON_VIDEO.glass, color: ON_VIDEO.sound }}>
+        ♪ sound
+      </span>
+      <ShareTileBar name={title} onStop={() => {}} />
     </div>
   );
 }
@@ -222,7 +232,7 @@ export function VoiceGrid({ people, cams, share }: { people: string[]; cams: str
   const tiles = people.map((n, i) => {
     const speaking = n === speaker;
     const on = camOn.current[n];
-    const fade = on === undefined ? 0 : Math.min(1, (performance.now() - on) / 350);
+    const fade = on === undefined ? 0 : Math.min(1, (performance.now() - on) / 200);
     return (
       <div key={n} style={{ aspectRatio: "16 / 9", position: "relative" }}>
         {fade < 1 && <AvatarTile name={n} src={avatarOf(n)} speaking={speaking} small={!!share} />}
@@ -237,7 +247,7 @@ export function VoiceGrid({ people, cams, share }: { people: string[]; cams: str
   if (share) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8, height: "100%", justifyContent: "center" }}>
-        <div style={{ aspectRatio: "16 / 9", width: "100%" }}><Share src={share.src} title={share.title} /></div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} style={{ aspectRatio: "16 / 9", width: "100%" }}><Share src={share.src} title={share.title} /></motion.div>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${people.length}, minmax(0, 1fr))`, gap: 8 }}>{tiles}</div>
       </div>
     );

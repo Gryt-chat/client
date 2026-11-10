@@ -45,12 +45,10 @@ export function toMany(target: Record<string, number>, dur = 900, e = ease.inOut
   for (const [k, v] of Object.entries(target)) to(k, v, dur, e);
 }
 
-const timing = new URLSearchParams(location.search).has("timing") ? ((window as unknown as { __timing: unknown[] }).__timing = []) : null;
-const log = (ms: number) => timing?.push({ t: performance.now(), ms, stack: new Error().stack });
-export const wait = (ms: number) => (log(ms * TEMPO), new Promise<void>((r) => setTimeout(r, ms * TEMPO)));
+export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms * TEMPO));
 
 /** A pause on a result, for the viewer to take it in. Not sped up by TEMPO. */
-export const hold = (ms: number) => (log(ms), new Promise<void>((r) => setTimeout(r, ms)));
+export const hold = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Re-renders every frame, for anything reading get(). */
 export function useFrame() {
@@ -96,10 +94,11 @@ export function centerOf(el: Boxed, dx = 0.5, dy = 0.5) {
 }
 
 /** Polls until `find` stops throwing, so a step never races the UI it waits on. */
-export async function until<T>(find: () => T, ms = 4000): Promise<T> {
+/** Polls until `find` gives something: a throw or a null counts as not there yet. */
+export async function until<T>(find: () => T, ms = 4000): Promise<NonNullable<T>> {
   const end = performance.now() + ms;
   for (;;) {
-    try { return find(); } catch (e) { if (performance.now() > end) throw e; }
+    try { const v = find(); if (v != null) return v; if (performance.now() > end) throw new Error("motion: until() found nothing"); } catch (e) { if (performance.now() > end) throw e; }
     await new Promise((r) => setTimeout(r, 50));
   }
 }

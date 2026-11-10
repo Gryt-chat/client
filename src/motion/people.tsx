@@ -1,8 +1,8 @@
-import carloOwl from "./carlo-owl.svg?raw";
-import type { TypingUser } from "../packages/socket/src/hooks/useTypingIndicator";
 import { MemberIdentityCard } from "../packages/socket/src/components/MemberIdentityCard";
 import { type MemberInfo, MemberSidebar } from "../packages/socket/src/components/MemberSidebar";
 import { TypingIndicator } from "../packages/socket/src/components/TypingIndicator";
+import type { TypingUser } from "../packages/socket/src/hooks/useTypingIndicator";
+import carloOwl from "./carlo-owl.svg?raw";
 
 const person = (id: string, nickname: string, extra: Partial<MemberInfo> = {}): MemberInfo => ({
   serverUserId: `u-${id}`, nickname, status: "online", isMuted: false, isDeafened: false, color: "#968ff8",
