@@ -16,7 +16,7 @@ import { getCustomEmojis, setCustomEmojis } from "../packages/socket/src/utils/e
 import { Caret } from "./caret";
 import { click, Cursor, moveTo, touch } from "./cursor";
 import { AUTOMATED, Forum, type Line, Messages, PEOPLE } from "./examples";
-import { Guide, meditate, owlPosition, place, placeOn, point, pointAt, quiet, relax, say, setMood, stagePoint, watchActivity, wave } from "./guide";
+import { Guide, meditate, owlPosition, place, placeOn, point, pointAt, relax, say, setMood, stagePoint, watchActivity, wave } from "./guide";
 import { LiveCard, LiveMembers } from "./liveOwl";
 import { Card, FRIENDS, ME, Members, Typing } from "./people";
 import { FolderPermissions, RoleEditor } from "./roles";
@@ -222,6 +222,28 @@ const ch = (id: string, name: string, extra: Partial<Channel> = {}): Channel => 
 
 
 /** Cursor and owl, portalled over the app's own dialogs and scaled like the stage. */
+/** The end card under Gryt: the app dimmed out, his ring, and the name with the tagline below it. */
+function EndCard() {
+  useFrame();
+  const dim = get("end.dim", 0), ring = get("end.ring", 0), title = get("end.title", 0), tag = get("end.tag", 0);
+  if (dim <= 0.001) return null;
+  const r = 128, len = 2 * Math.PI * r;
+  return (
+    <>
+      <div style={{ position: "absolute", inset: 0, background: "#0b0c10", opacity: dim, zIndex: 40 }} />
+      <svg width={W} height={H} style={{ position: "absolute", inset: 0, zIndex: 44 }} aria-hidden>
+        <circle cx={960} cy={430} r={r} fill="none" stroke="var(--gryt-accent-9)" strokeWidth={5} strokeLinecap="round"
+          strokeDasharray={len} strokeDashoffset={len * (1 - ring)} transform="rotate(-90 960 430)" opacity={Math.min(1, ring * 3)} />
+      </svg>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 610, zIndex: 46, textAlign: "center", fontFamily: "var(--gryt-font-sans, inherit)", color: "#e0e0e6" }}>
+        <div style={{ fontSize: 92, fontWeight: 800, letterSpacing: "-0.035em", lineHeight: 1, opacity: Math.min(1, title * 1.4), transform: `translateY(${(1 - title) * 26}px) scale(${0.94 + 0.06 * title})` }}>Gryt Chat</div>
+        <div style={{ marginTop: 22, fontSize: 30, color: "#a8a8b2", opacity: tag, transform: `translateY(${(1 - tag) * 12}px)` }}>A place to talk that belongs to you.</div>
+        <div style={{ marginTop: 26, fontSize: 24, fontFamily: "var(--font-mono, monospace)", color: "#b4afff", opacity: tag }}>gryt.chat</div>
+      </div>
+    </>
+  );
+}
+
 function Overhead({ children }: { children: ReactNode }) {
   useFrame();
   const stage = flat(() => document.getElementById("stage")?.getBoundingClientRect());
@@ -661,8 +683,27 @@ export function Film() {
       await hold(2400);
       to("pill.tip", 0, 160, ease.in);
       relax();
-      await hold(1600);
-      quiet();
+      await hold(500);
+
+      // The sign-off: the app dims away, Gryt flies to the middle, his ring draws round him and the name lands.
+      place(960, 330, { dx: 0, dy: -80 });
+      void say("That's Gryt. See you in there!", undefined, undefined, "happy");
+      void wave(1800);
+      await hold(900);
+      to("end.dim", 1, 1100, ease.inOut);
+      sfx("fly", { dur: 1100 });
+      to("owl.scale", 1.7, 1100, ease.inOut);
+      place(960, 430);
+      await hold(1300);
+      to("end.ring", 1, 700, ease.out);
+      sfx("appear");
+      await hold(450);
+      to("end.title", 1, 650, ease.spring);
+      sfx("resolve");
+      await hold(250);
+      to("end.tag", 1, 600, ease.out);
+      // Held still, so the name is what's left on screen while the music fades.
+      await hold(2600);
       (window as unknown as { __done: boolean }).__done = true;
     })().catch((e) => console.error("motion:", e));
   }, []);
@@ -722,7 +763,7 @@ export function Film() {
         </Panel>
       </World>
       <DialogPlacer />
-      <Overhead><Wardrobe /><PaperPlane /><Caret /><Cursor /><Guide /></Overhead><LiveMembers />
+      <Overhead><EndCard /><Wardrobe /><PaperPlane /><Caret /><Cursor /><Guide /></Overhead><LiveMembers />
       <AddNewServer showAddServer={addOpen} setShowAddServer={setAddOpen} />
       <CreateChannelDialog open={createOpen} onOpenChange={setCreateOpen} editor={{ createChannel, effectiveSidebarItems: items }} />
     </div>

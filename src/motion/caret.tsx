@@ -1,4 +1,4 @@
-import { flat, useFrame, W } from "./stage";
+import { flat, get, useFrame, W } from "./stage";
 
 let typedAt = -1e9;
 /** Typing holds the caret solid, the way a real one stops blinking under the keys. */
@@ -36,7 +36,8 @@ export function Caret() {
   useFrame();
   const t = performance.now();
   const r = flat(caretRect), stage = flat(() => document.getElementById("stage")?.getBoundingClientRect());
-  if (!r || !stage) return null;
+  // The end card covers the app, and the caret with it.
+  if (!r || !stage || get("end.dim", 0) > 0.01) return null;
   const on = t - typedAt < 500 || Math.floor((t - typedAt) / 530) % 2 === 0;
   const k = stage.width / W;
   return <div style={{ position: "absolute", left: (r.left - stage.left) / k, top: (r.top - stage.top) / k, width: 2 / k, height: r.height / k, background: "var(--gryt-text, #fff)", opacity: on ? 1 : 0, zIndex: 46, pointerEvents: "none" }} />;
