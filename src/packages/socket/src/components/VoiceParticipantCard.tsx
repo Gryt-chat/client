@@ -23,6 +23,7 @@ import {
   tileGradientFrom,
   tileTint,
 } from "./speakingIndicator";
+import { StreamQualityPill } from "./StreamQualityPill";
 import { UserContextMenu } from "./UserContextMenu";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -548,6 +549,7 @@ export function VoiceParticipantCard({
                   : undefined
               }
             />
+            {!isSelf && <StreamQualityPill stream={screenStream} />}
             {share.audioStreamID && !(isSelf && isSoundOff(share.audioStreamID)) && (
               <span
                 className="pointer-events-none absolute bottom-2.5 right-2.5 rounded-full px-2 py-0.5 text-xs"
