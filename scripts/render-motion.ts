@@ -43,10 +43,13 @@ if (!existsSync(join(assets, "wiggle.webp"))) {
   writeFileSync(join(assets, "wiggle.webp"), Buffer.from(await res.arrayBuffer()));
 }
 
-const cache = join(homedir(), "Library/Caches/ms-playwright");
-const build = readdirSync(cache).filter((d) => /^chromium-\d+$/.test(d)).sort().pop();
-if (!build) throw new Error(`no Playwright Chromium under ${cache}`);
-const chromePath = join(cache, build, "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+// MOTION_CHROME for any other machine; on a Mac it finds Playwright's Chromium.
+const chromePath = process.env.MOTION_CHROME ?? (() => {
+  const cache = join(homedir(), "Library/Caches/ms-playwright");
+  const build = readdirSync(cache).filter((d) => /^chromium-\d+$/.test(d)).sort().pop();
+  if (!build) throw new Error(`no Playwright Chromium under ${cache}`);
+  return join(cache, build, "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+})();
 const profile = mkdtempSync(join(tmpdir(), "gryt-motion-"));
 const port = Number(process.env.MOTION_PORT ?? 9400 + Math.floor(Math.random() * 400));
 // Without the compositor flag, 1440p shots caught the call tiles half drawn and they flashed.
