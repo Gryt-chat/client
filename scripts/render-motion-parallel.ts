@@ -2,6 +2,7 @@
 // The clock is virtual, so each worker fast-forwards to its slice without screenshots and the seams match.
 import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { writeTrack } from "./motion-sfx.ts";
 
@@ -9,7 +10,7 @@ const out = process.argv[2] ?? "motion.mp4";
 const seconds = Number(process.argv[3] ?? 120);
 const workers = Number(process.argv[4] ?? 4);
 const FPS = Number(process.env.MOTION_FPS ?? 60);
-const here = new URL(".", import.meta.url).pathname;
+const here = fileURLToPath(new URL(".", import.meta.url));
 const kids = new Set<ChildProcess>();
 const run = (cmd: string, args: string[], env: Record<string, string> = {}) => new Promise<void>((ok, fail) => {
   const k = spawn(cmd, args, { stdio: "inherit", env: { ...process.env, ...env } });
@@ -22,7 +23,8 @@ const stopAll = () => { for (const k of kids) k.kill("SIGINT"); };
 const PORT = Number(process.env.MOTION_VITE_PORT ?? 3778);
 const up = () => fetch(`http://localhost:${PORT}/motion.html`).then(() => true, () => false);
 // A server still on the port would take the requests and then die mid-render, so wait for it to go.
-spawn("pkill", ["-f", `motion.vite.config.ts --port ${PORT}`]);
+// No pkill on Windows, and nothing to stop there either.
+spawn("pkill", ["-f", `motion.vite.config.ts --port ${PORT}`]).on("error", () => {});
 for (let i = 0; i < 50 && (await up()); i++) await new Promise((r) => setTimeout(r, 200));
 const vite = spawn("node", ["node_modules/vite/bin/vite.js", "--config", "motion.vite.config.ts", "--port", String(PORT)], { cwd: `${here}..`, stdio: "ignore" });
 vite.on("exit", (c) => { if (c !== null) { console.error(`vite exited ${c}`); process.exit(1); } });

@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { type SfxEvent, writeTrack } from "./motion-sfx.ts";
 
@@ -20,6 +21,7 @@ const url = process.env.MOTION_URL ?? `http://localhost:3778/motion.html?render$
 const FPS = Number(process.env.MOTION_FPS ?? 60);
 const draft = !!process.env.MOTION_DRAFT;
 const SHOT = process.env.MOTION_SHOT ?? (draft ? "jpeg" : "png");
+const JPEG_Q = draft ? 90 : 100;
 // A slice for render-motion-parallel.ts: frames before FROM are stepped through without screenshots.
 const FROM = Number(process.env.MOTION_FROM ?? 0);
 const FF_EVERY = Number(process.env.MOTION_FF_EVERY ?? 8);
@@ -29,7 +31,7 @@ const OUT_W = Number(process.env.MOTION_OUT_W ?? 1920);
 const CSS_W = 1280, CSS_H = 720, DPR = OUT_W / CSS_W;
 
 // Third-party art stays out of the repository; it is fetched here when missing.
-const assets = new URL("../public/motion-assets/", import.meta.url).pathname;
+const assets = fileURLToPath(new URL("../public/motion-assets/", import.meta.url));
 if (!existsSync(join(assets, "emoji"))) {
   mkdirSync(join(assets, "emoji"), { recursive: true });
   for (const { name } of await (await fetch("https://community.gryt.chat/api/emojis")).json()) {
@@ -105,7 +107,7 @@ try {
       if (frame % 60 === 0 && (await evaluate("!!window.__done"))) break;
       continue;
     }
-    const shot = await cdp("Page.captureScreenshot", { format: SHOT, quality: SHOT === "jpeg" ? (draft ? 90 : 100) : undefined, clip: { x: 0, y: 0, width: CSS_W, height: CSS_H, scale: 1 } });
+    const shot = await cdp("Page.captureScreenshot", { format: SHOT, quality: SHOT === "jpeg" ? JPEG_Q : undefined, clip: { x: 0, y: 0, width: CSS_W, height: CSS_H, scale: 1 } });
     ff.stdin.write(Buffer.from(shot.result?.data ?? "", "base64"));
     if (frame % 60 === 0 && (await evaluate("!!window.__done"))) break;
     if (frame % (FPS * SUB * 5) === 0) console.error(`${out.split("/").pop()}: ${(frame / FPS / SUB).toFixed(0)} s`);

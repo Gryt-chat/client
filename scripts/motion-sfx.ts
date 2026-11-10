@@ -1,6 +1,7 @@
 // Builds the film's sound track from the events motion.html logged. Uses the licensed samples in
 // public/motion-assets/sfx (gitignored, see SOURCE.txt there) when present, else synthesises them.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const RATE = 48000;
 
@@ -69,7 +70,7 @@ const voices: Record<string, Voice> = {
 
 const GAIN: Record<string, number> = { click: 0.8, key: 0.55, pop: 0.7, whoosh: 0.45, resolve: 0.9 };
 
-const SFX = new URL("../public/motion-assets/sfx/", import.meta.url).pathname;
+const SFX = fileURLToPath(new URL("../public/motion-assets/sfx/", import.meta.url));
 /** A 16-bit mono WAV, scaled to a peak of 1 so the gains below are the only levels. */
 function load(name: string): Float32Array | null {
   const p = `${SFX}${name}.wav`;
