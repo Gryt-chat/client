@@ -1,17 +1,17 @@
-// Renders motion.html in slices at once and joins them: node scripts/render-motion-parallel.mjs out.mp4 [seconds] [workers]
+// Renders motion.html in slices at once and joins them: node scripts/render-motion-parallel.ts out.mp4 [seconds] [workers]
 // The clock is virtual, so each worker fast-forwards to its slice without screenshots and the seams match.
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 
-import { writeTrack } from "./motion-sfx.mjs";
+import { writeTrack } from "./motion-sfx.ts";
 
 const out = process.argv[2] ?? "motion.mp4";
 const seconds = Number(process.argv[3] ?? 120);
 const workers = Number(process.argv[4] ?? 4);
 const FPS = Number(process.env.MOTION_FPS ?? 60);
 const here = new URL(".", import.meta.url).pathname;
-const kids = new Set();
-const run = (cmd, args, env = {}) => new Promise((ok, fail) => {
+const kids = new Set<ChildProcess>();
+const run = (cmd: string, args: string[], env: Record<string, string> = {}) => new Promise<void>((ok, fail) => {
   const k = spawn(cmd, args, { stdio: "inherit", env: { ...process.env, ...env } });
   kids.add(k);
   k.on("close", (c) => { kids.delete(k); c ? fail(new Error(`${cmd} exited ${c}`)) : ok(); });
@@ -28,13 +28,13 @@ vite.on("exit", (c) => { if (c !== null) { console.error(`vite exited ${c}`); pr
 try {
   for (let i = 0; i < 100 && !(await up()); i++) await new Promise((r) => setTimeout(r, 300));
   // Slices start on whole frames, so no frame is drawn twice or skipped at a seam.
-  const cut = (i) => Math.round((seconds * i) / workers * FPS) / FPS;
+  const cut = (i: number) => Math.round((seconds * i) / workers * FPS) / FPS;
   const parts = Array.from({ length: workers }, (_, i) => out.replace(/\.mp4$/, `.part${i}.mp4`));
   const sfx = out.replace(/\.mp4$/, ".sfx.json");
   const started = Date.now();
   await Promise.all(parts.map(async (p, i) => {
     await new Promise((r) => setTimeout(r, i * 1500));
-    return run("node", [`${here}render-motion.mjs`, p, String(cut(i + 1))], {
+    return run("node", [`${here}render-motion.ts`, p, String(cut(i + 1))], {
       MOTION_FROM: String(cut(i)), MOTION_NO_AUDIO: "1", MOTION_PORT: String(9400 + i), ...(i === workers - 1 ? { MOTION_SFX_OUT: sfx } : {}),
     });
   })).catch((e) => { stopAll(); throw e; });

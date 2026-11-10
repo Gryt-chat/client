@@ -1,3 +1,5 @@
+// First, so every module after it schedules on the film clock when the page renders.
+import "./clock";
 import "../style.css";
 import "./electronStub";
 
