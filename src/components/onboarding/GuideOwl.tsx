@@ -290,22 +290,26 @@ export function GuideOwl({
     window.addEventListener("pointermove", move);
     let frame = requestAnimationFrame(function tick(now) {
       const s = state.current;
-      const dt = Math.min(0.05, (now - s.last) / 1000);
+      // Slow frames step the spring several times, so the flight keeps real time on a slow phone.
+      const dt = Math.min(0.25, (now - s.last) / 1000);
       s.last = now;
       const h = homeRef.current;
       if (still) {
         s.pos = { x: h.x, y: h.y };
         s.vel = { x: 0, y: 0 };
-      } else if (dt > 0) {
+      } else {
         // A critically damped spring that leans into its travel, with a kick from the acceleration.
         const k = 5, c = 2 * Math.sqrt(k);
-        const ax = k * (h.x - s.pos.x) - c * s.vel.x;
-        const ay = k * (h.y - s.pos.y) - c * s.vel.y;
-        s.vel.x += ax * dt;
-        s.vel.y += ay * dt;
-        s.pos.x += s.vel.x * dt;
-        s.pos.y += s.vel.y * dt;
-        s.lean += (Math.max(-18, Math.min(18, s.vel.x * 0.012 + ax * 0.004)) - s.lean) * Math.min(1, dt * 10);
+        for (let left = dt; left > 0; left -= 1 / 60) {
+          const step = Math.min(1 / 60, left);
+          const ax = k * (h.x - s.pos.x) - c * s.vel.x;
+          const ay = k * (h.y - s.pos.y) - c * s.vel.y;
+          s.vel.x += ax * step;
+          s.vel.y += ay * step;
+          s.pos.x += s.vel.x * step;
+          s.pos.y += s.vel.y * step;
+          s.lean += (Math.max(-18, Math.min(18, s.vel.x * 0.012 + ax * 0.004)) - s.lean) * Math.min(1, step * 10);
+        }
       }
       const t = targetRef.current;
       let want = { x: 0, y: 0 };
