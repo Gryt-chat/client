@@ -56,15 +56,17 @@ test.describe("linking a device", () => {
     const oldUserId = await serverUserIdOf(old.page, host);
     expect(oldUserId).toBeTruthy();
 
-    const fresh = await newMember({ label: "new device", join: false, welcome: true });
+    const fresh = await newMember({ label: "new device", join: false });
     await fresh.page.evaluate((relay) => localStorage.setItem("gryt_custom_identity", relay), RELAY!);
     await fresh.page.reload();
-    await fresh.page.getByRole("button", { name: "Link with another device" }).click();
-
-    const dialog = fresh.page.getByRole("dialog", { name: "Approve this computer from your phone" });
-    await expect(dialog.getByRole("img", { name: "Code to scan from your other device" })).toBeVisible();
-    if (process.env.SHOTS) await dialog.screenshot({ path: `${process.env.SHOTS}/showing.png` });
-    const code = (await dialog.getByLabel("Code to type").textContent()) ?? "";
+    // Settings > Account shows the code itself: no button to find first.
+    await fresh.page.locator('[data-tour="profile"]').click();
+    await fresh.page.getByRole("menuitem", { name: "Settings" }).click();
+    const account = fresh.page.getByRole("dialog", { name: "Settings", exact: true });
+    await account.getByRole("button", { name: "Account", exact: true }).first().click();
+    await expect(account.getByRole("img", { name: "Code to scan with your phone" })).toBeVisible();
+    if (process.env.SHOTS) await account.screenshot({ path: `${process.env.SHOTS}/showing.png` });
+    const code = (await account.locator("code").textContent()) ?? "";
     expect(code).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/);
 
     // The old device's side, from core, with the old browser's seed and scope.
@@ -95,10 +97,9 @@ test.describe("linking a device", () => {
       from: "Old laptop",
     });
 
-    await expect(fresh.page.getByRole("dialog", { name: "Link this device" })).toContainText(
-      "This device is linked to Old laptop.",
-      { timeout: 60_000 },
-    );
+    const linking = fresh.page.getByRole("dialog", { name: "Link this device" });
+    await expect(linking).toContainText("The pictures matched on Old laptop", { timeout: 60_000 });
+    await expect(linking).toContainText("This device is linked to Old laptop.", { timeout: 60_000 });
     await expect.poll(() => approver.state.phase).toBe("done");
     // "ready" named the new browser's own MLS device on the server, once its KeyPackages were up.
     expect(added).toEqual([[host, expect.any(String)]]);

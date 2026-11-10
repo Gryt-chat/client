@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 
-import { type PairingRelay, PairingRelayError } from "@gryt/core";
+import { type HistoryChunkStore, type HistoryStoreChooser, HistoryStoreError, type PairingRelay, PairingRelayError } from "@gryt/core";
 import { base64Url, encodePairingSessionId, generatePairingCode } from "@gryt/crypto";
 
 // ── a relay with auth#45's shapes, in memory ────────────────────────
@@ -180,3 +180,22 @@ export const waitFor = <S extends { phase: string }, P extends S["phase"]>(machi
     const unsubscribe = machine.subscribe(check);
     check(machine.state);
   });
+
+// ── one of the user's servers holding linked history (GRYT-2055) ────
+
+/** The chunks stand on a server both devices share; `holds: false` is a server that won't take them. */
+export function memoryHistoryServer({ holds = true } = {}) {
+  const chunks = new Map<number, Uint8Array>();
+  const store: HistoryChunkStore = {
+    put: async (n, sealed) => void chunks.set(n, sealed),
+    get: async (n) => {
+      const c = chunks.get(n);
+      if (!c) throw new HistoryStoreError("missing");
+      return c;
+    },
+    delete: async (n) => void chunks.delete(n),
+  };
+  const choose: HistoryStoreChooser = async (servers) =>
+    holds && servers[0] ? { host: servers[0].host, transfer: "T".repeat(24), store } : null;
+  return { chunks, choose, open: () => store };
+}
