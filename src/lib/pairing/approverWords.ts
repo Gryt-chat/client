@@ -48,3 +48,6 @@ export function sentHistoryText(progress: HistoryProgress | null): string | null
   if (!progress || progress.messages === 0) return null;
   return `${progress.messages} ${progress.messages === 1 ? "message" : "messages"} of history came across.`;
 }
+
+/** No server would hold the history (GRYT-2055), so it never went through anyone else. */
+export const HISTORY_STAYS_HERE = "None of your servers can carry your old messages, so they stay on this device.";

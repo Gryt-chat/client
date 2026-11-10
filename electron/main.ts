@@ -1061,8 +1061,10 @@ if (!hardwareAcceleration) {
   app.disableHardwareAcceleration();
 }
 
-/* Off on macOS until asked for (GRYT-1659): the Windows installer turns it on, and nothing on a Mac ever did. */
-const canOpenAtLogin = process.platform === "win32" || (process.platform === "darwin" && !process.mas);
+/* Off on macOS until asked for (GRYT-1659): the Windows installer turns it on, and nothing on a Mac ever did.
+   Never in dev: it would register the bare electron.exe, which opens Electron's default window at sign-in. */
+const canOpenAtLogin =
+  app.isPackaged && (process.platform === "win32" || (process.platform === "darwin" && !process.mas));
 let startWithWindows = canOpenAtLogin ? readBoolConfig("startWithWindows", process.platform === "win32") : false;
 
 let startMinimizedOnLogin = readBoolConfig("startMinimizedOnLogin", false);

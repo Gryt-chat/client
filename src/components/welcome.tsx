@@ -2,11 +2,10 @@
  * states carried by @gryt/ui Button, IconButton and Avatar; no new controls here. */
 import { Avatar, Button, Dialog, IconButton, MessageBubble } from "@gryt/ui";
 
-import { LogoIcon, useAccount } from "@/common";
+import { LogoIcon } from "@/common";
 import { useSettings } from "@/settings";
 
 import { PiX } from "../lib/icons";
-import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 
 /**
  * The first thing anybody sees, drawn as a message rather than a dialog, so a
@@ -14,8 +13,6 @@ import { useLinkDevice } from "../lib/pairing/useLinkDevice";
  */
 export function Welcome() {
   const { hasSeenWelcome, settingsLoaded, completeWelcome } = useSettings();
-  const { isSignedIn } = useAccount();
-  const { open: openLinkDevice } = useLinkDevice();
 
   return (
     /* Guarded on `open` rather than passed straight through: `completeWelcome`
@@ -96,21 +93,6 @@ export function Welcome() {
             </Button>
           </div>
 
-          {isSignedIn === false && (
-            <p className="m-0 text-xs text-gryt-muted">
-              Already use Gryt on another device?{" "}
-              <button
-                type="button"
-                className="cursor-pointer border-0 bg-transparent p-0 text-xs text-gryt-accent underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-gryt-accent-light"
-                onClick={() => {
-                  completeWelcome();
-                  openLinkDevice();
-                }}
-              >
-                Link with another device
-              </button>
-            </p>
-          )}
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

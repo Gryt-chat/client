@@ -62,6 +62,8 @@ type ServerSettingsPayload = {
   videoProfiles?: boolean;
   /** Absent on a server from before the setting, which then shows no switch. */
   externalEmojis?: boolean;
+  /** Absent on a server from before GRYT-2055, which then shows no switch. */
+  linkHistory?: boolean;
   /** What this host can do with uploads; an older server sends nothing. */
   media?: { checked?: boolean; video?: boolean };
 };
@@ -120,6 +122,7 @@ export function ServerOverviewTab({
   const [spamSensitivity, setSpamSensitivity] = useState<SpamSensitivity>("normal");
   const [videoProfiles, setVideoProfiles] = useState(true);
   const [externalEmojis, setExternalEmojis] = useState<boolean | null>(null);
+  const [linkHistory, setLinkHistory] = useState<boolean | null>(null);
   const [media, setMedia] = useState<{ checked: boolean; video: boolean } | null>(null);
 
   const [autosaving, setAutosaving] = useState(false);
@@ -140,6 +143,7 @@ export function ServerOverviewTab({
     spamSensitivity: SpamSensitivity;
     videoProfiles: boolean;
     externalEmojis: boolean;
+    linkHistory: boolean;
   } | null>(null);
 
   const [avatarMaxMb, setAvatarMaxMb] = useState<string>("");
@@ -199,6 +203,7 @@ export function ServerOverviewTab({
       setSpamSensitivity(normalizeSpamSensitivity(payload.spamSensitivity));
       setVideoProfiles(payload.videoProfiles !== false);
       setExternalEmojis(typeof payload.externalEmojis === "boolean" ? payload.externalEmojis : null);
+      setLinkHistory(typeof payload.linkHistory === "boolean" ? payload.linkHistory : null);
       setMedia(payload.media ? { checked: !!payload.media.checked, video: !!payload.media.video } : null);
 
       if (!wasSaving) {
@@ -230,6 +235,7 @@ export function ServerOverviewTab({
         spamSensitivity: normalizeSpamSensitivity(payload.spamSensitivity),
         videoProfiles: payload.videoProfiles !== false,
         externalEmojis: payload.externalEmojis === true,
+        linkHistory: payload.linkHistory !== false,
       };
     };
 
@@ -293,6 +299,7 @@ export function ServerOverviewTab({
     spamSensitivity: SpamSensitivity;
     videoProfiles: boolean;
     externalEmojis: boolean;
+    linkHistory: boolean;
   }>): boolean => {
     if (!host || !socket || !socket.connected) {
       toast.error("Not connected to the server.");
@@ -608,6 +615,26 @@ export function ServerOverviewTab({
           </div>
           <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.4 }}>
             Each one loads from the server it belongs to, so that server sees who reads it, and this server can't check what the picture shows.
+          </span>
+        </div>
+      )}
+
+      {linkHistory !== null && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Linking a new device</span>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={linkHistory}
+              onCheckedChange={(v) => {
+                setLinkHistory(v);
+                if (!saveIfChanged({ linkHistory: v })) setLinkHistory(!v);
+              }}
+              disabled={!canEdit}
+            />
+            <span className="text-sm">Carry members&rsquo; old messages to a device they link</span>
+          </div>
+          <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.4 }}>
+            The messages wait here for up to an hour, locked so this server can&rsquo;t read them. Turned off, a member&rsquo;s old messages stay on the device they link from, unless another of their servers carries them.
           </span>
         </div>
       )}

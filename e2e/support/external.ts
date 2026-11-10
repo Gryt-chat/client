@@ -59,6 +59,9 @@ function fixtureFor(route: Route, url: URL) {
         return route.fulfill({ status: 200, contentType: "image/png", headers: CORS, body: TRANSPARENT_PNG });
       }
       return null;
+    case "id.gryt.chat":
+      // Held open: the welcome asks the relay for a code at once, and most tests aren't about linking.
+      return url.pathname.startsWith("/api/v1/pairing/") ? new Promise<void>(() => {}) : null;
     case "status.gryt.chat":
       if (url.pathname === "/api/v1/config") return json(route, { announcements: [] });
       return url.pathname === "/" ? route.fulfill({ status: 200, body: "" }) : null;

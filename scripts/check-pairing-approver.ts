@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { createApproverPairing, createNewDevicePairing, type PairingRelay } from "@gryt/core";
 import { asIdentityScope, base64Url, encodePairingEnvelope } from "@gryt/crypto";
 
-import { ISSUER, type KeycloakReply, memoryKeycloak, memoryRelay, waitFor } from "./pairing-fakes.ts";
+import { ISSUER, type KeycloakReply, memoryHistoryServer, memoryKeycloak, memoryRelay, waitFor } from "./pairing-fakes.ts";
 
 const { accountFromToken, buildEnvelope } = await import("../src/lib/pairing/envelope.ts");
 const { fromHistoryRecord, toHistoryRecord } = await import("../src/lib/pairing/historyRecords.ts");
@@ -66,7 +66,7 @@ assert.equal(accountFromToken(undefined, config), null);
 /** The new device's side, as small as core allows: Keycloak straight through `fetch`. */
 type NewDeviceOptions = Parameters<typeof createNewDevicePairing>[0];
 
-function newDevice(relay: PairingRelay, keycloak: ReturnType<typeof memoryKeycloak>, sink: NewDeviceOptions["history"]) {
+function newDevice(relay: PairingRelay, keycloak: ReturnType<typeof memoryKeycloak>, sink: NewDeviceOptions["history"], open?: NewDeviceOptions["historyStore"]) {
   const post = async (path: string, form: Record<string, string>) => {
     const res = await keycloak.fetch(`${ISSUER}/protocol/openid-connect/${path}`, { body: new URLSearchParams(form).toString() });
     // What Keycloak answers these two calls with; a pending poll leaves the token fields out.
@@ -79,6 +79,7 @@ function newDevice(relay: PairingRelay, keycloak: ReturnType<typeof memoryKeyclo
       relay,
       device: { name: "Pixel", app: "Gryt for Android", platform: "Android" },
       history: sink,
+      historyStore: open,
       storage: { commit: async (e, tokens) => void committed.push({ e, tokens }) },
       oidc: {
         async deviceAuthorization(r) {
@@ -109,12 +110,14 @@ type ApproveOne = {
 
 async function approveOne({ env, keycloak = memoryKeycloak(), accessToken, added = [], progress = [], history, sink }: ApproveOne) {
   const relay = memoryRelay();
-  const n = newDevice(relay, keycloak, sink);
+  const server = memoryHistoryServer();
+  const n = newDevice(relay, keycloak, sink, server.open);
   const a = createApproverPairing({
     relay,
     relayOrigin: "https://id.gryt.chat",
     fetch: keycloak.fetch,
     history,
+    historyStore: server.choose,
     lateWindowMs: 10,
     devices: (host: string) =>
       host === "chat.example"
@@ -311,3 +314,45 @@ assert.deepEqual(
 assert.equal(deviceCapLine("Chat"), "Chat already has 5 of your devices, so the new one won't get your DMs there. Remove one first.");
 
 console.log("pairing, approving device: ok");
+
+// ── which step is ticked, both sides (GRYT-2053) ─────────────────────
+
+{
+  const { approverSteps, newDeviceSteps } = await import("../src/lib/pairing/linkSteps.ts");
+  const shape = (steps: { label: string; state: string }[]) => steps.map((s) => `${s.state}:${s.label}`);
+  const device = { name: "Pixel", app: "Gryt", platform: "Android" };
+  const progress = (messages: number, total: number | null) => ({ messages, total, complete: false }) as never;
+
+  assert.deepEqual(shape(approverSteps({ phase: "browser", device, url: "x" } as never, null, true)), [
+    "done:Checked it’s yours",
+    "busy:Signing in Pixel",
+    "todo:Waiting for Pixel to join your servers",
+    "todo:Adding it to your chats",
+  ]);
+  assert.deepEqual(shape(approverSteps({ phase: "waiting_ready", device } as never, null, false)), [
+    "done:Checked it’s yours",
+    "busy:Waiting for Pixel to join your servers",
+    "todo:Adding it to your chats",
+  ]);
+  const adding = approverSteps({ phase: "adding", device, host: "h", done: 2, total: 9 } as never, null, false);
+  assert.deepEqual(adding.at(-1), { label: "Adding it to your chats", detail: "2 of 9", state: "busy" });
+  const sending = approverSteps({ phase: "sending", device, added: {} } as never, progress(3, 30), true);
+  assert.deepEqual(shape(sending).slice(-2), ["done:Adding it to your chats", "busy:Copying older messages"]);
+  assert.equal(approverSteps({ phase: "sending", device, added: {} } as never, progress(0, 0), false).at(-1)?.detail, undefined, "nothing to copy says nothing");
+
+  assert.deepEqual(shape(newDeviceSteps({ phase: "signing_in", username: "sivert", from: "Pixel" } as never, true)).slice(0, 2), [
+    "done:Checked it’s yours",
+    "busy:Signing in as sivert",
+  ]);
+  assert.deepEqual(shape(newDeviceSteps({ phase: "joining", servers: [{}, {}], from: "Pixel" } as never, true)), [
+    "done:Checked it’s yours",
+    "done:Signed in",
+    "busy:Joining your servers",
+    "todo:Getting added to your chats",
+  ]);
+  assert.deepEqual(shape(newDeviceSteps({ phase: "linked", from: "Pixel" } as never, false)), [
+    "done:Checked it’s yours",
+    "done:Joining your servers",
+    "busy:Getting added to your chats",
+  ]);
+}

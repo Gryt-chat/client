@@ -23,6 +23,8 @@ import {
   tileGradientFrom,
   tileTint,
 } from "./speakingIndicator";
+import { ON_VIDEO } from "./streamQuality";
+import { StreamQualityPill } from "./StreamQualityPill";
 import { UserContextMenu } from "./UserContextMenu";
 
 /** A role id. The server defines its own; these only pass one along. */
@@ -548,10 +550,11 @@ export function VoiceParticipantCard({
                   : undefined
               }
             />
+            {!isSelf && <StreamQualityPill stream={screenStream} />}
             {share.audioStreamID && !(isSelf && isSoundOff(share.audioStreamID)) && (
               <span
                 className="pointer-events-none absolute bottom-2.5 right-2.5 rounded-full px-2 py-0.5 text-xs"
-                style={{ background: "rgba(17,19,24,.8)", color: "var(--gryt-success-11)" }}
+                style={{ background: ON_VIDEO.glass, color: ON_VIDEO.sound }}
               >
                 ♪ {isSelf ? "sound on" : "sound"}
               </span>

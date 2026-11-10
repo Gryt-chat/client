@@ -4,6 +4,7 @@ import {
   type HistoryProgress,
   type NewDevicePairing,
   type NewDeviceState,
+  openServerHistory,
   type PairedServerDevice,
   type PairingFetch,
 } from "@gryt/core";
@@ -11,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   expectServerLineage,
+  identityScopeFor,
   installPairedIdentity,
   listGuestScopes,
   localPeerPinStore,
@@ -21,7 +23,7 @@ import {
   useAccount,
 } from "@/common";
 import { useServerSettings } from "@/settings";
-import { updateStoredValueFor } from "@/settings/src/hooks/userStorage";
+import { loadedUserId, updateStoredValueFor } from "@/settings/src/hooks/userStorage";
 import type { Server, Servers } from "@/settings/src/types/server";
 import { seenOnMlsFor } from "@/socket/src/mls/seenOnMls";
 import { forgetOwnMlsDevices, whenOwnMlsDevice } from "@/socket/src/mls/serverMls";
@@ -32,6 +34,7 @@ import { describeThisDevice } from "./device";
 import { historySink } from "./historySink";
 import { createLinkStorage } from "./install";
 import { createPairingOidc } from "./oidc";
+import { historyFetch, serverAccess } from "./serverAccess";
 
 /* The new-device side of linking (GRYT-1484). A singleton, so the pairing outlives the
    screen that opened it: signing in swaps half the app out from under it. */
@@ -39,6 +42,7 @@ import { createPairingOidc } from "./oidc";
 const DEFAULT_RELAY = "https://id.gryt.chat";
 /** How long each server gets to publish this device's KeyPackages before "ready" goes without it. */
 const JOIN_WAIT_MS = 45_000;
+const RESTART_AFTER_MS = 3_000;
 
 const pairingFetch: PairingFetch = (url, init) => fetch(url, init);
 
@@ -50,7 +54,15 @@ export interface LinkDevice {
   replaces: number;
   /** The history coming in, once the other device sends some. */
   history: HistoryProgress | null;
+  /** The other device had servers but sent no history, so the old messages stayed there. */
+  historyLeftBehind: boolean;
   open(): void;
+  /** Starts a code to show inline, as on the welcome screen. False when linking here needs the warning first. */
+  startInline(): boolean;
+  /** Drops an inline code nobody scanned. A link that got past the QR keeps going. */
+  stopInline(): void;
+  /** Moves an inline link into the dialog once somebody scans it. */
+  reveal(): void;
   start(): void;
   close(): void;
   mismatch(): void;
@@ -61,7 +73,11 @@ const init: LinkDevice = {
   state: null,
   replaces: 0,
   history: null,
+  historyLeftBehind: false,
   open: () => {},
+  startInline: () => false,
+  stopInline: () => {},
+  reveal: () => {},
   start: () => {},
   close: () => {},
   mismatch: () => {},
@@ -96,7 +112,8 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       markSeenOnMls: (scope, memberId) => seenOnMlsFor(scope).add(memberId),
       async writeServers(list, account) {
         for (const s of list) if (s.scheme) rememberScheme(s.host, s.scheme);
-        if (account) {
+        // Already signed in as this account, nothing reloads the list, so it has to change live.
+        if (account && loadedUserId() !== account.sub) {
           await updateStoredValueFor<Servers>(account.sub, "servers", (current) => toServerEntries(current, list));
         } else {
           live.current.setServers(toServerEntries(live.current.servers, list));
@@ -120,6 +137,8 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       relayOrigin: relayOrigin === DEFAULT_RELAY ? undefined : relayOrigin,
       // Opened when the first batch arrives, which is after the identity is in place.
       history: historySink(async () => (await openLocalArchive()).messages),
+      historyStore: openServerHistory(serverAccess, historyFetch),
+      localScope: identityScopeFor,
     });
     pairing.current = next;
     next.subscribe((s) => {
@@ -151,6 +170,13 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     };
   }, [state]);
 
+  // The swapped identity only takes over on a restart, and restarting earlier would cut the history off.
+  useEffect(() => {
+    if (state?.phase !== "done" || replaces === 0) return;
+    const timer = setTimeout(() => window.location.reload(), RESTART_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [state?.phase, replaces]);
+
   const open = useCallback(() => {
     const phase = pairing.current?.state.phase;
     if (phase === "joining" || phase === "linked") return setIsOpen(true);
@@ -161,6 +187,30 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     // Only guest identities are lost by linking. Servers joined with your account come along.
     if (listGuestScopes().length === 0) start();
   }, [start]);
+
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
+  const notScannedYet = () => {
+    const phase = pairing.current?.state.phase;
+    return phase === "idle" || phase === "opening" || phase === "showing";
+  };
+
+  const startInline = useCallback(() => {
+    if (listGuestScopes().length > 0) return false;
+    if (pairing.current && notScannedYet()) return true;
+    setReplaces(Object.keys(live.current.servers).length);
+    start();
+    return true;
+  }, [start]);
+
+  const stopInline = useCallback(() => {
+    if (isOpenRef.current || !notScannedYet()) return;
+    pairing.current?.cancel().catch(() => undefined);
+    pairing.current = null;
+    setState(null);
+  }, []);
+
+  const reveal = useCallback(() => setIsOpen(true), []);
 
   const close = useCallback(() => {
     const phase = pairing.current?.state.phase;
@@ -177,5 +227,6 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     pairing.current?.mismatch().catch(() => undefined);
   }, []);
 
-  return { isOpen, state, replaces, history, open, start, close, mismatch };
+  const historyLeftBehind = pairing.current?.historyLeftBehind ?? false;
+  return { isOpen, state, replaces, history, historyLeftBehind, open, startInline, stopInline, reveal, start, close, mismatch  };
 });

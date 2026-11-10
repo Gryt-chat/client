@@ -8,12 +8,13 @@ import { useState } from "react";
 import { useAccount } from "@/common";
 
 import { PiX } from "../lib/icons";
-import { approverEndText, sendingHistoryText, sentHistoryText } from "../lib/pairing/approverWords";
+import { approverEndText, HISTORY_STAYS_HERE, sentHistoryText } from "../lib/pairing/approverWords";
 import { deviceCapLine } from "../lib/pairing/deviceCap";
+import { type ApproverInFlight, approverSteps, useWakeLock } from "../lib/pairing/linkSteps";
 import { useApproveDevice } from "../lib/pairing/useApproveDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
 import { openUserSettings } from "../packages/socket/src/components/dmKeyWarningToast";
-import { EmojiRow, Waiting } from "./pairingParts";
+import { EmojiRow, LinkSteps, Waiting } from "./pairingParts";
 
 function CodeEntry() {
   const { claim, close } = useApproveDevice();
@@ -34,7 +35,7 @@ function CodeEntry() {
       }}
     >
       <Dialog.Description className="m-0">
-        On the new device, choose Link with another device. Type the code it shows under the QR code.
+        On the new device, choose Link this device. Type the code it shows under the QR code.
       </Dialog.Description>
       <TextField
         label="Code"
@@ -114,8 +115,28 @@ function Confirm({ state }: { state: Extract<ApproverState, { phase: "confirming
   );
 }
 
+function Progressing({ state }: { state: ApproverInFlight }) {
+  const { history, historyLeftBehind } = useApproveDevice();
+  const { isSignedIn } = useAccount();
+  return (
+    <div className="flex flex-col gap-3">
+      {state.phase === "browser" && (
+        <Dialog.Description className="m-0">
+          Your sign-in server can&rsquo;t approve this from inside Gryt, so it opened in your browser. Choose Yes
+          there, then come back here.
+        </Dialog.Description>
+      )}
+      <LinkSteps steps={approverSteps(state, history, isSignedIn === true)} />
+      {historyLeftBehind && <span className="text-sm text-gryt-muted">{HISTORY_STAYS_HERE}</span>}
+      {state.phase === "sending" && history?.total ? (
+        <Progress value={(Math.min(history.messages, history.total) / history.total) * 100} aria-label="History sent" />
+      ) : null}
+    </div>
+  );
+}
+
 function Body() {
-  const { state, failure, history, open, close } = useApproveDevice();
+  const { state, failure, history, open, close, historyLeftBehind } = useApproveDevice();
 
   if (failure) {
     return (
@@ -135,38 +156,11 @@ function Body() {
     case "confirming":
       return <Confirm state={state} />;
     case "signing_in":
-      return <Waiting>Signing in {state.device.name}…</Waiting>;
     case "browser":
-      return (
-        <div className="flex flex-col gap-3">
-          <Dialog.Description className="m-0">
-            Your sign-in server can&rsquo;t approve this from inside Gryt, so it opened in your browser. Choose Yes
-            there, then come back here.
-          </Dialog.Description>
-          <Waiting>Waiting for {state.device.name} to sign in…</Waiting>
-        </div>
-      );
     case "waiting_ready":
-      return <Waiting>Waiting for {state.device.name} to join your servers…</Waiting>;
     case "adding":
-      return (
-        <div className="flex flex-col gap-2" role="status">
-          <span className="text-sm">
-            Adding {state.device.name} to your conversations: {state.done} of {state.total}.
-          </span>
-          <Progress value={state.total ? (state.done / state.total) * 100 : null} aria-label="Conversations done" />
-        </div>
-      );
     case "sending":
-      return (
-        <div className="flex flex-col gap-2" role="status">
-          <span className="text-sm">{sendingHistoryText(history)}</span>
-          <Progress
-            value={history?.total ? (Math.min(history.messages, history.total) / history.total) * 100 : null}
-            aria-label="History sent"
-          />
-        </div>
-      );
+      return <Progressing state={state} />;
     case "done": {
       const failed = Object.values(state.added).flat().filter((a) => a.outcome === "failed").length;
       const sent = sentHistoryText(history);
@@ -175,6 +169,7 @@ function Body() {
           <Dialog.Description className="m-0">
             {state.device.name} is linked.
             {sent && ` ${sent}`}
+            {historyLeftBehind && ` ${HISTORY_STAYS_HERE}`}
             {failed > 0 &&
               ` It couldn't be added to ${failed === 1 ? "one conversation" : `${failed} conversations`} yet. It joins ${failed === 1 ? "that one" : "those"} the next time someone sends a message there.`}
           </Dialog.Description>
@@ -200,6 +195,7 @@ function Body() {
 /** Link a new device to this one (GRYT-1484), from the side that's already signed in. */
 export function ApproveDeviceDialog() {
   const { isOpen, state, close } = useApproveDevice();
+  useWakeLock(isOpen && !!state && state.phase !== "idle" && state.phase !== "done" && state.phase !== "ended");
   const title = state?.phase === "confirming" ? "Link this device?" : "Link a new device";
 
   return (
