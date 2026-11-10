@@ -36,7 +36,7 @@ export function settingAnchorId(title: string): string {
 }
 
 export const SETTINGS_INDEX: SettingsIndexEntry[] = [
-  { id: "tour", title: "Show me around", description: "Take the welcome tour again: your profile, an account, and adding a server.", page: "about", destination: "about", section: "About", panel: true },
+  { id: "tour", title: "Get a tour", description: "Take the welcome tour again: your profile, an account, and adding a server.", page: "about", destination: "about", section: "About", panel: true },
   { id: "updates", title: "Updates", description: "Check for updates and see your current version.", page: "updates", destination: "about", section: "About", panel: true, keywords: ["version", "upgrade", "beta", "release"] },
   { id: "profile", title: "Profile", description: "Your display name, avatar and identity.", page: "profile", destination: "profile", section: "Profile", panel: true, keywords: ["username", "display name", "avatar", "picture", "nickname"] },
   { id: "edit-my-card", title: "Edit my card", description: "The card people see when they hover your name: its colour or gradient, pattern and pattern tuning, built-in styles, Surprise me, card links, bio, pronouns and status line.", page: "card", destination: "profile", section: "Edit my card", panel: true },
