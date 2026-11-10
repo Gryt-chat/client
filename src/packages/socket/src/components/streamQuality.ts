@@ -1,5 +1,8 @@
 import type { InboundDiagnostics } from "../../../../components/videoDebugStats.ts";
 
+// Over video, so the dark theme's values in either theme: a light theme's tokens go dark-on-dark.
+export const ON_VIDEO = { glass: "rgba(17,19,24,.8)", text: "#e0e0e6", fpsBg: "#2b2a47", fps: "#c3c1ff", sound: "#93e0a7" };
+
 /** The usual name for a stream's height. A window share is rarely exact, so 1032 reads as 1080p. */
 export function resolutionLabel(height: number): string {
   if (height >= 2000) return "4K";

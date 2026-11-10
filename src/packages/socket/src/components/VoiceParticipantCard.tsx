@@ -23,7 +23,8 @@ import {
   tileGradientFrom,
   tileTint,
 } from "./speakingIndicator";
-import { ON_VIDEO, StreamQualityPill } from "./StreamQualityPill";
+import { ON_VIDEO } from "./streamQuality";
+import { StreamQualityPill } from "./StreamQualityPill";
 import { UserContextMenu } from "./UserContextMenu";
 
 /** A role id. The server defines its own; these only pass one along. */

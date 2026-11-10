@@ -3,7 +3,7 @@ import { useSFU } from "@gryt/voice";
 import { useEffect, useRef, useState } from "react";
 
 import { type InboundDiagnostics, readVideoStats, type Stat } from "../../../../components/videoDebugStats";
-import { qualityDetails, qualityPill } from "./streamQuality";
+import { ON_VIDEO, qualityDetails, qualityPill } from "./streamQuality";
 
 const NO_SENDERS = { camera: null, screen: null };
 
@@ -45,8 +45,6 @@ function useInboundStats(stream: MediaStream | null | undefined): InboundDiagnos
 }
 
 const MONO = "var(--font-mono)";
-// Over video, so the dark theme's values in either theme: a light theme's tokens go dark-on-dark.
-export const ON_VIDEO = { glass: "rgba(17,19,24,.8)", text: "#e0e0e6", fpsBg: "#2b2a47", fps: "#c3c1ff", sound: "#93e0a7" };
 
 /** Top left on a share tile: what you're receiving, with the details on hover. */
 export function StreamQualityPill({ stream }: { stream: MediaStream | null | undefined }) {
