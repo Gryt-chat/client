@@ -19,9 +19,10 @@ export function BotTag({ size = "normal" }: { size?: "normal" | "small" }) {
         lineHeight: 1,
         padding: size === "small" ? "0.13em 0.3em" : "0.16em 0.36em",
         borderRadius: "var(--gryt-radius-sm, 3px)",
-        background: "var(--gryt-neutral-6)",
-        color: "var(--gryt-text)",
-        border: "1px solid var(--gryt-border)",
+        // From the text colour around it, so it reads on a light member-card fill as well as the dark list.
+        background: "color-mix(in oklab, currentColor 16%, transparent)",
+        color: "inherit",
+        border: "1px solid color-mix(in oklab, currentColor 32%, transparent)",
         textTransform: "uppercase",
         verticalAlign: "middle",
       }}
