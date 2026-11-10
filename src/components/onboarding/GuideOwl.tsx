@@ -237,6 +237,7 @@ export function GuideOwl({
   mood,
   waving,
   point,
+  focusing,
   gone,
   controls,
 }: {
@@ -245,6 +246,8 @@ export function GuideOwl({
   mood: Mood;
   waving: boolean;
   point: boolean;
+  /** The film's force: eyes shut, arm in, a slow glow, while something opens without a click. */
+  focusing: boolean;
   /** Shrinks back into nothing, on the way out. */
   gone: boolean;
   controls: ReactNode;
@@ -252,7 +255,7 @@ export function GuideOwl({
   const still = useReducedMotion() ?? false;
   const hiding = usePasswordFocused();
   const [, setFrame] = useState(0);
-  const [tw] = useState(() => makeTweens({ scale: 0, rise: -1, paws: 0, arm: 0, pop: 0, o: 0 }));
+  const [tw] = useState(() => makeTweens({ scale: 0, rise: -1, paws: 0, arm: 0, pop: 0, o: 0, aura: 0 }));
   const state = useRef({
     pos: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
     vel: { x: 0, y: 0 },
@@ -397,6 +400,12 @@ export function GuideOwl({
   }, [gone, tw, still]);
 
   useEffect(() => {
+    if (focusing) tw.to("arm", 0, 300, ease.inOut, still);
+    tw.to("rise", focusing ? 0.35 : 0, 500, ease.inOut, still);
+    tw.to("aura", focusing ? 1 : 0, focusing ? 500 : 400, ease.inOut, still);
+  }, [focusing, tw, still]);
+
+  useEffect(() => {
     if (waving) return;
     tw.to("arm", 0, 380, ease.inOut, still);
     tw.to("rise", 0, 420, ease.inOut, still);
@@ -425,6 +434,21 @@ export function GuideOwl({
 
   return (
     <div data-gryt="guide-owl" className="pointer-events-none fixed" style={{ left: x, top: y, opacity: tw.get("o") }}>
+      {tw.get("aura") > 0.01 && (
+        <div
+          aria-hidden="true"
+          className="absolute rounded-full"
+          style={{
+            left: -SIZE,
+            top: -SIZE,
+            width: SIZE * 2,
+            height: SIZE * 2,
+            opacity: tw.get("aura") * 0.9,
+            transform: `scale(${(0.85 + 0.08 * Math.sin(now / 420)) * tw.get("scale")})`,
+            background: "radial-gradient(circle, color-mix(in oklab, var(--gryt-accent-9) 45%, transparent) 0%, transparent 62%)",
+          }}
+        />
+      )}
       <div
         aria-hidden="true"
         className="absolute"
@@ -448,7 +472,7 @@ export function GuideOwl({
             shift: Math.max(-1, Math.min(1, s.vel.x / 500)),
             paws: tw.get("paws"),
             blink: still ? 0 : blinkAt(now),
-            mood: face,
+            mood: focusing ? "focus" : face,
             // Two sines out of step, so it never reads as a metronome.
             beak: !still && now < talkUntil.current ? Math.max(0, Math.sin(now / 55) * 0.6 + Math.sin(now / 37) * 0.4) : 0,
           }}

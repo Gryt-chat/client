@@ -18,7 +18,7 @@ export interface TourStep {
   body: string;
   /** The face it makes once it has said the line. Kept to a couple of steps. */
   mood?: Mood;
-  /** Raises its arm at the target. Only for small controls that are easy to miss. */
+  /** Points at the target while it talks, as in the film. False keeps the arm in. */
   point?: boolean;
   /**
    * Run when the step becomes current. Opens whatever this step points into; the
@@ -40,7 +40,6 @@ export const tourSteps: TourStep[] = [
   {
     id: "menu",
     target: "profile",
-    point: true,
     title: "Everything about you is here",
     body: "Your profile, your settings, and signing in when you want to, all from this menu.",
     // Closes anything a re-run of the tour left open, so step one always starts
@@ -75,7 +74,6 @@ export const tourSteps: TourStep[] = [
   {
     id: "server",
     target: "add-server",
-    point: true,
     title: "Gryt is empty until you join a server",
     body: "This is where you add one, whether it is a friend's or your own.",
     // The owl presses the same X the user would, so the panel closing has a cause.

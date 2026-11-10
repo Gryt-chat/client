@@ -27,6 +27,8 @@ const FLY_MS = 1300;
 /** Between hops, for the menu or panel the last press opened to arrive. */
 const HOP_MS = 420;
 const SETTLE_MS = 650;
+/** Eyes shut and the glow up before the first thing opens. */
+const FORCE_MS = 500;
 const TARGET_POLL_MS = 60;
 
 /** A click and nothing else: Base UI opens a menu on pointerdown, so a pointer pair plus a click shuts it again. */
@@ -90,6 +92,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   /** Where the owl flies once the step's route has opened its target. */
   const [hop, setHop] = useState<Rect | null>(null);
   const [waving, setWaving] = useState(true);
+  const [focusing, setFocusing] = useState(false);
   const [bye, setBye] = useState(false);
   const [gone, setGone] = useState(false);
   const goodbye = useCallback(() => setBye(true), []);
@@ -134,6 +137,14 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       setRect(null);
       setShownStep(step);
 
+      // What opens without a click, Gryt opens with the force, as in the film.
+      const force = Boolean(step.via?.length || step.enter);
+      if (force) {
+        setFocusing(true);
+        await sleep(pause(FORCE_MS));
+        if (cancelled) return;
+      }
+
       // The owl stays put while the route is pressed, and flies once to where the step ends.
       for (const anchor of step.via ?? []) {
         if (!readRect(anchor)) {
@@ -152,6 +163,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
       await sleep(pause(SETTLE_MS));
       if (cancelled) return;
+      setFocusing(false);
       const destination = await waitForRect(step.target, TARGET_WAIT_MS);
       if (cancelled) return;
       if (destination) {
@@ -166,6 +178,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     return () => {
       cancelled = true;
       walking.current = false;
+      setFocusing(false);
     };
   }, [step, reduceMotion]);
 
@@ -292,7 +305,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         mood={waving || bye ? "happy" : shownStep.mood ?? "open"}
         waving={(waving || bye) && !reduceMotion}
         gone={gone}
-        point={shownStep.point ?? false}
+        point={shownStep.point ?? true}
+        focusing={focusing && !bye}
         line={said}
         controls={
           lit && (
