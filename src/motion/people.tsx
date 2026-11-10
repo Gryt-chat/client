@@ -9,7 +9,7 @@ const person = (id: string, nickname: string, extra: Partial<MemberInfo> = {}): 
   isConnectedToVoice: false, hasJoinedChannel: false, streamID: "", role: "member", ...extra,
 });
 
-export const ME = person("me", "Gryt", { role: "owner", statusLine: "Building Owl City" });
+export const ME = person("me", "Gryt", { role: "owner", statusLine: "Building Owl City", avatarFileId: "logo.svg" });
 // The community server's regulars as of 2026-11-06, with the owls they wear there.
 export const FRIENDS: MemberInfo[] = [
   person("carlo", "Carlo", { role: "crew" }),

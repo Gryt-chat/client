@@ -1,3 +1,4 @@
+import { typed } from "./caret";
 import { sfx } from "./sfx";
 import { rand, wait } from "./stage";
 
@@ -5,6 +6,7 @@ import { rand, wait } from "./stage";
 export async function type(text: string, perChar = 55) {
   for (const ch of text) {
     sfx("key");
+    typed();
     document.execCommand("insertText", false, ch);
     await wait(perChar * (0.6 + rand() * 0.8) + (ch === " " ? perChar * 0.6 : 0));
   }
@@ -15,6 +17,7 @@ export async function typeInput(input: HTMLInputElement, text: string, perChar =
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   for (let i = 1; i <= text.length; i++) {
     sfx("key");
+    typed();
     setter.call(input, text.slice(0, i));
     input.dispatchEvent(new Event("input", { bubbles: true }));
     await wait(perChar * (0.6 + rand() * 0.8));

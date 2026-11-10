@@ -29,4 +29,7 @@ function Fit() {
   );
 }
 
+// The film draws its own caret (caret.tsx); the browser's one blinks on wall time.
+document.head.insertAdjacentHTML("beforeend", "<style>#stage * { caret-color: transparent !important; }</style>");
+
 ReactDOM.createRoot(document.getElementById("root")!).render(<Fit />);

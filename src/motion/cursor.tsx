@@ -53,6 +53,7 @@ export async function click(el?: HTMLElement, dur = 700) {
     await moveTo(el, 1);
     setMood("focus");
     set("force", 0);
+    sfx("force");
     to("force", 1, Math.min(520, dur * 0.8), ease.inOut);
     await wait(Math.min(520, dur * 0.8));
     setTimeout(() => relax(el), 500);
@@ -90,6 +91,7 @@ export async function touch(el: HTMLElement, dur = 520) {
   await moveTo(el, 1);
   setMood("focus");
   set("force", 0);
+  sfx("force");
   to("force", 1, Math.min(520, dur * 0.8), ease.inOut);
   await wait(Math.min(520, dur * 0.8));
   sfx("click");

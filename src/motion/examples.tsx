@@ -4,10 +4,12 @@ import { avatarSeed, generatedAvatarUrl } from "../packages/common/src/utils/owl
 import type { ChatMessage } from "../packages/socket/src/components/chatUtils";
 import { ForumView } from "../packages/socket/src/components/ForumView";
 import { type MessageMeta, MessageRow } from "../packages/socket/src/components/MessageRow";
-import { customOwlUrl } from "./people";
+import { customOwlUrl, FRIENDS } from "./people";
 import { getCustomEmojis } from "../packages/socket/src/utils/emojiData";
 
 const noop = () => {};
+const pictureUrl = (who: string) => { const id = FRIENDS.find((f) => f.nickname === who)?.avatarFileId; return id ? `/api/uploads/files/${id}` : null; };
+export const avatarOf = (who: string) => (who === "Gryt" ? "/logo.svg" : pictureUrl(who) ?? customOwlUrl(who) ?? generatedAvatarUrl(avatarSeed(who) ?? who));
 const at = (min: number) => new Date(Date.UTC(2026, 10, 6, 20, min)).toISOString();
 
 export type Line = { id: string; who: string; text: string | null; min: number; bot?: boolean; webhook?: boolean; first?: boolean; system?: boolean } & Partial<ChatMessage>;
@@ -19,7 +21,7 @@ function Row({ line, serverHost = "motion.gryt", onReaction = noop }: { line: Li
     reactions: null, sender_nickname: who, sender_is_bot: bot, ...rest,
   };
   const meta: MessageMeta = {
-    isFirstInGroup: first, dayBreak: null, showNewMessageDivider: false, senderName: who, avatarUrl: who === "Gryt" ? "/logo.svg" : customOwlUrl(who) ?? generatedAvatarUrl(avatarSeed(who) ?? who),
+    isFirstInGroup: first, dayBreak: null, showNewMessageDivider: false, senderName: who, avatarUrl: avatarOf(who),
     isSelf: false, isFirstEdited: false, isSystem: !!system, systemEvent: system ? "joined" : undefined, isWebhook: !!webhook, isBot: bot,
   };
   return (

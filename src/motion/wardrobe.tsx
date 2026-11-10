@@ -96,6 +96,7 @@ async function pick(i: number) {
   pointAt(el);
   setMood("focus");
   set("force", 0);
+  sfx("force");
   to("force", 1, 500, ease.inOut);
   await wait(520);
   to("force", 0, 260, ease.out);
@@ -107,16 +108,17 @@ async function pick(i: number) {
   const clash = worn.findIndex((w) => w.slot === RACK[i].slot);
   if (clash >= 0) worn.splice(clash, 1);
   worn.push(RACK[i]);
-  sfx("pop");
+  sfx("dress");
   relax();
   setMood("open");
-  await hold(420);
+  await hold(250);
 }
 
 /** Gryt flies out past the app, dresses from the rack with the force, checks the mirror, and flies back. */
 export async function dressUp(back: () => Promise<void>, out: () => void) {
   await say("Everyone's in the lounge. We should join them!", undefined, undefined, "happy");
-  await say("But first, I need to get dressed.");
+  const first = say("But first, I need to get dressed.");
+  await hold(700);
   setMood("open");
   out();
   set("wr.x", 2900);
@@ -124,7 +126,8 @@ export async function dressUp(back: () => Promise<void>, out: () => void) {
   set("wr.born", performance.now() + 700);
   to("wr.x", 900, 1400, ease.inOut);
   to("owl.scale", 1.5, 1400, ease.inOut);
-  await hold(1600);
+  await hold(1300);
+  await first;
   const at = (n: string) => RACK.findIndex((a) => a.name === n);
   // Straight to the look he wants: bucket hat, ski goggles, scarf.
   for (const n of ["hat-bucket-large", "glasses-military-skigoggles", "necklace-scarf"]) await pick(at(n));
@@ -133,7 +136,8 @@ export async function dressUp(back: () => Promise<void>, out: () => void) {
   to("wr.mirror", 1, 400, ease.out);
   set("wr.happy", 1);
   void wave(1500);
-  await say("Now I'm ready!", undefined, undefined, "happy");
+  void say("Now I'm ready!", undefined, undefined, "happy");
+  await hold(1200);
   to("wr.x", 2900, 1400, ease.inOut);
   to("owl.scale", 1, 1400, ease.inOut);
   await back();

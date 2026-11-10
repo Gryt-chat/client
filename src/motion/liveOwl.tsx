@@ -20,7 +20,7 @@ function bbox(d: string) {
 }
 
 /** Splits the avatar's own SVG into parts by matching it against owlPartPaths, so accessories and ear styles stay right. */
-function parse(name: string): Parsed {
+export function parse(name: string): Parsed {
   const hit = cache.get(name);
   if (hit) return hit;
   const seed = avatarSeed(name)!;

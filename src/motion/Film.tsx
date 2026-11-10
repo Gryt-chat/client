@@ -21,6 +21,8 @@ import { FolderPermissions, RoleEditor } from "./roles";
 import { aimAt, Guide, lookAt, meditate, watchActivity, owlPosition, place, placeOn, pointAt, relax, setStiffness, stagePoint, point, quiet, say, setMood, wave } from "./guide";
 import { LiveCard, LiveMembers } from "./liveOwl";
 import { dressUp, Wardrobe } from "./wardrobe";
+import { VoiceGrid } from "./voice";
+import { Caret } from "./caret";
 import { avatarSeed, owlAvatarDataUri } from "@gryt/owl";
 
 /** Marks a storyboard beat: its time and where the owl is, for the boards Sivert positions the owl on. */
@@ -34,7 +36,6 @@ const SPOTS: Record<string, [number, number, { dx: number; dy: number }?]> = {
   "06-roles": [156, 540, { dx: 0, dy: -70 }],
   "07-invite": [698, 275, { dx: 17, dy: -50 }],
   "08-friends": [1274, 346],
-  "09-reply": [1236, 684],
   "10-lounge": [301, 595, { dx: -145, dy: -75 }],
 };
 
@@ -97,6 +98,15 @@ function Panel({ k, x, y, z = 0, ry = 0, rx = 0, zoom = 1, style, children }: {
   );
 }
 
+
+/** Gryt flying across the world: leans into it, tucks his feet, and flaps over a long whoosh. dir is 1 for right. */
+function flight(dir: 1 | -1, dur: number) {
+  sfx("fly", { dur });
+  for (let k = 0; k * 330 < dur - 300; k++) setTimeout(() => sfx("flap"), 120 + k * 330);
+  to("owl.tilt", 18 * dir, 350, ease.out);
+  to("owl.paws", 0, 250, ease.out);
+  setTimeout(() => { to("owl.tilt", 0, 450, ease.inOut); to("owl.paws", 1, 400, ease.inOut); }, dur - 450);
+}
 
 /** Moves the camera. Anything quick enough to read as a cut gets a whoosh. */
 function camera(target: Record<string, number>, dur: number, e = ease.inOut) {
@@ -238,7 +248,7 @@ function Slot({ id, width, from = "up", children, style }: { id: string; width?:
   );
 }
 function reveal(id: string, dur = 800) {
-  sfx("pop");
+  sfx("open");
   to(`slot.${id}`, 1, dur, ease.expo);
 }
 
@@ -258,7 +268,7 @@ function Dim() {
   return <div style={{ position: "absolute", inset: -20, borderRadius: 28, background: "rgba(8,9,12,.62)", opacity: p, pointerEvents: "none" }} />;
 }
 
-type ChatView = "empty" | "chat" | "forum" | "bot" | "live";
+type ChatView = "empty" | "chat" | "forum" | "bot" | "live" | "voice";
 
 export function Film() {
   const [channels, setChannels] = useState<Channel[]>([ch("general", "general")]);
@@ -282,9 +292,11 @@ export function Film() {
   const [view, setView] = useState<ChatView>("empty");
   const [clients, setClients] = useState<Clients>({});
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [cams, setCams] = useState<string[]>([]);
   const [settingsTab, setSettingsTab] = useState("overview");
   useEffect(() => {
-    const made = (e: Event) => { setServers((s) => [...s, (e as CustomEvent<string>).detail]); sfx("pop"); };
+    const made = (e: Event) => { setServers((s) => [...s, (e as CustomEvent<string>).detail]); sfx("create"); };
     window.addEventListener("motion:server-created", made);
     return () => window.removeEventListener("motion:server-created", made);
   }, []);
@@ -296,8 +308,8 @@ export function Film() {
     const id = o.name;
     setChannels((cs) => [...cs, ch(id, o.name, { type: o.type, layout: o.layout, automated: o.automated })]);
     setItems((is) => [...is, { id: `i-${id}`, kind: "channel", channelId: id, position: ({ lounge: 20, clips: 12 } as Record<string, number>)[id] ?? 50 }]);
-    setSelected(id);
-    sfx("pop");
+    if (o.type !== "voice") setSelected(id);
+    sfx("create");
   };
 
   useEffect(() => {
@@ -322,22 +334,22 @@ export function Film() {
       placeOn($("#addserver")!);
       set("guide.o", 1); set("owl.scale", 0); set("owl.rise", -1); set("owl.paws", 0);
       to("owl.scale", 1, 700, ease.spring);
-      sfx("pop");
-      await hold(700);
+      sfx("appear");
+      await hold(600);
       to("owl.rise", -0.55, 600, ease.out);
-      await hold(800);
+      await hold(600);
       to("owl.rise", 0, 420, ease.spring);
       to("owl.paws", 1, 420, ease.out);
       await hold(300);
       // Hello first, from where the + will be: a wave and a smile.
       const hi = wave(2800);
-      await say("Hey! I'm Gryt! Let's make a server together.", undefined, undefined, "happy");
+      const hello = say("Hey! I'm Gryt! Let's make a server together.", undefined, undefined, "happy");
+      await hold(1600);
+      to("plus.o", 1, 600, ease.spring);
       await hi;
       setMood("open");
       beat("01-hello");
-      await wait(350);
-      to("plus.o", 1, 600, ease.spring);
-      await hold(1000);
+      await hello;
       await click(await until(() => $("#addserver")), 700);
       setAddOpen(true);
       beat("02-add-server");
@@ -348,14 +360,14 @@ export function Film() {
       await centerGroup(700);
       aimAt("#s-rail");
       await until(() => $(DIALOG));
-      await hold(700);
+      await hold(400);
       await click(await until(() => byText("Create my own", dialogHost.current).closest("button")!), 560);
       const nameField = (await until(() => $('input[placeholder="My Server"]', dialogHost.current))) as HTMLInputElement;
-      await hold(500);
-      await say("I'll host it right here in my client.");
+      void say("I'll host it right here in my client.");
+      await hold(300);
       await click(nameField, 450);
       await typeInput(nameField, "Owl City", 125);
-      await hold(900);
+      await hold(500);
       await click(await until(() => byText("Create", dialogHost.current, "button")), 500);
       await wait(150);
       setAddOpen(false);
@@ -365,14 +377,13 @@ export function Film() {
       // The channel list attaches beside the rail: the sidebar.
       await wait(150);
       reveal("s-channels", 800);
-      await hold(900);
+      await hold(600);
       await say("Owl City is live!", undefined, undefined, "happy");
       setMood("open");
-      await hold(400);
 
       // Act 2: channels, three by hand and the rest after, then folders.
       beat("03-channels");
-      await say("Now some channels.", "eyes-starry", "#s-rail");
+      void say("Now some channels.", "eyes-starry", "#s-rail");
       setCreateOpen(true);
       await until(() => $(DIALOG));
       await wait(250);
@@ -380,7 +391,7 @@ export function Film() {
       let opened = true;
       const make = async (name: string, kind: string, pace = 1) => {
         if (opened) opened = false;
-        else { setCreateOpen(true); sfx("pop"); await wait(420 * pace); }
+        else { setCreateOpen(true); sfx("open"); await wait(420 * pace); }
         const input = (await until(() => $("input[placeholder]", dialogHost.current))) as HTMLInputElement;
         await click(input, 500 * pace);
         await typeInput(input, name, 100 * pace);
@@ -389,7 +400,7 @@ export function Film() {
         // An automated channel starts at Nothing, so deploys never pings anyone.
         if (kind === "Automated") { await moveTo(await until(() => byText("Nothing", dialogHost.current)), 500); await hold(900); }
         await click(await until(() => byText("Create channel", dialogHost.current, "button")), 460 * pace);
-        await hold(550);
+        await hold(350);
       };
       await make("lounge", "Voice");
       await leave(400);
@@ -406,13 +417,14 @@ export function Film() {
       for (const [n, [id, name, fields]] of extra.entries()) {
         setChannels((cs) => [...cs, ch(id, name, fields)]);
         setItems((is) => [...is, { id: `i-${id}`, kind: "channel", channelId: id, position: pos[id] }]);
-        sfx("pop");
+        sfx("create");
         await wait(40);
       }
-      await hold(700);
+      await hold(400);
       meditate(false);
       beat("04-folders");
-      await say("Hmm, I need to organize these.");
+      void say("Hmm, I need to organize these.");
+      await hold(1200);
       meditate(true);
       // Gaps open where the folders go, then the folders drop into them and the channels tuck in.
       const folders: [string, string, number, string[]][] = [
@@ -421,34 +433,44 @@ export function Film() {
         ["f-games", "Games", 35, ["lfg", "deep-rock", "minecraft", "game-night"]],
       ];
       setItems((is) => [...is, ...folders.map(([id, , position]) => ({ id: `gap-${id}`, kind: "spacer" as const, spacerHeight: 34, position }))]);
+      sfx("whoosh", { dur: 600 });
       await wait(650);
-      const into = Object.fromEntries(folders.flatMap(([fid, , , chans]) => chans.map((c) => [`i-${c}`, fid])));
-      setItems((is) => [
-        ...is.filter((i) => i.kind !== "spacer").map((i) => (into[i.id] ? { ...i, parentItemId: into[i.id] } : i)),
-        ...folders.map(([id, label, position]) => ({ id, kind: "folder" as const, label, position })),
-      ]);
-      sfx("pop");
-      await hold(1200);
+      // Each folder drops into its gap, then the channels hop in one at a time, each tick a semitone up.
+      for (const [id, label, position] of folders) {
+        setItems((is) => [...is.filter((i) => i.id !== `gap-${id}`), { id, kind: "folder" as const, label, position }]);
+        sfx("create");
+        await wait(240);
+      }
+      let k = 0;
+      for (const [fid, , , chans] of folders) {
+        for (const c of chans) {
+          setItems((is) => is.map((i) => (i.id === `i-${c}` ? { ...i, parentItemId: fid } : i)));
+          sfx("sort", { rate: 2 ** (k++ / 12) });
+          await wait(95);
+        }
+        await wait(120);
+      }
+      sfx("resolve");
+      await hold(700);
       meditate(false);
-      await hold(300);
 
       // The chat area attaches, and each kind of channel shows what it is for in it.
       void frame(["#layout"], { fill: 0.8, dur: 1100, rx: 5, ry: -7 });
       await wait(150);
       reveal("s-chat", 800);
-      await hold(900);
+      await hold(700);
       beat("05-chat");
-      await hold(500);
       await leave(400);
 
       // Act 4: back to general, the member list attaches, and you invite your friends.
       beat("07-invite");
-      await say("Time to bring in some friends!", "eyes-happy", "#s-rail", "happy");
+      void say("Time to bring in some friends!", "eyes-happy", "#s-rail", "happy");
+      await hold(500);
       await click(await until(() => byText("general", $("#s-channels"))), 520);
       setView("live");
       await wait(150);
       reveal("s-members", 800);
-      await hold(700);
+      await hold(450);
       await click(await until(() => $("#channels button")), 520);
       await wait(250);
       await click(await until(() => byText("Invite people", $('[role="menu"]'))), 520);
@@ -456,38 +478,38 @@ export function Film() {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       (document.activeElement as HTMLElement | null)?.blur();
       await wait(100);
-      await hold(500);
+      await hold(250);
       await click(await until(() => byText("Copy link", $("#invite"), "button")), 480);
       setCopied(true);
-      sfx("pop");
-      await hold(500);
+      sfx("react");
+      await hold(300);
       // The invite folds into a paper plane and Gryt sends it off the screen with the force.
       {
         const field = $("#invite input")!;
         pointAt(field);
         setMood("focus");
         plane = { from: stagePoint(field), born: performance.now() };
-        sfx("pop");
+        sfx("send");
         await wait(500);
-        sfx("whoosh", { dur: 1200 });
+        sfx("fly", { dur: 1200 });
         await wait(1300);
         plane = null;
         relax();
         setMood("happy");
-        await hold(600);
+        await hold(400);
         setMood("open");
       }
       await leave(350);
       to("ov.invite", 0, 300);
       to("dim", 0, 400);
       beat("08-friends");
-      await hold(900);
+      await hold(500);
       void wave(3000);
       for (const [i, f] of FRIENDS.entries()) {
         setMembers((m) => [...m, f]);
         setFeed((l) => [...l, { id: `j-${i}`, who: f.nickname, text: `${f.nickname} joined the server.`, min: 1 + i, system: true }]);
         // Hellos from whoever is already in, so the server is alive from the first minute.
-        sfx("pop");
+        sfx("join");
         await hold(130);
       }
       // Then the hellos, one after another, once everyone is in.
@@ -496,13 +518,13 @@ export function Film() {
         setFeed((l) => [...l, text === "hello-cat"
           ? { id: `h-${n}`, who, text: null, min: 20 + n, attachments: ["hello-cat.png"], enriched_attachments: [{ file_id: "hello-cat.png", mime: "image/png", size: 95_000, original_name: "hello.png", width: 368, height: 324, has_thumbnail: false, local_url: `${location.origin}/motion-assets/people/hello-cat.png` }] }
           : { id: `h-${n}`, who, text, min: 20 + n }]);
-        sfx("pop");
+        sfx("message");
         await hold(380);
       }
-      await hold(500);
+      await hold(200);
       await say("My friends are here!", undefined, undefined, "happy");
       setMood("open");
-      for (const nick of ["Sivert", "Pingy"]) {
+      for (const nick of ["Sivert", "Pingy", "Carlo", "Al-JackEson"]) {
         const f = FRIENDS.find((x) => x.nickname === nick)!;
         const row = await until(() => [...$("#s-members")!.querySelectorAll<HTMLElement>(".member-row")].find((r) => r.querySelector(".text-sm")?.textContent?.trim() === nick));
         await touch(row);
@@ -516,70 +538,40 @@ export function Film() {
         // Beside the card, not over it.
         { const c = flat(() => $("#card")!.getBoundingClientRect()); const st = flat(() => $("#stage")!.getBoundingClientRect()); const k = st.width / W;
           place((c.left - st.left) / k - 110, (c.top - st.top) / k + 120, { dx: -60, dy: -80 }); }
-        sfx("pop");
-        if (nick === "Sivert") {
-          await hold(900);
-          // One eye narrowed and a lean in: sizing up the man who made him.
-          to("owl.rise", 0.6, 400, ease.out);
-          await say("Hmm... who's this weirdo?", undefined, undefined, "wink");
-          // Then he flies up to the bio and reads it, squinting, and jolts back when it lands.
-          const bio = [...$("#card")!.querySelectorAll<HTMLElement>("*")].reverse().find((e) => e.textContent?.trim() === "Creator of Gryt Chat");
-          const b = bio ? stagePoint(bio) : owlPosition();
-          to("owl.rise", 0, 300, ease.inOut);
-          const cardBox = flat(() => $("#card")!.getBoundingClientRect()), stg = flat(() => $("#stage")!.getBoundingClientRect());
-          place((cardBox.left - stg.left) / (stg.width / W) - 70, b.y + 10, { dx: -40, dy: -90 });
-          if (bio) lookAt(bio);
-          setMood("squint");
-          await hold(1300);
-          await say("Wait... \"Creator of Gryt\"?", undefined, undefined, "squint");
-          setStiffness(60);
-          setMood("scared");
-          sfx("whoosh", { dur: 300 });
-          place(b.x - 430, b.y + 50, { dx: -40, dy: -90 });
-          await hold(450);
-          setStiffness(5);
-          lookAt(null);
-          await say("Hold on a second... Dad?!", undefined, undefined, "scared");
-          relax();
-          to("owl.rise", 0, 400, ease.inOut);
-          const hug = wave(1800);
-          await say("Hi Dad!", undefined, undefined, "happy");
-          await hug;
-          setMood("open");
-          await hold(500);
-        } else await hold(1900);
+        sfx("open");
+        await hold(900);
         to("ov.card", 0, 260);
         row.removeAttribute("data-card-open");
         await wait(300);
       }
       setCard(null);
       setTyping([FRIENDS[0]]);
-      await hold(600);
+      await hold(500);
       setTyping([]);
       setFeed((l) => [...l, { id: "m-0", who: "Carlo", text: "Anyone wanna hop on some games? 🎮", min: 9 }]);
-      sfx("pop");
+      sfx("message");
       await hold(900);
       setTyping([FRIENDS[1]]);
       await hold(450);
       setTyping([]);
       setFeed((l) => [...l, { id: "m-1", who: "Sivert", text: "yes!! give me **five** minutes", min: 9 }]);
       await hold(700);
-      react(":catJAM:", { message_id: "m-0" }, "u-sivert"); sfx("pop");
+      react(":catJAM:", { message_id: "m-0" }, "u-sivert"); sfx("react");
       await hold(500);
-      react(":catJAM:", { message_id: "m-0" }, "u-justin"); sfx("pop");
+      react(":catJAM:", { message_id: "m-0" }, "u-justin"); sfx("react");
       await hold(600);
       setFeed((l) => [...l, { id: "m-2", who: "Justin", text: ":kitty_dance: :kitty_dance: :kitty_dance:", min: 9 }]);
-      sfx("pop");
+      sfx("message");
       await hold(900);
-      react(":KEKW:", { message_id: "m-1" }, "u-carlo"); sfx("pop");
+      react(":KEKW:", { message_id: "m-1" }, "u-carlo"); sfx("react");
       await hold(900);
       // Gryt reacts too: over Carlo's message, the picker, one of the server's own emoji.
       const mira = await until(() => [...$("#s-chat")!.querySelectorAll<HTMLElement>("*")].reverse().find((e) => e.textContent?.includes("Anyone wanna hop")));
       // Gryt moves just past the right end of the hover bar first, so the bar that comes up is not under him.
       { const st = flat(() => $("#stage")!.getBoundingClientRect()), sk = st.width / W; const c = flat(() => $("#s-chat")!.getBoundingClientRect()); const m = stagePoint(mira);
-        place((c.right - st.left) / sk + 55, m.y - 20, { dx: -40, dy: -90 }); await hold(900); }
+        place((c.right - st.left) / sk + 55, m.y - 20, { dx: -40, dy: -90 }); await hold(600); }
       await touch(mira);
-      await hold(500);
+      await hold(300);
       // Hidden from the frame it is inserted, so it never shows at its default spot before it is moved.
       const hide = new MutationObserver(() => { for (const d of document.querySelectorAll<HTMLElement>("div")) if (d.style.position === "fixed" && d.style.width === "440px" && !d.dataset.placed) d.style.opacity = "0"; });
       hide.observe(document.body, { childList: true, subtree: true });
@@ -605,17 +597,15 @@ export function Film() {
         pk.style.transition = "opacity 180ms ease-out";
         pk.style.opacity = "1";
       }
-      await hold(700);
+      await hold(500);
       await click(await until(() => $('img[src*="/motion-assets/emoji/gryt"]')?.closest<HTMLElement>("button, [role=option], [role=gridcell]")), 600);
       // The pointer "leaves" the message, so its hover bar goes away after the reaction.
       mira.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
-      await hold(1100);
-      sfx("pop");
       await hold(800);
+      sfx("react");
+      await hold(400);
 
       beat("09-reply");
-      // Your reply, from the box at the bottom of the chat.
-      await hold(500);
       const editable = await until(() => $("#composer [contenteditable]"));
       await click(editable, 450);
       await type("I'm in! ", 95);
@@ -624,35 +614,62 @@ export function Film() {
       await type("ig", 180);
       await wait(520);
       key(editable, "Enter");
-      sfx("pop");
+      sfx("react");
       await hold(500);
       await click(await until(() => $('#composer button[aria-label="Send message"]')), 450);
       await hold(500);
-      await hold(600);
 
       // Your friends head into the lounge; it fills up in the channel list.
       for (const [i, f] of FRIENDS.slice(0, 3).entries()) {
         setClients((c) => ({ ...c, [`c-${i}`]: { serverUserId: f.serverUserId, nickname: f.nickname, isMuted: false, isDeafened: false, color: "#968ff8", streamID: `s-${i}`, hasJoinedChannel: true, voiceChannelId: "lounge", isConnectedToVoice: true, isAFK: false } }));
-        sfx("pop");
-        await hold(600);
+        sfx("voice");
+        await hold(400);
       }
       // Straight off to get dressed from where he is; the lounge line comes once he is back.
       const home = get("c.x");
       await dressUp(
-        async () => { sfx("whoosh", { dur: 1400 }); camera({ x: home }, 1400); beat("10-lounge"); await hold(1500); await point("Let's go!", () => byText("lounge", document.getElementById("s-channels"))); },
-        () => { sfx("whoosh", { dur: 1400 }); camera({ x: home + 2600 }, 1400); place(960, 540, { dx: 0, dy: -80 }); },
+        async () => { flight(-1, 1400); camera({ x: home }, 1400); beat("10-lounge"); await hold(700); await point("Let's go!", () => byText("lounge", document.getElementById("s-channels"))); },
+        () => { flight(1, 1400); camera({ x: home + 2600 }, 1400); place(960, 540, { dx: 0, dy: -80 }); },
       );
       await click(await until(() => byText("lounge", $("#s-channels"))), 560);
-      await hold(800);
-
-      // The whole client, put together piece by piece.
-      await hold(2200);
+      // Act 5: the call. Everyone on camera as their own owl, Gryt in his outfit.
+      setClients((c) => ({ ...c, me: { serverUserId: ME.serverUserId, nickname: ME.nickname, isMuted: false, isDeafened: false, color: "#968ff8", streamID: "s-me", hasJoinedChannel: true, voiceChannelId: "lounge", isConnectedToVoice: true, isAFK: false } }));
+      setView("voice");
+      sfx("voice");
+      await hold(600);
+      void frame(["#s-chat"], { fill: 0.62, dur: 1200, rx: 4, ry: -5 });
+      place(1500, 300, { dx: -60, dy: -80 });
+      // Cameras come on one at a time; Sivert stays on his picture.
+      const cam = async (n: string, ms: number) => { await hold(ms); setCams((c) => [...c, n]); sfx("cam"); };
+      await cam("Carlo", 500);
+      void say("We're all here!", undefined, undefined, "happy");
+      await cam("Justin", 700);
+      await cam("Gryt", 800);
+      await hold(900);
+      // Sivert shares his game, and it takes the top of the call.
+      setSharing(true);
+      sfx("share");
+      await hold(600);
+      // Gryt flies over beside the quality pill, points at it smiling, then touches it for the details.
+      const pill = await until(() => $("#share-pill"));
+      { const r = flat(() => pill.getBoundingClientRect()); const st = flat(() => $("#stage")!.getBoundingClientRect()); const k = st.width / W;
+        place((r.right - st.left) / k + 80, (r.top - st.top) / k + 50, { dx: -60, dy: -80 }); }
+      await hold(700);
+      pointAt(pill);
+      await say("Sivert is streaming at 240 fps!", undefined, undefined, "happy");
+      await touch(pill, 520);
+      to("pill.tip", 1, 180, ease.out);
+      sfx("open");
+      await hold(2400);
+      to("pill.tip", 0, 160, ease.in);
+      relax();
+      await hold(1600);
       quiet();
       (window as unknown as { __done: boolean }).__done = true;
     })().catch((e) => console.error("motion:", e));
   }, []);
 
-  const chatTitle = { empty: "general", chat: "general", forum: "support", bot: "deploys", live: "general" }[view];
+  const chatTitle = { empty: "general", chat: "general", forum: "support", bot: "deploys", live: "general", voice: "lounge" }[view];
   return (
     <div id="stage" style={{ position: "relative", width: W, height: H, overflow: "hidden", background: "transparent", fontFamily: "var(--gryt-font-sans, inherit)" }}>
       <style>{".gryt-dialog{left:var(--motion-dialog-x,50%)!important;translate:0 -50%!important} .gryt-dialog-backdrop{display:none} #addserver{outline:none!important} #settings-body [role=tabpanel] > div > div:first-child > span.text-sm{display:none} @keyframes motion-pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}"}</style>
@@ -662,11 +679,11 @@ export function Film() {
             <Slot id="s-rail" from="up" style={{ flex: "none", background: "transparent", borderRadius: 0, overflow: "visible" }}><Rail servers={servers} /></Slot>
             <Slot id="s-channels" width={200} from="left" style={{ background: "transparent", borderRadius: 0, overflow: "visible" }}>
               <div id="channels" className="flex flex-col h-full w-full items-center gap-4">
-                <ServerHeader serverName={servers[0] ?? "Owl City"} serverHost="motion.gryt" onLeave={() => {}} role="owner" canManageChannels onOpenSettings={() => { to("dim", 1, 400); to("ov.settings", 1, 700, ease.expo); sfx("pop"); }} onOpenInvites={() => { to("dim", 1, 400); to("ov.invite", 1, 600, ease.expo); sfx("pop"); }} />
+                <ServerHeader serverName={servers[0] ?? "Owl City"} serverHost="motion.gryt" onLeave={() => {}} role="owner" canManageChannels onOpenSettings={() => { to("dim", 1, 400); to("ov.settings", 1, 700, ease.expo); sfx("open"); }} onOpenInvites={() => { to("dim", 1, 400); to("ov.invite", 1, 600, ease.expo); sfx("open"); }} />
                 <div style={{ width: "100%" }}>
                 <ChannelList
-                  channels={channels} items={items} serverHost="motion.gryt" clients={clients} currentChannelId="" currentServerConnected={null}
-                  showVoiceView={false} isConnecting={false} selectedChannelId={selected} onChannelClick={(c) => setSelected(c.id)} clientsSpeaking={{}}
+                  channels={channels} items={items} serverHost={location.host} clients={clients} members={members as never} currentChannelId={view === "voice" ? "lounge" : ""} currentServerConnected={view === "voice" ? location.host : null}
+                  showVoiceView={view === "voice"} isConnecting={false} selectedChannelId={selected} onChannelClick={(c) => setSelected(c.id)} clientsSpeaking={{}}
                 />
                 </div>
               </div>
@@ -681,10 +698,11 @@ export function Film() {
                   {view === "chat" && <Messages lines={PEOPLE} />}
                   {view === "forum" && <Forum />}
                   {view === "bot" && <Messages lines={AUTOMATED} />}
+                  {view === "voice" && <VoiceGrid people={["Gryt", ...FRIENDS.slice(0, 3).map((f) => f.nickname)]} cams={cams} share={sharing ? { src: "/motion-assets/cs2-120.mp4", title: "Sivert · Counter-Strike 2" } : null} />}
                   {view === "live" && <><Messages lines={feed} serverHost={EMOJI_HOST} onReaction={react} /><div style={{ height: 22 }}><Typing who={typing} /></div></>}
                 </div>
                 <div id="composer" style={{ flex: "none", paddingTop: 8 }}>
-                  <ChatEditor placeholder={`Message #${chatTitle}`} onSend={(text) => { setFeed((l) => [...l, { id: `me-${l.length}`, who: "Gryt", text, min: 10 }]); sfx("pop"); }} serverHost={EMOJI_HOST} allowFiles />
+                  <ChatEditor placeholder={`Message #${chatTitle}`} onSend={(text) => { setFeed((l) => [...l, { id: `me-${l.length}`, who: "Gryt", text, min: 10 }]); sfx("send"); }} serverHost={EMOJI_HOST} allowFiles />
                 </div>
               </div>
             </Slot>
@@ -705,7 +723,7 @@ export function Film() {
         </Panel>
       </World>
       <DialogPlacer />
-      <Overhead><Wardrobe /><PaperPlane /><Cursor /><Guide /></Overhead><LiveMembers />
+      <Overhead><Wardrobe /><PaperPlane /><Caret /><Cursor /><Guide /></Overhead><LiveMembers />
       <AddNewServer showAddServer={addOpen} setShowAddServer={setAddOpen} />
       <CreateChannelDialog open={createOpen} onOpenChange={setCreateOpen} editor={{ createChannel, effectiveSidebarItems: items }} />
     </div>

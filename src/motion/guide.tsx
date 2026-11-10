@@ -14,6 +14,7 @@ type Anchor = string | (() => Element | null | undefined);
 let line = { text: "", n: 0 };
 let mood: Mood = "open";
 let talkingUntil = 0;
+export const isTalking = () => performance.now() < talkingUntil;
 /** Where Sivert placed the owl for the current beat, and where its bubble sits relative to the owl's top-left. */
 let spot = { x: W / 2, y: H / 2 };
 let bubble = { dx: 0, dy: -70 };
@@ -65,13 +66,18 @@ export function placeOn(el: Element) {
 }
 
 /** The owl says something: a new bubble pops, the film waits long enough to read it, then the bubble goes. */
-export async function say(text: string, _expression?: Expression, _at?: Anchor, m: Mood = "open") {
+// Lines queue, so Gryt can keep acting under one without the next cutting it short.
+let speaking = Promise.resolve();
+export function say(text: string, expression?: Expression, at?: Anchor, m: Mood = "open") {
+  return (speaking = speaking.then(() => speak(text, expression, at, m)));
+}
+async function speak(text: string, _expression?: Expression, _at?: Anchor, m: Mood = "open") {
   line = { text, n: line.n + 1 };
   mood = m;
   set("guide.pop", 0);
   to("guide.pop", 1, 520, ease.spring);
   to("guide.o", 1, 300, ease.out);
-  sfx("pop");
+  sfx("bubble");
   // Read-aloud pace: about 200 words a minute, plus a second to notice the bubble.
   const words = text.trim().split(/\s+/).length;
   talkingUntil = performance.now() + words * 260;
@@ -152,7 +158,8 @@ export function useFloat(target: { x: number; y: number }, k = 5, snap = 0) {
     const ay = k * (target.y - pos.current.y) - c * vel.current.y;
     vel.current.x += ax * dt; vel.current.y += ay * dt;
     pos.current.x += vel.current.x * dt; pos.current.y += vel.current.y * dt;
-    lean.current += (Math.max(-14, Math.min(14, ax * 0.006)) - lean.current) * Math.min(1, dt * 10);
+    // Leans into the direction of travel, like flying, with a kick from the acceleration on top.
+    lean.current += (Math.max(-18, Math.min(18, vel.current.x * 0.012 + ax * 0.004)) - lean.current) * Math.min(1, dt * 10);
   }
   return { pos: pos.current, vel: vel.current, lean: lean.current };
 }
@@ -200,7 +207,7 @@ export function Guide() {
         <div style={{ position: "absolute", left: -SIZE, top: -SIZE, width: SIZE * 2, height: SIZE * 2, borderRadius: 999, opacity: get("owl.aura") * 0.9,
           transform: `scale(${(0.85 + 0.08 * Math.sin(t / 420)) * grow})`, background: "radial-gradient(circle, color-mix(in oklab, var(--gryt-accent-9) 45%, transparent) 0%, transparent 62%)" }} />
       )}
-      <div style={{ position: "absolute", left: -SIZE / 2, top: -SIZE / 2, transform: `rotate(${lean}deg) scale(${grow})`, transformOrigin: "50% 50%" }}>
+      <div style={{ position: "absolute", left: -SIZE / 2, top: -SIZE / 2, transform: `rotate(${lean + get("owl.tilt", 0)}deg) scale(${grow})`, transformOrigin: "50% 50%" }}>
         <Owl size={SIZE} wear={worn} pose={{ beak, blink: blinkAt(t), mood, lookX: look.current.x, lookY: look.current.y, rise: get("owl.rise", 0), shift: Math.max(-1, Math.min(1, vel.x / 500)), paws: get("owl.paws", 1), arm: get("owl.arm", 0), aim, side: waving ? "right" : pointSide }} />
       </div>
       {line.text && pop > 0.01 && (

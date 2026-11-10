@@ -45,10 +45,12 @@ export function toMany(target: Record<string, number>, dur = 900, e = ease.inOut
   for (const [k, v] of Object.entries(target)) to(k, v, dur, e);
 }
 
-export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms * TEMPO));
+const timing = new URLSearchParams(location.search).has("timing") ? ((window as unknown as { __timing: unknown[] }).__timing = []) : null;
+const log = (ms: number) => timing?.push({ t: performance.now(), ms, stack: new Error().stack });
+export const wait = (ms: number) => (log(ms * TEMPO), new Promise<void>((r) => setTimeout(r, ms * TEMPO)));
 
 /** A pause on a result, for the viewer to take it in. Not sped up by TEMPO. */
-export const hold = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+export const hold = (ms: number) => (log(ms), new Promise<void>((r) => setTimeout(r, ms)));
 
 /** Re-renders every frame, for anything reading get(). */
 export function useFrame() {

@@ -3,6 +3,7 @@
 type Frames = { urls: string[]; ends: number[]; total: number };
 const cache = new Map<string, Promise<Frames>>();
 const original = new WeakMap<HTMLImageElement, string>();
+const born = new WeakMap<HTMLVideoElement, number>();
 
 async function decode(url: string): Promise<Frames> {
   const res = await fetch(url);
@@ -34,7 +35,7 @@ if (new URLSearchParams(location.search).has("render")) {
     await Promise.all(imgs.map(async (img) => {
       const known = original.get(img);
       const src = known && img.src.startsWith("data:") ? known : img.src;
-      if (!src.includes("/motion-assets/") && !src.includes("/api/uploads/files/")) return;
+      if ((!src.includes("/motion-assets/") && !src.includes("/api/uploads/files/")) || src.includes(".svg")) return;
       original.set(img, src);
       if (!cache.has(src)) cache.set(src, decode(src).catch((e) => { console.error("motion: frames", e); return { urls: [], ends: [], total: 1 }; }));
       const f = await cache.get(src)!;
@@ -45,6 +46,13 @@ if (new URLSearchParams(location.search).has("render")) {
         img.src = next;
         await img.decode().catch(() => {});
       }
+    }));
+    // Videos on the page (the banner) would play on the wall clock too, so a slice would start them over.
+    await Promise.all(Array.from(document.querySelectorAll<HTMLVideoElement>("#stage video")).map(async (v) => {
+      if (!v.duration || v.srcObject) return;
+      if (!born.has(v)) { born.set(v, now); v.pause(); }
+      v.currentTime = ((now - born.get(v)!) / 1000) % v.duration;
+      await new Promise((r) => v.addEventListener("seeked", r, { once: true }));
     }));
   };
 }

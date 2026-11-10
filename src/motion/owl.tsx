@@ -45,7 +45,7 @@ export type OwlPose = {
 const EYES = { left: { x: 492, y: 744 }, right: { x: 778, y: 745 } };
 const arc = (c: { x: number; y: number }) => `M${c.x - 52} ${c.y + 18}Q${c.x} ${c.y - 46} ${c.x + 52} ${c.y + 18}`;
 
-export function Owl({ size, pose, mirrored, inner, id = "owl", wear = [] }: { size: number; pose: OwlPose; mirrored?: boolean; inner?: string; id?: string; wear?: Accessory[] }) {
+export function Owl({ size, pose, mirrored, inner, id = "owl", wear = [], bare }: { size: number; pose: OwlPose; mirrored?: boolean; inner?: string; id?: string; wear?: Accessory[]; bare?: boolean }) {
   const dy = pose.rise >= 0 ? -61 * pose.rise : -323 * pose.rise;
   // Well past the drawn 20/40px: at the size it plays at, less than this barely reads as looking.
   const fx = 44 * pose.lookX, fy = 44 * pose.lookY;
@@ -70,8 +70,8 @@ export function Owl({ size, pose, mirrored, inner, id = "owl", wear = [] }: { si
         </filter>
       </defs>
       {/* Inside the ring only; full size, its edge showed around the outside of the ring. */}
-      <circle cx="634.5" cy="634.5" r="604" fill="#2E2D5F" />
-      <g clipPath={`url(#${id}-clip)`}>
+      {!bare && <circle cx="634.5" cy="634.5" r="604" fill="#2E2D5F" />}
+      <g clipPath={bare ? undefined : `url(#${id}-clip)`}>
         {inner ? (
           <image href={inner} x={140 + 70 * (pose.shift ?? 0)} y={300 + dy + 120} width="990" height="990" />
         ) : (
@@ -100,7 +100,7 @@ export function Owl({ size, pose, mirrored, inner, id = "owl", wear = [] }: { si
         </g>
         )}
       </g>
-      <path d={RING} strokeWidth="64" stroke="#16162F" fill="none" />
+      {!bare && <path d={RING} strokeWidth="64" stroke="#16162F" fill="none" />}
       {pawsShown && (
         <g filter={`url(#${id}-paw)`} fill="#7C6EC3" opacity={paws} transform={`translate(0 ${(1 - paws) * 90})`}>
           <path d={PAW_L} opacity={left ? 1 - out : 1} />

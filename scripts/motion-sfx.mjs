@@ -1,6 +1,6 @@
-// Synthesises the film's sound track from the events motion.html logged: four families plus one resolve.
-// Made here rather than downloaded, so there is no licence to keep track of.
-import { writeFileSync } from "node:fs";
+// Builds the film's sound track from the events motion.html logged. Uses the licensed samples in
+// public/motion-assets/sfx (gitignored, see SOURCE.txt there) when present, else synthesises them.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const RATE = 48000;
 
@@ -68,14 +68,61 @@ const voices = {
 
 const GAIN = { click: 0.8, key: 0.55, pop: 0.7, whoosh: 0.45, resolve: 0.9 };
 
+const SFX = new URL("../public/motion-assets/sfx/", import.meta.url).pathname;
+/** A 16-bit mono WAV, scaled to a peak of 1 so the gains below are the only levels. */
+function load(name) {
+  const p = `${SFX}${name}.wav`;
+  if (!existsSync(p)) return null;
+  const b = readFileSync(p);
+  let o = 12;
+  while (b.toString("ascii", o, o + 4) !== "data") o += 8 + b.readUInt32LE(o + 4);
+  const f = new Float32Array(b.readUInt32LE(o + 4) / 2);
+  let peak = 0;
+  for (let i = 0; i < f.length; i++) peak = Math.max(peak, Math.abs((f[i] = b.readInt16LE(o + 8 + i * 2) / 32768)));
+  for (let i = 0; i < f.length; i++) f[i] /= peak || 1;
+  return f;
+}
+/** One of a set, played a few percent off pitch so repeats don't sound like a loop. */
+function bank(names) {
+  const all = names.map(load).filter(Boolean);
+  if (!all.length) return null;
+  return (rate) => {
+    const s = all[Math.floor(rnd() * all.length)], r = rate ?? 0.94 + rnd() * 0.12;
+    return Float32Array.from({ length: Math.floor(s.length / r) }, (_, i) => s[Math.floor(i * r)]);
+  };
+}
+const n = (name, count) => Array.from({ length: count }, (_, i) => `${name}${i + 1}`);
+const samples = {
+  click: bank(n("click", 3)), key: bank(n("key", 14)), force: bank(["force1"]),
+  bubble: bank(n("bubble", 2)), message: bank(n("message", 2)), send: bank(n("send", 3)), react: bank(n("react", 2)),
+  open: bank(n("open", 2)), create: bank(n("create", 2)), join: bank(n("join", 3)), voice: bank(["voice1"]),
+  cam: bank(n("cam", 3)), share: bank(["share1"]), dress: bank(n("dress", 2)), appear: bank(["appear1"]),
+  whoosh: bank(n("whoosh", 3)), fly: bank(n("fly", 2)), flap: bank(n("flap", 2)), sort: bank(["sort1"]), resolve: bank(["resolve1"]),
+};
+const SAMPLE_GAIN = {
+  click: 0.42, key: 0.2, force: 0.14, bubble: 0.3, message: 0.32, send: 0.3, react: 0.3, open: 0.36, create: 0.38,
+  join: 0.3, voice: 0.3, cam: 0.38, share: 0.32, dress: 0.4, appear: 0.32, whoosh: 0.34, fly: 0.5, flap: 0.3, sort: 0.2, resolve: 0.5,
+};
+// Without the sample folder, each kind falls back to the nearest synthesised voice.
+const SYNTH = { force: null, bubble: "pop", message: "pop", send: "whoosh", react: "pop", open: "pop", create: "pop", join: "pop", voice: "pop", cam: "click", share: "pop", dress: "whoosh", appear: "resolve", fly: "whoosh", flap: null, sort: "pop" };
+const MUSIC_GAIN = 0.16;
+
 export function writeTrack(events, seconds, path) {
   const mix = new Float32Array(Math.ceil((seconds + 2.5) * RATE));
+  const music = load("music");
+  if (music) {
+    const fade = 2.5 * RATE;
+    for (let i = 0; i < mix.length; i++) mix[i] += MUSIC_GAIN * music[i % music.length] * Math.min(1, i / (0.4 * RATE), (mix.length - i) / fade);
+  }
   for (const e of events) {
-    const v = voices[e.kind]?.(e.dur);
+    const s = samples[e.kind]?.(e.rate);
+    const synth = e.kind in SYNTH ? SYNTH[e.kind] : e.kind;
+    const v = s ?? (synth && voices[synth]?.(e.dur));
     if (!v) continue;
+    const g = s ? SAMPLE_GAIN[e.kind] : GAIN[synth];
     // Clicks a frame early read as on time; late ones read as lag.
     const start = Math.max(0, Math.round(((e.t - (e.kind === "click" ? 16 : 0)) / 1000) * RATE));
-    for (let i = 0; i < v.length && start + i < mix.length; i++) mix[start + i] += v[i] * GAIN[e.kind];
+    for (let i = 0; i < v.length && start + i < mix.length; i++) mix[start + i] += v[i] * g;
   }
   let peak = 0;
   for (const s of mix) peak = Math.max(peak, Math.abs(s));
