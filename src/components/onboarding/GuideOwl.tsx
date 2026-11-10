@@ -27,7 +27,7 @@ const GAP = 14;
 const EDGE = 8;
 const CONTROLS_HEIGHT = 40;
 
-export type Mood = "open" | "happy" | "wink";
+export type Mood = "open" | "happy" | "wink" | "focus" | "scared" | "squint";
 
 interface OwlPose {
   lookX: number;
@@ -35,25 +35,33 @@ interface OwlPose {
   /** 0 sits, 1 the raised pointing stance, -1 ducked behind the ring. */
   rise: number;
   arm: number;
-  /** Degrees from straight ahead, clockwise. */
+  /** Degrees from straight right, clockwise. */
   aim: number;
+  /** Which wing points; picked once per target so travel never swaps it. */
+  side: "left" | "right";
   /** -1..1: the body sliding forward inside the ring while it travels. */
   shift: number;
   paws: number;
   blink: number;
   mood: Mood;
-  /** 0..1: the beak opening while it talks. */
-  talk: number;
+  /** 0..1: how far the beak is open. */
+  beak: number;
 }
 
-function Owl({ pose, mirrored }: { pose: OwlPose; mirrored: boolean }) {
+function Owl({ pose }: { pose: OwlPose }) {
   const id = useId();
   const dy = pose.rise >= 0 ? -61 * pose.rise : -323 * pose.rise;
   const fx = 44 * pose.lookX, fy = 44 * pose.lookY;
   const ex = 88 * pose.lookX, ey = 88 * pose.lookY;
-  const turn = pose.aim - ARM_ANGLE;
+  const a = ((pose.aim + 540) % 360) - 180;
+  const left = pose.side === "left";
+  // The left wing mirrors the drawing, so its aim is mirrored too.
+  const mirroredAim = a > 0 ? 180 - a : -180 - a;
+  const aim = left ? mirroredAim : a;
+  const out = Math.min(1, pose.arm * 2);
+  const turn = (Math.max(-70, Math.min(80, aim)) - ARM_ANGLE) * pose.arm + (120 - ARM_ANGLE) * (1 - pose.arm);
   return (
-    <svg width={SIZE} height={SIZE} viewBox="0 0 1269 1269" overflow="visible" style={{ transform: mirrored ? "scaleX(-1)" : undefined }}>
+    <svg width={SIZE} height={SIZE} viewBox="0 0 1269 1269" overflow="visible">
       <defs>
         <clipPath id={`${id}c`}><circle cx="634.5" cy="634.5" r="604" /></clipPath>
         <filter id={`${id}p`} x="-10%" y="-10%" width="120%" height="120%">
@@ -69,34 +77,37 @@ function Owl({ pose, mirrored }: { pose: OwlPose; mirrored: boolean }) {
       <g clipPath={`url(#${id}c)`}>
         <g transform={`translate(${70 * pose.shift} ${dy})`}>
           <path d={BODY} fill="#A495E3" />
-          <path d={SIDE_R} fill="#7C6EC3" />
-          <path d={SIDE_L} fill="#7C6EC3" />
+          <path d={SIDE_R} fill="#7C6EC3" opacity={left ? 1 : 1 - out} />
+          <path d={SIDE_L} fill="#7C6EC3" opacity={left ? 1 - out : 1} />
           <path d={FACE} fill="#B5A8E6" transform={`translate(${fx} ${fy})`} />
           <g transform={`translate(${ex} ${ey})`} fill="#2E2D5F">
             {(["left", "right"] as const).map((side) => {
               const c = EYES[side];
               const shut = pose.mood === "happy" || (pose.mood === "wink" && side === "right");
               if (shut) return <path key={side} d={arc(c)} fill="none" stroke="#2E2D5F" strokeWidth="26" strokeLinecap="round" />;
-              const sy = 1 - 0.9 * pose.blink;
-              return <path key={side} d={side === "left" ? EYE_L : EYE_R} transform={`translate(0 ${c.y * (1 - sy)}) scale(1 ${sy})`} />;
+              if (pose.mood === "focus") return <path key={side} d={`M${c.x - 50} ${c.y - 6}Q${c.x} ${c.y + 34} ${c.x + 50} ${c.y - 6}`} fill="none" stroke="#2E2D5F" strokeWidth="26" strokeLinecap="round" />;
+              const sy = (1 - 0.9 * pose.blink) * (pose.mood === "squint" ? 0.4 : 1);
+              const big = pose.mood === "scared" ? 1.35 : 1;
+              return <path key={side} d={side === "left" ? EYE_L : EYE_R} transform={`translate(${c.x * (1 - big)} ${c.y * (1 - sy * big)}) scale(${big} ${sy * big})`} />;
             })}
-            <path d={BEAK} transform={`translate(0 ${822 * -0.3 * pose.talk}) scale(1 ${1 + 0.3 * pose.talk})`} />
+            <path d={BEAK} transform={`translate(0 ${822 * -0.22 * pose.beak}) translate(0 ${12 * pose.beak}) scale(1 ${1 + 0.22 * pose.beak})`} />
           </g>
         </g>
       </g>
       <path d={RING} strokeWidth="64" stroke="#16162F" fill="none" />
       {pose.paws > 0.01 && (
         <g filter={`url(#${id}p)`} fill="#7C6EC3" opacity={pose.paws} transform={`translate(0 ${(1 - pose.paws) * 90})`}>
-          <path d={PAW_L} />
-          <path d={PAW_R} opacity={1 - Math.min(1, pose.arm * 2)} />
+          <path d={PAW_L} opacity={left ? 1 - out : 1} />
+          <path d={PAW_R} opacity={left ? 1 : 1 - out} />
           {pose.arm > 0.01 && (
-            <path
-              d={ARM}
-              // Pulls in toward the shoulder: scaled about the pivot, not the drawing's corner.
-              transform={`translate(0 ${dy}) rotate(${turn} ${PIVOT.x} ${PIVOT.y}) translate(${PIVOT.x} ${PIVOT.y}) scale(${0.4 + 0.6 * pose.arm}) translate(${-PIVOT.x} ${-PIVOT.y})`}
-              style={{ transformBox: "view-box" }}
-              opacity={Math.min(1, pose.arm * 2)}
-            />
+            // Turns at the shoulder; tucked, it hangs down the side (120°) as the paw comes back.
+            <g transform={left ? "translate(1269 0) scale(-1 1)" : undefined}>
+              <path
+                d={ARM}
+                transform={`translate(${70 * pose.shift * (left ? -1 : 1)} ${dy}) rotate(${turn} ${PIVOT.x} ${PIVOT.y})`}
+                opacity={Math.min(1, pose.arm * 3)}
+              />
+            </g>
           )}
         </g>
       )}
@@ -263,6 +274,9 @@ export function GuideOwl({
   const [said, setSaid] = useState<Line | null>(null);
   const [face, setFace] = useState<Mood>("open");
   const talkUntil = useRef(0);
+  const lastAim = useRef(0);
+  const wavingRef = useRef(waving);
+  wavingRef.current = waving;
   const bubbleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -280,7 +294,7 @@ export function GuideOwl({
         s.pos = { x: h.x, y: h.y };
         s.vel = { x: 0, y: 0 };
       } else if (dt > 0) {
-        // A critically damped spring that leans into its own acceleration, like a segway.
+        // A critically damped spring that leans into its travel, with a kick from the acceleration.
         const k = 5, c = 2 * Math.sqrt(k);
         const ax = k * (h.x - s.pos.x) - c * s.vel.x;
         const ay = k * (h.y - s.pos.y) - c * s.vel.y;
@@ -288,7 +302,7 @@ export function GuideOwl({
         s.vel.y += ay * dt;
         s.pos.x += s.vel.x * dt;
         s.pos.y += s.vel.y * dt;
-        s.lean += (Math.max(-14, Math.min(14, ax * 0.006)) - s.lean) * Math.min(1, dt * 10);
+        s.lean += (Math.max(-18, Math.min(18, s.vel.x * 0.012 + ax * 0.004)) - s.lean) * Math.min(1, dt * 10);
       }
       const t = targetRef.current;
       let want = { x: 0, y: 0 };
@@ -297,6 +311,7 @@ export function GuideOwl({
       const w = s.wander;
       if (now > w.next) s.wander = nextWander(now, now - s.movedAt > 2000);
       if (!still && now < w.until) want = w.looks[Math.min(2, Math.floor((now - w.from) / 2200))];
+      if (wavingRef.current) want = { x: 0.98, y: -0.2 };
       const speed = Math.hypot(s.vel.x, s.vel.y);
       const m = Math.min(1, speed / 300);
       const go = { x: s.vel.x / (speed || 1), y: s.vel.y / (speed || 1) };
@@ -348,13 +363,14 @@ export function GuideOwl({
     const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
     setSaid(line);
     setFace("open");
-    const talking = Math.min(2600, 500 + (line.title.length + (line.body?.length ?? 0)) * 18);
+    // The film's read-aloud pace: 260ms a word.
+    const talking = `${line.title} ${line.body ?? ""}`.trim().split(/\s+/).length * 260;
     talkUntil.current = performance.now() + talking;
     // The face comes after the line is said; a wink is only a moment.
     const faced = window.setTimeout(() => setFace(mood), talking);
     const unwink = mood === "wink" ? window.setTimeout(() => setFace("open"), talking + 700) : 0;
     tw.to("pop", 0, 1, ease.out, true);
-    tw.to("pop", 1, 800, ease.spring, still);
+    tw.to("pop", 1, 520, ease.spring, still);
     if (point || waving) {
       tw.to("rise", 1, 450, ease.out, still);
       tw.to("arm", 1, 520, ease.spring, still);
@@ -389,14 +405,10 @@ export function GuideOwl({
   const s = state.current;
   const { x, y } = s.pos;
   const now = performance.now();
-  const sign = home.mirrored ? -1 : 1;
-  let aim = 0;
-  if (waving) aim = -15 + 20 * Math.sin(now / 160);
-  else if (target) {
-    const ax = Math.abs(target.left + target.width / 2 - x) || 1;
-    // Never steeply up: a raised straight arm reads as a salute.
-    aim = Math.max(-20, Math.min(70, (Math.atan2(target.top + target.height / 2 - y, ax) * 180) / Math.PI));
-  }
+  // Held while the arm tucks away, so it never swaps to the other wing mid-retract.
+  if (target) lastAim.current = (Math.atan2(target.top + target.height / 2 - y, target.left + target.width / 2 - x) * 180) / Math.PI;
+  const aim = waving ? -40 + 22 * Math.sin(now / 140) : lastAim.current;
+  const side = !waving && home.mirrored ? "left" : "right";
   const rise = hiding ? -1 : tw.get("rise");
   const pop = hiding ? 0 : tw.get("pop");
   const vh = window.innerHeight;
@@ -426,18 +438,19 @@ export function GuideOwl({
         }}
       >
         <Owl
-          mirrored={home.mirrored}
           pose={{
-            lookX: sign * s.look.x,
+            lookX: s.look.x,
             lookY: s.look.y,
             rise,
             arm: hiding ? 0 : tw.get("arm") * s.settled,
             aim,
-            shift: sign * Math.max(-1, Math.min(1, s.vel.x / 500)),
+            side,
+            shift: Math.max(-1, Math.min(1, s.vel.x / 500)),
             paws: tw.get("paws"),
             blink: still ? 0 : blinkAt(now),
             mood: face,
-            talk: !still && now < talkUntil.current ? Math.abs(Math.sin(now / 85)) : 0,
+            // Two sines out of step, so it never reads as a metronome.
+            beak: !still && now < talkUntil.current ? Math.max(0, Math.sin(now / 55) * 0.6 + Math.sin(now / 37) * 0.4) : 0,
           }}
         />
       </div>
@@ -454,7 +467,7 @@ export function GuideOwl({
             maxWidth: 280,
             transformOrigin: bubbleAbove ? "0% 100%" : "0% 0%",
             transform: `scale(${0.6 + 0.4 * pop})`,
-            opacity: Math.min(1, pop * 1.2),
+            opacity: Math.min(1, pop * 1.5),
             padding: "9px 13px",
             borderRadius: 16,
             background: "var(--gryt-neutral-12)",
