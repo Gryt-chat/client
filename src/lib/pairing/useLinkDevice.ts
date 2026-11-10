@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   expectServerLineage,
+  identityScopeFor,
   installPairedIdentity,
   listGuestScopes,
   localPeerPinStore,
@@ -137,6 +138,7 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
       // Opened when the first batch arrives, which is after the identity is in place.
       history: historySink(async () => (await openLocalArchive()).messages),
       historyStore: openServerHistory(serverAccess, historyFetch),
+      localScope: identityScopeFor,
     });
     pairing.current = next;
     next.subscribe((s) => {
