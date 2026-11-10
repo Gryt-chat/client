@@ -48,7 +48,8 @@ if (!build) throw new Error(`no Playwright Chromium under ${cache}`);
 const chromePath = join(cache, build, "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
 const profile = mkdtempSync(join(tmpdir(), "gryt-motion-"));
 const port = Number(process.env.MOTION_PORT ?? 9400 + Math.floor(Math.random() * 400));
-const chrome = spawn(chromePath, ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, "--hide-scrollbars", "about:blank"], { stdio: "ignore" });
+// Without the compositor flag, 1440p shots caught the call tiles half drawn and they flashed.
+const chrome = spawn(chromePath, ["--headless=new", `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, "--hide-scrollbars", "--run-all-compositor-stages-before-draw", "about:blank"], { stdio: "ignore" });
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { chrome.kill("SIGKILL"); process.exit(130); });
 
 try {

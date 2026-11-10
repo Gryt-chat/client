@@ -670,10 +670,10 @@ export function Film() {
       flag("Sivert", { screenShareEnabled: true });
       sfx("share");
       await hold(600);
-      // Gryt flies over beside the quality pill, points at it smiling, then touches it for the details.
+      // Gryt flies up and left to just above the quality pill, so he never crosses the share, then touches it.
       const pill = await until(() => $("#share-pill"));
       { const r = flat(() => pill.getBoundingClientRect()); const st = flat(() => $("#stage")!.getBoundingClientRect()); const k = st.width / W;
-        place((r.right - st.left) / k + 80, (r.top - st.top) / k + 50, { dx: -60, dy: -80 }); }
+        place((r.left - st.left) / k + 60, (r.top - st.top) / k - 95, { dx: 70, dy: -70 }); }
       await hold(700);
       pointAt(pill);
       await say("Sivert is streaming at 240 fps!", undefined, undefined, "happy");
