@@ -19,11 +19,12 @@ const run = (cmd: string, args: string[], env: Record<string, string> = {}) => n
 // One failed slice fails the render; the others are stopped (SIGINT, so each one closes its own Chrome).
 const stopAll = () => { for (const k of kids) k.kill("SIGINT"); };
 
-const up = () => fetch("http://localhost:3778/motion.html").then(() => true, () => false);
+const PORT = Number(process.env.MOTION_VITE_PORT ?? 3778);
+const up = () => fetch(`http://localhost:${PORT}/motion.html`).then(() => true, () => false);
 // A server still on the port would take the requests and then die mid-render, so wait for it to go.
-spawn("pkill", ["-f", "motion.vite.config.ts"]);
+spawn("pkill", ["-f", `motion.vite.config.ts --port ${PORT}`]);
 for (let i = 0; i < 50 && (await up()); i++) await new Promise((r) => setTimeout(r, 200));
-const vite = spawn("node", ["node_modules/vite/bin/vite.js", "--config", "motion.vite.config.ts"], { cwd: `${here}..`, stdio: "ignore" });
+const vite = spawn("node", ["node_modules/vite/bin/vite.js", "--config", "motion.vite.config.ts", "--port", String(PORT)], { cwd: `${here}..`, stdio: "ignore" });
 vite.on("exit", (c) => { if (c !== null) { console.error(`vite exited ${c}`); process.exit(1); } });
 try {
   for (let i = 0; i < 100 && !(await up()); i++) await new Promise((r) => setTimeout(r, 300));
@@ -35,7 +36,7 @@ try {
   await Promise.all(parts.map(async (p, i) => {
     await new Promise((r) => setTimeout(r, i * 1500));
     return run("node", [`${here}render-motion.ts`, p, String(cut(i + 1))], {
-      MOTION_FROM: String(cut(i)), MOTION_NO_AUDIO: "1", MOTION_PORT: String(9400 + i), ...(i === workers - 1 ? { MOTION_SFX_OUT: sfx } : {}),
+      MOTION_FROM: String(cut(i)), MOTION_NO_AUDIO: "1", MOTION_PORT: String(9400 + (PORT - 3778) * 20 + i), MOTION_URL: `http://localhost:${PORT}/motion.html?render`, ...(i === workers - 1 ? { MOTION_SFX_OUT: sfx } : {}),
     });
   })).catch((e) => { stopAll(); throw e; });
   const list = out.replace(/\.mp4$/, ".parts.txt");

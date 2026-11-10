@@ -19,6 +19,7 @@ const maxSeconds = Number(process.argv[3] ?? 120);
 const url = process.env.MOTION_URL ?? `http://localhost:3778/motion.html?render${process.env.MOTION_DBG ? "&dbg" : ""}`;
 const FPS = Number(process.env.MOTION_FPS ?? 60);
 const draft = !!process.env.MOTION_DRAFT;
+const SHOT = process.env.MOTION_SHOT ?? (draft ? "jpeg" : "png");
 // A slice for render-motion-parallel.ts: frames before FROM are stepped through without screenshots.
 const FROM = Number(process.env.MOTION_FROM ?? 0);
 const FF_EVERY = Number(process.env.MOTION_FF_EVERY ?? 8);
@@ -101,7 +102,7 @@ try {
       if (frame % 60 === 0 && (await evaluate("!!window.__done"))) break;
       continue;
     }
-    const shot = await cdp("Page.captureScreenshot", { format: draft ? "jpeg" : "png", quality: draft ? 90 : undefined, clip: { x: 0, y: 0, width: CSS_W, height: CSS_H, scale: 1 } });
+    const shot = await cdp("Page.captureScreenshot", { format: SHOT, quality: SHOT === "jpeg" ? (draft ? 90 : 100) : undefined, clip: { x: 0, y: 0, width: CSS_W, height: CSS_H, scale: 1 } });
     ff.stdin.write(Buffer.from(shot.result?.data ?? "", "base64"));
     if (frame % 60 === 0 && (await evaluate("!!window.__done"))) break;
     if (frame % (FPS * SUB * 5) === 0) console.error(`${out.split("/").pop()}: ${(frame / FPS / SUB).toFixed(0)} s`);
