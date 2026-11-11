@@ -262,10 +262,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("set-close-to-tray", enabled);
   },
 
-  setSignedIn(signedIn: boolean) {
-    ipcRenderer.send("set-signed-in", signedIn);
-  },
-
   setVoiceState(state: {
     inVoice: boolean;
     muted: boolean;

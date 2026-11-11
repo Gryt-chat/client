@@ -578,7 +578,6 @@ let voiceState: VoiceState = {
   serverName: null,
 };
 
-let isUserSignedIn = false;
 let uiohookRunning = false;
 let startHiddenOnLaunch = false;
 let localServer: Server | null = null;
@@ -2292,11 +2291,7 @@ function createMainWindow(): BrowserWindow {
   );
 
   mainWindow.on("close", (event) => {
-    if (
-      !isQuitting &&
-      closeToTray &&
-      isUserSignedIn
-    ) {
+    if (!isQuitting && closeToTray) {
       event.preventDefault();
       mainWindow?.hide();
     }
@@ -3415,14 +3410,6 @@ if (!gotSingleInstanceLock) {
             // Not every platform build implements it, and a titlebar that
             // keeps its old colours is not a reason to take anything down.
           }
-        }
-      );
-
-      ipcMain.on(
-        "set-signed-in",
-        (_event, signedIn: boolean) => {
-          isUserSignedIn =
-            signedIn;
         }
       );
 

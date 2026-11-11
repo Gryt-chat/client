@@ -295,7 +295,6 @@ export interface ElectronAPI {
 
   getCloseToTray(): Promise<boolean>;
   setCloseToTray(enabled: boolean): void;
-  setSignedIn(signedIn: boolean): void;
   /**
    * Tell the tray what voice is doing. The main process has no other route: mute
    * and deafen are renderer settings and the SFU connection is a renderer concern.
