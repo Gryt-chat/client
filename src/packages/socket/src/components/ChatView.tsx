@@ -449,10 +449,14 @@ export const ChatView = memo(({
 
   const handleViewDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); }, []);
 
-  const handleViewDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  // Capture phase: a drop on the message box is taken by the editor, which stops propagation.
+  const clearDragOver = useCallback(() => {
     dragCounterRef.current = 0;
     setIsDragOver(false);
+  }, []);
+
+  const handleViewDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
     editorRef.current?.addFiles(files);
@@ -902,7 +906,7 @@ export const ChatView = memo(({
           background: "var(--gryt-neutral-3)",
           borderRadius: flush ? 0 : "var(--gryt-radius-lg)",
           position: "relative",
-        }} onDragEnter={handleViewDragEnter} onDragLeave={handleViewDragLeave} onDragOver={handleViewDragOver} onDrop={handleViewDrop}>
+        }} onDragEnter={handleViewDragEnter} onDragLeave={handleViewDragLeave} onDragOver={handleViewDragOver} onDropCapture={clearDragOver} onDrop={handleViewDrop}>
         {isDragOver && (
           <div className="chat-view-drop-overlay">
             <div className="chat-view-drop-overlay-content">
