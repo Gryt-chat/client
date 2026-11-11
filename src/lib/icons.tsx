@@ -42,6 +42,7 @@ import {
   Circle,
   Clock,
   ClockClockwise,
+  Cloud,
   CloudArrowDown,
   CloudArrowUp,
   Code,
@@ -211,6 +212,7 @@ export const PiCheckCircleFill: Icon = weighted(CheckCircle, "fill", "PiCheckCir
 export const PiClockClockwiseFill: Icon = weighted(ClockClockwise, "fill", "PiClockClockwiseFill");
 export const PiClockFill: Icon = weighted(Clock, "fill", "PiClockFill");
 export const PiCircleFill: Icon = weighted(Circle, "fill", "PiCircleFill");
+export const PiCloudFill: Icon = weighted(Cloud, "fill", "PiCloudFill");
 export const PiCloudArrowDownFill: Icon = weighted(CloudArrowDown, "fill", "PiCloudArrowDownFill");
 export const PiCloudArrowUpFill: Icon = weighted(CloudArrowUp, "fill", "PiCloudArrowUpFill");
 export const PiCode: Icon = Code;
