@@ -11,7 +11,9 @@ import {
 } from "@/common";
 
 import {
+  PiArrowSquareOutBold,
   PiCaretRightBold,
+  PiCloudFill,
   PiHouseLineFill,
   PiInfoFill,
   PiLinkSimpleBold,
@@ -34,6 +36,8 @@ import {
 import { useSettings } from "../hooks/useSettings";
 import { sameServer } from "../serverId";
 import { CreateServerPanel } from "./createServer";
+
+const CLOUD_URL = "https://gryt.chat/cloud";
 
 const STEP_TITLE = { host: "Create your server", join: "Join a server", choose: "Add a server" };
 
@@ -413,6 +417,8 @@ export function AddNewServer({
                   />
                 </div>
 
+                <CloudCard hint="Your own server, always online. We run it for you, so your friends can hang out even when you're not on." />
+
                 {/* Below a rule rather than between the two doors. The server we
                     run is a third answer, not a step inside the first one. */}
                 {showOfficial && officialServer && (
@@ -499,6 +505,21 @@ export function AddNewServer({
                       onHide={() => setOfficialServerHidden(true)}
                     />
                   </div>
+                )}
+
+                {/* A browser can't host, so this is its only way to start a server. */}
+                {!embeddedServerAvailable && serverHost.length === 0 && (
+                  <>
+                    <OrRule label="or start your own" />
+                    <CloudCard hint="Your own server, always online. We run it for you." />
+                    <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
+                      Or run one on your own computer with the{" "}
+                      <a className="gryt-link" href="https://gryt.chat/download" target="_blank" rel="noopener noreferrer">
+                        desktop app
+                      </a>
+                      .
+                    </span>
+                  </>
                 )}
 
                 {/* The preview, and it stays a preview. There used to be a
@@ -711,14 +732,51 @@ function EntryCard({
 }
 
 /** The "or" between the two doors and the server we run. */
-function OrRule() {
+/** Hosting isn't sold yet; the card leads to the page about it, and payment never happens in the app. */
+function CloudCard({ hint }: { hint: string }) {
+  return (
+    <a
+      href={CLOUD_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-tour="choose-cloud"
+      className="flex items-center gap-3 rounded-(--gryt-radius-md) border border-gryt-border bg-gryt-surface text-gryt-text w-full p-4 no-underline transition-colors hover:border-(--gryt-accent-9)"
+    >
+      <span
+        className="flex items-center justify-center"
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: "var(--gryt-radius-md)",
+          background: "var(--gryt-accent-a3)",
+          color: "var(--gryt-accent-11)",
+          flexShrink: 0,
+        }}
+      >
+        <PiCloudFill size={17} />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex items-center gap-2 text-sm font-bold">
+          Gryt Cloud
+          <Chip>Soon</Chip>
+        </span>
+        <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
+          {hint}
+        </span>
+      </span>
+      <PiArrowSquareOutBold size={14} style={{ color: "var(--gryt-neutral-11)", flexShrink: 0 }} aria-label="Opens in your browser" />
+    </a>
+  );
+}
+
+function OrRule({ label = "or" }: { label?: string }) {
   return (
     <div
       className="flex items-center gap-3 text-xs uppercase"
       style={{ color: "var(--gryt-neutral-11)", letterSpacing: "0.08em" }}
     >
       <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
-      or
+      {label}
       <span className="h-px flex-1" style={{ background: "var(--gryt-border)" }} />
     </div>
   );
