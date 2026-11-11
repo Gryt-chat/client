@@ -2,7 +2,7 @@ import { Button, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useCamera, useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
-import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type CSSProperties, type ReactElement, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import toast from "react-hot-toast";
 
 import {
@@ -68,6 +68,8 @@ const INDENT_PX = 14;
 /** The call you're in: the voice row and its people on one accent-tinted card. */
 const CALL_CARD_FILL = "var(--gryt-accent-3)";
 const CALL_CARD_STYLE = { outline: "1px solid var(--gryt-accent-6)", borderRadius: 20 } as const;
+/** A call you're not in: the same card shape, edge only, so it groups the people without reading as yours. */
+const OTHER_CALL_STYLE = { outline: "1px solid var(--gryt-accent-a3)", borderRadius: 20 } as const;
 
 const exitVariants = {
   gone: (instant: boolean) => (instant ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -8 }),
@@ -393,11 +395,14 @@ export const ChannelList = ({
       return id === currentConnectionId ? localCamera : cameraStreamFor(clients[id].cameraStreamID, null, videoStreams);
     };
 
+    let callStyle: CSSProperties | undefined;
+    if (inThisCall) callStyle = CALL_CARD_STYLE;
+    else if (hasVoiceMembers) callStyle = OTHER_CALL_STYLE;
     const threadHere = openThread && openThread.host === serverHost && openThread.conversationId === channel?.id ? openThread.thread : null;
     const selected = channel?.id === selectedChannelId && !(threadHere && threadExpanded);
 
     return (
-      <div className="flex flex-col items-start w-full relative" style={inThisCall ? CALL_CARD_STYLE : undefined}>
+      <div className="flex flex-col items-start w-full relative" style={callStyle}>
         {/* Fills behind the lower half of the round row, so the members box reads as part of it, not a box under it. */}
         {inThisCall && (
           <div aria-hidden style={{ position: "absolute", top: "18px", left: 0, right: 0, height: "22px", background: CALL_CARD_FILL }} />
