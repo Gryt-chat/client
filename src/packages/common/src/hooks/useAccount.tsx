@@ -57,12 +57,6 @@ function useAccountHook(): Account {
   /* Set once the retry has its answer or somebody signs out, so it never starts twice. */
   const retryDone = useRef(false);
 
-  useEffect(() => {
-    if (isSignedIn == null) return;
-    const api = getElectronAPI();
-    api?.setSignedIn(isSignedIn);
-  }, [isSignedIn]);
-
   // Wire up the Electron deep-link listener
   useEffect(() => {
     if (!isElectron()) return;
