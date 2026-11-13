@@ -281,10 +281,10 @@ export function Settings() {
   }, [active, activePage]);
 
   const changeDestination = useCallback(
-    (value: string) => {
+    (value: string, keepMenu = false) => {
       setLoopbackEnabled(false);
       setSettingsTab(value);
-      setMenuOpen(false);
+      if (!keepMenu) setMenuOpen(false);
     },
     [setLoopbackEnabled, setSettingsTab],
   );
@@ -531,7 +531,7 @@ export function Settings() {
                               selections. */}
                           <button
                             type="button"
-                            onClick={() => changeDestination(value)}
+                            onClick={() => changeDestination(value, !!pages?.length)}
                             className="gryt-settings-nav"
                             data-tour={`settings-${value}`}
                             data-active={value === active && !pages?.length}
