@@ -1,4 +1,4 @@
-import { Skeleton } from "@gryt/ui";
+import { Skeleton, Tooltip } from "@gryt/ui";
 import type { CSSProperties, MouseEvent } from "react";
 
 import type { SealDecision } from "@/common";
@@ -85,29 +85,30 @@ export const MessageHoverToolbar = ({
       {/* Reactions first, then reply and the menu, like Teams. Thread, pin, edit
           and delete moved into that menu, which is also the right-click menu (GRYT-1722). */}
       {showQuick && quickReactions.map((src) => (
-        <button
-          key={src}
-          onClick={() => onQuickReaction(src)}
-          title={`React with ${src}`}
-          aria-label={`React with ${src}`}
-          style={{ ...BAR_BUTTON, fontSize: 21, lineHeight: 1 }}
-          onMouseEnter={hoverOn}
-          onMouseLeave={hoverOff}
-        >
-          <EmojiText text={src} emojiSize={22} disableTooltip />
-        </button>
+        <Tooltip key={src} title={<>React with <EmojiText text={src} disableTooltip /></>}>
+          <button
+            onClick={() => onQuickReaction(src)}
+            aria-label={`React with ${src}`}
+            style={{ ...BAR_BUTTON, fontSize: 21, lineHeight: 1 }}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
+          >
+            <EmojiText text={src} emojiSize={22} disableTooltip />
+          </button>
+        </Tooltip>
       ))}
       {onOpenEmojiPicker && (
-        <button
-          onClick={onOpenEmojiPicker}
-          title="React with another emoji"
-          aria-label="React with another emoji"
-          style={BAR_BUTTON}
-          onMouseEnter={hoverOn}
-          onMouseLeave={hoverOff}
-        >
-          <PiSmileyWinkBold size={20} />
-        </button>
+        <Tooltip title="Add reaction">
+          <button
+            onClick={onOpenEmojiPicker}
+            aria-label="React with another emoji"
+            style={BAR_BUTTON}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
+          >
+            <PiSmileyWinkBold size={20} />
+          </button>
+        </Tooltip>
       )}
       {(showQuick || onOpenEmojiPicker) && (onReply || onMore) && (
         <span
@@ -116,39 +117,43 @@ export const MessageHoverToolbar = ({
         />
       )}
       {onReply && (
-        <button
-          onClick={onReply}
-          title="Reply"
-          style={BAR_BUTTON}
-          onMouseEnter={hoverOn}
-          onMouseLeave={hoverOff}
-        >
-          <PiArrowBendUpLeftBold size={20} />
-        </button>
+        <Tooltip title="Reply">
+          <button
+            onClick={onReply}
+            aria-label="Reply"
+            style={BAR_BUTTON}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
+          >
+            <PiArrowBendUpLeftBold size={20} />
+          </button>
+        </Tooltip>
       )}
       {onThread && (
-        <button
-          onClick={onThread}
-          title={threadLabel}
-          aria-label={threadLabel}
-          style={BAR_BUTTON}
-          onMouseEnter={hoverOn}
-          onMouseLeave={hoverOff}
-        >
-          <PiChatCircleBold size={20} />
-        </button>
+        <Tooltip title={threadLabel}>
+          <button
+            onClick={onThread}
+            aria-label={threadLabel}
+            style={BAR_BUTTON}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
+          >
+            <PiChatCircleBold size={20} />
+          </button>
+        </Tooltip>
       )}
       {onMore && (
-        <button
-          onClick={(e) => onMore(e.currentTarget)}
-          title="More"
-          aria-label="More"
-          style={BAR_BUTTON}
-          onMouseEnter={hoverOn}
-          onMouseLeave={hoverOff}
-        >
-          <PiDotsThreeBold size={20} />
-        </button>
+        <Tooltip title="More">
+          <button
+            onClick={(e) => onMore(e.currentTarget)}
+            aria-label="More"
+            style={BAR_BUTTON}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
+          >
+            <PiDotsThreeBold size={20} />
+          </button>
+        </Tooltip>
       )}
     </div>
   );

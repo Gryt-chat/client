@@ -739,7 +739,7 @@ function MessageContent({
     <motion.div
       // Reactions already there on open are just there: growing in pushed the chat off the bottom.
       initial={false}
-      animate={{ marginBottom: hasReactions ? 30 : 0 }}
+      animate={{ marginBottom: hasReactions ? 34 : 0 }}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
       style={{
         margin: bubble ? "0 -6px" : "0 -8px",
@@ -747,7 +747,7 @@ function MessageContent({
       }}
     >
     {/* Hover is on the highlighted part only, so the bar doesn't open from the empty space beside a message. */}
-    <div className="flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState}
+    <div className="group/row flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState}
       onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{
         // Even padding, and a radius of a picture's plus that padding, so the edge round one reads as one stroke.
         padding: bubble ? 10 : 8,
@@ -1003,7 +1003,7 @@ function ReactionBadges({
       position: "absolute",
       bottom: 0,
       ...(alignRight ? { right: "6px" } : { left: "6px" }),
-      transform: "translateY(100%)",
+      transform: "translateY(calc(100% + 4px))",
       gap: "4px",
       zIndex: 1,
       width: "max-content",
@@ -1044,7 +1044,7 @@ function ReactionBadges({
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "5px",
-                    padding: "3px 8px",
+                    padding: "0 8px",
                     minHeight: "28px",
                     fontSize: "14px",
                     lineHeight: 1,
@@ -1060,7 +1060,8 @@ function ReactionBadges({
                   onMouseLeave={onReaction ? (e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"; } : undefined}
                 >
                   {/* No tooltip of its own: the emoji's name-only one won over this pill's whenever you pointed at the emoji. */}
-                  <EmojiText text={reaction.src} emojiSize={18} disableTooltip />
+                  {/* Line height normal: at 1 the emoji's box cut its ink 3px above the pill's middle. */}
+                  <span style={{ lineHeight: "normal" }}><EmojiText text={reaction.src} emojiSize={18} disableTooltip /></span>
                   <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
                 </button>
               </Tooltip>
@@ -1072,6 +1073,9 @@ function ReactionBadges({
       <button
         onClick={(e) => onOpenPicker(e.currentTarget)}
         title="Add reaction"
+        aria-label="Add reaction"
+        // With a pointer the hover bar has the picker too, so this shows with the message's hover.
+        className="transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
         style={{
           display: "inline-flex",
           alignItems: "center",

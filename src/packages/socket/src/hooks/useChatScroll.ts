@@ -182,7 +182,9 @@ export function useChatScroll(
     prevFirstMsgIdRef.current = firstMsgId;
   }, [chatMessages]);
 
-  useEffect(() => {
+  // A layout effect, so it runs before the one below records the last message. As a plain
+  // effect it wiped that afterwards, and the next change (a reaction) scrolled to the bottom.
+  useLayoutEffect(() => {
     lastMessageIdRef.current = undefined;
     forceScrollToBottomRef.current = false;
     setFarFromBottom(false);

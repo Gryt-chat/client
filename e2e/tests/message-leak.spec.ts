@@ -27,7 +27,7 @@ test("a raw socket that never joined gets none of a public channel's message eve
     const row = await sendMessage(alice.page, text);
 
     await row.hover();
-    await row.getByTitle("React with another emoji").click();
+    await row.getByRole("button", { name: "React with another emoji" }).click();
     await alice.page.getByPlaceholder("Search emoji").fill("thumbsup");
     await alice.page.getByTitle(":thumbsup:").click();
     await expect(row.getByRole("button", { name: "👍 1" })).toBeVisible();
@@ -44,7 +44,7 @@ test("a raw socket that never joined gets none of a public channel's message eve
     await expect(editedRow).toBeVisible();
 
     await editedRow.hover();
-    await editedRow.getByTitle("More", { exact: true }).click();
+    await editedRow.getByRole("button", { name: "More", exact: true }).click();
     await alice.page.getByRole("menuitem", { name: /^(Start|Open) thread/ }).click();
     const thread = alice.page.getByRole("complementary", { name: "Thread" });
     await expect(thread).toBeVisible();
@@ -58,7 +58,7 @@ test("a raw socket that never joined gets none of a public channel's message eve
     await expect(thread).toBeHidden();
 
     await editedRow.hover();
-    await editedRow.getByTitle("More", { exact: true }).click();
+    await editedRow.getByRole("button", { name: "More", exact: true }).click();
     await alice.page.getByRole("menuitem", { name: "Delete Message" }).click();
     const confirm = alice.page.getByRole("alertdialog", { name: "Delete message?" });
     await confirm.getByRole("button", { name: "Delete" }).click();
