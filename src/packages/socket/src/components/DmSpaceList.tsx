@@ -1,9 +1,8 @@
-import { Avatar, ContextMenu } from "@gryt/ui";
+import { Avatar, ContextMenu, ConversationItem } from "@gryt/ui";
 import { Reorder } from "motion/react";
 
 import { getOwnServerUserId, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
 
-import { PiPushPinFill } from "../../../../lib/icons";
 import type { DirectoryEntry } from "../hooks/dmDirectory";
 import { isPinned, pinFor, setPinned } from "../hooks/dmPins";
 import { type ConversationPreview, previewKey } from "../hooks/useConversationPreviews";
@@ -14,8 +13,6 @@ import type { UserStatus } from "../types/clients";
 import { EmojiText } from "./EmojiText";
 import { GroupFace } from "./GroupFace";
 import { MarkAsReadItem } from "./MarkAsReadItem";
-import { PresenceDot } from "./PresenceDot";
-import { UnreadIndicator } from "./UnreadIndicator";
 
 type ConversationParticipant = DirectConversation["other"];
 
@@ -60,37 +57,31 @@ function ConversationRow({
   const { host, conversation } = entry;
   const title = conversationTitle(conversation);
   const isGroup = conversation.kind === "group";
-  const unselectedMuted = unread > 0 ? "var(--gryt-neutral-11)" : "var(--gryt-neutral-10)";
-  const muted = selected ? "color-mix(in oklch, var(--color-gryt-on-accent) 70%, transparent)" : unselectedMuted;
-  const rowBg = selected ? "var(--gryt-accent)" : "var(--gryt-neutral-2)";
+  const groupSize = isGroup ? `${conversation.members.length + 1} people` : undefined;
+  const subtitle = preview ? <EmojiText text={preview.text} /> : groupSize;
 
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger>
-        <button
-          type="button"
+        <ConversationItem
           data-gryt="dm-row"
           data-selected={selected || undefined}
           /* Named rather than dimmed for a screen reader, which has no opacity. */
           aria-label={hidden ? `${title}, hidden` : undefined}
-          aria-current={selected ? "true" : undefined}
           onClick={onOpen}
-          className={[
-            "flex w-full items-center rounded-(--gryt-radius-lg) text-left transition-colors",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light",
-            selected ? "" : "hover:bg-gryt-neutral-3 active:bg-gryt-neutral-4",
-          ].join(" ")}
-          style={{
-            gap: 12, padding: "10px 12px", border: 0, cursor: "pointer",
-            background: selected ? "var(--gryt-accent)" : undefined,
-            color: selected ? "var(--color-gryt-on-accent)" : "var(--gryt-text)",
-            ...(hidden && !selected ? { opacity: 0.55 } : {}),
-          }}
-        >
-          {isGroup ? (
-            <GroupFace host={host} conversation={conversation} self={self} size={40} />
-          ) : (
-            <span className="relative inline-flex shrink-0">
+          active={selected}
+          hidden={hidden}
+          pinned={pinned}
+          unread={unread}
+          presence={isGroup ? undefined : otherStatus}
+          note={clash ? serverName : undefined}
+          meta={when(conversation.last_message_at)}
+          title={<EmojiText text={title} />}
+          subtitle={subtitle}
+          avatar={
+            isGroup ? (
+              <GroupFace host={host} conversation={conversation} self={self} size={40} />
+            ) : (
               <Avatar
                 size="medium"
                 fallback={conversation.other.nickname[0]}
@@ -102,49 +93,9 @@ function ConversationRow({
                   conversation.other.avatar_worn,
                 )}
               />
-              {/* Bottom-right, cut out of the face by the row's own colour. Absent
-                  rather than grey when there is no data to show (GRYT-1467). */}
-              {otherStatus && (
-                <span
-                  className="absolute rounded-(--gryt-radius-full)"
-                  style={{ bottom: -1, right: -1, padding: 3, background: rowBg }}
-                >
-                  <PresenceDot status={otherStatus} size={10} />
-                </span>
-              )}
-            </span>
-          )}
-
-          <span className="flex min-w-0 flex-1 flex-col" style={{ gap: 2 }}>
-            <span className="flex items-center" style={{ gap: 6 }}>
-              <span
-                className="truncate"
-                style={{ fontSize: 15, fontWeight: unread > 0 ? 700 : 500 }}
-              >
-                <EmojiText text={title} />
-              </span>
-              {clash && (
-                <span className="shrink-0 whitespace-nowrap" style={{ fontSize: 12, color: muted }}>
-                  · {serverName}
-                </span>
-              )}
-              <span
-                className="ml-auto flex shrink-0 items-center"
-                style={{ gap: 4, fontSize: 12, color: muted, fontVariantNumeric: "tabular-nums" }}
-              >
-                {pinned && <PiPushPinFill size={12} aria-label="Pinned" />}
-                {when(conversation.last_message_at)}
-              </span>
-            </span>
-            <span className="flex items-center" style={{ gap: 8 }}>
-              <span className="truncate" style={{ flex: 1, fontSize: 13, color: muted }}>
-                {preview && <EmojiText text={preview.text} />}
-                {!preview && (isGroup ? `${conversation.members.length + 1} people` : " ")}
-              </span>
-              <UnreadIndicator unread={unread} />
-            </span>
-          </span>
-        </button>
+            )
+          }
+        />
       </ContextMenu.Trigger>
 
       <ContextMenu.Portal>
