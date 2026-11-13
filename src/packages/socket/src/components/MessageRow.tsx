@@ -1,10 +1,11 @@
-import { Avatar, Popover, Tooltip } from "@gryt/ui";
+import { Avatar, MessageHoverToolbar, Popover, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { type CSSProperties, forwardRef, memo, type ReactNode, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { type MessageStyle, useTheme } from "@/common";
 
 import { PiChatsTeardropFill, PiDoorOpenBold,PiPushPinFill, PiSignInBold } from "../../../../lib/icons";
+import { useCustomEmojiMap } from "../hooks/useCustomEmojiMap";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { ThreadSummary } from "../hooks/useThreads";
 import { TINY_MAX_WIDTH } from "../lib/narrowLayout";
@@ -15,7 +16,6 @@ import { drawsMessageText, isUnknownKind, unknownKindNotice } from "../utils/web
 import { AttachmentGrid } from "./AttachmentGrid";
 import { isFileCard, isGridImage } from "./attachmentKinds";
 import { BotTag } from "./BotTag";
-import { MessageHoverToolbar } from "./ChatMessage";
 import type { ChatMessage, Reaction } from "./chatUtils";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
 import { ADDED_LINE } from "./chatViewHelpers";
@@ -725,6 +725,7 @@ function MessageContent({
   // For tests and tools: a row the server has not confirmed says why.
   const sendState = sendStateOf(m);
   const bubble = look === "bubbles";
+  const customEmojis = useCustomEmojiMap();
   const barRef = useRef<HTMLDivElement>(null);
   const [barStyle, setBarStyle] = useState<CSSProperties>({});
   useLayoutEffect(() => {
@@ -786,6 +787,7 @@ function MessageContent({
               onThread={onThread}
               threadLabel={threadLabel}
               onMore={onMore}
+              customEmojis={customEmojis}
             />
           </HoverBar>
         )}
