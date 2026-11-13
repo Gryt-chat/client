@@ -1,91 +1,11 @@
-import { Tooltip } from "@gryt/ui";
-import { nameToEmoji } from "gemoji";
-import { memo, useSyncExternalStore } from "react";
+import { EmojiText as UiEmojiText, type EmojiTextProps } from "@gryt/ui";
+import { memo } from "react";
 
-import { getCustomEmojis, onCustomEmojisChange } from "../utils/emojiData";
+import { useCustomEmojiMap } from "../hooks/useCustomEmojiMap";
 
-interface EmojiTextProps {
-  text: string;
-  emojiSize?: number | string;
-  disableTooltip?: boolean;
-}
-
-/**
- * Inline renderer turning :shortcode: into Unicode emoji or a custom `<img>`.
- * For channel names, labels and reactions, where markdown is overkill.
- */
-export const EmojiText = memo(({ text, emojiSize, disableTooltip }: EmojiTextProps) => {
-  const customEmojis = useSyncExternalStore(onCustomEmojisChange, getCustomEmojis);
-  const customMap = new Map(customEmojis.map((e) => [e.name, e.url]));
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-
-  for (const match of text.matchAll(/:([a-zA-Z0-9_+-]+):/g)) {
-    const code = match[1];
-    const start = match.index;
-    const emojiId = `:${code}:`;
-
-    if (start > lastIndex) {
-      parts.push(text.slice(lastIndex, start));
-    }
-
-    const unicode = nameToEmoji[code];
-    if (unicode) {
-      const span = (
-        <span key={`emoji-${start}`} style={{ cursor: "inherit" }}>
-          {unicode}
-        </span>
-      );
-      parts.push(
-        disableTooltip ? span : (
-          <Tooltip key={`emoji-${start}`} title={emojiId}>
-            {span}
-          </Tooltip>
-        ),
-      );
-    } else {
-      const url = customMap.get(code);
-      if (url) {
-        const sz = emojiSize ?? "1.4em";
-        const cssVal = typeof sz === "number" ? `${sz}px` : sz;
-        const img = (
-          <img
-            key={`emoji-${start}`}
-            src={url}
-            alt={emojiId}
-            data-emoji-name={code}
-            className="inline-emoji"
-            style={{
-              height: cssVal,
-              width: "auto",
-              verticalAlign: "middle",
-              display: "inline",
-              objectFit: "contain",
-              margin: "0 1px",
-              cursor: "inherit",
-            }}
-          />
-        );
-        parts.push(
-          disableTooltip ? img : (
-            <Tooltip key={`emoji-${start}`} title={emojiId}>
-              {img}
-            </Tooltip>
-          ),
-        );
-      } else {
-        parts.push(match[0]);
-      }
-    }
-
-    lastIndex = start + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return <>{parts}</>;
-});
+/** @gryt/ui's EmojiText with this app's custom emoji filled in. */
+export const EmojiText = memo((props: Omit<EmojiTextProps, "customEmojis">) => (
+  <UiEmojiText {...props} customEmojis={useCustomEmojiMap()} />
+));
 
 EmojiText.displayName = "EmojiText";
