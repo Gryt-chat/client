@@ -54,21 +54,25 @@ test("server settings on a 390px phone: no tab runs past the dialog", async ({ n
   const phone = await newMember({ phone: true, server: await freshServer(), label: "phone owner" });
   await phone.page.getByRole("button", { name: "Open channels" }).click();
   const dialog = await openServerSettings(phone.page);
-  await expect(dialog.getByRole("tablist", { name: "Server settings" })).toBeHidden();
+  // The rail is a drawer behind a menu button; closed, it's inert and out of the way.
+  const nav = dialog.locator('nav[aria-label="Settings pages"]');
+  await expect(nav).toHaveAttribute("data-open", "false");
+  const openMenu = async () => {
+    if ((await nav.getAttribute("data-open")) === "true") return;
+    await dialog.getByRole("button", { name: "Settings pages" }).click();
+    await expect(nav).toHaveAttribute("data-open", "true");
+  };
 
-  const picker = dialog.locator('[role="combobox"]:not([role="tabpanel"] [role="combobox"])');
-  const options = phone.page.getByRole("listbox").getByRole("option");
-  await picker.click();
-  await expect(options.first()).toBeVisible();
-  const tabs = await options.allInnerTexts();
-  await phone.page.keyboard.press("Escape");
-  await expect(options.first()).toBeHidden();
+  await openMenu();
+  await expect(nav).toBeInViewport({ ratio: 1 });
+  const tabs = await nav.getByRole("tab").allInnerTexts();
   expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(12);
 
   const pick = async (tab: string) => {
-    await picker.click();
-    await phone.page.getByRole("option", { name: tab, exact: true }).click();
-    await expect(picker).toHaveText(tab);
+    await openMenu();
+    await nav.getByRole("tab", { name: tab, exact: true }).click();
+    await expect(nav).toHaveAttribute("data-open", "false");
+    await expect(dialog.getByText(tab, { exact: true }).first()).toBeVisible();
   };
   await pick("Webhooks");
   await createWebhook(dialog);

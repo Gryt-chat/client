@@ -268,12 +268,9 @@ assert.ok(insideTabs, "no row found inside the settings Tabs");
 assert.match(insideTabs[1], /\bmin-w-0\b/, "the settings row inside Tabs lost min-w-0");
 assert.match(insideTabs[1], /\bflex-1\b/, "the settings row inside Tabs lost flex-1");
 
-// GRYT-1202: the version lines sat under the rail and went with it. The narrow
-// branch has to render them under the picker, and the rail has to keep them.
-const narrowBranch = modal.match(/\{!railFits && hasVersionLines && \(([\s\S]*?)\n {18}\)\}/);
-assert.ok(narrowBranch, "no narrow version block under the settings picker");
-assert.match(narrowBranch[1], /\{versionLines\}/, "the narrow settings layout stopped rendering the versions");
-const rail = modal.slice(modal.indexOf("<div hidden={!railFits}"), modal.indexOf("{TAB_CONFIG.map(({ value, content })"));
+// GRYT-1202: the version lines sat under the rail and went with it. The rail is a drawer in a
+// narrow window, so keeping them in the rail keeps them in both layouts.
+const rail = modal.slice(modal.indexOf('<nav\n'), modal.indexOf("{TAB_CONFIG.map(({ value, content })"));
 assert.match(rail, /\{versionLines\}/, "the settings rail stopped rendering the versions");
 for (const line of ["Server v{serverInfo.version}", "SFU {versionStatus.sfu.current", "Media worker"]) {
   assert.ok(modal.slice(modal.indexOf("const versionLines")).includes(line), `versionLines lost "${line}"`);
@@ -331,8 +328,9 @@ assert.match(userSettings, /useRoomForSettingsRail\(USER_SETTINGS_CHROME\)/, "us
 assert.match(userSettings, /max-w-\[calc\(100vw-3rem\)\]/, "user settings' margins moved, so USER_SETTINGS_CHROME is wrong");
 assert.match(userSettings, /width: railFits \? "220px"/, "user settings' rail changed width, or stopped giving way to the drawer");
 
-// Without the rail, server settings shows its picker and user settings opens the rail as a drawer.
-assert.match(modal, /\{!railFits && [^{}]*?<SettingsPicker\b/, "ServerSettingsModal lost the picker it shows without a rail");
+// Without the rail, both dialogs open it as a drawer from a menu button.
+assert.match(modal, /className=\{drawer \? "gryt-settings-drawer"/, "server settings lost the drawer it shows without a rail");
+assert.match(modal, /<IconButton aria-label="Settings pages"/, "server settings lost the button that opens its drawer");
 assert.match(userSettings, /className=\{drawer \? "gryt-settings-drawer"/, "user settings lost the drawer it shows without a rail");
 assert.match(userSettings, /\{drawer && \(\s*<IconButton aria-label="Settings pages"/, "user settings lost the button that opens its drawer");
 
