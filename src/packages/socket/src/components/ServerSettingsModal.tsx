@@ -6,7 +6,7 @@ import { HostedServerControls } from "@/settings/src/components/myServersSetting
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt } from "@/settings/src/hostedServers";
 
-import { PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiList, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
 import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
@@ -29,7 +29,6 @@ import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 import { ServerWebhooksTab } from "./ServerWebhooksTab";
-import { SettingsPicker } from "./SettingsPicker";
 
 type SetupRequiredDetail = {
   host: string;
@@ -95,11 +94,19 @@ export function ServerSettingsModal() {
     !!hostedHere;
   const allowTabs = canManage;
   const railFits = useRoomForSettingsRail(SERVER_SETTINGS_CHROME);
+  // Without room for the rail it becomes a drawer behind a menu button, as in user settings.
+  const drawer = !railFits;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pickTab = (value: string) => {
+    setTab(value);
+    setMenuOpen(false);
+  };
 
 
   function handleDialogChange(open: boolean) {
     setIsOpen(open);
     if (!open) {
+      setMenuOpen(false);
       setNotesOpen(false);
       setHost("");
       setTab("overview");
@@ -318,6 +325,7 @@ export function ServerSettingsModal() {
     label,
     options: TAB_CONFIG.filter((t) => t.group === label),
   })).filter((g) => g.options.length > 0);
+  const tabLabel = TAB_CONFIG.find((t) => t.value === tab)?.label;
 
   /*
    * Fall back when the selected tab is not one of the visible ones: the list
@@ -334,7 +342,7 @@ export function ServerSettingsModal() {
     setTab(values[0]);
   }, [isOpen, tab, visibleTabValues]);
 
-  // One set of lines for both layouts: under the rail when it fits, under the picker when it does not.
+  // Under the rail, which is a drawer in a narrow window.
   const versionLines = (
     <>
       {serverInfo?.version && (
@@ -391,10 +399,19 @@ export function ServerSettingsModal() {
     </>
   );
   const serverUpdate = versionStatus?.server.updateAvailable ? versionStatus.server : null;
-  const hasVersionLines = Boolean(serverInfo?.version || versionStatus?.sfu || versionStatus?.worker);
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={(open, details) => {
+        if (!open && menuOpen && details.reason === "escape-key") {
+          details.cancel();
+          setMenuOpen(false);
+          return;
+        }
+        handleDialogChange(open);
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Backdrop />
         {/* Sized rather than bounded. max-width with no width leaves the
@@ -428,32 +445,47 @@ export function ServerSettingsModal() {
         </Dialog.Close>
 
         <div className="flex flex-col gap-4 h-full">
-          <Dialog.Title>
-            Server settings
-          </Dialog.Title>
+          <div className="flex items-center gap-2">
+            {drawer && allowTabs && (
+              <IconButton aria-label="Settings pages" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
+                <PiList size={18} />
+              </IconButton>
+            )}
+            <div className="flex flex-col min-w-0">
+              <Dialog.Title>Server settings</Dialog.Title>
+              {drawer && allowTabs && <span className="text-xs text-gryt-muted truncate">{tabLabel}</span>}
+            </div>
+          </div>
 
           {isOpen && (
             allowTabs ? (
               <Tabs
                 value={tab}
-                onValueChange={(v) => setTab(String(v))}
-                orientation={railFits ? "vertical" : "horizontal"}
+                onValueChange={(v) => pickTab(String(v))}
+                orientation="vertical"
                 style={{ flex: 1, minHeight: 0 }}
               >
                 {/* min-w-0 because Tabs is a flex row: without it the widest page
                     set the width, and a webhook URL pushed everything off the edge. */}
-                <div className={`flex gap-4 h-full min-w-0 flex-1 ${railFits ? "" : "flex-col"}`}>
-                  {!railFits && <SettingsPicker value={tab} onValueChange={setTab} options={TAB_GROUPS} />}
-                  {!railFits && hasVersionLines && (
-                    <div
-                      data-settings-versions="narrow"
-                      className="flex flex-wrap gap-x-4 gap-y-1"
-                      style={{ marginTop: "-8px", padding: "0 4px", fontFamily: "var(--code-font-family)" }}
-                    >
-                      {versionLines}
-                    </div>
+                <div className="flex gap-4 h-full min-w-0 flex-1">
+                  {drawer && menuOpen && (
+                    <div aria-hidden onClick={() => setMenuOpen(false)} className="gryt-settings-scrim" />
                   )}
-                  <div hidden={!railFits} style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}>
+                  <nav
+                    aria-label="Settings pages"
+                    inert={drawer && !menuOpen}
+                    className={drawer ? "gryt-settings-drawer" : undefined}
+                    data-open={drawer ? menuOpen : undefined}
+                    style={{ minWidth: "200px", flexShrink: 0, overflowY: "auto" }}
+                  >
+                    {drawer && (
+                      <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+                        <IconButton tone="primary" aria-label="Close menu" onClick={() => setMenuOpen(false)} style={{ background: "var(--gryt-accent-a3)" }}>
+                          <PiList size={18} />
+                        </IconButton>
+                        <span className="text-lg font-bold">Server settings</span>
+                      </div>
+                    )}
                     <Tabs.List aria-label="Server settings" className="gap-1">
                       {TAB_GROUPS.map((group, i) => (
                         <Fragment key={group.label}>
@@ -476,9 +508,9 @@ export function ServerSettingsModal() {
                     <div className="flex flex-col gap-1" style={{ padding: "12px 16px", fontFamily: "var(--code-font-family)" }}>
                       {versionLines}
                     </div>
-                  </div>
+                  </nav>
 
-                  <div style={{ flex: 1, overflow: "auto", minWidth: 0, minHeight: 0 }}>
+                  <div style={{ flex: 1, overflow: "auto", minWidth: 0, minHeight: 0, isolation: "isolate" }}>
                     {!permissionKnown ? (
                       <span className="text-sm text-gryt-muted" style={{ marginBottom: 12 }}>
                         Loading permissions…
