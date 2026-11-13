@@ -1,4 +1,4 @@
-import { Avatar, MessageHoverToolbar, Popover, Tooltip } from "@gryt/ui";
+import { AddReactionButton, Avatar, MessageHoverToolbar, Popover, ReactionPill, Tooltip } from "@gryt/ui";
 import { AnimatePresence, motion, useIsPresent } from "motion/react";
 import { type CSSProperties, forwardRef, memo, type ReactNode, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -21,7 +21,6 @@ import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./c
 import { ADDED_LINE } from "./chatViewHelpers";
 import { CollapsibleText } from "./CollapsibleText";
 import { EmojiPicker } from "./EmojiPicker";
-import { EmojiText } from "./EmojiText";
 import { type LightboxGallery } from "./ImageLightbox";
 import { galleryOf } from "./lightboxGallery";
 import { MessageEmbeds } from "./LinkEmbed";
@@ -994,6 +993,7 @@ function ReactionBadges({
   onOpenPicker: (anchorEl?: HTMLElement) => void;
   alignRight?: boolean;
 }) {
+  const customEmojis = useCustomEmojiMap();
   const hasReactions = reactions && reactions.length > 0;
   if (!hasReactions) return null;
 
@@ -1013,7 +1013,6 @@ function ReactionBadges({
       <AnimatePresence mode="popLayout" initial={false}>
         {reactions.map((reaction, rIdx) => {
           const isMine = !!(currentUserId && reaction.users.includes(currentUserId));
-          const emojiId = reaction.src;
           const usersLabel = reaction.users
             .map((uid) => {
               if (currentUserId && uid === currentUserId) return currentUserNickname || "You";
@@ -1030,75 +1029,24 @@ function ReactionBadges({
               exit={{ opacity: 0, scale: 0.6 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
             >
-              <Tooltip
-                title={(
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {/* The emoji itself, never its :code: */}
-                    <div style={{ lineHeight: 1 }}><EmojiText text={emojiId} emojiSize={22} disableTooltip /></div>
-                    <div style={{ opacity: 0.9 }}>{usersLabel}</div>
-                  </div>
-                )}
-              >
-                <button
-                  onClick={onReaction ? () => onReaction(reaction.src) : undefined}
-                  aria-disabled={!onReaction || undefined}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    padding: "0 8px",
-                    minHeight: "28px",
-                    fontSize: "14px",
-                    lineHeight: 1,
-                    background: isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)",
-                    border: `1px solid ${isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"}`,
-                    borderRadius: "var(--gryt-radius-md)",
-                    cursor: onReaction ? "pointer" : "default",
-                    transition: "background 0.15s, border-color 0.15s",
-                    whiteSpace: "nowrap",
-                    color: isMine ? "var(--gryt-accent-11)" : "var(--gryt-neutral-12)",
-                  }}
-                  onMouseEnter={onReaction ? (e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-4)" : "var(--gryt-neutral-4)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-8)" : "var(--gryt-neutral-6)"; } : undefined}
-                  onMouseLeave={onReaction ? (e) => { e.currentTarget.style.background = isMine ? "var(--gryt-accent-3)" : "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = isMine ? "var(--gryt-accent-7)" : "var(--gryt-neutral-5)"; } : undefined}
-                >
-                  {/* No tooltip of its own: the emoji's name-only one won over this pill's whenever you pointed at the emoji. */}
-                  {/* Line height normal: at 1 the emoji's box cut its ink 3px above the pill's middle. */}
-                  <span style={{ lineHeight: "normal" }}><EmojiText text={reaction.src} emojiSize={18} disableTooltip /></span>
-                  <span style={{ fontWeight: 500, fontSize: "13px" }}>{reaction.amount}</span>
-                </button>
-              </Tooltip>
+              <ReactionPill
+                emoji={reaction.src}
+                count={reaction.amount}
+                mine={isMine}
+                who={usersLabel}
+                onToggle={onReaction ? () => onReaction(reaction.src) : undefined}
+                customEmojis={customEmojis}
+              />
             </motion.div>
           );
         })}
       </AnimatePresence>
       {onReaction && (
-      <button
-        onClick={(e) => onOpenPicker(e.currentTarget)}
-        title="Add reaction"
-        aria-label="Add reaction"
-        // With a pointer the hover bar has the picker too, so this shows with the message's hover.
-        className="transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "28px",
-          minHeight: "28px",
-          background: "var(--gryt-neutral-3)",
-          border: "1px solid var(--gryt-neutral-5)",
-          borderRadius: "var(--gryt-radius-md)",
-          cursor: "pointer",
-          transition: "background 0.15s, border-color 0.15s",
-          color: "var(--gryt-neutral-10)",
-          fontSize: "16px",
-          lineHeight: 1,
-          padding: 0,
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-4)"; e.currentTarget.style.borderColor = "var(--gryt-neutral-6)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--gryt-neutral-3)"; e.currentTarget.style.borderColor = "var(--gryt-neutral-5)"; }}
-      >
-        +
-      </button>
+        <AddReactionButton
+          onClick={(e) => onOpenPicker(e.currentTarget)}
+          // With a pointer the hover bar has the picker too, so this shows with the message's hover.
+          className="transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/row:opacity-100 focus-visible:opacity-100"
+        />
       )}
     </div>
   );
