@@ -455,7 +455,7 @@ export function Settings() {
                 className={drawer ? "gryt-settings-drawer" : undefined}
                 data-open={drawer ? menuOpen : undefined}
                 style={{
-                  width: drawer ? undefined : "220px",
+                  width: railFits ? "220px" : undefined,
                   flexShrink: 0,
                   display: "flex",
                   flexDirection: "column",

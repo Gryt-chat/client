@@ -329,12 +329,12 @@ const userSettings = readFileSync(
 );
 assert.match(userSettings, /useRoomForSettingsRail\(USER_SETTINGS_CHROME\)/, "user settings measures its rail with another dialog's numbers");
 assert.match(userSettings, /max-w-\[calc\(100vw-3rem\)\]/, "user settings' margins moved, so USER_SETTINGS_CHROME is wrong");
-assert.match(userSettings, /width: railFits \? "220px"/, "user settings' rail changed width, or stopped giving way to the picker");
+assert.match(userSettings, /width: railFits \? "220px"/, "user settings' rail changed width, or stopped giving way to the drawer");
 
-// Both dialogs draw their picker with one component, so the two can't drift apart.
-for (const [name, source] of [["ServerSettingsModal", modal], ["settings.tsx", userSettings]]) {
-  assert.match(source, /\{!railFits && [^{}]*?<SettingsPicker\b/, `${name} lost the picker it shows without a rail`);
-}
+// Without the rail, server settings shows its picker and user settings opens the rail as a drawer.
+assert.match(modal, /\{!railFits && [^{}]*?<SettingsPicker\b/, "ServerSettingsModal lost the picker it shows without a rail");
+assert.match(userSettings, /className=\{drawer \? "gryt-settings-drawer"/, "user settings lost the drawer it shows without a rail");
+assert.match(userSettings, /\{drawer && \(\s*<IconButton aria-label="Settings pages"/, "user settings lost the button that opens its drawer");
 
 // The page column scrolls sideways. Clipped, a page too wide for the window lost its buttons,
 // and the e2e measurement had nothing to see: a clipped element never reaches the dialog's edge.
