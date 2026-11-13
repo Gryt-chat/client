@@ -640,12 +640,12 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const hint = placeholder || "Type a message...";
     const canSend = length > 0 || pendingFiles.length > 0;
     return (
-      <div className={`chat-editor-shell ${disabled ? "chat-editor-disabled" : ""}`}>
+      <div className={`gryt-composer ${disabled ? "gryt-composer-disabled" : ""}`}>
         {/* The phone's + menu, outside the field (GRYT-1722). */}
         {(allowFiles !== false || onCreatePoll) && (
           <Menu.Root>
             <Menu.Trigger
-              render={<button className="chat-editor-plus-btn" type="button" aria-label="Add" disabled={disabled} />}
+              render={<button className="gryt-composer-add" type="button" aria-label="Add" disabled={disabled} />}
             >
               <PiPlusBold size={20} />
             </Menu.Trigger>
@@ -797,7 +797,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             )}
             <div style={{ position: "relative" }}>
               <button
-                className="chat-editor-emoji-btn"
+                className="gryt-composer-emoji"
                 type="button"
                 aria-label="Insert emoji"
                 disabled={disabled}
@@ -817,7 +817,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
             {/* Round, and only once there is something to send. Enter still sends. */}
             {canSend && (
               <button
-                className="chat-editor-send-btn"
+                className="gryt-composer-send"
                 type="button"
                 aria-label="Send message"
                 disabled={disabled}
