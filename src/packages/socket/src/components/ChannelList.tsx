@@ -1,4 +1,4 @@
-import { Button, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
+import { Button, ChannelItem, type ChannelKind, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
 import { useCamera, useMicrophone } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
@@ -24,7 +24,7 @@ import {
 import { channelHref } from "@/lib/mentionTokens";
 import type { Channel, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
-import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiChatTeardropTextFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill, PiLockSimpleFill, PiRobotFill, PiSpeakerHighFill } from "../../../../lib/icons";
+import { PiCaretDownFill, PiCaretRightFill, PiChatsTeardropFill, PiGameControllerFill, PiGaugeFill, PiKeyboardFill } from "../../../../lib/icons";
 import { closeOpenThread, setThreadExpanded, useRememberedThread, useThreadExpanded } from "../hooks/openThreadMemory";
 import type { CallBubble } from "../hooks/useCallBubbles";
 import { cameraStreamFor } from "../lib/cameraStream";
@@ -113,11 +113,10 @@ function folderTone(holdsSelected: boolean, waiting: boolean): string {
   return waiting ? "text-gryt-text" : "text-gryt-muted hover:text-gryt-text active:text-gryt-text";
 }
 
-function ChannelGlyph({ channel, locked }: { channel: Channel | undefined; locked: boolean }) {
-  if (locked) return <PiLockSimpleFill size={16} />;
-  if (channel?.automated) return <PiRobotFill size={16} />;
-  if (channel?.layout === "forum") return <PiChatsTeardropFill size={16} />;
-  return channel?.type === "voice" ? <PiSpeakerHighFill size={16} /> : <PiChatTeardropTextFill size={16} />;
+function channelKind(channel: Channel | undefined): ChannelKind {
+  if (channel?.automated) return "automated";
+  if (channel?.layout === "forum") return "forum";
+  return channel?.type === "voice" ? "voice" : "text";
 }
 
 function remoteAnalyser<T>(sources: Record<string, { analyser?: T }> | undefined, streamID: string | undefined): T | undefined {
@@ -412,45 +411,21 @@ export const ChannelList = ({
             selected and the channel you were actually in was invisible —
             "you are here" was the one thing the list stopped saying. */}
         <MaybeNameTip name={iconsOnly ? channel?.name : undefined}>
-        <Button size="small"
-          data-gryt="channel-row"
+        <ChannelItem
+          kind={channelKind(channel)}
+          name={<EmojiText text={channel?.name || "(missing channel)"} />}
           data-activity={unread > 0 || mentions > 0 ? mentions : undefined}
           aria-label={iconsOnly ? channel?.name : undefined}
-          tone={selected ? "primary" : "ghost"}
-          style={{
-            position: "relative",
-            // The accent pill still marks the chat you're reading, so the card's tint doesn't cover it.
-            background: inThisCall && !selected ? CALL_CARD_FILL : undefined,
-            color: inThisCall && !selected ? "var(--gryt-accent-11)" : undefined,
-            width: "100%",
-            justifyContent: "start",
-            overflow: "hidden",
-            // Dimmed rather than disabled: the row is still worth pressing,
-            // because it says why.
-            opacity: locked ? 0.55 : undefined,
-          }}
-          title={locked ? "You cannot join this voice channel." : undefined}
+          selected={selected}
+          unread={unread > 0 || mentions > 0}
+          locked={locked}
+          inCall={inThisCall}
           onClick={() => {
             if (threadHere && threadExpanded) closeOpenThread();
             if (channel) onChannelClick(channel);
           }}
-        >
-          <div className="flex items-center" style={{ flexShrink: 0 }}>
-            {/* The lock replaces the speaker rather than sitting beside it.
-                Two glyphs on a row this narrow read as two things, and there
-                is only one thing to say: this room is not for you. */}
-            <ChannelGlyph channel={channel} locked={locked} />
-          </div>
-          {/* A ghost row's label is muted, so an unread channel looked exactly
-              like a read one until you found the badge at the far end. */}
-          <span
-            className={`gryt-hide-in-icons truncate${unread > 0 || mentions > 0 ? " font-semibold text-gryt-text" : ""}`}
-            style={{ flex: 1, minWidth: 0, textAlign: "left", display: "block" }}
-          >
-            <EmojiText text={channel?.name || "(missing channel)"} />
-          </span>
-          {hasIndicators && channel && (
-            <div className="gryt-hide-in-icons flex gap-1 items-center" style={{ marginLeft: "auto", flexShrink: 0 }}>
+          indicators={hasIndicators && channel && (
+            <>
               {channel.eSportsMode && (
                 <Tooltip title="eSports mode">
                   <div className="flex items-center" style={{ color: "var(--gryt-neutral-9)" }}>
@@ -479,8 +454,10 @@ export const ChannelList = ({
                   </div>
                 </Tooltip>
               )}
-            </div>
+            </>
           )}
+          trailing={
+            <>
           {channel?.type === "voice" &&
             isConnecting &&
             channel.id === currentChannelId &&
@@ -507,7 +484,9 @@ export const ChannelList = ({
           {!(inThisCall && callPeek?.newCount && !iconsOnly) && (
             <span className="gryt-channel-unread"><UnreadIndicator unread={unread} mentions={mentions} /></span>
           )}
-        </Button>
+            </>
+          }
+        />
         </MaybeNameTip>
 
         {threadHere && !iconsOnly && (

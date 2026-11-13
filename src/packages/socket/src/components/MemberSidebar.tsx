@@ -1,4 +1,4 @@
-import { Avatar, Popover } from "@gryt/ui";
+import { Avatar, MemberItem as MemberRow, Popover } from "@gryt/ui";
 import { useCallback, useMemo, useState } from "react";
 
 import { getUploadsFileUrl, resolveAvatarSrc, useTheme } from "@/common";
@@ -222,91 +222,34 @@ const MemberItem = ({
       <Popover.Root open={cardOpen} onOpenChange={(open) => onCardOpenChange(open)}>
         {/* Clicking opens the card; in the slim strip hovering does too, since there's no name to read. */}
         <Popover.Trigger nativeButton={false} openOnHover={avatarOnly} delay={250} render={<div />}>
-          {/* In the slim strip a face is the whole row: no card behind it, no padding round it. */}
-          <div
-            className={avatarOnly ? "member-row-clickable rounded-full" : "member-row member-row-clickable member-row-card"}
-            aria-label={avatarOnly ? member.nickname : undefined}
-            data-card-open={cardOpen || undefined}
-            data-row-card={avatarOnly ? undefined : rowCard.kind}
-            style={avatarOnly ? undefined : rowCard.style}
-          >
-        <div className={avatarOnly ? "flex items-center justify-center w-full" : "flex items-center gap-2 w-full"}>
-          <Avatar
-            size="small"
-            className={avatarOnly ? "h-6 w-6 text-[10px]" : undefined}
-            fallback={member.nickname[0]}
-            src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.nickname, member.avatarWorn)}
-            style={{
-              backgroundColor: member.color,
-              opacity: isOffline ? 0.4 : 1,
-            }}
+          <MemberRow
+            compact={avatarOnly}
+            open={cardOpen}
+            card={rowCard}
+            name={member.nickname}
+            nameColor={roleColor}
+            offline={isOffline}
+            avatar={
+              <Avatar
+                size="small"
+                className={avatarOnly ? "h-6 w-6 text-[10px]" : undefined}
+                fallback={member.nickname[0]}
+                src={resolveAvatarSrc(member.avatarFileId ? getUploadsFileUrl(serverHost, member.avatarFileId, { thumb: true }) : undefined, member.nickname, member.avatarWorn)}
+                style={{ backgroundColor: member.color }}
+              />
+            }
+            tags={
+              <>
+                <NameTag tag={nameTag} />
+                {member.isBot && <BotTag size="small" />}
+              </>
+            }
+            status={showStatusLine ? statusLabel : undefined}
+            statusColor={statusColor}
+            activity={member.activity || undefined}
+            activityIcon={member.richActivity?.appId && <GameIcon appId={member.richActivity.appId} name={member.richActivity.name} size={14} />}
+            trailing={<UnreadIndicator unread={dmUnread} />}
           />
-
-          {!avatarOnly && <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "1px" }}>
-            <div className="flex items-center gap-1">
-              {/* The role's colour, or the ordinary text colour when the role
-                  has none. Offline keeps its role colour and is dimmed rather
-                  than greyed, so a name in the Offline group still reads as
-                  that role's without competing with the people who are here.
-
-                  0.7 rather than the 0.4 the avatar uses: composited over the
-                  row it lands at 3.0–4.2:1 depending on hue, against 2.71:1
-                  for the flat grey this replaced. Dimmer than the names above
-                  it, and more legible than what shipped. */}
-              <span className="text-sm" style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  color: roleColor,
-                  opacity: isOffline ? 0.7 : 1,
-                }}>
-                {member.nickname}
-              </span>
-              <NameTag tag={nameTag} />
-              {member.isBot && <BotTag size="small" />}
-            </div>
-
-            {/* Only when it says something. Every row used to carry a status
-                line, which under a heading of people who are all here meant a
-                column of the word "Online", and inside the Offline group meant
-                the word "Offline" under every name. In Voice and AFK are the
-                two that are worth a line. */}
-            {showStatusLine && (
-              <span className="text-xs" style={{ color: statusColor, lineHeight: 1.2 }}>
-                {statusLabel}
-              </span>
-            )}
-
-            {/* What they say they are doing (GRYT-929).
-
-                Under the derived line rather than instead of it: "In Voice" is
-                the server's answer to where somebody is and this is their own
-                answer to what they are up to, and a call worth joining is the
-                more urgent of the two.
-
-                One line, clipped. The server caps the text at 96 characters
-                and strips anything that would break the row, but a narrow
-                sidebar can still run out of width before that. */}
-            {member.activity && (
-              <span
-                className="flex min-w-0 items-center gap-1 text-xs"
-                style={{ color: "var(--gryt-neutral-11)", lineHeight: 1.2 }}
-                title={member.activity}
-              >
-                {member.richActivity?.appId && (
-                  <GameIcon appId={member.richActivity.appId} name={member.richActivity.name} size={14} />
-                )}
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {member.activity}
-                </span>
-              </span>
-            )}
-          </div>}
-        </div>
-          {/* Their conversation's unread, on their row: the sidebar is the way
-              into it now, so the count belongs where the way in is. */}
-          <UnreadIndicator unread={dmUnread} />
-          </div>
         </Popover.Trigger>
         {/* Only while open: a closed popup otherwise stays in the page, unseen, waiting on an animation inside the card. */}
         {cardOpen && (

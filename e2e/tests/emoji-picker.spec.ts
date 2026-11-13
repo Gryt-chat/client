@@ -25,7 +25,7 @@ test("chat and card pickers put this server's custom emoji first and keep Unicod
   await chatPicker.getByTitle(":thumbsup:", { exact: true }).click();
   await expect(channelComposer(page)).toContainText("👍");
 
-  await membersPanel(page).locator(".member-row").filter({ hasText: owner.name }).click();
+  await membersPanel(page).locator(".gryt-member-item").filter({ hasText: owner.name }).click();
   await page.getByRole("button", { name: "Edit my card", exact: true }).click();
   // Settings opens on the card page, and the editor itself is a button away.
   await page.getByRole("button", { name: "Open the card editor", exact: true }).click();
