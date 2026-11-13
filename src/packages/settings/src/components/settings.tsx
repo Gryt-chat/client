@@ -6,8 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSettings } from "@/settings";
 
 import { isElectron } from "../../../../lib/electron";
-import { PiChatsTeardropFill, PiDevicesFill, PiFadersHorizontalFill, PiFlaskFill, PiGiftFill, PiHardDrivesFill, PiInfoFill, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
-import { SettingsPicker } from "../../../socket/src/components/SettingsPicker";
+import { PiChatsTeardropFill, PiDevicesFill, PiFadersHorizontalFill, PiFlaskFill, PiGiftFill, PiHardDrivesFill, PiInfoFill, PiList, PiMagnifyingGlassFill, PiMicrophoneFill, PiPaletteFill, PiPuzzlePieceFill, PiShieldCheckFill, PiUserFill, PiX } from "../../../../lib/icons";
 import { useRoomForSettingsRail } from "../../../socket/src/hooks/useNarrowWindow";
 import { USER_SETTINGS_CHROME } from "../../../socket/src/lib/narrowLayout";
 import type { SettingsIndexEntry } from "../hooks/settingsSearch";
@@ -227,13 +226,6 @@ const DESTINATIONS: SettingsDestination[] = [
 const MAIN_DESTINATIONS = DESTINATIONS.filter((d) => !d.pinBottom);
 const PINNED_DESTINATIONS = DESTINATIONS.filter((d) => d.pinBottom);
 
-/** The rail as one Select, for a window too narrow for it. A category's pages are a group. */
-const PICKER_OPTIONS = DESTINATIONS.map(({ value, label, icon, pages }) =>
-  pages
-    ? { label, options: pages.map((page) => ({ value: `${value}/${page.value}`, label: page.label, icon })) }
-    : { value, label, icon },
-);
-
 const DEFAULT_DESTINATION = "profile";
 
 export function Settings() {
@@ -260,9 +252,9 @@ export function Settings() {
   const searching = query.trim().length > 0;
 
   const railFits = useRoomForSettingsRail(USER_SETTINGS_CHROME);
-  // Without the rail the results take the page's place, so picking one hides them until the field is used again.
-  const [resultsOpen, setResultsOpen] = useState(true);
-  const resultsInPage = searching && !railFits && resultsOpen;
+  // Without room for the rail it becomes a drawer behind a menu button.
+  const drawer = !railFits;
+  const [menuOpen, setMenuOpen] = useState(false);
 
   /* Where the persisted value points, as a destination and a page inside it. A
      bare "sound-video" resolves, and so does a bare page name like "audio". */
@@ -282,10 +274,17 @@ export function Settings() {
     return [destination.value, page.value] as const;
   }, [settingsTab]);
 
+  const where = useMemo(() => {
+    const destination = DESTINATIONS.find((d) => d.value === active);
+    const page = destination?.pages?.find((p) => p.value === activePage);
+    return page && page.label !== destination?.label ? `${destination?.label} › ${page.label}` : destination?.label;
+  }, [active, activePage]);
+
   const changeDestination = useCallback(
-    (value: string) => {
+    (value: string, keepMenu = false) => {
       setLoopbackEnabled(false);
       setSettingsTab(value);
+      if (!keepMenu) setMenuOpen(false);
     },
     [setLoopbackEnabled, setSettingsTab],
   );
@@ -293,7 +292,10 @@ export function Settings() {
   function handleDialogChange(isOpen: boolean) {
     setShowSettings(isOpen);
     setLoopbackEnabled(false);
-    if (!isOpen) setQuery("");
+    if (!isOpen) {
+      setQuery("");
+      setMenuOpen(false);
+    }
   }
 
   const jumpTo = useCallback(
@@ -302,7 +304,6 @@ export function Settings() {
       pendingScroll.current = entry.panel ? null : entry.id;
       if (entry.advanced && !showAdvanced) setShowAdvanced(true);
       setPicked(entry.id);
-      setResultsOpen(false);
       setJump((n) => n + 1);
       changeDestination(
         entry.page ? `${entry.destination}/${entry.page}` : entry.destination,
@@ -366,6 +367,11 @@ export function Settings() {
       /* The tour lives in its own portal, so pressing Next counts as a press
          outside this dialog. Base UI gives the reason, so it can be excepted. */
       onOpenChange={(open, details) => {
+        if (!open && menuOpen && details.reason === "escape-key") {
+          details.cancel();
+          setMenuOpen(false);
+          return;
+        }
         if (!open && details.reason === "outside-press") {
           const target = details.event?.target as HTMLElement | null;
           if (target?.closest?.('[data-gryt="tour"]')) {
@@ -426,13 +432,29 @@ export function Settings() {
         `}</style>
 
         <div className="flex flex-col gap-4 h-full">
-          <Dialog.Title>
-            Settings
-          </Dialog.Title>
+          <div className="flex items-center gap-2">
+            {drawer && (
+              <IconButton aria-label="Settings pages" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
+                <PiList size={18} />
+              </IconButton>
+            )}
+            <div className="flex flex-col min-w-0">
+              <Dialog.Title>Settings</Dialog.Title>
+              {drawer && <span className="text-xs text-gryt-muted truncate">{where}</span>}
+            </div>
+          </div>
 
           {showSettings && (
-            <div className={`flex gap-4 h-full min-w-0 ${railFits ? "" : "flex-col"}`} style={{ flex: 1, minHeight: 0 }}>
-              <div style={{
+            <div className="flex gap-4 h-full min-w-0" style={{ flex: 1, minHeight: 0 }}>
+              {drawer && menuOpen && (
+                <div aria-hidden onClick={() => setMenuOpen(false)} className="gryt-settings-scrim" />
+              )}
+              <nav
+                aria-label="Settings pages"
+                inert={drawer && !menuOpen}
+                className={drawer ? "gryt-settings-drawer" : undefined}
+                data-open={drawer ? menuOpen : undefined}
+                style={{
                   width: railFits ? "220px" : undefined,
                   flexShrink: 0,
                   display: "flex",
@@ -440,6 +462,14 @@ export function Settings() {
                   gap: "8px",
                   minHeight: 0,
                 }}>
+                {drawer && (
+                  <div className="flex items-center gap-2">
+                    <IconButton tone="primary" aria-label="Close menu" onClick={() => setMenuOpen(false)} style={{ background: "var(--gryt-accent-a3)" }}>
+                      <PiList size={18} />
+                    </IconButton>
+                    <span className="text-lg font-bold">Settings</span>
+                  </div>
+                )}
                 {/* The library's TextField has no slot API — it is a field,
                     not a container. The icons sit over it instead, with padding
                     making room for them, which is what Radix's slots were doing
@@ -453,12 +483,7 @@ export function Settings() {
                     className="px-10"
                     placeholder="Search settings"
                     value={query}
-                    onChange={(e) => {
-                      setQuery(e.currentTarget.value);
-                      setResultsOpen(true);
-                    }}
-                    onFocus={() => setResultsOpen(true)}
-                    onClick={() => setResultsOpen(true)}
+                    onChange={(e) => setQuery(e.currentTarget.value)}
                     onKeyDown={(e) => {
                       // Clear the query first; only close the dialog once the
                       // search is already empty.
@@ -486,16 +511,8 @@ export function Settings() {
                   )}
                 </div>
 
-                {!railFits && !resultsInPage && (
-                  <SettingsPicker
-                    value={activePage ? `${active}/${activePage}` : active}
-                    onValueChange={changeDestination}
-                    options={PICKER_OPTIONS}
-                  />
-                )}
-
-                <div hidden={!railFits} style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
-                  {searching && railFits ? (
+                <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
+                  {searching ? (
                     <SearchResults results={results} onPick={jumpTo} picked={picked} />
                   ) : (
                     <div className="flex flex-col gap-1 h-full">
@@ -514,7 +531,7 @@ export function Settings() {
                               selections. */}
                           <button
                             type="button"
-                            onClick={() => changeDestination(value)}
+                            onClick={() => changeDestination(value, !!pages?.length)}
                             className="gryt-settings-nav"
                             data-tour={`settings-${value}`}
                             data-active={value === active && !pages?.length}
@@ -572,18 +589,13 @@ export function Settings() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              {resultsInPage && (
-                <div style={{ overflowY: "auto", minHeight: 0, flex: 1 }}>
-                  <SearchResults results={results} onPick={jumpTo} picked={picked} />
-                </div>
-              )}
+              </nav>
 
               {/* A page too wide for the window scrolls sideways. It used to be
                   clipped, which cut buttons off where nobody could reach them. */}
-              <div ref={contentRef} hidden={resultsInPage} style={{
+              <div ref={contentRef} style={{
                   flex: 1,
+                  isolation: "isolate",
                   overflow: "auto",
                   minWidth: 0,
                   minHeight: 0,
@@ -624,6 +636,37 @@ export function Settings() {
             color: var(--gryt-neutral-12);
           }
           .gryt-settings-nav:hover { background: var(--gryt-neutral-a3); }
+          /* The narrow window's rail: a drawer over the page, from the dialog's padding edge. */
+          .gryt-settings-drawer {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 2;
+            width: min(272px, 85%);
+            box-sizing: border-box;
+            padding: 16px 12px;
+            background: var(--gryt-neutral-3);
+            border-right: 1px solid var(--gryt-neutral-a4);
+            box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+            transform: translateX(-100%);
+            visibility: hidden;
+            transition: transform 180ms ease-out, visibility 0s 180ms;
+          }
+          .gryt-settings-drawer[data-open="true"] {
+            transform: none;
+            visibility: visible;
+            transition: transform 180ms ease-out;
+          }
+          .gryt-settings-scrim {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background: rgba(8, 9, 12, 0.55);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .gryt-settings-drawer, .gryt-settings-drawer[data-open="true"] { transition: none; }
+          }
           /* The animated wrapper. Clipped, so the height tween has an edge to
              move, and it carries the column gap the buttons lost. */
           .gryt-settings-subnav-group {

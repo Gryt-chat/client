@@ -21,9 +21,13 @@ async function expectNoOverflow(dialog: Locator, page: string) {
   });
 }
 
-/** The narrow layout's picker comes before the page, which has Selects of its own. */
-function pickerIn(dialog: Locator): Locator {
-  return dialog.getByRole("combobox").first();
+/** The narrow layout's rail is a drawer behind a menu button. */
+async function openMenu(dialog: Locator): Promise<Locator> {
+  const nav = dialog.locator('nav[aria-label="Settings pages"]');
+  if ((await nav.getAttribute("data-open")) === "true") return nav;
+  await dialog.getByRole("button", { name: "Settings pages" }).click();
+  await expect(nav).toHaveAttribute("data-open", "true");
+  return nav;
 }
 
 test("user settings at 1280px: no page runs past the dialog", async ({ owner }) => {
@@ -64,76 +68,78 @@ test("user settings at 1280px: no page runs past the dialog", async ({ owner }) 
 test("user settings on a 390px phone: no page runs past the dialog", async ({ newMember }) => {
   const phone = await newMember({ phone: true, label: "phone" });
   const dialog = await openUserSettings(phone.page);
-  await expect(dialog.locator("button.gryt-settings-nav").first()).toBeHidden();
+  const nav = dialog.locator('nav[aria-label="Settings pages"]');
+  await expect(nav).toHaveAttribute("data-open", "false");
 
-  const picker = pickerIn(dialog);
-  const options = phone.page.getByRole("listbox").getByRole("option");
-  await picker.click();
-  await expect(options.first()).toBeVisible();
-  const pages = await options.allInnerTexts();
-  await phone.page.keyboard.press("Escape");
-  await expect(options.first()).toBeHidden();
-  expect(pages.length, "the picker should list every page").toBeGreaterThanOrEqual(15);
+  const destinations = nav.locator("button.gryt-settings-nav:not(.gryt-settings-subnav)");
+  await openMenu(dialog);
+  const names = await destinations.allInnerTexts();
+  expect(names.length, "the drawer should list every destination").toBeGreaterThanOrEqual(8);
 
-  // Account and About each have a page with the category's own name, so pick by position.
-  for (const [i, page] of pages.entries()) {
-    await picker.click();
-    await options.nth(i).click();
-    await expect(picker).toHaveText(page);
-    await expectNoOverflow(dialog, page);
+  let pages = 0;
+  for (const [i, name] of names.entries()) {
+    await openMenu(dialog);
+    const destination = destinations.nth(i);
+    await destination.click();
+    if ((await destination.getAttribute("aria-expanded")) === null) {
+      await expect(nav).toHaveAttribute("data-open", "false");
+      await expectNoOverflow(dialog, name);
+      pages++;
+      continue;
+    }
+    // A category keeps the drawer open so its pages can be picked.
+    await expect(nav).toHaveAttribute("data-open", "true");
+    const group = nav.locator(".gryt-settings-subnav-group");
+    await expect(group).toHaveCount(1);
+    const count = await group.getByRole("button").count();
+    for (let j = 0; j < count; j++) {
+      if (j > 0) await openMenu(dialog);
+      const page = group.getByRole("button").nth(j);
+      const label = await page.innerText();
+      await page.click();
+      await expect(nav).toHaveAttribute("data-open", "false");
+      await expectNoOverflow(dialog, `${name} / ${label}`);
+      pages++;
+    }
   }
+  expect(pages, "every page should have been measured").toBeGreaterThanOrEqual(15);
 });
 
-test("user settings on a 390px phone: a tapped picker stays on the screen and scrolls", async ({ newMember }) => {
+test("user settings on a 390px phone: the drawer stays on the screen and scrolls", async ({ newMember }) => {
   const phone = await newMember({ phone: true, label: "phone" });
   const dialog = await openUserSettings(phone.page);
-  const list = phone.page.getByRole("listbox");
-  const options = list.getByRole("option");
+  const nav = await openMenu(dialog);
+  await expect(nav).toBeInViewport({ ratio: 1 });
 
-  // A tap opens the popup below the trigger, where only its max height keeps it on the screen.
-  // Before @gryt/ui 0.34.2 it had none, and the last pages sat past the bottom (GRYT-1283).
-  await pickerIn(dialog).tap();
-  await expect(options.first()).toBeVisible();
-  await expect(list).toBeInViewport({ ratio: 1 });
-  await expect.poll(() => list.evaluate((el) => el.scrollHeight > el.clientHeight), "the list should scroll").toBe(true);
-
-  await options.last().scrollIntoViewIfNeeded();
-  await expect(options.last()).toBeInViewport({ ratio: 1 });
+  const last = nav.locator("button.gryt-settings-nav").last();
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport({ ratio: 1 });
 });
 
 test("user settings on a 390px phone: the keyboard and search still reach a page", async ({ newMember }) => {
   const phone = await newMember({ phone: true, label: "phone" });
   const dialog = await openUserSettings(phone.page);
-  const picker = pickerIn(dialog);
-  await expect(picker).toHaveText("Profile");
+  const nav = dialog.locator('nav[aria-label="Settings pages"]');
 
-  const option = (name: string) => phone.page.getByRole("option", { name, exact: true });
-  await picker.focus();
-  await phone.page.keyboard.press("Enter");
-  await expect(option("Profile")).toBeFocused();
-  await phone.page.keyboard.press("ArrowDown");
-  await expect(option("Edit my card")).toBeFocused();
-  await phone.page.keyboard.press("ArrowDown");
-  await expect(option("Your devices")).toBeFocused();
-  await phone.page.keyboard.press("ArrowDown");
-  await expect(option("Account")).toBeFocused();
-  await phone.page.keyboard.press("Enter");
-  await expect(option("Account")).toBeHidden();
-  await expect(picker).toHaveText("Account");
+  // Esc closes the drawer first and leaves settings open.
+  await openMenu(dialog);
+  await phone.page.keyboard.press("Escape");
+  await expect(nav).toHaveAttribute("data-open", "false");
+  await expect(dialog).toBeVisible();
 
-  // The results take the picker's and the page's place, and picking one hands it back.
+  // Search lives in the drawer; picking a result closes it and lands on the setting.
+  await openMenu(dialog);
   const search = dialog.getByPlaceholder("Search settings");
   await search.fill("unread message badge");
   const result = dialog.getByRole("button", { name: /^Unread message badge/ });
   await expect(result).toBeVisible();
-  await expect(picker).toBeHidden();
   await result.click();
-  await expect(picker).toHaveText("Notifications");
+  await expect(nav).toHaveAttribute("data-open", "false");
+  await expect(dialog.getByText("Chat & notifications › Notifications")).toBeVisible();
   await expect(dialog.locator('[data-setting="unread-message-badge"]')).toBeInViewport();
 
-  // The query stays, so going back to the field brings the same results back.
-  await expect(result).toBeHidden();
-  await search.click();
-  await expect(result).toBeVisible();
+  // The query stays, so opening the drawer again brings the same results back.
+  await openMenu(dialog);
   await expect(search).toHaveValue("unread message badge");
+  await expect(result).toBeVisible();
 });
