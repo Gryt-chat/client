@@ -1,4 +1,4 @@
-import { Popover, Select } from "@gryt/ui";
+import { type CallControlState, Popover, Select, SplitArrow } from "@gryt/ui";
 import { useSpeakers } from "@gryt/voice";
 import { useEffect } from "react";
 
@@ -6,7 +6,6 @@ import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
 import { PiArrowRightBold } from "../../../../lib/icons";
-import { type CallControlState, SplitArrow } from "./CallControlButton";
 import { CALL_MENU_STYLE } from "./MicMenu";
 
 /** The headset's arrow and its menu: where everyone's voice plays. */

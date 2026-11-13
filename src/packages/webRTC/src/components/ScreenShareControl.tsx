@@ -1,4 +1,4 @@
-import { IconButton, Menu, Switch, Tooltip } from "@gryt/ui";
+import { CallControlButton, type CallControlButtonProps, IconButton, Menu, Switch, Tooltip } from "@gryt/ui";
 import { useScreenShare } from "@gryt/voice";
 import { type CSSProperties, useCallback, useReducer, useState } from "react";
 import toast from "react-hot-toast";
@@ -10,7 +10,6 @@ import { PiMonitorArrowUpFill, PiPlus, PiSpeakerHighFill, PiSpeakerSlashFill, Pi
 import { firstShareKey, setFirstShareKey, setShareMeta, setSoundOff, shareMeta, useShareWindowsVersion, windowKey } from "../adapters/shareWindows";
 import { presetKey, SCREEN_PRESETS, screenPresetName } from "../utils/streamQuality";
 import { useCallButtonPress } from "./callButtonPress";
-import { CallControlButton, type CallControlButtonProps } from "./CallControlButton";
 import { ScreenSharePickerModal,type SharePick } from "./ScreenSharePickerModal";
 
 interface ScreenShareControlProps {

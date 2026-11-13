@@ -1,11 +1,10 @@
-import { Popover, Select, Switch } from "@gryt/ui";
+import { type CallControlState, Popover, Select, SplitArrow, Switch } from "@gryt/ui";
 import { useMicrophone } from "@gryt/voice";
 import { useEffect, useRef, useState } from "react";
 
 import { useSettings } from "@/settings";
 
 import { PiArrowRightBold } from "../../../../lib/icons";
-import { type CallControlState, SplitArrow } from "./CallControlButton";
 
 /** The popup the call bar's arrows open, as on the Mic board. */
 export const CALL_MENU_STYLE = {

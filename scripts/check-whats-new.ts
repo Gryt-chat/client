@@ -361,9 +361,10 @@ const STUBS: Record<string, string> = {
 const iconImport = dialog.match(/import \{([^}]+)\} from "(\.\.\/)+lib\/icons";/);
 assert.ok(iconImport, `${DIALOG} no longer takes its icons from the app's own set`);
 const iconNames = iconImport[1].split(",").map((name) => name.trim()).filter(Boolean);
-const iconSet = readFileSync(join(root, "src/lib/icons.tsx"), "utf8");
+// src/lib/icons.ts re-exports @gryt/ui/icons, so the names are checked against what that ships.
+const iconSet = readFileSync(join(root, "node_modules/@gryt/ui/dist/icons/icons.d.ts"), "utf8");
 for (const name of iconNames) {
-  assert.match(iconSet, new RegExp(`export const ${name}: Icon =`), `${name} is not an icon src/lib/icons.tsx exports`);
+  assert.match(iconSet, new RegExp(`export declare const ${name}: Icon`), `${name} is not an icon @gryt/ui/icons exports`);
 }
 const iconsFrom = iconImport[0].match(/"([^"]+)"/)?.[1];
 assert.ok(iconsFrom);
