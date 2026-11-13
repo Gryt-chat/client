@@ -724,6 +724,7 @@ function MessageContent({
   // For tests and tools: a row the server has not confirmed says why.
   const sendState = sendStateOf(m);
   const bubble = look === "bubbles";
+  const bubbleFrom = own ? "user" : "assistant";
   const customEmojis = useCustomEmojiMap();
   const barRef = useRef<HTMLDivElement>(null);
   const [barStyle, setBarStyle] = useState<CSSProperties>({});
@@ -732,9 +733,6 @@ function MessageContent({
     const width = barRef.current?.offsetWidth || 200;
     setBarStyle(hoverBarPlacement(alignRight, rowRef.current, width));
   }, [showToolbar, alignRight, rowRef]);
-  const ownBubble = highlighted ? "var(--gryt-accent-5)" : "var(--gryt-accent-4)";
-  const otherBubble = highlighted ? "var(--gryt-neutral-5)" : "var(--gryt-neutral-4)";
-  const bubbleBackground = own ? ownBubble : otherBubble;
   return (
     <motion.div
       // Reactions already there on open are just there: growing in pushed the chat off the bottom.
@@ -747,22 +745,21 @@ function MessageContent({
       }}
     >
     {/* Hover is on the highlighted part only, so the bar doesn't open from the empty space beside a message. */}
-    <div className="group/row flex flex-col" ref={rowRef} data-message-id={m.message_id} data-send-state={sendState}
+    <div className={`group/row flex flex-col${bubble ? " gryt-message-bubble" : ""}`} ref={rowRef} data-message-id={m.message_id} data-send-state={sendState}
+      // The bubbles look is @gryt/ui's bubble: its padding, corner, width and both backgrounds.
+      data-from={bubble ? bubbleFrom : undefined} data-highlighted={bubble && highlighted ? "" : undefined}
       onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} style={{
-        // Even padding, and a radius of a picture's plus that padding, so the edge round one reads as one stroke.
-        padding: bubble ? 10 : 8,
         cursor: "default",
-        position: "relative",
         textAlign: alignRight && !bubble ? "right" : undefined,
-        width: "fit-content",
-        transition: "background 0.15s",
         /* The highlight hugs the text, and so does the hover. */
         ...(bubble ? {
-          maxWidth: "min(680px, 85%)",
           margin: "0 6px",
-          borderRadius: "calc(var(--gryt-radius-md) + 10px)",
-          background: bubbleBackground,
         } : {
+          // Even padding, and a radius of a picture's plus that padding, so the edge round one reads as one stroke.
+          padding: 8,
+          position: "relative",
+          width: "fit-content",
+          transition: "background 0.15s",
           maxWidth: "100%",
           // The extra 2px of padding above and below doesn't spread the chat out.
           margin: "-2px 0",
