@@ -260,6 +260,7 @@ export const VoiceView = ({
   showVoiceView,
   voiceWidth,
   fullWidth,
+  noEnter,
   maxWidth,
   serverHost,
   currentServerConnected,
@@ -290,6 +291,8 @@ export const VoiceView = ({
   voiceWidth: string;
   /** The middle area's width in px. "100%" springs to this, since motion can't spring from px to a percentage. */
   fullWidth?: number;
+  /** Open at full size on mount. The sheet slides it in, so its own width spring would add a second slide. */
+  noEnter?: boolean;
   maxWidth?: number;
   serverHost: string;
   currentServerConnected: string | null;
@@ -1320,6 +1323,7 @@ export const VoiceView = ({
     <motion.div
       data-gryt="voice-view"
       ref={panelRef}
+      initial={noEnter ? false : undefined}
       transition={
         isDragging
           ? { duration: 0 }
