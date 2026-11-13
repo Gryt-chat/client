@@ -129,8 +129,10 @@ export const EmojiPicker = ({ onSelect, onClose, anchorEl, placement = "above", 
         let left = rect.right - PICKER_WIDTH;
         if (left < VIEWPORT_PAD) left = VIEWPORT_PAD;
         if (left + PICKER_WIDTH > window.innerWidth - VIEWPORT_PAD) left = window.innerWidth - PICKER_WIDTH - VIEWPORT_PAD;
-        setFixedPos({ top: useAbove ? undefined : rect.bottom + GAP,
-          bottom: useAbove ? window.innerHeight - rect.top + GAP : undefined, left });
+        // Clamped into the window: in a short one neither side fits, and anchoring above ran it off the top.
+        const height = Math.min(PICKER_MAX_HEIGHT, window.innerHeight - 2 * VIEWPORT_PAD);
+        const top = useAbove ? rect.top - GAP - height : rect.bottom + GAP;
+        setFixedPos({ top: Math.min(Math.max(top, VIEWPORT_PAD), window.innerHeight - VIEWPORT_PAD - height), bottom: undefined, left });
       }
     };
     compute();

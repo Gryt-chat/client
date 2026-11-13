@@ -203,7 +203,7 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
   // Hovered again if the row was still sliding in and the toolbar went with the pointer.
   await expect(async () => {
     await bobsReply.hover();
-    await bobsReply.getByTitle("React with another emoji").click({ timeout: 2000 });
+    await bobsReply.getByRole("button", { name: "React with another emoji" }).click({ timeout: 2000 });
   }).toPass();
   await bob.page.getByPlaceholder("Search emoji").fill("thumbsup");
   await bob.page.getByTitle(":thumbsup:").click();
@@ -241,7 +241,7 @@ test("an MLS DM carries a reply, an edit, a file and a delete, and hides the lin
 
   const doomed = messageRow(bob.page, edited).first();
   await doomed.hover();
-  await doomed.getByTitle("More", { exact: true }).click();
+  await doomed.getByRole("button", { name: "More", exact: true }).click();
   await bob.page.getByRole("menuitem", { name: "Delete Message" }).click();
   await bob.page.getByRole("alertdialog", { name: "Delete message?" }).getByRole("button", { name: "Delete" }).click();
   await expect(messageRow(alice.page, edited)).toHaveCount(0);

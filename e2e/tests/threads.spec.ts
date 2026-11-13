@@ -9,7 +9,7 @@ import type { GrytServer } from "../support/server";
 async function threadButton(page: Page, text: string, name: "Start thread" | "Open thread") {
   const row = messageRow(page, text);
   await row.hover();
-  await row.getByTitle("More", { exact: true }).click();
+  await row.getByRole("button", { name: "More", exact: true }).click();
   return page.getByRole("menuitem", { name: new RegExp(`^${name}`) });
 }
 

@@ -144,4 +144,15 @@ function run({ atBottom, detached = false }: { atBottom: boolean; detached?: boo
   assert.equal(el.scrollTop, 0, "the effect does not disconnect its observer");
 }
 
+// Opening a conversation with its messages already loaded: the reset has to run before the effect
+// that records the last message, or the next change (a reaction) reads as a first load and jumps down.
+{
+  const reset = source.indexOf("lastMessageIdRef.current = undefined;");
+  const record = source.indexOf("lastMessageIdRef.current = lastId;");
+  assert.ok(reset !== -1 && record !== -1, "useChatScroll no longer resets or records the last message id");
+  assert.ok(reset < record, "the conversation reset moved after the effect that records the last message");
+  const opener = source.lastIndexOf("Effect(() => {", reset);
+  assert.equal(source.slice(opener - 6, opener), "Layout", "the conversation reset is a plain effect again, so it runs after the layout effect that records the last message");
+}
+
 console.log("chat scroll anchor: ok, container observed, re-pins on resize, only when at bottom and not in an old window");
