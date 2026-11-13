@@ -41,6 +41,18 @@ module.exports = {
     ],
   },
   overrides: [
+    // The motion film is a dev-only page that never ships; its debt is GRYT-2063, and this list only shrinks.
+    {
+      files: ["src/motion/**"],
+      rules: {
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/ban-types": "off",
+        "no-restricted-syntax": "off",
+        "no-nested-ternary": "off",
+        "react-refresh/only-export-components": "off",
+        "react-hooks/exhaustive-deps": "off",
+      },
+    },
     // Tests may assert non-null: a wrong guess fails the test, which is the point.
     {
       files: ["**/*.spec.ts"],
