@@ -65,6 +65,8 @@ export const VoiceSheetButton = ({
               style={{
                 width: 56,
                 height: 56,
+                background: "var(--gryt-accent-9)",
+                color: "var(--color-gryt-on-accent)",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
               }}
             >
@@ -78,7 +80,7 @@ export const VoiceSheetButton = ({
         {/* display: flex gives VoiceView's height chain something to fill;
             without it this box sizes to content and the panel collapses. */}
         <div style={{ flex: 1, display: "flex", overflow: "auto", padding: 12 }}>
-          <VoiceView showVoiceView voiceWidth="100%" {...voice} />
+          <VoiceView showVoiceView voiceWidth="100%" noEnter {...voice} />
         </div>
       </MobileSheet>
     </>
