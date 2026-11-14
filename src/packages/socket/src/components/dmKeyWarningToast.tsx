@@ -60,7 +60,7 @@ const BODY: Record<DmKeyFix, (servers: readonly string[]) => string> = {
 };
 
 const ACTION: Record<DmKeyFix, string | null> = {
-  "set-up": null,
+  "set-up": "Fix it",
   none: null,
 };
 
@@ -69,6 +69,7 @@ export function showDmKeyWarning({
   serverNames,
   fix,
   onDismiss,
+  onFix,
 }: {
   id: string;
   /** Every server with the mismatch, in one toast rather than one each. */
@@ -76,6 +77,8 @@ export function showDmKeyWarning({
   fix: DmKeyFix;
   /** Called when Dismiss is pressed, so the warning stays gone. */
   onDismiss: () => void;
+  /** What "Fix it" starts. */
+  onFix?: () => void;
 }): void {
   const action = ACTION[fix];
 
@@ -115,7 +118,8 @@ export function showDmKeyWarning({
               size="xsmall"
               onClick={() => {
                 toast.dismiss(id);
-                openUserSettings("security");
+                if (onFix) onFix();
+                else openUserSettings("security");
               }}
             >
               {action}

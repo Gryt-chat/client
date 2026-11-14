@@ -488,7 +488,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
-    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded,
+    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded, peerKeyResetPending,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -505,9 +505,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       react: reactMlsMessage,
       reportsTaken: mlsReportsTaken,
       archiveFailed,
-      actions: noticeActions(peerKeyNotice, mlsNotAdded, mlsActions, compareKeys),
+      actions: noticeActions(peerKeyNotice || peerKeyResetPending, mlsNotAdded, mlsActions, compareKeys),
     }),
-    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded, compareKeys],
+    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, peerKeyResetPending, mlsNotAdded, compareKeys],
   );
 
   /** The server already withholds new messages, so this covers what was drawn

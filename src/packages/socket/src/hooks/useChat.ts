@@ -111,6 +111,8 @@ interface UseChatReturn {
   peerKeyNotice: boolean;
   /** This device waits for the other side's app to add it to the DM. */
   mlsNotAdded: boolean;
+  /** The other person's key is being reset, so comparing codes is what to offer. */
+  peerKeyResetPending: boolean;
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -885,5 +887,6 @@ export function useChat({
     mlsActions: dmPeer && !peerKeyNotice ? mls.actions : NO_ACTIONS,
     peerKeyNotice,
     mlsNotAdded: !!dmPeer && !peerKeyNotice && mls.problems.lost === "not_added",
+    peerKeyResetPending: !!dmPeer && !!peerKeyResetAt && peerKeyResetAt > Date.now(),
   };
 }

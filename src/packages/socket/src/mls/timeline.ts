@@ -169,22 +169,22 @@ export function mlsNotice(
   }
   if (peerKeyResetAt && peerKeyResetAt > Date.now()) {
     const on = new Date(peerKeyResetAt).toLocaleDateString(undefined, { day: "numeric", month: "short" });
-    return `${peerName}'s key is being reset, and a new one takes over on ${on}. If you didn't expect this, check with ${peerName} another way.`;
+    return `${peerName}'s key is being reset, and a new one takes over on ${on}. If you didn't expect this, compare codes with ${peerName} on a call before you trust it.`;
   }
   if (mode?.kind === "mls" && peerKeyChanged) {
     return `${peerName} has a new key, usually from a new phone or computer. Before you reply, compare codes with them on a call or in person.`;
   }
   if (problems.lost === "too_many_devices") {
-    return `${Here} can't use encrypted DMs here because your account has the most devices allowed. Remove an old one in Settings, under Devices.`;
+    return `${Here} can't use encrypted DMs here because your account has the most devices allowed. Remove the ones you no longer use.`;
   }
   if (problems.lost === "other_identity") {
-    return `${Here} has its own encryption key on this server, not your account's. Link it from one of your devices that has your account's key, or make this device's key your account's.`;
+    return `${Here} has a different key on this server than your account. Use your account's key here and approve it on one of your other devices, or link this device from one of them.`;
   }
   if (problems.lost === "not_added") {
     return `${Here} is new to your chat with ${peerName}. ${peerName}'s app or another of your devices adds it by itself the next time one of them is open. Until then, what you write here waits and goes out on its own.`;
   }
-  if (problems.lost === "removed") return `${Here} was taken out of this conversation, so new messages won't show here.`;
-  if (problems.lost) return `${Here} lost track of this conversation's encryption, so new messages won't show here.`;
+  if (problems.lost === "removed") return `${Here} was taken out of your chat with ${peerName}. Ask to be added again, and ${peerName}'s app or another of your devices adds it back.`;
+  if (problems.lost) return `${Here} lost track of this conversation's encryption, so new messages won't show here until it rejoins.`;
   // After the reasons above: each of those says what to do, and this line doesn't.
   if (mode?.kind === "refused") return `Can't send yet. ${Here} isn't set up for end-to-end encryption here.`;
   if (problems.undecryptable > 0) {
