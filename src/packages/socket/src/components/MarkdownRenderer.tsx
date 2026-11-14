@@ -11,7 +11,7 @@ import { nameTagsFor } from "@/lib/nameTags";
 
 import { PiCheck, PiCopyFill } from "../../../../lib/icons";
 import { useExternalEmojisAllowed } from "../utils/externalEmojiPolicy";
-import { type CustomEmojiEntry, preprocessCustomEmojis, preprocessSmileys, remarkEmoji } from "../utils/remarkEmoji";
+import { type CustomEmojiEntry, MISSING_EMOJI_SRC, preprocessCustomEmojis, preprocessSmileys, remarkEmoji } from "../utils/remarkEmoji";
 import { createRemarkMention } from "../utils/remarkMention";
 import type { ProfanityMatchRange } from "./chatUtils";
 import { MessageContextMenu } from "./MediaContextMenu";
@@ -188,6 +188,8 @@ function processProfanityInChildren(node: React.ReactNode, keyPrefix = ""): Reac
 }
 
 const UNICODE_EMOJI_RE = /\p{Extended_Pictographic}/u;
+
+const MISSING_EMOJI_IMG = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%2228%22%20height%3D%2228%22%20rx%3D%228%22%20fill%3D%22none%22%20stroke%3D%22%238b8ca0%22%20stroke-width%3D%222%22%20stroke-dasharray%3D%224%203%22/%3E%3Ctext%20x%3D%2216%22%20y%3D%2222%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22700%22%20fill%3D%22%238b8ca0%22%3E%3F%3C/text%3E%3C/svg%3E";
 
 function isEmojiOnly(text: string): boolean {
   const stripped = text
@@ -447,6 +449,13 @@ export const MarkdownRenderer = memo(({
           || Boolean(props["data-emoji-name"])
           || (alt && /^:[a-zA-Z0-9_+-]+:$/.test(alt));
         const local = !!src && imageIsLocal(src, serverHost ?? null);
+        if (isCustomEmoji && src === MISSING_EMOJI_SRC) {
+          return (
+            <Tooltip title={`${alt} isn't on this server`}>
+              <img src={MISSING_EMOJI_IMG} alt={alt || ""} className="inline-emoji" style={{ height: "1.4em", width: "auto", verticalAlign: "middle", display: "inline", margin: "0 1px", cursor: "default" }} />
+            </Tooltip>
+          );
+        }
         if (isCustomEmoji) {
           // An emoji that may not load here reads as its name, which is what was typed.
           if (!src || (!local && !(externalOk && isGrytEmojiUrl(src)))) return <>{alt || ""}</>;

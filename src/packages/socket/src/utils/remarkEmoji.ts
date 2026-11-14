@@ -214,6 +214,9 @@ export function preprocessSmileys(
     .join("");
 }
 
+/** Stands in for a custom emoji this server doesn't have, so it draws as a placeholder rather than its name. */
+export const MISSING_EMOJI_SRC = "#missing-emoji";
+
 /**
  * Replace custom emoji shortcodes before markdown parsing. Checks the passed list
  * and the global cache, so newly uploaded emoji resolve.
@@ -231,14 +234,16 @@ export function preprocessCustomEmojis(
   }
   if (map.size === 0) return content;
 
-  // Image markdown is left whole: another server's emoji arrives as one, with its name as the alt.
+  // Code and image markdown are left whole: another server's emoji arrives as an image with its name as the alt.
   return content
-    .split(/(!\[[^\]\n]*\]\([^)\s]*\))/g)
-    .map((part, i) => (i % 2 === 1 ? part : part.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code) => {
+    .split(/(```[\s\S]*?```|`[^`\n]*`|!\[[^\]\n]*\]\([^)\s]*\))/g)
+    .map((part, i) => (i % 2 === 1 ? part : part.replace(/:([a-zA-Z0-9_+-]+):/g, (match, code: string, at: number, whole: string) => {
       if (nameToEmoji[code]) return match;
       const url = map.get(code);
       if (url) return `![${match}](${url})`;
-      return match;
+      // Times like 10:30: are not emoji names.
+      if (!/[a-zA-Z]/.test(code) || /[a-zA-Z0-9]/.test(whole[at - 1] ?? "")) return match;
+      return `![${match}](${MISSING_EMOJI_SRC})`;
     })))
     .join("");
 }
