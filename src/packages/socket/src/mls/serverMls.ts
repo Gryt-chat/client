@@ -5,6 +5,7 @@ import type { Socket } from "socket.io-client";
 import {
   claimMlsWorker,
   dmKeyBindingFor,
+  dmKeyBindingFromSeed,
   getLocalArchiveSnapshot,
   getOwnServerUserId,
   getServerAccessToken,
@@ -370,6 +371,36 @@ export async function approveHandover(request: HandoverRequest): Promise<boolean
   );
   if (ok) handoverRequests.set(handoverRequests.get().filter((r) => r !== request));
   return ok;
+}
+
+const LINK_HANDOVER_WAIT_MS = 10_000;
+
+/**
+ * Linking replaces this device's seed. Before it does: every server where it holds the account's key
+ * moves to the new seed's key, signed with the old one, and its own open asks are withdrawn.
+ */
+export async function handOverBeforeLinking(newSeed: Uint8Array): Promise<void> {
+  await Promise.all([...hosts].map(async ([host, state]) => {
+    try {
+      const [old, next] = await Promise.all([dmKeyBindingFor(host), dmKeyBindingFromSeed(newSeed, host)]);
+      if (!old || old === next) return;
+      if (keyMatches.get(host) !== true) {
+        // An ask left open names a key that's about to stop existing, so approving it would strand the server.
+        state.socket.emit("dm:key:handover:deny", { askerId: old });
+        return;
+      }
+      const handover = await keyHandoverFor(host, next);
+      const ok = await Promise.race([
+        new Promise<boolean>((resolve) =>
+          state.socket.emit("dm:key:publish", { binding: next, replace: true, handover }, (reply?: { ok?: boolean }) => resolve(reply?.ok === true)),
+        ),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), LINK_HANDOVER_WAIT_MS)),
+      ]);
+      if (!ok) console.warn("[MLS] Couldn't hand", host, "over to the linked key before linking");
+    } catch (e) {
+      console.warn("[MLS] Handing", host, "over before linking failed:", e);
+    }
+  }));
 }
 
 /** Closing the window only drops it here; "No" also stops the ask from finishing by itself. */

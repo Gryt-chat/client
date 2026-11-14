@@ -405,8 +405,6 @@ export async function signJwtWithKey(
  * identity this device actually joined with** — the signature depends on it.
  */
 export async function dmKeyBindingFor(host: string): Promise<string | null> {
-  const scope = identityScopeFor(host);
-
   const db = await openDB();
   let seed: Uint8Array;
   try {
@@ -414,6 +412,12 @@ export async function dmKeyBindingFor(host: string): Promise<string | null> {
   } finally {
     db.close();
   }
+  return dmKeyBindingFromSeed(seed, host);
+}
+
+/** The binding `seed` would publish for one server, before it's this device's seed. */
+export async function dmKeyBindingFromSeed(seed: Uint8Array, host: string): Promise<string> {
+  const scope = identityScopeFor(host);
 
   /*
    * **Signed with the key derived from the seed, whichever identity joined this

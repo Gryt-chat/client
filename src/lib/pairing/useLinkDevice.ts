@@ -26,7 +26,7 @@ import { useServerSettings } from "@/settings";
 import { loadedUserId, updateStoredValueFor } from "@/settings/src/hooks/userStorage";
 import type { Server, Servers } from "@/settings/src/types/server";
 import { seenOnMlsFor } from "@/socket/src/mls/seenOnMls";
-import { forgetOwnMlsDevices, whenOwnMlsDevice } from "@/socket/src/mls/serverMls";
+import { forgetOwnMlsDevices, handOverBeforeLinking, whenOwnMlsDevice } from "@/socket/src/mls/serverMls";
 
 import { getGrytConfig, setCustomAuthIssuer, setCustomIdentityUrl } from "../../config";
 import { isElectron } from "../electron";
@@ -106,6 +106,7 @@ export const useLinkDevice = singletonHook<LinkDevice>(init, () => {
     const relayOrigin = cfg.GRYT_IDENTITY_URL.replace(/\/+$/, "");
 
     const storage = createLinkStorage({
+      handOver: handOverBeforeLinking,
       installIdentity: installPairedIdentity,
       expectLineage: expectServerLineage,
       pinStore: localPeerPinStore,
