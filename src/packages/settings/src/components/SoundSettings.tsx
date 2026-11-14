@@ -1,7 +1,7 @@
 import { Button, IconButton, Select, Slider, Switch, Tooltip } from "@gryt/ui";
 import { useEffect, useRef } from "react";
 
-import { playLoopingSound, playNotificationSound } from "@/lib/notificationSound";
+import { playLoopingSound, playPreviewSound, stopPreviewSound } from "@/lib/notificationSound";
 import { presetIdOf, presetValue, resolveSound, type SoundPreset } from "@/lib/soundPresets";
 
 import { PiArrowsClockwiseFill, PiCheck } from "../../../../lib/icons";
@@ -49,7 +49,13 @@ export function SoundSettings({
   const src = presets ? resolveSound(customSoundFile, presets) : customSoundFile || defaultSoundSrc;
   const loop = useRef<ReturnType<typeof playLoopingSound> | null>(null);
 
-  useEffect(() => () => loop.current?.stop(), []);
+  useEffect(
+    () => () => {
+      loop.current?.stop();
+      stopPreviewSound();
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!customSoundFile || presetIdOf(customSoundFile) !== null) return;
@@ -128,7 +134,7 @@ export function SoundSettings({
       if (dataUrl) {
         try {
           onCustomSoundFileChange(dataUrl);
-          playNotificationSound(dataUrl, volume);
+          playPreviewSound(dataUrl, volume);
           showAlert(
             "success",
             "Sound File Saved",
@@ -201,14 +207,17 @@ export function SoundSettings({
                   onVolumeChange(clamped);
                   if (!loopPreview) return;
                   if (loop.current) loop.current.setVolume(clamped);
-                  else loop.current = playLoopingSound(src, clamped);
+                  else {
+                    stopPreviewSound();
+                    loop.current = playLoopingSound(src, clamped);
+                  }
                 }}
                 onValueCommitted={(next) => {
                   loop.current?.stop();
                   loop.current = null;
                   const value = Number(next);
                   // Let go, and you hear the level you picked.
-                  if (!loopPreview && !Number.isNaN(value)) playNotificationSound(src, value);
+                  if (!loopPreview && !Number.isNaN(value)) playPreviewSound(src, value);
                 }}
               />
               <span className="text-sm" style={{ minWidth: "36px" }}>
@@ -230,7 +239,7 @@ export function SoundSettings({
                       const next = id === presets[0].id ? null : presetValue(id);
                       onCustomSoundFileChange(next);
                       // Picking one plays it, so the list can be listened through.
-                      playNotificationSound(resolveSound(next, presets), volume);
+                      playPreviewSound(resolveSound(next, presets), volume);
                     }}
                     options={[
                       ...presets.map((p) => ({ label: p.label, value: p.id })),
