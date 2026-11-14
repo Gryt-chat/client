@@ -37,7 +37,7 @@ export function CompareCodesDialog({ open, onOpenChange, host, peerId, peerName,
             ) : (
               <>
                 <p className="m-0" style={{ lineHeight: 1.5, color: "var(--gryt-neutral-11)" }}>
-                  Read these numbers to each other on a call or in person. If {peerName} sees the same ones, nobody is in between.
+                  Read these numbers to each other on a call, show them with a screen share, or compare in person. If {peerName} sees the same ones, nobody is in between.
                 </p>
                 <div
                   className="grid grid-cols-4 gap-y-2.5 p-4 text-center font-mono text-lg"
