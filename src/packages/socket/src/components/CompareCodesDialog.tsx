@@ -3,11 +3,17 @@ import { Alert, Button, Dialog } from "@gryt/ui";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
+import { openLocalArchive } from "@/common";
+
 import { usePeerKeyCheck } from "../hooks/usePeerKeyCheck";
+import { useMlsSource } from "../mls/serverMls";
+import { shareHistory } from "../mls/shareHistory";
 
 /** The code two people read to each other to check nobody is in between, opened from the chat. */
-export function CompareCodesDialog({ open, onOpenChange, host, peerId, peerName, onCall }: {
+export function CompareCodesDialog({ open, onOpenChange, host, conversationId, peerId, peerName, onCall }: {
   open: boolean;
+  /** The DM, for sending them your copy once a new key is trusted (GRYT-1875). */
+  conversationId: string;
   onOpenChange: (open: boolean) => void;
   host: string;
   peerId: string;
@@ -17,9 +23,26 @@ export function CompareCodesDialog({ open, onOpenChange, host, peerId, peerName,
 }) {
   const check = usePeerKeyCheck(host, peerId);
   const [different, setDifferent] = useState(false);
+  const [sharing, setSharing] = useState<"no" | "offer" | "sending">("no");
+  const mlsSource = useMlsSource(host);
   const close = (next: boolean) => {
-    if (!next) setDifferent(false);
+    if (!next) {
+      setDifferent(false);
+      setSharing("no");
+    }
     onOpenChange(next);
+  };
+  const sendOurCopy = async () => {
+    if (!mlsSource) return;
+    setSharing("sending");
+    try {
+      const sent = await shareHistory(mlsSource, (await openLocalArchive()).messages, conversationId, peerId);
+      toast.success(`Sent ${peerName} your copy: ${sent} message${sent === 1 ? "" : "s"}`);
+      close(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn\u2019t send your copy");
+      setSharing("offer");
+    }
   };
   const groups = check.code?.split(/\s+/).filter(Boolean) ?? [];
 
@@ -57,7 +80,20 @@ export function CompareCodesDialog({ open, onOpenChange, host, peerId, peerName,
                 ) : null}
               </>
             )}
-            <div className="flex flex-wrap justify-end gap-2">
+            {sharing !== "no" && (
+              <div className="flex flex-col gap-2">
+                <p className="m-0" style={{ lineHeight: 1.5, color: "var(--gryt-neutral-11)" }}>
+                  A new key usually means {peerName}&rsquo;s old messages are gone from their side. You can send them your copy of this conversation.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button tone="neutral" onClick={() => close(false)}>Not now</Button>
+                  <Button disabled={sharing === "sending"} onClick={() => void sendOurCopy()}>
+                    {sharing === "sending" ? "Sending\u2026" : "Send them your copy"}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {sharing === "no" && <div className="flex flex-wrap justify-end gap-2">
               {onCall && check.code && (
                 <Button tone="neutral" onClick={() => { onCall(); close(false); }}>Call {peerName}</Button>
               )}
@@ -71,7 +107,9 @@ export function CompareCodesDialog({ open, onOpenChange, host, peerId, peerName,
                         return;
                       }
                       toast.success(check.kind === "changed" ? `Trusted ${peerName}’s new key` : "Codes compared");
-                      close(false);
+                      // A new key usually means their old messages are gone, so offer ours.
+                      if (check.kind === "changed" && mlsSource) setSharing("offer");
+                      else close(false);
                     }}
                   >
                     They match
@@ -79,7 +117,7 @@ export function CompareCodesDialog({ open, onOpenChange, host, peerId, peerName,
                 </>
               )}
               {(!check.code || check.comparedAt) && <Button tone="neutral" onClick={() => close(false)}>Close</Button>}
-            </div>
+            </div>}
           </div>
         </Dialog.Popup>
       </Dialog.Portal>

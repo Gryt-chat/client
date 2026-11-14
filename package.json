@@ -143,7 +143,6 @@
     "icons:generate": "node scripts/generate-icons.ts && node scripts/generate-tray-icon.ts",
     "generate:tray": "node scripts/generate-tray-icon.ts",
     "test:peer-keys": "node scripts/check-peer-keys.ts",
-    "test:member-key-wording": "node scripts/check-member-key-wording.ts",
     "test:dm-key-published": "node scripts/check-dm-key-published.ts",
     "test:sealed-text": "node scripts/check-sealed-text.ts",
     "test:sealed-send": "node scripts/check-sealed-send.ts",

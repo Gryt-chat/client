@@ -1923,6 +1923,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           open={compareOpen}
           onOpenChange={setCompareOpen}
           host={viewingHost}
+          conversationId={activeDm.conversation_id}
           peerId={activeDm.other.server_user_id}
           peerName={activeDm.other.nickname}
           onCall={() => startCall(activeDm.conversation_id)}

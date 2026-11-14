@@ -1,19 +1,11 @@
-import { base64Url, type PeerPin } from "@gryt/crypto";
 import { CardIcon, CardMenu, type CardMenuItem,Popover } from "@gryt/ui";
-import { cloneElement, type ReactElement, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { cloneElement, type ReactElement, type ReactNode, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import {
-  comparisonCode,
   generatedAvatarColor,
   getOwnServerUserId,
   getUploadsFileUrl,
-  identityScopeFor,
-  localPeerPinStore,
-  markPeerCompared,
-  openLocalArchive,
-  ownComparisonSide,
-  pinPeerKey,
   resolveAvatarSrc,
   useTheme,
 } from "@/common";
@@ -21,17 +13,13 @@ import { useSettings } from "@/settings";
 
 import { openLightbox } from "../../../../lib/lightboxStore";
 import { nameTags } from "../../../lib/nameTags";
-import { useDirectory } from "../hooks/dmDirectory";
 import { confirmServerFriend, friendAction, useAllFriends, useFriendState } from "../hooks/friendsStore";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { encodeCardStyle } from "../lib/memberCard/cardStyle";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { formatJoined, makeRankOf, TIER_LABEL } from "../lib/memberFacts";
-import { useMlsSource } from "../mls/serverMls";
-import { shareHistory } from "../mls/shareHistory";
 import { friendButtonSteps, type FriendStep } from "../utils/friendButtonSteps";
-import { describeChange, describePin } from "../utils/memberKeyWording";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useMemberCardActions } from "./memberCard/memberCardContext";
 import { MemberCardView } from "./memberCard/MemberCardView";
@@ -97,7 +85,6 @@ export function MemberIdentityCard({
   serverHost,
   voiceChannelName,
   inline = false,
-  keyCheck = true,
 }: {
   member: MemberInfo;
   /** Which server this member is shown on, for their key state, roles and uploads. */
@@ -106,12 +93,10 @@ export function MemberIdentityCard({
   voiceChannelName?: string;
   /** Drawn in a panel rather than a popover, so its buttons have nothing to close (GRYT-1745). */
   inline?: boolean;
-  /** Off in a DM, where codes are compared from the chat itself. */
-  keyCheck?: boolean;
 }) {
   const Close = inline ? InlineClose : Popover.Close;
   const actions = useMemberCardActions();
-  const { memberKeyStates, serverDetailsList, memberLists, sockets } = useSockets();
+  const { serverDetailsList, memberLists } = useSockets();
   const serverMembers = serverHost ? memberLists[serverHost] : undefined;
   const nameTag = useMemo(() => nameTags(serverMembers ?? []).get(member.serverUserId), [serverMembers, member.serverUserId]);
   const { roles: roleSummaries, has, can } = useServerPermissions(serverHost ?? "");
@@ -124,105 +109,6 @@ export function MemberIdentityCard({
     .filter((role) => role && role !== "member" && role !== "guest")
     // The name the rest of the app shows, or the id where the server sent none.
     .map((role) => ({ id: role, name: roleSummaries.find((r) => r.id === role)?.name ?? role }));
-  const [, setCompared] = useState(false);
-  const [ownKeys, setOwnKeys] = useState<{ thumbprint: string; dmPublicKey: string } | null>(null);
-  const keyState = serverHost ? memberKeyStates[serverHost]?.[member.serverUserId] : undefined;
-
-  /* Our own half of the comparison code, which needs what we published here. */
-  useEffect(() => {
-    if (!serverHost) {
-      setOwnKeys(null);
-      return;
-    }
-    let live = true;
-    void ownComparisonSide(serverHost)
-      .then((side) => {
-        if (live) setOwnKeys(side);
-      })
-      .catch(() => {
-        if (live) setOwnKeys(null);
-      });
-    return () => {
-      live = false;
-    };
-  }, [serverHost]);
-
-  const code =
-    ownKeys && keyState?.decision.kind === "known"
-      ? comparisonCode(ownKeys, {
-          thumbprint: keyState.decision.pin.thumbprint,
-          dmPublicKey: keyState.decision.pin.dmPublicKey,
-        })
-      : null;
-
-  /* Board 5c: the code for the key they have now, so a changed key can be checked and then trusted. */
-  const newKeys = keyState?.decision.kind === "changed"
-    ? { thumbprint: keyState.decision.verified.identityThumbprint, dmPublicKey: base64Url(keyState.decision.verified.dmPublicKey) }
-    : null;
-  const newCode = ownKeys && newKeys ? comparisonCode(ownKeys, newKeys) : null;
-  const [trustedPin, setTrustedPin] = useState<PeerPin | null>(null);
-  const directory = useDirectory();
-  const mlsSource = useMlsSource(serverHost);
-  const dmWithThem = directory.find(
-    (e) => e.host === serverHost && e.conversation.kind === "dm" && e.conversation.members[0]?.server_user_id === member.serverUserId,
-  );
-  const [sharing, setSharing] = useState<"idle" | "sending" | "sent">("idle");
-  /* GRYT-1875: offered only right after "trust it", so only once somebody checked it's them. */
-  const sendOurCopy = async () => {
-    if (!dmWithThem || !mlsSource) return;
-    setSharing("sending");
-    try {
-      const archive = (await openLocalArchive()).messages;
-      const sent = await shareHistory(mlsSource, archive, dmWithThem.conversation.conversation_id, member.serverUserId);
-      toast.success(`Sent ${member.nickname} your copy: ${sent} message${sent === 1 ? "" : "s"}`);
-      setSharing("sent");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn\u2019t send your copy");
-      setSharing("idle");
-    }
-  };
-  const [notThem, setNotThem] = useState(false);
-  const notThemKey = serverHost && newKeys
-    ? `gryt_key_not_them:${identityScopeFor(serverHost)} ${member.serverUserId} ${newKeys.thumbprint}`
-    : null;
-  useEffect(() => {
-    if (!notThemKey) return setNotThem(false);
-    try {
-      setNotThem(localStorage.getItem(notThemKey) === "1");
-    } catch {
-      setNotThem(false);
-    }
-  }, [notThemKey]);
-  const answerNotThem = (value: boolean) => {
-    if (!notThemKey) return;
-    try {
-      if (value) localStorage.setItem(notThemKey, "1");
-      else localStorage.removeItem(notThemKey);
-    } catch {
-      // Only remembered for this view then. Messages stay paused either way.
-    }
-    setNotThem(value);
-  };
-  /* Undo puts the pin from before "trust it" back, so the new key reads as changed again. */
-  const undoTrust = () => {
-    if (!serverHost || !trustedPin) return;
-    const key = `${identityScopeFor(serverHost)} ${member.serverUserId}`;
-    localPeerPinStore.write({ ...localPeerPinStore.read(), [key]: trustedPin });
-    setTrustedPin(null);
-    sockets[serverHost]?.emit("members:fetch");
-  };
-  const trustNewKey = () => {
-    if (!serverHost || keyState?.decision.kind !== "changed" || !newKeys) return;
-    const scope = identityScopeFor(serverHost);
-    setTrustedPin(keyState.decision.pin);
-    pinPeerKey(scope, member.serverUserId, keyState.decision.verified);
-    // Compared, since that is what the button says happened.
-    markPeerCompared(scope, member.serverUserId, newKeys);
-    // Key decisions are made on each member list, so ask for one rather than wait.
-    sockets[serverHost]?.emit("members:fetch");
-    toast.success(`Trusted ${member.nickname}\u2019s new key`);
-  };
-
   const profile = useMemo(
     () => cardProfileFor(member, member.nickname),
     // The fields, not the member object, which is new on every list update.
@@ -246,8 +132,6 @@ export function MemberIdentityCard({
       : undefined);
 
   const [open, setOpen] = useState(false);
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const verifyRef = useRef<HTMLDetailsElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const identityIsTheQuestion = member.identityTier === "local";
   const fingerprint = member.identityFingerprint;
@@ -487,7 +371,6 @@ export function MemberIdentityCard({
         onToggle={(e) => {
           const next = (e.currentTarget as HTMLDetailsElement).open;
           setOpen(next);
-          if (!next) setVerifyOpen(false);
         }}
       >
         <summary>
@@ -512,137 +395,7 @@ export function MemberIdentityCard({
               <dd>{renames}</dd>
             </>
           )}
-          {keyCheck && keyState?.decision.kind === "known" && (
-            <>
-              <dt>Message key</dt>
-              <dd>{keyState.decision.pin.comparedAt ? "Compared and matched" : describePin(keyState.decision.pin.firstSeenAt)}</dd>
-            </>
-          )}
-          {keyCheck && keyState?.decision.kind === "first" && (
-            <>
-              <dt>Message key</dt>
-              <dd>Seen for the first time</dd>
-            </>
-          )}
         </dl>
-        {keyCheck && keyState?.decision.kind === "changed" && (
-          // In the drawer and not a toast, which would be gone before anybody asked them.
-          <div className="gmc-warn" style={{ marginTop: 10 }}>
-            <b>Their key changed</b>
-            <span className="gmc-note">{describeChange(keyState.decision.changedIdentity, keyState.decision.changedKey)}</span>
-            <span className="gmc-note">
-              That happens when somebody restores their identity on another device. It is also what a server
-              substituting a key looks like. Ask them somewhere other than here before treating messages as private.
-            </span>
-            {newCode && !notThem && (
-              <>
-                <span className="gmc-note">Ask them to read you the code on their side, somewhere other than Gryt.</span>
-                <code className="gmc-code" style={{ textAlign: "center", letterSpacing: ".06em" }}>{newCode}</code>
-                <button type="button" className="gmc-btn" data-gryt="trust-new-key" onClick={trustNewKey}>
-                  The codes match, trust it
-                </button>
-                <button type="button" className="gmc-btn" data-gryt="not-them" onClick={() => answerNotThem(true)}>
-                  It&rsquo;s not them
-                </button>
-              </>
-            )}
-            {notThem && (
-              <span className="gmc-note">
-                You said this isn&rsquo;t them. Messages to them stay paused.{" "}
-                <button type="button" className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline" onClick={() => answerNotThem(false)}>
-                  Check again
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-        {keyCheck && keyState?.decision.kind !== "changed" && trustedPin && (
-          <div className="gmc-note" style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-            <span>
-              You trusted their new key.{" "}
-              <button type="button" className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline" data-gryt="undo-trust" onClick={undoTrust}>
-                Undo
-              </button>
-            </span>
-            {dmWithThem && mlsSource && sharing !== "sent" && (
-              <span>
-                A new key usually means their old messages are gone.{" "}
-                <button
-                  type="button"
-                  className="cursor-pointer appearance-none border-0 bg-transparent p-0 text-inherit underline"
-                  data-gryt="send-our-copy"
-                  disabled={sharing === "sending"}
-                  onClick={() => void sendOurCopy()}
-                >
-                  {sharing === "sending" ? "Sending\u2026" : "Send them your copy of your conversation"}
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-        {keyCheck && (code || (!identityIsTheQuestion && fingerprint)) && (
-          <details
-            ref={verifyRef}
-            className="gmc-who gmc-sub"
-            open={verifyOpen}
-            onToggle={(e) => setVerifyOpen((e.currentTarget as HTMLDetailsElement).open)}
-          >
-            <summary>
-              Check this is really them <CardIcon.caret />
-            </summary>
-            {code && keyState?.decision.kind === "known" && (
-              <>
-                <span className="gmc-note">Read this to them, somewhere other than Gryt</span>
-                <code className="gmc-code" style={{ textAlign: "center", letterSpacing: ".06em" }}>{code}</code>
-                <span className="gmc-note">
-                  If they read back the same numbers, nobody is in the middle. It does not say who they are, only that
-                  you both hold the keys you think you do.
-                </span>
-                {keyState.decision.pin.comparedAt ? (
-                  <span className="gmc-note">
-                    Compared on{" "}
-                    {new Date(keyState.decision.pin.comparedAt).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                    .
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="gmc-btn"
-                    onClick={() => {
-                      if (
-                        !serverHost ||
-                        keyState.decision.kind !== "known" ||
-                        !markPeerCompared(identityScopeFor(serverHost), member.serverUserId, {
-                          thumbprint: keyState.decision.pin.thumbprint,
-                          dmPublicKey: keyState.decision.pin.dmPublicKey,
-                        })
-                      ) {
-                        // The pin moved while they were reading, so say so rather than record a false match.
-                        toast.error("Their key changed while you were checking. Read the new code.");
-                        return;
-                      }
-                      setCompared(true);
-                      toast.success("Marked as compared.");
-                    }}
-                  >
-                    They read back the same
-                  </button>
-                )}
-              </>
-            )}
-            {!identityIsTheQuestion && fingerprint && (
-              <>
-                <span className="gmc-note">Fingerprint</span>
-                <Fingerprint value={fingerprint} />
-                <span className="gmc-note">Names are not unique. Check the fingerprint if it matters.</span>
-              </>
-            )}
-          </details>
-        )}
       </details>
 
       <ConfirmDialog
