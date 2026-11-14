@@ -85,7 +85,7 @@ export function CompareCodesDialog({ open, onOpenChange, host, conversationId, p
                 <p className="m-0" style={{ lineHeight: 1.5, color: "var(--gryt-neutral-11)" }}>
                   A new key usually means {peerName}&rsquo;s old messages are gone from their side. You can send them your copy of this conversation.
                 </p>
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   <Button tone="neutral" onClick={() => close(false)}>Not now</Button>
                   <Button disabled={sharing === "sending"} onClick={() => void sendOurCopy()}>
                     {sharing === "sending" ? "Sending\u2026" : "Send them your copy"}
