@@ -1,7 +1,7 @@
-import { base64Url } from "@gryt/crypto";
+import { base64Url, getPeerPin, markPeerCompared } from "@gryt/crypto";
 import { useEffect, useState } from "react";
 
-import { comparisonCode, identityScopeFor, markPeerCompared, ownComparisonSide, pinPeerKey } from "@/common";
+import { comparisonCode, identityScopeFor, localPeerPinStore, ownComparisonSide, pinPeerKey } from "@/common";
 
 import { useSockets } from "./useSockets";
 
@@ -44,7 +44,9 @@ export function usePeerKeyCheck(serverHost: string | undefined, serverUserId: st
       if (!serverHost || !serverUserId || !theirs || !decision) return false;
       const scope = identityScopeFor(serverHost);
       if (decision.kind === "changed") pinPeerKey(scope, serverUserId, decision.verified);
-      const ok = markPeerCompared(scope, serverUserId, theirs);
+      // The pin's person key has to match too, so it's read back rather than left out.
+      const personPublicKey = getPeerPin(localPeerPinStore, scope, serverUserId)?.personPublicKey;
+      const ok = markPeerCompared(localPeerPinStore, scope, serverUserId, { ...theirs, personPublicKey });
       // Key decisions are made on each member list, so ask for one rather than wait.
       sockets[serverHost]?.emit("members:fetch");
       return decision.kind === "changed" || ok;
