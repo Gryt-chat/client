@@ -109,6 +109,8 @@ interface UseChatReturn {
   mlsActions: MlsAction[];
   /** The notice is about the other person's key changing; offer their card. */
   peerKeyNotice: boolean;
+  /** This device waits for the other side's app to add it to the DM. */
+  mlsNotAdded: boolean;
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -882,5 +884,6 @@ export function useChat({
     archiveFailed: composer.archiveProblem,
     mlsActions: dmPeer && !peerKeyNotice ? mls.actions : NO_ACTIONS,
     peerKeyNotice,
+    mlsNotAdded: !!dmPeer && !peerKeyNotice && mls.problems.lost === "not_added",
   };
 }
