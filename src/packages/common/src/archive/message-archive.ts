@@ -28,6 +28,8 @@ export interface ArchivedMessage {
   importedFrom?: "discord";
   /** When the server got this copy, in ms. `sentAt` on a shared copy is only what its sender says. */
   receivedAt?: number;
+  /** Written while it waits for this device to be added; the sent copy, under the same id, replaces it. */
+  outbox?: true;
 }
 
 type MessageBody = Pick<

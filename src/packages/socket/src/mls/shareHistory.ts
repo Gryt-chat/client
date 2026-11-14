@@ -11,7 +11,7 @@ async function wholeConversation(archive: Pick<MessageArchive, "page">, scope: s
   for (;;) {
     const page = await archive.page(scope, conversationId, { before, limit: 500 });
     if (!page.length) break;
-    out.unshift(...page.filter((m) => !m.copy));
+    out.unshift(...page.filter((m) => !m.copy && !m.outbox));
     before = { sentAt: page[0].sentAt, messageId: page[0].messageId };
   }
   return out;
