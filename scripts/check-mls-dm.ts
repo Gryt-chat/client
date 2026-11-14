@@ -145,7 +145,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
 });
 
 test("a failed send names what somebody can do something about", () => {
-  assert.match(sendFailure({ code: "peer_unverified" }, "app"), /their card/);
+  assert.match(sendFailure({ code: "peer_unverified" }, "app"), /Compare codes with them/);
   assert.match(sendFailure({ code: "waiting_for_welcome" }, "browser"), /This browser/);
   assert.match(sendFailure({ code: "waiting_for_welcome" }, "app"), /still isn.t in this chat/);
   assert.match(sendFailure({ code: "other_identity" }, "browser"), /This browser needs to be linked/);
