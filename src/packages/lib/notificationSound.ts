@@ -49,11 +49,16 @@ async function fetchBuffer(url: string): Promise<AudioBuffer> {
  * Play a notification sound. Works in background tabs.
  * @param url URL or data-URI. @param sliderValue Volume slider value (0-100).
  */
-export function playNotificationSound(url: string, sliderValue: number): void {
+export function playNotificationSound(url: string, sliderValue: number): () => void {
   const actx = getContext();
+  let stopped = false;
+  let stop = () => {
+    stopped = true;
+  };
 
   fetchBuffer(url)
     .then((buf) => {
+      if (stopped) return;
       const source = actx.createBufferSource();
       source.buffer = buf;
 
@@ -63,15 +68,38 @@ export function playNotificationSound(url: string, sliderValue: number): void {
       source.connect(gain);
       gain.connect(actx.destination);
       source.start();
+      stop = () => {
+        try {
+          source.stop();
+        } catch {
+          // Already ended.
+        }
+      };
     })
     .catch((err) => {
+      if (stopped) return;
       console.warn("[notificationSound] playback failed, falling back to Audio", err);
       try {
         const audio = new Audio(url);
         audio.volume = sliderToGain(sliderValue);
         audio.play().catch(() => {});
+        stop = () => audio.pause();
       } catch { /* give up silently */ }
     });
+  return () => stop();
+}
+
+let stopPreview: (() => void) | null = null;
+
+/** A settings preview: only one plays at a time, so picking another cuts the last one off. */
+export function playPreviewSound(url: string, sliderValue: number): void {
+  stopPreviewSound();
+  stopPreview = playNotificationSound(url, sliderValue);
+}
+
+export function stopPreviewSound(): void {
+  stopPreview?.();
+  stopPreview = null;
 }
 
 /** Plays a sound on repeat, as a ringtone does, until stopped. The volume can change while it plays. */
