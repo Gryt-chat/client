@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { PiInfoBold, PiMagnifyingGlassBold } from "../../../../lib/icons";
 import { hasRoomForPermissionMatrix } from "../lib/permissionGridLayout";
 import { groupPermissions, type PermissionMeta } from "../lib/permissions";
+import { PermissionCell } from "./PermissionCell";
 
 export type GridRole = {
   id: string;
@@ -310,20 +311,21 @@ function PermissionMatrix({
                 <tr
                   key={permission.id}
                   className="border-t border-gryt-border/50 hover:bg-gryt-surface-hover"
-                  style={
-                    DESTRUCTIVE.has(permission.id)
-                      ? { boxShadow: "inset 3px 0 0 var(--gryt-danger)" }
-                      : undefined
-                  }
                 >
                   <th
                     scope="row"
                     className="sticky left-0 z-1 bg-gryt-surface text-left font-normal px-3 py-1.5"
+                    style={
+                      DESTRUCTIVE.has(permission.id)
+                        ? { boxShadow: "inset 3px 0 0 var(--gryt-danger)" }
+                        : undefined
+                    }
                   >
                     <PermissionName permission={permission} />
                   </th>
                   {roles.map((role) => {
                     const locked = readOnlyRoleIds.has(role.id);
+                    const on = held[role.id]?.has(permission.id) ?? false;
                     return (
                       <td
                         key={role.id}
@@ -331,19 +333,13 @@ function PermissionMatrix({
                           highlighted.has(role.id) ? "bg-gryt-accent/10" : ""
                         }`}
                       >
-                        {/* A flex row rather than `text-center` on the cell.
-                            The checkbox is a block with its own width, so text
-                            alignment never moved it: every box sat 24px left of
-                            the column it belongs to while the header above it
-                            was centred, which is what made the grid look out
-                            of true. Measured, not guessed — cell centre 933,
-                            box centre 909, in every column. */}
                         <div className="flex justify-center">
-                          <Checkbox
-                            checked={held[role.id]?.has(permission.id) ?? false}
+                          <PermissionCell
+                            state={on ? "allow" : "off"}
+                            role="checkbox"
+                            aria-checked={on}
                             disabled={locked}
-                            tone={DESTRUCTIVE.has(permission.id) ? "danger" : undefined}
-                            onCheckedChange={(on: boolean) => onToggle(role.id, permission.id, on)}
+                            onClick={() => onToggle(role.id, permission.id, !on)}
                             aria-label={`${permission.label} for ${role.name}`}
                           />
                         </div>
