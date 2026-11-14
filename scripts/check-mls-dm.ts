@@ -136,7 +136,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /different key on this server than your account.*link this device/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*no longer use/);
   const refused = { kind: "refused", reason: "no_own_device" } as const;
-  assert.match(mlsNotice(refused, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*Settings/);
+  assert.match(mlsNotice(refused, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*no longer use/);
   assert.match(mlsNotice(refused, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /Link it/);
   assert.match(mlsNotice(refused, none, app) ?? "", /isn't set up/);
   assert.equal(mlsNotice({ kind: "mls" }, none, { ...app, lostHistory: true }), "Older messages were cleared from this device. Mia can send you a copy.");
