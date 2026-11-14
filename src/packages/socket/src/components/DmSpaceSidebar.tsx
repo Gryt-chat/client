@@ -10,7 +10,7 @@ import { admitConversation, dismissFiltered, type FilteredItem } from "../hooks/
 import { type DirectoryEntry,listedConversations, useDirectory } from "../hooks/dmDirectory";
 import { pinFor, reorderPins, usePins } from "../hooks/dmPins";
 import { requestConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
-import { useAllFriends } from "../hooks/friendsStore";
+import { useWaitingOnYou } from "../hooks/friendsStore";
 import {
   setHiddenExpanded,
   showConversation,
@@ -57,9 +57,7 @@ export function DmSpaceSidebar({
   const { countFor } = useDirectoryUnread();
   const { servers, viewServerBehindDmSpace } = useServerManagement();
   const [query, setQuery] = useState("");
-  const friends = useAllFriends();
-  // Requests and friends the server lists that this device never added: both wait on you.
-  const waitingOnYou = friends.reduce((n, h) => n + h.incoming.length + h.friends.filter((f) => !f.confirmed).length, 0);
+  const waitingOnYou = useWaitingOnYou();
   const [tab, setTab] = useState<"chats" | "friends">("chats");
   const reduceMotion = useReducedMotion();
 

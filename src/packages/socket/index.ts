@@ -1,6 +1,7 @@
 // Hooks
 export * from "./src/hooks/dmDirectory";
 export * from "./src/hooks/dmSpace";
+export { useWaitingOnYou } from "./src/hooks/friendsStore";
 export * from "./src/hooks/useDirectoryUnread";
 export * from "./src/hooks/useOpenDmSpace";
 export * from "./src/hooks/useRememberView";

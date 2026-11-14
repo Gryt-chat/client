@@ -28,7 +28,7 @@ import type {
   serverDetailsList as ServerDetailsListType,
   Servers,
 } from "@/settings/src/types/server";
-import { useDirectoryUnread, useDmSpaceOpen, useLeaveDmSpace, useOpenDmSpace, useServerChannelUnread, useServerManagement, useSockets } from "@/socket";
+import { useDirectoryUnread, useDmSpaceOpen, useLeaveDmSpace, useOpenDmSpace, useServerChannelUnread, useServerManagement, useSockets, useWaitingOnYou } from "@/socket";
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
@@ -155,7 +155,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
   const dmSpaceOpen = useDmSpaceOpen();
   const openDmSpace = useOpenDmSpace();
   const leaveDmSpace = useLeaveDmSpace();
-  const { total: dmUnread } = useDirectoryUnread();
+  const { total: dmUnreadCount } = useDirectoryUnread();
+  const dmUnread = dmUnreadCount + useWaitingOnYou();
 
   return (
     <div className="flex flex-col h-full gap-4 items-center justify-between" data-gryt="sidebar">
@@ -165,7 +166,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         <Tooltip title="Direct messages" side="right">
           <div className="relative">
             <IconButton
-              aria-label="Direct messages"
+              aria-label={dmUnread > 0 ? `Direct messages, ${dmUnread} waiting` : "Direct messages"}
               aria-pressed={dmSpaceOpen}
               tone={dmSpaceOpen ? "primary" : "ghost"}
               /* In, to the conversation you were last in. Again from inside, back to
