@@ -29,8 +29,8 @@ function bodyOf(signature: string) {
   throw new Error(`unbalanced braces after "${signature}" in ${SOURCE}`);
 }
 
-/* The two hooks, run with useMemo and useCallback doing the plain thing. `muted`
-   is "host:id" strings, empty unless a case is checking GRYT-1465. */
+/* The two hooks, run with useMemo and useCallback doing the plain thing. `muted` is "host:id"
+   strings set below "Everything", empty unless a case is checking GRYT-1465 or GRYT-2113. */
 type Counts = Record<string, Record<string, number>>;
 type Case = { directory: ReturnType<typeof entry>[]; unread: Counts; threads?: Counts; muted?: Set<string> };
 
@@ -41,7 +41,7 @@ function run(signature: string, { directory, unread, threads = {}, muted = new S
     "useDirectory",
     "useUnreadTracker",
     "useThreadUnread",
-    "isChannelMuted",
+    "countsEveryMessage",
     "useMemo",
     "useCallback",
     `return (() => ${bodyOf(signature)})();`,
@@ -54,7 +54,7 @@ function run(signature: string, { directory, unread, threads = {}, muted = new S
     () => ({
       getConversationThreadUnreadCounts: (host: string) => inThreads.get(host) ?? new Map(),
     }),
-    (host: string, id: string) => muted.has(`${host}:${id}`),
+    (host: string, id: string) => !muted.has(`${host}:${id}`),
     <T>(factory: () => T) => factory(),
     <T>(fn: T) => fn,
   );
