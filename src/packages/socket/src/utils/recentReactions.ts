@@ -70,11 +70,11 @@ export function getRecentReactions(count = 6, serverHost?: string): string[] {
  * Most used first, with the more recent one winning a tie. Without the tiebreak,
  * everything on a single use trades places between renders.
  */
-export function getFrequentReactions(count = 4, serverHost?: string): string[] {
+export function getFrequentReactions(count = 4, serverHost?: string, usable: (src: string) => boolean = () => true): string[] {
   const stored = [...readStorage(serverHost)].sort(
     (a, b) => b.count - a.count || b.usedAt - a.usedAt,
   );
-  return padWithDefaults(stored.map((r) => r.src), count);
+  return padWithDefaults(stored.map((r) => r.src).filter(usable), count);
 }
 
 export function recordReaction(src: string, serverHost?: string): void {
