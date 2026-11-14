@@ -28,6 +28,7 @@ import { showLinkedDeviceToast } from "../components/linkedDeviceToast";
 import { publishDmKey } from "../utils/dmKeys";
 import { readMlsCapability, readMlsReports } from "./capability";
 import { thisDeviceCertificateName } from "./deviceName";
+import { askForHistory } from "./historyAsk";
 import { handoverCode, type HandoverRequest, handoverRequests, keyResets, type OwnHandover, ownHandover } from "./keyHandover";
 import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
 import { createModeOnlySource } from "./modeOnly";
@@ -41,6 +42,7 @@ import {
   type MlsSession,
   type SessionSocket,
 } from "./session";
+import { shareHistory } from "./shareHistory";
 
 /**
  * MLS for every connected server. Only the tab holding the Web Lock runs a driver; the
@@ -123,6 +125,21 @@ export function useMlsSource(host: string | null | undefined): MlsSource | null 
     () => sources,
   );
   return host ? (map.get(host) ?? null) : null;
+}
+
+/** "Send me your copy" to the other person in this DM, sent again while they're online (historyAsk.ts). */
+export function askTheirCopy(host: string, conversationId: string, peer: string): boolean {
+  const socket = hosts.get(host)?.socket;
+  if (!socket) return false;
+  askForHistory(socket, host, conversationId, peer);
+  return true;
+}
+
+/** Our copy of this DM, sent to the person who asked (GRYT-1875). How many messages went. */
+export async function sendOurCopy(host: string, conversationId: string, to: string): Promise<number> {
+  const source = sources.get(host);
+  if (!source) throw new Error("Not connected to that server.");
+  return shareHistory(source, (await openLocalArchive()).messages, conversationId, to);
 }
 
 type Delivered = { host: string; conversationId: string; senderId: string; content: MlsDmContent };

@@ -18,7 +18,8 @@ import { draftKey, returnDraft } from "../hooks/returnedDrafts";
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import { getMediaDimensions } from "../utils/imageUtils";
 import { openSealedAttachment } from "../utils/sealedAttachments";
-import { askToApproveHere, useMlsSource } from "./serverMls";
+import { forgetHistoryAsk, historyAsked } from "./historyAsk";
+import { askTheirCopy, askToApproveHere, useMlsSource } from "./serverMls";
 import type { ConversationProblems } from "./session";
 import { archivedRow, newMessage, sendFailure, WAITING_NOTE, withOpenedFiles } from "./timeline";
 
@@ -306,6 +307,11 @@ export function useMlsConversation({
     [source, host, conversationId, peer, fail, archiveFacts.home],
   );
 
+  // Their copy is here, so the ask that brought it is done.
+  useEffect(() => {
+    if (conversationId && archived.some((m) => m.shared_by) && historyAsked(host, conversationId)) forgetHistoryAsk(host, conversationId);
+  }, [host, conversationId, archived]);
+
   // A message left waiting when the app last closed goes again, once per load.
   useEffect(() => {
     if (!source || !conversationId || !peer) return;
@@ -369,6 +375,13 @@ export function useMlsConversation({
     actions: useMemo((): MlsAction[] => {
       if (!active || !conversationId) return [];
       const requestAdd = source?.requestAdd;
+      const missing = problems.undecryptable > 0 || archiveFacts.lostHistory;
+      if (missing && !problems.lost && peer) {
+        const name = nameRef.current(peer) ?? "them";
+        return [{ label: `Ask ${name} for their copy`, run: () => {
+          if (askTheirCopy(host, conversationId, peer)) toast.success(`Asked ${name}. Their copy comes in the next time their app is open.`);
+        } }];
+      }
       if (problems.lost === "not_added" && requestAdd) {
         return [{ label: "Ask again", run: () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e)) }];
       }
@@ -379,7 +392,7 @@ export function useMlsConversation({
         // The server only takes a new key here with the old key's approval, or after a 30-day reset.
         { label: "Other ways", run: () => askToApproveHere(host) },
       ];
-    }, [active, source, conversationId, problems, host, openLinkDevice]),
+    }, [active, source, conversationId, problems, host, openLinkDevice, peer, archiveFacts.lostHistory]),
     edit: useCallback(
       (id: string, text: string) => {
         const body = text.trim();
