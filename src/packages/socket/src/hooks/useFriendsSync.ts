@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
+import { showDesktopNotification } from "@/lib/desktopNotification";
+import { useSettings } from "@/settings";
+
 import { showFriendRequestToast } from "../components/friendRequestToast";
 import { parseFriendList } from "../utils/friendList";
 import {
@@ -28,6 +31,7 @@ export function useFriendsSync({
   accessToken: string | null;
   isConnected: boolean;
 }): void {
+  const { desktopNotificationsEnabled } = useSettings();
   useEffect(() => {
     if (!socket || !accessToken || !isConnected) return;
 
@@ -38,7 +42,8 @@ export function useFriendsSync({
     const onIncoming = (payload: { serverUserId?: unknown; nickname?: unknown }) => {
       if (typeof payload?.serverUserId !== "string" || !firstNoticeOf(host, payload.serverUserId)) return;
       const name = typeof payload.nickname === "string" && payload.nickname ? payload.nickname : "Somebody";
-      showFriendRequestToast(host, payload.serverUserId, name, serverName);
+      showFriendRequestToast(host, payload.serverUserId, name);
+      if (desktopNotificationsEnabled && !document.hasFocus()) showDesktopNotification(name, `Wants to be friends, on ${serverName}`);
     };
     const onError = (payload: { message?: unknown }) => {
       if (typeof payload?.message === "string") toast.error(payload.message, { id: "friend:error" });
@@ -56,7 +61,7 @@ export function useFriendsSync({
       socket.off("friend:error", onError);
       registerFriendEmitter(host, null);
     };
-  }, [host, serverName, socket, accessToken, isConnected]);
+  }, [host, serverName, socket, accessToken, isConnected, desktopNotificationsEnabled]);
 
   // The list is the server's claim for this session, so a server that's gone takes it along.
   useEffect(() => () => forgetServerFriendList(host), [host]);

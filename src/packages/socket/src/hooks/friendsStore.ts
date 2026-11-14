@@ -176,3 +176,8 @@ export function useFriendState(host: string | undefined, serverUserId: string | 
 export function useIncomingFriendCount(): number {
   return useAllFriends().reduce((n, h) => n + h.incoming.length, 0);
 }
+
+/** Requests, and friends the server lists that this device never added: both wait on you. */
+export function useWaitingOnYou(): number {
+  return useAllFriends().reduce((n, h) => n + h.incoming.length + h.friends.filter((f) => !f.confirmed).length, 0);
+}
