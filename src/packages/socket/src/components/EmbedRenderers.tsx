@@ -256,24 +256,25 @@ const X_EMBED_ORIGIN = "https://platform.twitter.com";
 export const XEmbed = ({ url, onDismiss }: { url: string; serverHost: string; onDismiss: () => void }) => {
   const { resolvedAppearance } = useTheme();
   const id = /\/status(?:es)?\/(\d+)/.exec(url)?.[1] ?? null;
-  const [height, setHeight] = useState<number | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const [failed, setFailed] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    setHeight(null);
+    setSize(null);
     setFailed(false);
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== X_EMBED_ORIGIN || e.source !== frame.current?.contentWindow) return;
-      let call: { method?: string; params?: { height?: number }[] } | undefined;
+      let call: { method?: string; params?: { width?: number; height?: number }[] } | undefined;
       try {
         call = (typeof e.data === "string" ? JSON.parse(e.data) : e.data)?.["twttr.embed"];
       } catch {
         return;
       }
       if (call?.method === "twttr.private.no_results") setFailed(true);
-      const h = call?.method === "twttr.private.resize" ? call.params?.[0]?.height : undefined;
-      if (typeof h === "number" && h > 0) setHeight(Math.ceil(h));
+      const box = call?.method === "twttr.private.resize" ? call.params?.[0] : undefined;
+      // The card is narrower than the frame, and Twitter's page is white beside it.
+      if (box?.width && box.height) setSize({ width: Math.ceil(box.width), height: Math.ceil(box.height) });
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -285,7 +286,7 @@ export const XEmbed = ({ url, onDismiss }: { url: string; serverHost: string; on
   return (
     <div className="link-embed-container">
       <DismissButton onDismiss={onDismiss} />
-      {height === null && (
+      {size === null && (
         <div className="link-embed-twitter-skeleton">
           <Skeleton className="rounded-(--gryt-radius-md)" width="100%" height="100%" />
         </div>
@@ -295,7 +296,7 @@ export const XEmbed = ({ url, onDismiss }: { url: string; serverHost: string; on
         className="link-embed-iframe-twitter"
         title="Post on X"
         src={src}
-        style={height === null ? { position: "absolute", opacity: 0, pointerEvents: "none" } : { height }}
+        style={size === null ? { position: "absolute", opacity: 0, pointerEvents: "none" } : { width: size.width, maxWidth: "100%", height: size.height }}
         sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="strict-origin-when-cross-origin"
       />
