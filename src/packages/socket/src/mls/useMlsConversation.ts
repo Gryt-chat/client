@@ -369,14 +369,14 @@ export function useMlsConversation({
       if (hasMore) setLimit((n) => n + PAGE);
     }, [hasMore]),
     problems: active ? problems : NO_PROBLEMS,
-    lostHistory: active && archiveFacts.lostHistory,
+    lostHistory: active && archiveFacts.lostHistory && !problems.copyArrived,
     home: archiveFacts.home,
     archiveFailed: !!conversationId && !!peer && archiveNow.status.kind === "failed",
     send,
     actions: useMemo((): MlsAction[] => {
       if (!active || !conversationId) return [];
       const requestAdd = source?.requestAdd;
-      const missing = problems.undecryptable > 0 || archiveFacts.lostHistory;
+      const missing = problems.undecryptable > 0 || (archiveFacts.lostHistory && !problems.copyArrived);
       if (missing && !problems.lost && peer) {
         const name = nameRef.current(peer) ?? "them";
         return [{ label: `Ask ${name} for their copy`, run: () => {

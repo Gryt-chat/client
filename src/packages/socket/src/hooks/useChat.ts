@@ -248,7 +248,10 @@ export function useChat({
     conversationId: activeConversationId,
     peer: dmPeer,
     me: { serverUserId: currentUserId, nickname },
-    nameFor: (id) => (id === currentUserId ? nickname : undefined),
+    nameFor: (id) => {
+      if (id === currentUserId) return nickname;
+      return id === dmPeer ? dmPeerName : undefined;
+    },
   });
   const mlsMode = mls.mode?.kind ?? null;
   useArchiveReadCopies({

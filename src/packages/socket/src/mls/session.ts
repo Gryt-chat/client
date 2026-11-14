@@ -51,6 +51,8 @@ export interface ConversationProblems {
   /** This device is out of the group and can't read new messages until it's back. `device_removed`
       means out of every group on this server, since the server removed the device (GRYT-1555). */
   lost: "removed" | "out_of_sync" | "gap" | "not_added" | "other_identity" | "too_many_devices" | "device_removed" | null;
+  /** Someone sent their copy of this DM, so what this device was missing is filled in. */
+  copyArrived?: boolean;
 }
 
 const NO_PROBLEMS: ConversationProblems = { undecryptable: 0, lost: null };
@@ -255,6 +257,7 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
       return;
     }
     await applyMlsContent(messages, { scope: storeScope, conversationId, senderId, senderDeviceId, content: opened, at });
+    if (opened.type === "history" && senderId !== self) setProblems(conversationId, { undecryptable: 0, copyArrived: true });
   };
 
   const driver: MlsDmDriver = createMlsDmDriver({
