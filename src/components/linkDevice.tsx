@@ -1,9 +1,11 @@
 /* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md)
  * states carried by @gryt/ui Button, Spinner and Alert; the QR is the one new element. */
-import type { HistoryProgress, NewDeviceState } from "@gryt/core";
+import { type HistoryProgress, type NewDeviceState, qrArt } from "@gryt/core";
 import { Alert, Button, Dialog, IconButton, Progress } from "@gryt/ui";
 import { useMemo, useRef } from "react";
 import { encode } from "uqr";
+
+import { LogoIcon } from "@/common";
 
 import { PiX } from "../lib/icons";
 import { type NewDeviceInFlight, newDeviceSteps, useWakeLock } from "../lib/pairing/linkSteps";
@@ -18,23 +20,19 @@ export function QrCode({
   label = "Code to scan from your other device",
   className = "h-52 w-52",
 }: { text: string; label?: string; className?: string }) {
-  const path = useMemo(() => {
-    const { data } = encode(text, { ecc: "M", border: 0 });
-    let d = "";
-    data.forEach((row, y) => row.forEach((dark, x) => { if (dark) d += `M${x} ${y}h1v1h-1z`; }));
-    return { d, size: data.length };
-  }, [text]);
+  // Level H: the owl covers the middle, and H still reads with about 30% of the code missing.
+  const art = useMemo(() => qrArt(encode(text, { ecc: "H", border: 0 }).data), [text]);
+  const box = art.size + 6;
 
   return (
-    <svg
-      role="img"
-      aria-label={label}
-      viewBox={`-3 -3 ${path.size + 6} ${path.size + 6}`}
-      className={`${className} rounded-[var(--gryt-radius-md)]`}
-      shapeRendering="crispEdges"
-    >
-      <rect x={-3} y={-3} width={path.size + 6} height={path.size + 6} fill="#fff" />
-      <path d={path.d} fill="#000" />
+    <svg role="img" aria-label={label} viewBox={`-3 -3 ${box} ${box}`} className={className}>
+      <rect x={-3} y={-3} width={box} height={box} rx={3} fill="#fff" />
+      <path d={art.finders + art.dots} fill="#000" />
+      {art.logo && (
+        <g transform={`translate(${art.logo.x} ${art.logo.y})`}>
+          <LogoIcon size={art.logo.size} />
+        </g>
+      )}
     </svg>
   );
 }
