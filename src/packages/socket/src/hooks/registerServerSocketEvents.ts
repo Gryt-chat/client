@@ -56,7 +56,7 @@ import {
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { resendHistoryAsks } from "../mls/historyAsk";
-import { attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
+import { askToApproveHere, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
@@ -134,6 +134,11 @@ function renderDmKeyWarning(): void {
     id: DM_KEY_TOAST_ID,
     serverNames: [...dmKeyWarnedHosts.values()],
     fix: dmKeyLastFix,
+    // Opens the approve-or-link dialog for the first server with the mismatch.
+    onFix: () => {
+      const [first] = dmKeyWarnedHosts.keys();
+      if (first) askToApproveHere(first);
+    },
     onDismiss: () => {
       for (const host of dmKeyWarnedHosts.keys()) rememberDmKeyWarningDismissed(host);
       dmKeyWarnedHosts.clear();

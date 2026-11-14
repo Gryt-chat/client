@@ -14,6 +14,7 @@ import {
 
 import { useLinkDevice } from "../../../../lib/pairing/useLinkDevice";
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
+import { openUserSettings } from "../components/dmKeyWarningToast";
 import { draftKey, returnDraft } from "../hooks/returnedDrafts";
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import { getMediaDimensions } from "../utils/imageUtils";
@@ -385,12 +386,15 @@ export function useMlsConversation({
       if (problems.lost === "not_added" && requestAdd) {
         return [{ label: "Ask again", run: () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e)) }];
       }
+      const askAgain = requestAdd ? () => void requestAdd(conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't ask to be added:", e)) : null;
+      if (problems.lost === "removed" && askAgain) return [{ label: "Ask to be added again", run: askAgain }];
+      if ((problems.lost === "out_of_sync" || problems.lost === "gap") && askAgain) return [{ label: "Rejoin", run: askAgain }];
+      if (problems.lost === "too_many_devices") return [{ label: "Remove unused devices", run: () => openUserSettings("devices") }];
       if (problems.lost !== "other_identity") return [];
-      // The safe choice first.
+      // Asking keeps this device's key and messages; linking replaces both. The server takes a new key only with the old key's approval.
       return [
+        { label: "Use my account's key", run: () => askToApproveHere(host) },
         { label: "Link this device", run: openLinkDevice },
-        // The server only takes a new key here with the old key's approval, or after a 30-day reset.
-        { label: "Other ways", run: () => askToApproveHere(host) },
       ];
     }, [active, source, conversationId, problems, host, openLinkDevice, peer, archiveFacts.lostHistory]),
     edit: useCallback(
