@@ -401,6 +401,11 @@ export function isChannelMuted(host: string, channelId: string): boolean {
   return resolveLevel(stored.servers, host, getPlacement(host, channelId)) === "none";
 }
 
+/** Whether every message here counts in the server's number, which is only on "Everything". Mentions count apart. */
+export function countsEveryMessage(host: string, channelId: string): boolean {
+  return shouldAnnounceMessage(resolveLevel(stored.servers, host, getPlacement(host, channelId)));
+}
+
 /** `counts`, with a muted conversation's entry left out. The map is returned
     unchanged when nothing needed removing. */
 export function visibleCounts(
