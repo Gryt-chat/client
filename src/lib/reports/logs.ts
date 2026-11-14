@@ -1,12 +1,14 @@
 /**
- * The tail of the renderer's own log, so a bug report can carry it. **Nothing is
+ * The last five minutes of the renderer's own log, so a bug report can carry it. **Nothing is
  * redacted, and this is off unless the reporter ticks the box.**
  */
 
-const MAX_LINES = 300;
+export const WINDOW_MS = 5 * 60 * 1000;
+const MAX_LINES = 2000;
 const MAX_LINE_CHARS = 500;
+export const MAX_CHARS = 100_000;
 
-const lines: string[] = [];
+const lines: { at: number; text: string }[] = [];
 
 /**
  * Drop the styling from a `console.warn("%cthing", "color:…")` call. The voice
@@ -35,11 +37,13 @@ function record(level: "warn" | "error", args: unknown[]): void {
     })
     .join(" ");
 
-  const stamped = `${new Date().toISOString()} ${level} ${text}`;
-  lines.push(
-    stamped.length > MAX_LINE_CHARS ? `${stamped.slice(0, MAX_LINE_CHARS)}…` : stamped,
-  );
-  if (lines.length > MAX_LINES) lines.splice(0, lines.length - MAX_LINES);
+  const at = Date.now();
+  const stamped = `${new Date(at).toISOString()} ${level} ${text}`;
+  lines.push({
+    at,
+    text: stamped.length > MAX_LINE_CHARS ? `${stamped.slice(0, MAX_LINE_CHARS)}…` : stamped,
+  });
+  while (lines.length > MAX_LINES || lines[0].at < at - WINDOW_MS) lines.shift();
 }
 
 let installed = false;
@@ -65,7 +69,24 @@ export function captureLogs(): void {
   }
 }
 
+/** The last `windowMs` of lines, newest kept first when `maxChars` cuts. */
+export function windowLines(
+  entries: { at: number; text: string }[],
+  now: number,
+  windowMs = WINDOW_MS,
+  maxChars = MAX_CHARS,
+): string[] {
+  const out: string[] = [];
+  let size = 0;
+  for (let i = entries.length - 1; i >= 0 && entries[i].at >= now - windowMs; i--) {
+    size += entries[i].text.length + 1;
+    if (size > maxChars) break;
+    out.unshift(entries[i].text);
+  }
+  return out;
+}
+
 /** What a report attaches. A copy, so it cannot change under the sender. */
 export function recentLogs(): string[] {
-  return [...lines];
+  return windowLines(lines, Date.now());
 }
