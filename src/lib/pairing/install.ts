@@ -5,6 +5,8 @@ import type { IdentityBackupEntry, PairingAccount, PairingEnvelope, PairingPin, 
    once, after the emoji, the envelope and any sign-in have all passed. */
 
 export interface LinkInstallDeps {
+  /** Moves what this device's old key holds over to `seed`'s, while the old key still exists. */
+  handOver(seed: Uint8Array): Promise<void>;
   /** Writes the seed and the stored keys, dropping this device's old local keys. */
   installIdentity(seed: Uint8Array, keys: IdentityBackupEntry[]): Promise<void>;
   /** The server lineage to pin under when this device first meets `host`. */
@@ -53,6 +55,7 @@ export function lineageHints(servers: PairingServer[]): { host: string; originKe
 export function createLinkStorage(deps: LinkInstallDeps): PairingStorage {
   return {
     async commit(envelope: PairingEnvelope, tokens: PairingTokens | null) {
+      await deps.handOver(envelope.seed);
       deps.forgetMlsDevices();
 
       // Pins and lineages before the identity, so nothing derives under a scope it guessed.
