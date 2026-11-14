@@ -126,7 +126,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   const none = { undecryptable: 0, lost: null };
   const app = { lostHistory: false, home: "app", peerName: "Mia" } as const;
   assert.equal(mlsNotice({ kind: "mls" }, none, app), null);
-  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }) ?? "", /Mia has a new key.*compare the pictures/);
+  assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }) ?? "", /Mia has a new key.*compare codes with them/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, app), null);
   assert.match(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, app) ?? "", /Mia/);
   assert.equal(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, app), "1 message couldn't be decrypted on this device.");

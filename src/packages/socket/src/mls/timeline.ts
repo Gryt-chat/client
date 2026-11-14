@@ -172,7 +172,7 @@ export function mlsNotice(
     return `${peerName}'s key is being reset, and a new one takes over on ${on}. If you didn't expect this, check with ${peerName} another way.`;
   }
   if (mode?.kind === "mls" && peerKeyChanged) {
-    return `${peerName} has a new key, usually from a new phone or computer. Before you reply, compare the pictures on their card with them somewhere this server can't change: in person, on a call, or in a chat on another server.`;
+    return `${peerName} has a new key, usually from a new phone or computer. Before you reply, compare codes with them on a call or in person.`;
   }
   if (problems.lost === "too_many_devices") {
     return `${Here} can't use encrypted DMs here because your account has the most devices allowed. Remove an old one in Settings, under Devices.`;
