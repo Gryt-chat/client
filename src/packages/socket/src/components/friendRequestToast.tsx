@@ -25,5 +25,5 @@ export function useOpenFriendRequest(): typeof open {
 /** The toast for a new request: who, which server, and Accept / Decline right there. */
 export function showFriendRequestToast(host: string, serverUserId: string, name: string): void {
   const id = `friend:${host}:${serverUserId}`;
-  toast(() => <FriendRequestCard id={id} host={host} serverUserId={serverUserId} name={name} />, { id, duration: 30_000, style: { width: 360, maxWidth: "calc(100vw - 2rem)", padding: 16, borderRadius: "var(--gryt-radius-xl)" } });
+  toast(() => <FriendRequestCard id={id} host={host} serverUserId={serverUserId} name={name} />, { id, duration: 30_000, style: { maxWidth: "min(350px, calc(100vw - 2rem))", padding: 16, borderRadius: "var(--gryt-radius-xl)" } });
 }
