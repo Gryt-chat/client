@@ -199,10 +199,10 @@ export function mlsNotice(
 /** What a failed MLS send says on its row. */
 export function sendFailure(e: unknown, home: "browser" | "app"): string {
   const code = (e as { code?: string })?.code;
-  if (code === "peer_unverified") return "Not sent. Their key couldn't be checked. Look at their card to see why.";
+  if (code === "peer_unverified") return "Not sent. Their key isn't trusted on this device yet. Compare codes with them, then send it again.";
   if (code === "other_identity") return `Not sent. ${home === "browser" ? "This browser" : "This device"} needs to be linked to your account's key first.`;
   if (code === "waiting_for_welcome") {
-    return `Not sent. ${home === "browser" ? "This browser" : "This device"} still isn't in this chat. Send it again once the other person or another of your devices has been online.`;
+    return `Not sent. ${home === "browser" ? "This browser" : "This device"} still isn't in this chat after half an hour. It's back in the message box to send once the other person or another of your devices has been online.`;
   }
   return "Not sent.";
 }
