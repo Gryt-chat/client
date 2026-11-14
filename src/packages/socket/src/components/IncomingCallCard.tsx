@@ -14,6 +14,8 @@ interface IncomingCallCardProps {
   avatarWorn?: string | null;
   onAccept: () => void;
   onDecline: () => void;
+  /** Their DM key changed and isn't trusted yet: a call is fine, and the place to check it's them. */
+  keyChanged?: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ export function IncomingCallCard({
   avatarWorn,
   onAccept,
   onDecline,
+  keyChanged = false,
 }: IncomingCallCardProps) {
   return (
     <div
@@ -51,6 +54,12 @@ export function IncomingCallCard({
           </div>
         </div>
       </div>
+
+      {keyChanged && (
+        <p className="m-0 text-xs" style={{ lineHeight: 1.45, color: "var(--gryt-warning-11)" }}>
+          {call.from.nickname}&rsquo;s key changed. On the call, compare codes before you trust it&rsquo;s them.
+        </p>
+      )}
 
       <div className="flex gap-2">
         <Button size="small" tone="primary" style={{ flex: 1 }} onClick={onAccept}>

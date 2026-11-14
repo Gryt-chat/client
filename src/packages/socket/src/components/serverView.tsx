@@ -177,7 +177,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     [directory],
   );
   const { connect, currentServerConnected, currentChannelConnected, isConnected, isConnecting, videoStreams, streamSources } = useSFU();
-  const { serverDetailsList, clients, memberLists, serverProfiles, sockets } = useSockets();
+  const { serverDetailsList, clients, memberLists, serverProfiles, sockets, memberKeyStates } = useSockets();
   const { login } = useAccount();
   /** Servers this app hosts, for Manage server. Empty in a browser. */
   const { servers: hostedServers } = useEmbeddedServer();
@@ -1861,6 +1861,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           avatarWorn={callerAvatarWorn}
           onAccept={handleAcceptCall}
           onDecline={() => declineCall(incomingCall.conversation_id)}
+          keyChanged={memberKeyStates[viewingHost ?? ""]?.[incomingCall.from.server_user_id]?.decision.kind === "changed"}
         />
       ) : null}
 
