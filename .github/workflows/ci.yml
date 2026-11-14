@@ -171,6 +171,7 @@ jobs:
       - run: yarn test:builder-config
       - run: yarn test:helper-packaging
       - run: yarn test:server-order
+      - run: yarn test:carry-guest-servers
       - run: yarn test:tile-contrast
       - run: yarn test:card-byline
       - run: yarn test:link-preview-retry
