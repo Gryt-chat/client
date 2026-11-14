@@ -20,7 +20,7 @@ import { getMediaDimensions } from "../utils/imageUtils";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { askToApproveHere, useMlsSource } from "./serverMls";
 import type { ConversationProblems } from "./session";
-import { archivedRow, newMessage, sendFailure, withOpenedFiles } from "./timeline";
+import { archivedRow, newMessage, sendFailure, WAITING_NOTE, withOpenedFiles } from "./timeline";
 
 const PAGE = 50;
 /** Coalesces a catch-up's hundreds of archive writes into a few redraws. */
@@ -100,6 +100,8 @@ export function useMlsConversation({
   meRef.current = me;
   const archivedRef = useRef(archived);
   archivedRef.current = archived;
+  /** Messages this load is already sending, so a waiting one from the archive isn't sent twice. */
+  const resumed = useRef(new Set<string>());
 
   const active = !!(source && conversationId && peer);
 
@@ -242,6 +244,7 @@ export function useMlsConversation({
       const text = raw.trim();
       if ((!text && files.length === 0) || !source || !conversationId || !peer) return;
       const nonce = uuidv4();
+      resumed.current.add(nonce);
       const local = files.map((f) => ({
         file_id: `local-${uuidv4()}`,
         mime: f.type || null,
@@ -287,29 +290,14 @@ export function useMlsConversation({
           keys: Object.fromEntries(uploaded.flatMap((u) => (u.meta ? [[u.fileId, u.meta]] : []))),
         });
         if (!content) throw Object.assign(new Error("A file wasn't encrypted."), { code: "file_not_sealed" });
-        // Not in this chat yet: the message waits and goes once this device is added, rather than failing.
-        for (let tries = 0; ; tries++) {
-          try {
-            await source.send(conversationId, peer, content);
-            return;
-          } catch (e) {
-            if ((e as { code?: string })?.code !== "waiting_for_welcome" || tries >= WAIT_FOR_WELCOME_TRIES) throw e;
-            setDrafts((current) =>
-              current.map((m) => (m.nonce === nonce ? { ...m, waiting: true, waitingNote: "Sends by itself once this device is added to the chat" } : m)),
-            );
-            await new Promise<void>((resolve) => {
-              const done = () => {
-                off();
-                clearTimeout(timer);
-                resolve();
-              };
-              const off = source.onChange((id) => { if (id === conversationId || id === null) done(); });
-              const timer = setTimeout(done, WAIT_FOR_WELCOME_MS);
-            });
-          }
-        }
+        await deliver(source, conversationId, peer, content, () => {
+          setDrafts((current) => current.map((m) => (m.nonce === nonce ? { ...m, waiting: true, waitingNote: WAITING_NOTE } : m)));
+          // Kept on disk while it waits, so a restart doesn't lose it. Files would need their bytes kept too.
+          if (files.length === 0) void keepInOutbox(source.storeScope, conversationId, nonce, meRef.current.serverUserId, text, replyTo);
+        });
       })().catch((e: unknown) => {
         console.warn("[MLS] Send failed:", e);
+        void dropFromOutbox(source.storeScope, conversationId, nonce);
         const code = (e as { code?: string })?.code;
         fail(nonce, code === "file_not_sealed" ? "Not sent. A file wasn't encrypted." : sendFailure(e, archiveFacts.home));
         returnDraft(draftKey(host, conversationId), { text, files });
@@ -317,6 +305,24 @@ export function useMlsConversation({
     },
     [source, host, conversationId, peer, fail, archiveFacts.home],
   );
+
+  // A message left waiting when the app last closed goes again, once per load.
+  useEffect(() => {
+    if (!source || !conversationId || !peer) return;
+    for (const row of archived) {
+      if (!row.waiting || !row.nonce || row.sender_server_id !== meRef.current.serverUserId || resumed.current.has(row.nonce)) continue;
+      const nonce = row.nonce;
+      resumed.current.add(nonce);
+      const content = newMessage(nonce, row.text ?? "", row.reply_to_message_id ?? undefined, { ids: [], keys: {} });
+      if (!content) continue;
+      deliver(source, conversationId, peer, content, () => {}).catch((e: unknown) => {
+        console.warn("[MLS] A waiting message didn't go:", e);
+        void dropFromOutbox(source.storeScope, conversationId, nonce);
+        returnDraft(draftKey(host, conversationId), { text: row.text ?? "", files: [] });
+        toast.error(sendFailure(e, archiveFacts.home));
+      });
+    }
+  }, [source, conversationId, peer, archived, host, archiveFacts.home]);
 
   const change = useCallback(
     (content: MlsDmContent, failure: string) => {
@@ -393,4 +399,46 @@ export function useMlsConversation({
       [change],
     ),
   };
+}
+
+
+/** Sends, and while this device isn't in the chat yet, waits and tries again rather than failing. */
+async function deliver(
+  source: NonNullable<ReturnType<typeof useMlsSource>>,
+  conversationId: string,
+  peer: string,
+  content: MlsDmContent,
+  onWaiting: () => void,
+): Promise<void> {
+  for (let tries = 0; ; tries++) {
+    try {
+      await source.send(conversationId, peer, content);
+      return;
+    } catch (e) {
+      if ((e as { code?: string })?.code !== "waiting_for_welcome" || tries >= WAIT_FOR_WELCOME_TRIES) throw e;
+      if (tries === 0) onWaiting();
+      await new Promise<void>((resolve) => {
+        const done = () => {
+          off();
+          clearTimeout(timer);
+          resolve();
+        };
+        const off = source.onChange((id) => { if (id === conversationId || id === null) done(); });
+        const timer = setTimeout(done, WAIT_FOR_WELCOME_MS);
+      });
+    }
+  }
+}
+
+async function keepInOutbox(scope: string, conversationId: string, nonce: string, senderId: string | undefined, text: string, replyTo?: string) {
+  if (!senderId) return;
+  const archive = await openLocalArchive();
+  // The sent copy may have landed first: it wins.
+  if (await archive.messages.get(scope, conversationId, nonce)) return;
+  await archive.messages.put([{ scope, conversationId, messageId: nonce, sentAt: Date.now(), senderId, text, attachments: {}, outbox: true, ...(replyTo ? { replyTo } : {}) }]);
+}
+
+async function dropFromOutbox(scope: string, conversationId: string, nonce: string) {
+  const archive = await openLocalArchive();
+  if ((await archive.messages.get(scope, conversationId, nonce))?.outbox) await archive.messages.remove(scope, conversationId, nonce);
 }

@@ -33,8 +33,11 @@ export function archivedRow(m: ArchivedMessage, nameFor: (id: string) => string 
     ...(m.sharedBy && m.sharedBy !== m.senderId ? { shared_by: nameFor(m.sharedBy) ?? "them" } : {}),
     ...(m.receivedAt ? { received_at: new Date(m.receivedAt).toISOString() } : {}),
     ...(m.importedFrom ? { imported_from: m.importedFrom } : {}),
+    ...(m.outbox ? { nonce: m.messageId, pending: true, waiting: true, waitingNote: WAITING_NOTE } : {}),
   };
 }
+
+export const WAITING_NOTE = "Sends by itself once this device is added to the chat";
 
 /** What goes with a report of an MLS message: this device's copy, which the server can't check (GRYT-1557). */
 export function mlsReportCopy(message: Pick<ChatMessage, "sender_server_id" | "text">): { senderServerUserId: string; text: string } {
