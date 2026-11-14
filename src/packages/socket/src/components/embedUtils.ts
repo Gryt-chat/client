@@ -253,15 +253,6 @@ export const previewCache = new Map<string, LinkPreviewData>();
  */
 export const previewRefused = new Set<string>();
 
-export type OEmbedPayload = { html: string };
-
-export function safeJsonParseOEmbed(raw: unknown): OEmbedPayload | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const rec = raw as Record<string, unknown>;
-  if (typeof rec.html !== "string") return null;
-  return { html: rec.html };
-}
-
 /**
  * The attribution line under a card: who made it, and when. Pure and here rather
  * than in the component, because the interesting parts are the empty cases.

@@ -2333,6 +2333,7 @@ body {
  */
 .embed-consent {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
@@ -2346,11 +2347,12 @@ body {
   color: var(--gryt-neutral-11);
 }
 
+/* At least 180px before the buttons wrap below it; narrower, it went one letter per line. */
 .embed-consent-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 180px;
 }
 
 .embed-consent-title {

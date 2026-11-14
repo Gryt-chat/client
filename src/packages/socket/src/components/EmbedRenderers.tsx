@@ -1,5 +1,5 @@
 import { Skeleton, VideoPlayer } from "@gryt/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getServerAccessToken, getServerHttpBase, useTheme } from "@/common";
 import { useSettings } from "@/settings/src/hooks/useSettings";
@@ -14,9 +14,7 @@ import {
   getYouTubeVideoId,
   imageEmbedSizeCache,
   parseRemoteImageMetadata,
-  safeJsonParseOEmbed,
 } from "./embedUtils";
-import { nextPreviewStep, type PreviewFailure } from "./linkPreviewRetry";
 
 export const DismissButton = ({ onDismiss }: { onDismiss: () => void }) => (
   <button
@@ -252,102 +250,54 @@ export const VimeoEmbed = ({ url, onDismiss }: { url: string; onDismiss: () => v
   );
 };
 
-export const XEmbed = ({ url, serverHost, onDismiss }: { url: string; serverHost: string; onDismiss: () => void }) => {
+const X_EMBED_ORIGIN = "https://platform.twitter.com";
+
+/** Twitter's own embed page in a frame, so its script runs on its origin rather than ours. It posts its height back. */
+export const XEmbed = ({ url, onDismiss }: { url: string; serverHost: string; onDismiss: () => void }) => {
   const { resolvedAppearance } = useTheme();
-  const [html, setHtml] = useState<string | null>(null);
+  const id = /\/status(?:es)?\/(\d+)/.exec(url)?.[1] ?? null;
+  const [height, setHeight] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
+  const frame = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    setHtml(null);
+    setHeight(null);
     setFailed(false);
-  }, [url, resolvedAppearance]);
-
-  useEffect(() => {
-    if (html || failed) return;
-    const accessToken = getServerAccessToken(serverHost);
-    if (!accessToken) { setFailed(true); return; }
-    const base = getServerHttpBase(serverHost);
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    // No refused set here: a refusal and giving up both hide the embed for this mount.
-    const settle = (attempt: number, failure: PreviewFailure) => {
-      const step = nextPreviewStep(failure, attempt);
-      if (step.action === "retry") {
-        timer = setTimeout(() => void request(attempt + 1), step.delayMs);
-        return;
-      }
-      setFailed(true);
-    };
-
-    const request = async (attempt: number) => {
-      let res: Response;
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== X_EMBED_ORIGIN || e.source !== frame.current?.contentWindow) return;
+      let call: { method?: string; params?: { height?: number }[] } | undefined;
       try {
-        res = await fetch(`${base}/api/oembed?url=${encodeURIComponent(url)}&theme=${resolvedAppearance}`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        call = (typeof e.data === "string" ? JSON.parse(e.data) : e.data)?.["twttr.embed"];
       } catch {
-        if (!cancelled) settle(attempt, { kind: "network" });
         return;
       }
-      if (cancelled) return;
-
-      if (!res.ok) {
-        const body = res.status === 429 ? await res.json().catch(() => null) : null;
-        if (cancelled) return;
-        settle(attempt, {
-          kind: "status",
-          status: res.status,
-          retryAfter: res.headers.get("Retry-After"),
-          retryAfterMs: (body as { retryAfterMs?: unknown } | null)?.retryAfterMs,
-        });
-        return;
-      }
-
-      try {
-        const parsed = safeJsonParseOEmbed(await res.json());
-        if (cancelled) return;
-        if (!parsed) { setFailed(true); return; }
-        setHtml(parsed.html);
-      } catch {
-        if (!cancelled) setFailed(true);
-      }
+      if (call?.method === "twttr.private.no_results") setFailed(true);
+      const h = call?.method === "twttr.private.resize" ? call.params?.[0]?.height : undefined;
+      if (typeof h === "number" && h > 0) setHeight(Math.ceil(h));
     };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [id, resolvedAppearance]);
 
-    void request(0);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [url, serverHost, html, failed, resolvedAppearance]);
-
-  if (failed) return null;
-  if (!html) {
-    return (
-      <div className="link-embed-container">
-        <DismissButton onDismiss={onDismiss} />
-        <div className="link-embed-twitter-skeleton">
-          <Skeleton className="rounded-(--gryt-radius-md)" width="100%" height="100%" />
-        </div>
-      </div>
-    );
-  }
-
-  const themedHtml = html.replace(
-    /class="twitter-tweet"/,
-    `class="twitter-tweet" data-theme="${resolvedAppearance}"`,
-  );
-  const srcDoc = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>html,body{margin:0;padding:0;background:transparent;}body{display:flex;justify-content:center;}blockquote{margin:0!important;}</style></head><body>${themedHtml}<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script></body></html>`;
+  if (!id || failed) return null;
+  const src = `${X_EMBED_ORIGIN}/embed/Tweet.html?id=${id}&theme=${resolvedAppearance}&dnt=true`;
 
   return (
     <div className="link-embed-container">
       <DismissButton onDismiss={onDismiss} />
+      {height === null && (
+        <div className="link-embed-twitter-skeleton">
+          <Skeleton className="rounded-(--gryt-radius-md)" width="100%" height="100%" />
+        </div>
+      )}
       <iframe
+        ref={frame}
         className="link-embed-iframe-twitter"
-        title="X"
-        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-        srcDoc={srcDoc}
+        title="Post on X"
+        src={src}
+        style={height === null ? { position: "absolute", opacity: 0, pointerEvents: "none" } : { height }}
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        referrerPolicy="strict-origin-when-cross-origin"
       />
     </div>
   );

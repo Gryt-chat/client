@@ -859,7 +859,7 @@ function MessageContent({
           </Tooltip>
         )}
         {serverHost && !m.pending && showsPreviews && drawsText && (
-          <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} />
+          <MessageEmbeds messageId={m.message_id} text={m.text} serverHost={serverHost} own={!!currentUserId && m.sender_server_id === currentUserId} />
         )}
         {m.attachments && m.attachments.length > 0 && serverHost && (() => {
           /* Two or more pictures go in a grid, and plain files two to a row (GRYT-1722 draft).

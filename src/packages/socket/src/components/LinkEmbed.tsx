@@ -58,13 +58,15 @@ function fileFromElsewhere(type: EmbedType, url: string, serverHost: string): Em
 }
 
 /* Per embed unless the reader trusts the whole site, which is their call, per site.
-   Settings → Chat turns the asking off everywhere. */
+   Settings → Chat turns the asking off everywhere, and a link you sent yourself never asks. */
 function AskFirst({
   provider,
+  own,
   onDismiss,
   children,
 }: {
   provider: EmbedProvider;
+  own: boolean;
   onDismiss: () => void;
   children: React.ReactNode;
 }) {
@@ -72,7 +74,7 @@ function AskFirst({
   const trusted = useTrustedEmbedHosts();
   const [loaded, setLoaded] = useState(false);
 
-  if (autoLoadEmbeds || loaded || trusted.includes(provider.host)) return <>{children}</>;
+  if (own || autoLoadEmbeds || loaded || trusted.includes(provider.host)) return <>{children}</>;
 
   return (
     <EmbedConsent
@@ -124,10 +126,13 @@ export const MessageEmbeds = memo(({
   messageId,
   text,
   serverHost,
+  own = false,
 }: {
   messageId: string;
   text: string | null;
   serverHost: string;
+  /** Sent by whoever is reading: they chose the link, so it loads without asking. */
+  own?: boolean;
 }) => {
   const urls = useMemo(() => extractUrls(text), [text]);
   const prevTextRef = useRef(text);
@@ -172,7 +177,7 @@ export const MessageEmbeds = memo(({
           const provider = THIRD_PARTY[type] ?? fileFromElsewhere(type, url, serverHost);
           if (provider) {
             return (
-              <AskFirst key={url} provider={provider} onDismiss={onDismiss}>
+              <AskFirst key={url} provider={provider} own={own} onDismiss={onDismiss}>
                 {renderEmbed(type, url, serverHost, onDismiss)}
               </AskFirst>
             );
