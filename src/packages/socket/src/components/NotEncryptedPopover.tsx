@@ -35,7 +35,7 @@ export function NotEncryptedPopover({
   memberNames: Record<string, string>;
   /** Sends the one short message asking them to update. */
   onAsk: (text: string) => void;
-  /** Opens their card, where the comparison code is. */
+  /** Opens the Compare codes dialog. */
   onCompare: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -72,7 +72,7 @@ export function NotEncryptedPopover({
                 {changedWho ? (
                   <>
                     <p className="m-0 text-[13px]" style={{ lineHeight: 1.5, color: "var(--gryt-neutral-11)" }}>
-                      Ask {changedWho}, somewhere other than Gryt, to read you the code on their card. If it matches yours, the key is theirs.
+                      Compare codes with {changedWho} on a call or in person. If they match, the key is theirs.
                     </p>
                     <div className="flex gap-2">
                       <Button size="small" onClick={() => { setOpen(false); onCompare(); }}>Compare codes</Button>

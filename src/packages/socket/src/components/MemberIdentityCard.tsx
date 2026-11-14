@@ -97,7 +97,7 @@ export function MemberIdentityCard({
   serverHost,
   voiceChannelName,
   inline = false,
-  compareSignal = 0,
+  keyCheck = true,
 }: {
   member: MemberInfo;
   /** Which server this member is shown on, for their key state, roles and uploads. */
@@ -106,8 +106,8 @@ export function MemberIdentityCard({
   voiceChannelName?: string;
   /** Drawn in a panel rather than a popover, so its buttons have nothing to close (GRYT-1745). */
   inline?: boolean;
-  /** Bumped by "Compare codes" and "Check their key": opens straight to the comparison. */
-  compareSignal?: number;
+  /** Off in a DM, where codes are compared from the chat itself. */
+  keyCheck?: boolean;
 }) {
   const Close = inline ? InlineClose : Popover.Close;
   const actions = useMemberCardActions();
@@ -248,12 +248,6 @@ export function MemberIdentityCard({
   const [open, setOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const verifyRef = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    if (!compareSignal) return;
-    setOpen(true);
-    setVerifyOpen(true);
-    requestAnimationFrame(() => verifyRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
-  }, [compareSignal]);
   const [menuOpen, setMenuOpen] = useState(false);
   const identityIsTheQuestion = member.identityTier === "local";
   const fingerprint = member.identityFingerprint;
@@ -518,20 +512,20 @@ export function MemberIdentityCard({
               <dd>{renames}</dd>
             </>
           )}
-          {keyState?.decision.kind === "known" && (
+          {keyCheck && keyState?.decision.kind === "known" && (
             <>
               <dt>Message key</dt>
               <dd>{keyState.decision.pin.comparedAt ? "Compared and matched" : describePin(keyState.decision.pin.firstSeenAt)}</dd>
             </>
           )}
-          {keyState?.decision.kind === "first" && (
+          {keyCheck && keyState?.decision.kind === "first" && (
             <>
               <dt>Message key</dt>
               <dd>Seen for the first time</dd>
             </>
           )}
         </dl>
-        {keyState?.decision.kind === "changed" && (
+        {keyCheck && keyState?.decision.kind === "changed" && (
           // In the drawer and not a toast, which would be gone before anybody asked them.
           <div className="gmc-warn" style={{ marginTop: 10 }}>
             <b>Their key changed</b>
@@ -562,7 +556,7 @@ export function MemberIdentityCard({
             )}
           </div>
         )}
-        {keyState?.decision.kind !== "changed" && trustedPin && (
+        {keyCheck && keyState?.decision.kind !== "changed" && trustedPin && (
           <div className="gmc-note" style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
             <span>
               You trusted their new key.{" "}
@@ -586,7 +580,7 @@ export function MemberIdentityCard({
             )}
           </div>
         )}
-        {(code || (!identityIsTheQuestion && fingerprint)) && (
+        {keyCheck && (code || (!identityIsTheQuestion && fingerprint)) && (
           <details
             ref={verifyRef}
             className="gmc-who gmc-sub"

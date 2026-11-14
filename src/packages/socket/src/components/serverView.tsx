@@ -41,6 +41,7 @@ import { useChat } from "../hooks/useChat";
 import { conversationTitle, type DirectConversation,useDirectMessages } from "../hooks/useDirectMessages";
 import { useLatencyReporting } from "../hooks/useLatencyReporting";
 import { useChannelIcons, useIsTinyWindow, useMemberListMode, useRoomForThreadBeside, useRoomForVoicePanel } from "../hooks/useNarrowWindow";
+import { usePeerKeyCheck } from "../hooks/usePeerKeyCheck";
 import { usePeerLatency } from "../hooks/usePeerLatency";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
@@ -60,6 +61,7 @@ import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
 import { useMlsSource } from "../mls/serverMls";
+import type { MlsAction } from "../mls/useMlsConversation";
 import { type DiscordImportState, useDiscordImport } from "../utils/discordImport";
 import { getCustomEmojis } from "../utils/emojiData";
 import type { SearchFilter } from "../utils/messageSearch";
@@ -68,6 +70,7 @@ import { type CallWindow, openCallWindow } from "../utils/popoutCall";
 import { CallPopout } from "./CallPopout";
 import { ChannelDescription } from "./ChannelDescription";
 import { ChatView } from "./ChatView";
+import { CompareCodesDialog } from "./CompareCodesDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { DiscordImportCard } from "./DiscordImportCard";
@@ -291,11 +294,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [dmSearchOpen, setDmSearchOpen] = useState(false);
   // The conversation info panel on the right of the messages space (GRYT-1745).
   const [dmInfoOpen, setDmInfoOpen] = useState(true);
-  const [compareSignal, setCompareSignal] = useState(0);
-  const compareKeys = useCallback(() => {
-    setDmInfoOpen(true);
-    setCompareSignal((n) => n + 1);
-  }, []);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const compareKeys = useCallback(() => setCompareOpen(true), []);
   const [askHide, hideDialog] = useConfirmHide();
   const [pendingLeave, setPendingLeave] = useState<{ title: string; leave: () => void } | null>(null);
   const askLeave = (title: string, leave: () => void) => setPendingLeave({ title, leave });
@@ -488,7 +488,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
-    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice,
+    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -505,11 +505,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       react: reactMlsMessage,
       reportsTaken: mlsReportsTaken,
       archiveFailed,
-      actions: peerKeyNotice
-        ? [{ label: `Check ${activeConversation?.other.nickname ?? "their"}'s key`, run: compareKeys }]
-        : mlsActions,
+      actions: noticeActions(peerKeyNotice, mlsNotAdded, mlsActions, compareKeys),
     }),
-    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, activeConversation?.other.nickname, compareKeys],
+    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded, compareKeys],
   );
 
   /** The server already withholds new messages, so this covers what was drawn
@@ -1059,6 +1057,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     );
   }, [activeDm, viewingHost, memberListMap]);
 
+  const peerKeys = usePeerKeyCheck(viewingHost ?? undefined, activeDm?.kind === "dm" ? activeDm.other.server_user_id : undefined);
   const dmHeaderSubtitle = useMemo(() => {
     if (!activeDm || !currentlyViewingServer) return undefined;
     const { host, name: stored } = currentlyViewingServer;
@@ -1069,12 +1068,24 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         {activeDm.kind === "group" ? <span>{activeDm.members.length + 1} people ·</span> : <span>on</span>}
         <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
         <span aria-hidden>·</span>
-        {sealed ? (
+        {sealed && activeDm.kind === "dm" && (
+          <button
+            type="button"
+            onClick={compareKeys}
+            className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-xs underline underline-offset-2"
+            style={{ color: peerKeys.comparedAt ? "var(--gryt-success-9)" : "inherit" }}
+          >
+            <PiShieldCheckFill size={11} aria-hidden />
+            {peerKeys.comparedAt ? "Encrypted, codes compared" : "Encrypted"}
+          </button>
+        )}
+        {sealed && activeDm.kind !== "dm" && (
           <>
             <PiShieldCheckFill size={11} aria-hidden />
             <span>Encrypted</span>
           </>
-        ) : (
+        )}
+        {!sealed && (
           /* Boards 5b and 5c: why, what to do, and turning the dots off. */
           <NotEncryptedPopover
             decision={sealing}
@@ -1088,7 +1099,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         )}
       </span>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, compareKeys]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, compareKeys, peerKeys.comparedAt]);
 
   /* Board 7, option A: behind ⋯ in a channel's header. The pin button stays beside it. */
   const channelMoreMenu = useMemo(() => {
@@ -1784,7 +1795,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               ) : (
                 <DmPersonPanel
                   host={host}
-                  compareSignal={compareSignal}
                   member={memberListMap[activeDm.other.server_user_id]}
                   conversation={activeDm}
                   pins={dmPins}
@@ -1907,6 +1917,16 @@ forumTags={activeDm ? [] : activeChannelForumTags}
       />
 
       {hideDialog}
+      {activeDm?.kind === "dm" && viewingHost && (
+        <CompareCodesDialog
+          open={compareOpen}
+          onOpenChange={setCompareOpen}
+          host={viewingHost}
+          peerId={activeDm.other.server_user_id}
+          peerName={activeDm.other.nickname}
+          onCall={() => startCall(activeDm.conversation_id)}
+        />
+      )}
       {activeDm?.kind === "dm" && (
         <DiscordImportDialog
           open={discordImport.dialogOpen}
@@ -2008,3 +2028,9 @@ forumTags={activeDm ? [] : activeChannelForumTags}
     </MemberCardActionsContext.Provider>
   );
 };
+
+/** The buttons under a DM's notice line: comparing codes comes first when that's what it's about. */
+function noticeActions(keyChanged: boolean, notAdded: boolean, actions: MlsAction[], compare: () => void): MlsAction[] {
+  if (keyChanged) return [{ label: "Compare codes", run: compare }];
+  return notAdded ? [{ label: "Show code", run: compare }, ...actions] : actions;
+}
