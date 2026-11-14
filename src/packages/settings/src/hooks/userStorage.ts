@@ -1,4 +1,5 @@
 import { getElectronAPI, isElectron } from "../../../../lib/electron";
+import { carryGuestValue } from "../carryGuestValue";
 import { getDeviceId, isDeviceId } from "./deviceId";
 
 type UserData = Record<string, unknown>;
@@ -125,7 +126,7 @@ function persistUnder(userId: string, values: UserData): void {
 
 /**
  * Move what this device set up as a guest onto the account that just signed in.
- * **Unanswered means no**, and only keys the account does not have are filled.
+ * **Unanswered means no**. Keys the account lacks are filled, and servers are merged in.
  */
 
 /**
@@ -152,9 +153,10 @@ async function carryDeviceSettingsOver(
 
   const carried: UserData = {};
   for (const [key, value] of Object.entries(guest)) {
-    if (data[key] !== undefined) continue;
-    data[key] = value;
-    carried[key] = value;
+    const next = carryGuestValue(key, data[key], value);
+    if (next === undefined) continue;
+    data[key] = next;
+    carried[key] = next;
   }
 
   if (Object.keys(carried).length === 0) {

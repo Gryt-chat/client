@@ -96,6 +96,7 @@
     "test:builder-config": "node scripts/check-builder-config.ts",
     "test:helper-packaging": "node scripts/check-helper-packaging.ts",
     "test:server-order": "node scripts/check-server-order.ts",
+    "test:carry-guest-servers": "node scripts/check-carry-guest-servers.ts",
     "test:voice-state": "node scripts/check-voice-state-reassert.ts",
     "test:media-state": "node scripts/check-media-state-reassert.ts",
     "test:calls": "node scripts/check-calls.ts",

@@ -134,10 +134,11 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
       'https://auth.gryt.chat',
     );
 
+  // gryt.chat's callback page only forwards to the app for another issuer, so a self-hosted one skips it.
   const authCallbackUrl = configValue(
     win?.GRYT_AUTH_CALLBACK_URL,
     import.meta.env.VITE_GRYT_AUTH_CALLBACK_URL,
-    'https://gryt.chat/auth/callback',
+    customIssuer ? 'gryt://auth/callback' : 'https://gryt.chat/auth/callback',
   );
 
   /**
