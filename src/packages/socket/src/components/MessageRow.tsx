@@ -201,6 +201,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   }, [m, serverHost, onLightboxOpen, meta.senderName]);
   const isOwnMessage = !!currentUserId && m.sender_server_id === currentUserId;
   const { messageStyle: look, ownMessageSide } = useTheme();
+  // A custom emoji used here before and since deleted would show as its name, so the quick row skips it.
+  const customEmojiMap = useCustomEmojiMap();
   const alignRight = isOwnMessage && ownMessageSide === "right" && !meta.isSystem;
 
   // Editing and deleting your own message each have a permission, so a role can
@@ -289,7 +291,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
    * Read on hover rather than held in state, so it is current without being told.
    */
   const quickReactions = showToolbar && canReact
-    ? getFrequentReactions(4, serverHost)
+    ? getFrequentReactions(4, serverHost, (src) => !/^:.+:$/.test(src) || customEmojiMap.has(src.slice(1, -1)))
     : undefined;
 
   const highlighted = isHovered || isReactionPickerOpen || isCtxMenuOpen;
