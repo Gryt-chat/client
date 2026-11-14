@@ -243,6 +243,6 @@ for (const kind of ["unacked", "lost"] as const) {
       .locator("[data-message-id]")
       .evaluateAll((els, wanted) => els.map((el) => wanted.find((t) => el.textContent?.includes(t))).filter(Boolean), texts);
     expect.soft([...new Set(order)], "in the order they were typed").toEqual(texts);
-    await expect(bob.page.getByText("couldn't be decrypted")).toHaveCount(0);
+    await expect(bob.page.getByText("couldn't be opened on")).toHaveCount(0);
   });
 }

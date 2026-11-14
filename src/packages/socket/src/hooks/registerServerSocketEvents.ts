@@ -46,6 +46,7 @@ import type {
 
 import { PiArrowsClockwiseFill, PiClockFill, PiInfoFill } from "../../../../lib/icons";
 import { type DmKeyFix, dmKeyWarningsOff, showDmKeyWarning } from "../components/dmKeyWarningToast";
+import { showHistoryAsk } from "../components/historyAskToast";
 import type { MemberInfo } from "../components/MemberSidebar";
 import {
   applyCallMemberships,
@@ -54,6 +55,7 @@ import {
 } from "../lib/callMembers";
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
+import { resendHistoryAsks } from "../mls/historyAsk";
 import { attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
@@ -118,6 +120,9 @@ const dmKeyWarningTimers = new Map<string, ReturnType<typeof setTimeout>>();
    and one toast each stacked up into a wall of the same warning. */
 const DM_KEY_TOAST_ID = "dm-key-rewritten";
 const dmKeyWarnedHosts = new Map<string, string>();
+/** The latest key decisions and members per server, for answers given outside React. */
+const lastKeyStates = new Map<string, Record<string, MemberKeyState>>();
+const lastMembers = new Map<string, MemberInfo[]>();
 let dmKeyLastFix: DmKeyFix = "none";
 
 function renderDmKeyWarning(): void {
@@ -802,7 +807,18 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     }
   });
 
+  /* "Send me your copy" from someone in a DM: offered only while their key is the one this device
+     trusts, so a key nobody has checked can't pull history. */
+  socket.on("dm:history:asked", (asked?: { conversationId?: string; from?: string }) => {
+    if (typeof asked?.conversationId !== "string" || typeof asked.from !== "string") return;
+    if (lastKeyStates.get(host)?.[asked.from]?.decision.kind !== "known") return;
+    const name = lastMembers.get(host)?.find((m) => m.serverUserId === asked.from)?.nickname ?? "Someone";
+    showHistoryAsk(host, asked.conversationId, asked.from, name);
+  });
+
   socket.on("members:list", (data: MemberInfo[]) => {
+    lastMembers.set(host, data);
+    resendHistoryAsks(socket, host, (id) => data.some((m) => m.serverUserId === id && m.status !== "offline"));
     const membersWithGrayColor = data.map(member => ({
       ...member,
       color: "var(--gryt-neutral-6)"
@@ -827,6 +843,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       )
       .then((states) => {
         setMemberKeyStates((old) => ({ ...old, [host]: states }));
+        lastKeyStates.set(host, states);
         const mine = states[myServerUserIdByHost.get(host) ?? ""];
         const mineRow = data.find((m) => m.serverUserId === myServerUserIdByHost.get(host));
         serverMlsOwnKey(host, !!(mine?.ownKeyRewritten || mine?.ownPersonKeyRewritten), mineRow?.dmKeyBinding ?? null, mineRow?.keyResetAt ?? null);

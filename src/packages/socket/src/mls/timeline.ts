@@ -189,9 +189,9 @@ export function mlsNotice(
   if (mode?.kind === "refused") return `Can't send yet. ${Here} isn't set up for end-to-end encryption here.`;
   if (problems.undecryptable > 0) {
     const n = problems.undecryptable;
-    return `${n} ${n === 1 ? "message" : "messages"} couldn't be decrypted on ${here}.`;
+    return `${n} ${n === 1 ? "message" : "messages"} couldn't be opened on ${here}. ${peerName} has ${n === 1 ? "it" : "them"} and can send you a copy.`;
   }
-  if (lostHistory) return `Older messages were cleared from ${here}.`;
+  if (lostHistory) return `Older messages were cleared from ${here}. ${peerName} can send you a copy.`;
   if (mode?.kind === "mls" && home === "browser") return "Messages here are only kept in this browser. Clearing its site data deletes them.";
   return null;
 }

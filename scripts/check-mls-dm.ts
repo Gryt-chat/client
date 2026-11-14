@@ -129,7 +129,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   assert.match(mlsNotice({ kind: "mls" }, none, { ...app, peerKeyChanged: true }) ?? "", /Mia has a new key.*compare codes with them/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, app), null);
   assert.match(mlsNotice({ kind: "refused", reason: "peer_left_mls" }, none, app) ?? "", /Mia/);
-  assert.equal(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, app), "1 message couldn't be decrypted on this device.");
+  assert.equal(mlsNotice({ kind: "mls" }, { undecryptable: 1, lost: null }, app), "1 message couldn't be opened on this device. Mia has it and can send you a copy.");
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 3, lost: null }, app) ?? "", /3 messages/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "removed" }, app) ?? "", /taken out/);
   assert.match(mlsNotice({ kind: "mls" }, { undecryptable: 0, lost: "not_added" }, app) ?? "", /new to your chat with Mia.*waits and goes out on its own/);
@@ -139,7 +139,7 @@ test("the composer line: quiet when healthy, says why otherwise, and on the web 
   assert.match(mlsNotice(refused, { undecryptable: 0, lost: "too_many_devices" }, app) ?? "", /most devices allowed.*Settings/);
   assert.match(mlsNotice(refused, { undecryptable: 0, lost: "other_identity" }, app) ?? "", /Link it/);
   assert.match(mlsNotice(refused, none, app) ?? "", /isn't set up/);
-  assert.equal(mlsNotice({ kind: "mls" }, none, { ...app, lostHistory: true }), "Older messages were cleared from this device.");
+  assert.equal(mlsNotice({ kind: "mls" }, none, { ...app, lostHistory: true }), "Older messages were cleared from this device. Mia can send you a copy.");
   assert.match(mlsNotice({ kind: "mls" }, none, { ...app, home: "browser" }) ?? "", /this browser/);
   assert.equal(mlsNotice({ kind: "sealed-v1", reason: "peer_without_mls" }, none, { ...app, home: "browser" }), null);
 });
