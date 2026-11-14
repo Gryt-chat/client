@@ -28,7 +28,7 @@ import type {
   serverDetailsList as ServerDetailsListType,
   Servers,
 } from "@/settings/src/types/server";
-import { useDirectoryUnread, useDmSpaceOpen, useLeaveDmSpace, useOpenDmSpace, useServerChannelUnread, useServerManagement, useSockets,useWaitingOnYou } from "@/socket";
+import { useDirectoryUnread, useDmSpaceOpen, useLeaveDmSpace, useOpenDmSpace, useServerChannelUnread, useServerManagement, useSockets, useWaitingOnYou } from "@/socket";
 import { ConfirmDialog } from "@/socket/src/components/ConfirmDialog";
 import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
