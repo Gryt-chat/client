@@ -20,7 +20,7 @@ import { uploadChatFile } from "../hooks/uploadChatFile";
 import { getMediaDimensions } from "../utils/imageUtils";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { forgetHistoryAsk, historyAsked } from "./historyAsk";
-import { askTheirCopy, askToApproveHere, useMlsSource } from "./serverMls";
+import { askOwnCopy, askTheirCopy, askToApproveHere, useMlsSource } from "./serverMls";
 import type { ConversationProblems } from "./session";
 import { archivedRow, newMessage, sendFailure, WAITING_NOTE, withOpenedFiles } from "./timeline";
 
@@ -190,6 +190,8 @@ export function useMlsConversation({
             }),
           );
           setHasMore(read.length === limit);
+          // Nothing here yet: your other devices may have this chat, and they send it unasked.
+          if (!read.length) askOwnCopy(host, conversationId);
         };
         void load();
         off = archive.messages.onChange((change) => {
@@ -204,7 +206,11 @@ export function useMlsConversation({
       if (timer) clearTimeout(timer);
       off();
     };
-  }, [source, conversationId, peer, limit, archiveOpen, archiveEpoch]);
+  }, [source, conversationId, peer, limit, archiveOpen, archiveEpoch, host]);
+
+  useEffect(() => {
+    if (active && conversationId && (problems.undecryptable > 0 || archiveFacts.lostHistory)) askOwnCopy(host, conversationId);
+  }, [active, host, conversationId, problems.undecryptable, archiveFacts.lostHistory]);
 
   // Files are fetched and decrypted once each, the way a sealed DM's are.
   useEffect(() => {

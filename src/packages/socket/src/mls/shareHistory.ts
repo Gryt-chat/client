@@ -32,6 +32,7 @@ export async function shareHistory(
     ...(m.replyTo ? { replyTo: m.replyTo } : {}),
     ...(Object.keys(m.attachments).length ? { attachments: m.attachments } : {}),
   }));
+  if (!entries.length) return 0;
   const batches = historyBatches(entries, () => crypto.randomUUID());
   for (const batch of batches) await source.send(conversationId, peer, batch);
   return batches.reduce((n, b) => n + b.entries.length, 0);
