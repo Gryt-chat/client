@@ -28,7 +28,7 @@ import { showLinkedDeviceToast } from "../components/linkedDeviceToast";
 import { publishDmKey } from "../utils/dmKeys";
 import { readMlsCapability, readMlsReports } from "./capability";
 import { thisDeviceCertificateName } from "./deviceName";
-import { askForHistory } from "./historyAsk";
+import { askForHistory, askOwnDevices } from "./historyAsk";
 import { handoverCode, type HandoverRequest, handoverRequests, keyResets, type OwnHandover, ownHandover } from "./keyHandover";
 import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
 import { createModeOnlySource } from "./modeOnly";
@@ -133,6 +133,21 @@ export function askTheirCopy(host: string, conversationId: string, peer: string)
   if (!socket) return false;
   askForHistory(socket, host, conversationId, peer);
   return true;
+}
+
+/** Asks your own other devices for this DM's history. They answer by themselves. */
+export function askOwnCopy(host: string, conversationId: string): void {
+  const socket = hosts.get(host)?.socket;
+  if (socket) askOwnDevices(socket, host, conversationId);
+}
+
+/** One of your own devices asked: the tab running the driver sends this DM's history, unasked. */
+export async function answerOwnAsk(host: string, conversationId: string): Promise<number> {
+  const session = hosts.get(host)?.session;
+  if (!session) return 0;
+  const peer = await session.peerOf(conversationId);
+  if (!peer) return 0;
+  return shareHistory(session, (await openLocalArchive()).messages, conversationId, peer);
 }
 
 /** Our copy of this DM, sent to the person who asked (GRYT-1875). How many messages went. */

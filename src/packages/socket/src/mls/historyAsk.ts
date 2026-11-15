@@ -9,7 +9,7 @@ const KEEP_MS = 7 * 24 * 60 * 60 * 1000;
 const RESEND_EVERY_MS = 10 * 60 * 1000;
 const lastSent = new Map<string, number>();
 
-type Asks = Record<string, { peer: string; at: number }>;
+type Asks = Record<string, { peer: string; at: number; own?: boolean }>;
 
 function read(): Asks {
   try {
@@ -31,16 +31,25 @@ function write(asks: Asks): void {
 
 const keyOf = (host: string, conversationId: string) => `${host} ${conversationId}`;
 
-function send(socket: Socket, host: string, conversationId: string): void {
+function send(socket: Socket, host: string, conversationId: string, own = false): void {
   const accessToken = getServerAccessToken(host);
   if (!accessToken) return;
   lastSent.set(keyOf(host, conversationId), Date.now());
-  socket.emit("dm:history:ask", { accessToken, conversationId }, () => {});
+  socket.emit("dm:history:ask", { accessToken, conversationId, ...(own ? { own: true } : {}) }, () => {});
 }
 
 export function askForHistory(socket: Socket, host: string, conversationId: string, peer: string): void {
   write({ ...read(), [keyOf(host, conversationId)]: { peer, at: Date.now() } });
   send(socket, host, conversationId);
+}
+
+/** Your own other devices: once per chat per session, since an open one answers straight away. */
+const askedOwn = new Set<string>();
+export function askOwnDevices(socket: Socket, host: string, conversationId: string): void {
+  const key = keyOf(host, conversationId);
+  if (askedOwn.has(key)) return;
+  askedOwn.add(key);
+  send(socket, host, conversationId, true);
 }
 
 /** From each member list: an ask whose person is online now goes again, at most every ten minutes. */

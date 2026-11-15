@@ -56,7 +56,7 @@ import {
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { resendHistoryAsks } from "../mls/historyAsk";
-import { askToApproveHere, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
+import { answerOwnAsk, askToApproveHere, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
@@ -816,6 +816,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
      trusts, so a key nobody has checked can't pull history. */
   socket.on("dm:history:asked", (asked?: { conversationId?: string; from?: string }) => {
     if (typeof asked?.conversationId !== "string" || typeof asked.from !== "string") return;
+    if (asked.from === myServerUserIdByHost.get(host)) {
+      void answerOwnAsk(host, asked.conversationId).catch((e: unknown) => console.warn("[MLS] Couldn't send our copy to our own device:", e));
+      return;
+    }
     if (lastKeyStates.get(host)?.[asked.from]?.decision.kind !== "known") return;
     const name = lastMembers.get(host)?.find((m) => m.serverUserId === asked.from)?.nickname ?? "Someone";
     showHistoryAsk(host, asked.conversationId, asked.from, name);
