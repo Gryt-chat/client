@@ -33,7 +33,14 @@ export function CompareCodesDialog({ open, onOpenChange, host, conversationId, p
     onOpenChange(next);
   };
   const sendOurCopy = async () => {
-    if (!mlsSource) return;
+    if (sharing === "sending") {
+      toast("Your copy is already on its way.");
+      return;
+    }
+    if (!mlsSource) {
+      toast.error("Not connected to this server yet, so your copy can\u2019t go out. Try again in a moment.");
+      return;
+    }
     setSharing("sending");
     try {
       const sent = await shareHistory(mlsSource, (await openLocalArchive()).messages, conversationId, peerId);
@@ -87,7 +94,7 @@ export function CompareCodesDialog({ open, onOpenChange, host, conversationId, p
                 </p>
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button tone="neutral" onClick={() => close(false)}>Not now</Button>
-                  <Button disabled={sharing === "sending"} onClick={() => void sendOurCopy()}>
+                  <Button onClick={() => void sendOurCopy()}>
                     {sharing === "sending" ? "Sending\u2026" : "Send them your copy"}
                   </Button>
                 </div>

@@ -62,8 +62,8 @@ export function ApproveThisDevice() {
           <Dialog.Title>Approve this device</Dialog.Title>
           <div className="mt-3 flex flex-col gap-3 text-sm">
             <p>
-              You&rsquo;re signed in. To open your private messages here too, approve it once from a device you
-              already use. Servers and channels work right away; only DMs wait for this.
+              To open your private messages on this device, approve it once from a device you already use.
+              Servers and channels work right away. Only DMs wait for this.
             </p>
             {handover && !handover.denied && (
               <div className="flex flex-col gap-1 rounded-md border border-gryt-border p-3">
