@@ -58,12 +58,12 @@ export function AdvancedSettings() {
       {newVoice && (
         <SliderSetting
           title={`Voice quality: ${voiceBitrateKbps} kbps`}
-          description="How much data your voice uses on the new connection. At 192 it sounds the same as your microphone. Turn it down on phone data or weak Wi-Fi; 96 is the lowest that still sounds good."
+          description="How much data your voice uses on the new connection. 510 is the most Opus can send, and the default. Turn it down on phone data or weak Wi-Fi. 96 is the lowest that still sounds good."
           value={voiceBitrateKbps}
           onChange={setVoiceBitrateKbps}
           min={96}
-          max={192}
-          step={16}
+          max={510}
+          step={6}
         />
       )}
 

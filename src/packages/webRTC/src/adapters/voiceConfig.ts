@@ -16,14 +16,13 @@ import { isMacAppStoreBuild, isMacDesktop } from "../../../../lib/electron";
 import { startDesktopNativeAudio } from "./desktopNativeVoice";
 import { firstShareKey, shareMeta, useShareWindowsVersion } from "./shareWindows";
 
-/** The own voice transport (GRYT-1818): on in beta builds on the way to dropping WebRTC audio (GRYT-1831), off in stable.
-    `localStorage["gryt.ownAudioTransport"]` = "1" or "0" overrides either way. */
+/** The own voice transport (GRYT-1818): on for everyone, on the way to dropping WebRTC audio (GRYT-1831).
+    `localStorage["gryt.ownAudioTransport"]` = "0" turns it off. */
 function ownTransportOn(): boolean {
   try {
-    const set = localStorage.getItem("gryt.ownAudioTransport");
-    return set === null ? IS_BETA_BUILD : set === "1";
+    return localStorage.getItem("gryt.ownAudioTransport") !== "0";
   } catch {
-    return IS_BETA_BUILD;
+    return true;
   }
 }
 /** The phone's native engine on the Mac desktop, through gryt-voice (GRYT-1837): beta only, and not the store
