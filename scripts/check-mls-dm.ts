@@ -149,7 +149,10 @@ test("a failed send names what somebody can do something about", () => {
   assert.match(sendFailure({ code: "waiting_for_welcome" }, "browser"), /This browser/);
   assert.match(sendFailure({ code: "waiting_for_welcome" }, "app"), /still isn.t in this chat/);
   assert.match(sendFailure({ code: "other_identity" }, "browser"), /This browser needs to be linked/);
-  assert.equal(sendFailure(new Error("socket"), "app"), "Not sent.");
+  assert.equal(sendFailure(new Error("socket"), "app"), "Not sent. Something went wrong while encrypting it. It's back in the message box. Press Send to try again.");
+  assert.match(sendFailure({ code: "offline" }, "app"), /^Not sent\. The server didn't answer in time\. It's back in the message box/);
+  assert.match(sendFailure({ code: "unexpected_member" }, "app"), /key this device doesn't know.*restart Gryt\. It's back in the message box/);
+  assert.match(sendFailure({ code: "unexpected_member" }, "browser"), /key this browser doesn.t know.*reload the page/);
 });
 
 function memoryArchive() {

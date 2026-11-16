@@ -196,13 +196,30 @@ export function mlsNotice(
   return null;
 }
 
+const TRY_AGAIN = "It's back in the message box. Press Send to try again.";
+const FAILURE_REASONS: Record<string, string> = {
+  offline: "The server didn't answer in time.",
+  stopped: "The connection to the server closed.",
+  refused: "The server turned it down.",
+  commit_retries: "Other devices kept changing this chat at the same time.",
+  not_in_group: "This device hasn't been added to this chat yet.",
+  no_device: "Encrypted messages haven't started on this device yet.",
+  too_many_attachments: "That's more files than one message can carry.",
+};
+
 /** What a failed MLS send says on its row. */
 export function sendFailure(e: unknown, home: "browser" | "app"): string {
   const code = (e as { code?: string })?.code;
+  if (code === "unexpected_member") {
+    const here = home === "browser" ? "this browser" : "this device";
+    const restart = home === "browser" ? "reload the page" : "restart Gryt";
+    return `Not sent. Someone in this chat has a key ${here} doesn't know, so Gryt won't send it to them. If you just linked ${here}, ${restart}. ${TRY_AGAIN}`;
+  }
+  if (code === "device_removed") return "Not sent. This device was removed from encrypted messages on this server.";
   if (code === "peer_unverified") return "Not sent. Their key isn't trusted on this device yet. Compare codes with them, then send it again.";
   if (code === "other_identity") return `Not sent. ${home === "browser" ? "This browser" : "This device"} needs to be linked to your account's key first.`;
   if (code === "waiting_for_welcome") {
     return `Not sent. ${home === "browser" ? "This browser" : "This device"} still isn't in this chat after half an hour. It's back in the message box to send once the other person or another of your devices has been online.`;
   }
-  return "Not sent.";
+  return `Not sent. ${(code && FAILURE_REASONS[code]) ?? "Something went wrong while encrypting it."} ${TRY_AGAIN}`;
 }
