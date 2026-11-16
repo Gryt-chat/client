@@ -10,6 +10,7 @@ import { useSettings } from "@/settings";
 
 import { PiArrowsClockwiseFill, PiWarningFill } from "../../../../lib/icons";
 import { LOW_LATENCY_GATE, LOW_LATENCY_VOLUME, PRESET_SWITCHES, presetOf, type VoicePreset } from "../hooks/voicePreset";
+import { OutputMeters } from "./outputMeters";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
 
 /** Visualizer refresh rate. 30 fps is plenty for a level meter. */
@@ -673,6 +674,8 @@ export function AudioSettings() {
         onChange={setOutputVolume}
         max={MAX_VOLUME_PERCENT}
       />
+
+      <OutputMeters />
 
       <Divider />
 

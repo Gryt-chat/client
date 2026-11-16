@@ -18,7 +18,7 @@ export interface AudioSettingsData {
   autoGainTargetDb: number;
   compressorEnabled: boolean;
   compressorAmount: number;
-  /** The new voice connection's bitrate, 96–192 (GRYT-1823). */
+  /** The new voice connection's bitrate, 96–510 (GRYT-1823). */
   voiceBitrateKbps: number;
   eSportsModeEnabled: boolean;
   inputMode: "voice_activity" | "push_to_talk";
@@ -57,7 +57,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   autoGainTargetDb: -20,
   compressorEnabled: true,
   compressorAmount: 50,
-  voiceBitrateKbps: 192,
+  voiceBitrateKbps: 510,
   eSportsModeEnabled: false,
   inputMode: "voice_activity",
   pushToTalkKey: "",
