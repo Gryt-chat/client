@@ -165,11 +165,11 @@ export function SignInApproval() {
         <Dialog.Portal>
           <Dialog.Backdrop />
           <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)]">
-            <Dialog.Title>Someone has your password</Dialog.Title>
+            <Dialog.Title>That wasn&rsquo;t you?</Dialog.Title>
             <div className="mt-3 flex flex-col gap-3 text-sm">
               <p>
-                A device you don&rsquo;t know signed in to your account. It didn&rsquo;t get your key, so it can&rsquo;t read
-                your messages. Change your password now so it can&rsquo;t sign in again.
+                You said you don&rsquo;t know that device. Most likely someone else has your password. The device didn&rsquo;t
+                get your key, so it can&rsquo;t read your messages. Change your password so it can&rsquo;t sign in again.
               </p>
               <div className="flex flex-wrap justify-end gap-2">
                 <Button tone="neutral" onClick={() => setNotMe(false)}>Later</Button>
