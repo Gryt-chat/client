@@ -175,7 +175,7 @@ function Body({ state, replaces, history }: { state: NewDeviceState | null; repl
       return (
         <div className="flex flex-col gap-3">
           <Alert severity={state.reason === "mismatch" || state.reason === "tampered" ? "error" : "info"}>
-            {newDeviceEndText(state.reason)}
+            {newDeviceEndText(state.reason, state.detail)}
           </Alert>
           <div className="flex flex-wrap gap-2">
             {state.reason === "history_failed" ? (
