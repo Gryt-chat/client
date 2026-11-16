@@ -10,10 +10,16 @@ import { keyHolderHere, moveServerToThisKey, requestKeyReset } from "../mls/serv
 
 const PHONES = /^(iPhone|iPad|Android phone|Android tablet)$/;
 
+const BROWSERS = /^(Chrome|Firefox|Safari|Edge|Brave|Opera)\b/;
+
 function who(name: string | null): string {
   if (!name) return "another of your devices";
+  if (BROWSERS.test(name)) return `gryt.chat in ${name}`;
   return PHONES.test(name) ? `your ${name}` : name;
 }
+
+/** Where to go to approve: a browser opens the site, an app opens Gryt. */
+const openOn = (name: string | null) => (name && BROWSERS.test(name) ? `Open ${who(name)}` : `Open Gryt on ${who(name)}`);
 
 const that = (name: string | null) => (name && PHONES.test(name) ? `that ${name}` : "that device");
 const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -131,11 +137,11 @@ export function OldKeyNotice({ host, serverName, peerName }: { host: string; ser
         actions={<button type="button" className="gryt-link text-xs" onClick={() => void giveUp()}>I don&rsquo;t have {that(name)} any more</button>}
       >
         <span className="text-gryt-muted">
-          Open Gryt on {who(name)} and approve. Check it shows this code:
+          {openOn(name)} and approve. Check it shows this code:
         </span>
         <div className="mt-1.5 flex flex-wrap items-center gap-3">
           <code className="rounded-[10px] bg-gryt-surface px-3.5 py-1.5 font-mono text-[22px] tracking-[0.2em] text-gryt-text select-all">{handover.code}</code>
-          {seenAt && <span className="text-xs text-gryt-muted">Last used on {who(name)} {day(seenAt)}</span>}
+          {seenAt && <span className="text-xs text-gryt-muted">Last used {day(seenAt)}</span>}
         </div>
       </Card>
     );
