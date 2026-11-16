@@ -295,6 +295,8 @@ function ApproveCode() {
 
 /** A key none of your devices made, once per key. The first look only remembers what's there. */
 async function watchKeyBook(): Promise<string | null> {
+  // Right after sign-in there's no certificate yet, and it names the account.
+  await getValidCertificate().catch(() => undefined);
   const sub = getCertificateSub();
   if (!sub) return null;
   const [book, mine] = await Promise.all([fetchKeyBook(sub), accountKeyThumbprint().catch(() => null)]);
