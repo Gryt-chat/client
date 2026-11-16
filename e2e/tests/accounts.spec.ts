@@ -1,4 +1,4 @@
-import { messageRow, unique } from "../support/app";
+import { membersPanel, messageRow, unique } from "../support/app";
 import { bothWays, establish, openDmFromList, send } from "../support/dm";
 import { expect, test } from "../support/fixtures";
 import { startIdentity, type TestIdentity } from "../support/identity";
@@ -28,6 +28,9 @@ test.describe("one key per account", () => {
     identity.learn();
     const old = await newMember({ server, account: { identity, sub: "acct-erin" }, label: "erin old" });
     const kari = await newMember({ server, label: "kari" });
+    // An account's name settles a moment after joining; Kari's member list is what the test clicks, so it's read from there.
+    await expect.poll(async () => (await membersPanel(kari.page).getByRole("button").allTextContents()).filter((n) => n && n !== kari.name).length).toBe(1);
+    old.name = (await membersPanel(kari.page).getByRole("button").allTextContents()).find((n) => n && n !== kari.name)!;
     await establish(old, kari);
     await old.context.close();
 
