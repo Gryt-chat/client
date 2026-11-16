@@ -783,8 +783,10 @@ export async function ownMlsDevices(host: string): Promise<OwnDevicesAnswer> {
 
 /** Takes one of your devices off that server. Your other devices drop it from each DM. */
 export async function removeOwnMlsDevice(host: string, deviceId: string): Promise<void> {
-  if (!askOtherTab()) return removeHere(host, deviceId);
-  await askRelay({ host, op: "remove", deviceId });
+  if (!askOtherTab()) await removeHere(host, deviceId);
+  else await askRelay({ host, op: "remove", deviceId });
+  // The removed device may have held your key here: start moving this server to the key this device has.
+  if (hosts.get(host)?.otherIdentity && holdsKeyElsewhere(host)) moveServerToThisKey(host);
 }
 
 const diagnoseHere = (host: string, conversationId: string) =>
