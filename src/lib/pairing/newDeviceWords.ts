@@ -13,13 +13,14 @@ const ENDED: Partial<Record<PairingEndReason, string>> = {
   newer_version: "Your other device is on a newer version of Gryt. Update this one first.",
   rate_limited: "Too many tries. Wait a while and try again.",
   relay_error: "Couldn't reach the linking service. Check your connection.",
-  history_failed: "You're linked, but this device couldn't save your message history. Link again from the other device to get it.",
+  history_failed: "You're linked, but your message history didn't come across. Your chats fill in from your other devices when you open them.",
   access_denied: "The sign-in was turned down, so nothing was kept. Try again.",
   expired_token: "The sign-in ran out before the other device approved it, so nothing was kept. Try again.",
 };
 
-export function newDeviceEndText(reason: PairingEndReason): string {
-  return ENDED[reason] ?? "Linking stopped before it finished.";
+export function newDeviceEndText(reason: PairingEndReason, detail?: string): string {
+  const text = ENDED[reason] ?? "Linking stopped before it finished.";
+  return detail ? `${text} What went wrong: ${detail}` : text;
 }
 
 /** Lines about the history coming in. Empty until the other device says it's sending some. */
