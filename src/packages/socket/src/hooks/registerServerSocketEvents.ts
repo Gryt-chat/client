@@ -56,7 +56,7 @@ import {
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { resendHistoryAsks } from "../mls/historyAsk";
-import { answerOwnAsk, askToApproveHere, handedOverHere, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
+import { answerOwnAsk, askToApproveHere, attachServerMls, handedOverHere, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
