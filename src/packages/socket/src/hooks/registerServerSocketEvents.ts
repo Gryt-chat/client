@@ -877,12 +877,9 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
         setMemberKeyStates((old) => ({ ...old, [host]: states }));
         lastKeyStates.set(host, states);
         const mine = states[myServerUserIdByHost.get(host) ?? ""];
-        const mineRow = data.find((m) => m.serverUserId === myServerUserIdByHost.get(host));
         serverMlsOwnKey(
           host,
           !!(mine?.ownKeyRewritten || mine?.ownPersonKeyRewritten),
-          mineRow?.dmKeyBinding ?? null,
-          mineRow?.keyResetAt ?? null,
           !mine?.ownKeyRewritten && !!mine?.ownPersonKeyRewritten,
         );
         serverMlsPinned(host);
