@@ -195,7 +195,8 @@ export const test = base.extend<
       // An account brings its own name; only a guest takes the seeded one.
       if (!options.account) await expect.poll(() => nicknameOf(page), "the seeded nickname should be the one in use").toBe(name);
       if (options.join !== false) await joinServer(page, server.host);
-      // An account's name is its own, so it's read back rather than assumed.
+      // An account's name is its own and replaces the seeded one a moment after joining, so it's waited for.
+      if (options.account) await expect.poll(() => nicknameOf(page), "the account's own name should replace the seeded one").not.toBe(name);
       const shown = options.account ? ((await nicknameOf(page)) ?? name) : name;
       return { context, page, name: shown, frames };
     });
