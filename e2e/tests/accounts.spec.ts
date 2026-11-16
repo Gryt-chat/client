@@ -32,7 +32,8 @@ test.describe("one key per account", () => {
 
     // One key per account: the next device to prove one keeps it, and the old one is gone.
     identity.oneKey("acct-erin");
-    const erin = await newMember({ server, account: { identity, sub: "acct-erin" }, label: "erin new" });
+    // Same member on the server, so Kari still knows it by the name the first device gave it.
+    const erin = { ...(await newMember({ server, account: { identity, sub: "acct-erin" }, label: "erin new" })), name: old.name };
     await openDmFromList(erin.page, kari.name);
 
     await kari.page.reload();
