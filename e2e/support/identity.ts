@@ -48,6 +48,12 @@ export interface TestIdentity {
   issuer: string;
   /** Certificates issued so far, by account. */
   issued: Map<string, number>;
+  /**
+   * The rollout, as it went: in "learn" every proven key passes and certificates name none; after
+   * `oneKey(sub)` the next key proven is the account's, the old ones retire, and only it passes.
+   */
+  learn(): void;
+  oneKey(sub: string): void;
   /** Puts a key in the book that none of the account's devices made, as a finished reset would. */
   addKey(sub: string, thumb: string): void;
   stop(): Promise<void>;
@@ -90,6 +96,7 @@ export async function startIdentity(): Promise<TestIdentity> {
   const account = (sub: string) => accounts.get(sub) ?? (accounts.set(sub, { keys: [], book: [] }), accounts.get(sub)!);
   let issuer = "";
   const issued = new Map<string, number>();
+  let learning = false;
 
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://x");
@@ -109,15 +116,15 @@ export async function startIdentity(): Promise<TestIdentity> {
     const a = account(sub);
     const seed = await seedKeyOf(input.proof, sub);
     if (url.pathname === "/api/v1/certificate") {
-      if (seed && a.keys.length === 0) {
+      if (seed && (a.keys.length === 0 || (learning && !a.keys.includes(seed)))) {
+        a.book.push({ day: today(), thumb: seed, how: a.keys.length === 0 ? (a.book.length ? "kept" : "first") : "added" });
         a.keys.push(seed);
-        a.book.push({ day: today(), thumb: seed, how: "first" });
       }
       if (!seed || !a.keys.includes(seed)) return send(res, 403, { error: "approval_required", resetAt: null });
       const now = Math.floor(Date.now() / 1000);
       const certificate = await signJwt(
         { alg: "ES256", kid: "e2e", typ: "JWT" },
-        { iss: issuer, sub, jwk: input.jwk, seed, preferred_username: sub, iat: now, exp: now + 3600 },
+        { iss: issuer, sub, jwk: input.jwk, ...(learning ? {} : { seed }), preferred_username: sub, iat: now, exp: now + 3600 },
         ca.privateKey,
       );
       issued.set(sub, (issued.get(sub) ?? 0) + 1);
@@ -135,6 +142,15 @@ export async function startIdentity(): Promise<TestIdentity> {
     url: `http://127.0.0.1:${port}`,
     issuer,
     issued,
+    learn() {
+      learning = true;
+    },
+    oneKey(sub) {
+      learning = false;
+      const a = account(sub);
+      for (const thumb of a.keys) a.book.push({ day: today(), thumb, how: "retired" });
+      a.keys = [];
+    },
     addKey(sub, thumb) {
       const a = account(sub);
       a.keys.push(thumb);
