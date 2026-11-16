@@ -432,16 +432,16 @@ export async function approveHandover(request: HandoverRequest): Promise<boolean
 
 const LINK_HANDOVER_WAIT_MS = 10_000;
 
-/**
- * Linking replaces this device's seed. Before it does: every server where it holds the account's key
- * moves to the new seed's key, signed with the old one, and its own open asks are withdrawn.
- */
 /** Servers moved to the linked key in this run. This app holds the old key until it restarts, so they mismatch on purpose. */
 const handedOver = new Set<string>();
 export function handedOverHere(host: string): boolean {
   return handedOver.has(host);
 }
 
+/**
+ * Linking replaces this device's seed. Before it does: every server where it holds the account's key
+ * moves to the new seed's key, signed with the old one, and its own open asks are withdrawn.
+ */
 export async function handOverBeforeLinking(newSeed: Uint8Array): Promise<void> {
   await Promise.all([...hosts].map(async ([host, state]) => {
     try {
