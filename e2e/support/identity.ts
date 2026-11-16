@@ -1,7 +1,6 @@
+import { webcrypto } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-
-import { webcrypto } from "node:crypto";
 
 import type { BrowserContext } from "@playwright/test";
 
@@ -93,7 +92,13 @@ export async function startIdentity(): Promise<TestIdentity> {
   const { kty, crv, x, y } = (await subtle.exportKey("jwk", ca.publicKey)) as Jwk;
   const caJwk = { kty, crv, x, y, kid: "e2e", alg: "ES256", use: "sig" };
   const accounts = new Map<string, Account>();
-  const account = (sub: string) => accounts.get(sub) ?? (accounts.set(sub, { keys: [], book: [] }), accounts.get(sub)!);
+  const account = (sub: string): Account => {
+    const found = accounts.get(sub);
+    if (found) return found;
+    const fresh: Account = { keys: [], book: [] };
+    accounts.set(sub, fresh);
+    return fresh;
+  };
   let issuer = "";
   const issued = new Map<string, number>();
   let learning = false;
@@ -117,7 +122,9 @@ export async function startIdentity(): Promise<TestIdentity> {
     const seed = await seedKeyOf(input.proof, sub);
     if (url.pathname === "/api/v1/certificate") {
       if (seed && (a.keys.length === 0 || (learning && !a.keys.includes(seed)))) {
-        a.book.push({ day: today(), thumb: seed, how: a.keys.length === 0 ? (a.book.length ? "kept" : "first") : "added" });
+        let how = "added";
+        if (a.keys.length === 0) how = a.book.length ? "kept" : "first";
+        a.book.push({ day: today(), thumb: seed, how });
         a.keys.push(seed);
       }
       if (!seed || !a.keys.includes(seed)) return send(res, 403, { error: "approval_required", resetAt: null });
