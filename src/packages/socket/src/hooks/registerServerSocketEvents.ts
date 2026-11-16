@@ -63,7 +63,6 @@ import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
 import { setExternalEmojisAllowed } from "../utils/externalEmojiPolicy";
-import { followSignedHandovers } from "../utils/followHandovers";
 import { firstTimeOnThisSocket } from "../utils/publishedOnce";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { syncAvatarToHost } from "../utils/syncAvatarToHost";
@@ -784,7 +783,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     const myId = myServerUserIdByHost.get(host) ?? null;
     // The person keys are pinned here too, before the MLS driver ever meets their devices.
     const own = (key: (host: string) => Promise<Uint8Array>) => (myId ? key(host).catch(() => null) : Promise.resolve(null));
-    void Promise.all([own(ownDmPublicKey), own(ownPersonPublicKey), followSignedHandovers(localPeerPinStore, identityScopeFor(host), data)])
+    void Promise.all([own(ownDmPublicKey), own(ownPersonPublicKey)])
       .then(([ownKey, ownPersonKey]) =>
         evaluateMemberKeys({
           store: localPeerPinStore,

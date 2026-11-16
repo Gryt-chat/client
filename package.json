@@ -161,7 +161,6 @@
     "test:report-user": "node scripts/check-report-user.ts",
     "test:unverified-report-copy": "node scripts/check-unverified-report-copy.ts",
     "test:comment-length": "node scripts/check-comment-length.ts",
-    "test:follow-handovers": "node --disable-warning=ExperimentalWarning scripts/check-follow-handovers.ts",
     "test:quick-reactions": "node --disable-warning=ExperimentalWarning scripts/check-quick-reactions.ts",
     "test:script-paths": "node scripts/check-script-paths.ts",
     "test:window-buttons": "node scripts/check-window-buttons.ts",
