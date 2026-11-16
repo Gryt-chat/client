@@ -1,4 +1,4 @@
-import { dmKeyBindingFor } from "@/common";
+import { accountKeyProof, dmKeyBindingFor } from "@/common";
 
 import { thisDeviceCertificateName } from "../mls/deviceName";
 
@@ -14,15 +14,16 @@ import { thisDeviceCertificateName } from "../mls/deviceName";
 export async function publishDmKey(
   socket: { emit: (event: string, payload: unknown, ack?: (reply: { ok?: boolean; error?: string }) => void) => unknown },
   host: string,
-  { replace = false }: { replace?: boolean } = {},
+  { replace = false, asAccount = false }: { replace?: boolean; asAccount?: boolean } = {},
 ): Promise<boolean> {
   try {
     const binding = await dmKeyBindingFor(host);
     if (!binding) return false;
+    const account = asAccount ? await accountKeyProof(binding) : undefined;
     // A server from before GRYT-1868 never answers, and took the key anyway.
     return await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => resolve(true), 10_000);
-      socket.emit("dm:key:publish", { binding, deviceName: thisDeviceCertificateName(), ...(replace ? { replace } : {}) }, (reply) => {
+      socket.emit("dm:key:publish", { binding, deviceName: thisDeviceCertificateName(), ...(replace || account ? { replace: true } : {}), ...(account ? { account } : {}) }, (reply) => {
         clearTimeout(timer);
         resolve(reply?.ok !== false);
       });

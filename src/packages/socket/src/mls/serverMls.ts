@@ -278,6 +278,7 @@ export function attachServerMls(socket: Socket, host: string): void {
     void refresh(host);
   });
   socket.on("disconnect", () => {
+    triedAccountMove.delete(host);
     state.ready = false;
     state.pinned = deferred();
   });
@@ -356,6 +357,8 @@ export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding
   if (!state) return;
   // Right after a handover only the DM key is ours; the person key follows, or nothing flips until a restart.
   if (personKeyBehind) void sendPersonKey(host, state);
+  // This device has the account key, so the server takes it from us directly. Once per connection.
+  else if (rewritten && !triedAccountMove.has(host)) void moveToAccountKey(host, state);
   // Open asks come next: the key holder answers them, and the device that asked gets its own back.
   if (keyMatches.get(host) !== !rewritten) state.socket.emit("dm:key:handover:pending", {});
   if (keyMatches.get(host) !== !rewritten) {
@@ -374,6 +377,12 @@ export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding
     dismissHandoverWaiting(host);
   }
   void refresh(host);
+}
+
+const triedAccountMove = new Set<string>();
+async function moveToAccountKey(host: string, state: HostState): Promise<void> {
+  triedAccountMove.add(host);
+  if (await publishDmKey(state.socket, host, { asAccount: true })) await sendPersonKey(host, state);
 }
 
 const sendingPersonKey = new Set<string>();

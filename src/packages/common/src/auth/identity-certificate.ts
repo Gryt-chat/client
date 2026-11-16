@@ -231,6 +231,13 @@ async function seedProof(keycloakToken: string, certJwk: JsonWebKey): Promise<st
   );
 }
 
+/** A server's binding signed by the account key, so the server takes it without an older device's handover. */
+export async function accountKeyProof(binding: string): Promise<string> {
+  const { privateKey, publicJwk } = await deriveScopedKeyPair(ACCOUNT_CERT_SCOPE);
+  const { kty, crv, x, y } = publicJwk;
+  return signJwtWithKey({ binding, iat: Math.floor(Date.now() / 1000) }, privateKey, { jwk: { kty, crv, x, y } });
+}
+
 /** The account service's view of this device's seed key: on record, and any reset under way. */
 export async function accountKeyCall(path: "status" | "reset" | "reset/cancel" | "claim"): Promise<{ known?: boolean; multi?: boolean; result?: "kept" | "single"; resetAt?: number | null; resetIsYours?: boolean; at?: number; ok?: boolean } | null> {
   const token = await getValidIdentityToken().catch(() => undefined);
