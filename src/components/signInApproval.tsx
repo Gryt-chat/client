@@ -205,7 +205,7 @@ export function SignInApproval() {
               <button type="button" className="gryt-link text-xs" onClick={() => { setDenied(false); setNeeded({ resetAt: null }); setWords(""); }}>
                 Use your 24 words instead
               </button>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button tone="neutral" onClick={() => setDenied(false)}>Close</Button>
                 <Button onClick={() => { setDenied(false); void getValidCertificate().catch(() => undefined); }}>Ask again</Button>
               </div>
