@@ -3,7 +3,7 @@ import { Warning } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import { accountKeyCall, getValidCertificate, restoreIdentityFromWords, useAccount } from "@/common";
+import { accountKeyCall, clearIdentityCertificate, getValidCertificate, restoreIdentityFromWords, useAccount } from "@/common";
 
 import { getGrytConfig } from "../config";
 import { getElectronAPI } from "../lib/electron";
@@ -61,6 +61,11 @@ export function SignInApproval() {
       if (s?.known && s.resetAt && !s.resetIsYours) setWarning(s.resetAt);
       // One key per account: the first device of a several-key account to get here keeps its key.
       if (s?.known && s.multi && (await accountKeyCall("claim"))?.result === "kept") showKeptKey();
+      // A saved certificate outlives a dropped key by days; a fresh one asks to be approved.
+      if (s && !s.known) {
+        clearIdentityCertificate();
+        void getValidCertificate().catch(() => undefined);
+      }
     });
   }, [isSignedIn]);
 
