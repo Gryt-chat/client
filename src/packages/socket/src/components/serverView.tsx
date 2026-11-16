@@ -61,7 +61,7 @@ import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
 import { movedToThisKey } from "../mls/keyHandover";
-import { holdsKeyElsewhere, useMlsSource } from "../mls/serverMls";
+import { useHoldsKeyElsewhere, useMlsSource } from "../mls/serverMls";
 import type { MlsAction } from "../mls/useMlsConversation";
 import { type DiscordImportState, useDiscordImport } from "../utils/discordImport";
 import { getCustomEmojis } from "../utils/emojiData";
@@ -501,12 +501,13 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   });
   const viewHost = currentlyViewingServer?.host ?? "";
   const movedHere = movedToThisKey.use().includes(viewHost);
+  const keyElsewhere = useHoldsKeyElsewhere(viewHost);
   const oldKey = useMemo(
     () =>
-      viewHost && ((mlsOtherIdentity && holdsKeyElsewhere(viewHost)) || movedHere)
+      viewHost && ((mlsOtherIdentity && keyElsewhere) || movedHere)
         ? { host: viewHost, serverName: currentlyViewingServer?.name || viewHost, peerName: activeConversation?.other.nickname || "They" }
         : null,
-    [viewHost, mlsOtherIdentity, movedHere, currentlyViewingServer?.name, activeConversation?.other.nickname],
+    [viewHost, mlsOtherIdentity, keyElsewhere, movedHere, currentlyViewingServer?.name, activeConversation?.other.nickname],
   );
   const mlsView = useMemo(
     () => ({
