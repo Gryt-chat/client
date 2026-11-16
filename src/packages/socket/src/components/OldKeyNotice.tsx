@@ -20,14 +20,30 @@ const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const day = (at: number) => new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 
 function Card({ title, children, actions }: { title: string; children?: React.ReactNode; actions?: React.ReactNode }) {
+  const [why, setWhy] = useState(false);
   return (
     <div role="status" aria-live="polite" className="mb-2 flex flex-col gap-2.5 rounded-[14px] border border-gryt-border bg-gryt-bg px-4 py-3.5">
       <div className="flex items-start gap-2.5">
         <PiLockFill aria-hidden="true" size={16} className="mt-0.5 shrink-0" style={{ color: "var(--gryt-accent-9)" }} />
-        <div className="flex min-w-0 flex-col gap-1 text-sm leading-normal">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm leading-normal">
           <span className="font-bold">{title}</span>
           {children}
+          {why && (
+            <span className="text-gryt-muted">
+              Gryt uses one key for all your devices. This server still has the key from an older device, so that
+              device has to say this one is yours. Someone with only your password can&rsquo;t get past this.
+            </span>
+          )}
         </div>
+        <button
+          type="button"
+          aria-label="What's this?"
+          aria-expanded={why}
+          onClick={() => setWhy(!why)}
+          className="flex size-6 shrink-0 items-center justify-center rounded-full border border-gryt-border text-xs font-bold text-gryt-muted hover:text-gryt-text"
+        >
+          ?
+        </button>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2 pl-[26px]">{actions}</div>}
     </div>

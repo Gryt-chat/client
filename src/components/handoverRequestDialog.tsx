@@ -32,7 +32,7 @@ export function HandoverRequestDialog() {
             <p className="m-0 text-gryt-muted">It wants to use DMs on {request?.host}. Check it shows this code:</p>
             <code className="self-center rounded-[12px] bg-gryt-bg px-4 py-2 font-mono text-[28px] tracking-[0.2em] text-gryt-text">{request?.code}</code>
             <div className="flex flex-wrap justify-end gap-2">
-              <Button tone="neutral" onClick={() => request && denyHandover(request, { stop: true })}>
+              <Button tone="neutral" onClick={() => { if (!request) return; denyHandover(request, { stop: true }); window.dispatchEvent(new Event("gryt:not-me")); }}>
                 That&rsquo;s not mine
               </Button>
               <Button onClick={() => void approve()}>{busy ? "Approving…" : "Approve"}</Button>
