@@ -88,6 +88,12 @@ export function clearIdentityCertificate(): void {
 
 let fetchPromise: Promise<string> | null = null;
 
+let thisDeviceName: string | undefined;
+/** Set once at start: what the account service shows for this device in your list of keys. */
+export function setAccountDeviceName(name: string): void {
+  thisDeviceName = name;
+}
+
 async function fetchCertificateFromService(): Promise<string> {
   const cfg = getGrytConfig();
   const identityUrl = cfg.GRYT_IDENTITY_URL.replace(/\/+$/, "");
@@ -106,7 +112,7 @@ async function fetchCertificateFromService(): Promise<string> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${keycloakToken}`,
     },
-    body: JSON.stringify({ jwk: publicJwk, proof }),
+    body: JSON.stringify({ jwk: publicJwk, proof, device: thisDeviceName }),
   });
 
   if (res.status === 403) {
@@ -228,7 +234,7 @@ export async function accountKeyCall(path: "status" | "reset" | "reset/cancel"):
   const res = await fetch(`${identityUrl}/api/v1/account-key/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ jwk, proof: await seedProof(token, jwk) }),
+    body: JSON.stringify({ jwk, proof: await seedProof(token, jwk), device: thisDeviceName }),
   }).catch(() => null);
   return res?.ok ? res.json() : null;
 }
