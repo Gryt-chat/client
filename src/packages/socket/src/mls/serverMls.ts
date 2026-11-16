@@ -356,7 +356,10 @@ export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding
   if (!state) return;
   // Open asks come next: the key holder answers them, and the device that asked gets its own back.
   if (keyMatches.get(host) !== !rewritten) state.socket.emit("dm:key:handover:pending", {});
-  keyMatches.set(host, !rewritten);
+  if (keyMatches.get(host) !== !rewritten) {
+    keyMatches.set(host, !rewritten);
+    for (const listener of keyMatchListeners) listener();
+  }
   if (accountBinding) accountBindings.set(host, accountBinding);
   noteKeyReset(host, resetAt, !rewritten);
   // A server that agrees with this key can come in after the one waiting for approval.
@@ -374,6 +377,19 @@ export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding
 /** Whether this device's key is already the account's on another server, so it's the one to move this one over. */
 export function holdsKeyElsewhere(host: string): boolean {
   return [...keyMatches].some(([other, ok]) => other !== host && ok);
+}
+
+const keyMatchListeners = new Set<() => void>();
+
+/** The same, kept current: servers answer one by one after start, and the answer can turn true later. */
+export function useHoldsKeyElsewhere(host: string): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      keyMatchListeners.add(listener);
+      return () => keyMatchListeners.delete(listener);
+    },
+    () => holdsKeyElsewhere(host),
+  );
 }
 
 /** Which of your devices has this server's key, as it named itself. Null when the server doesn't say. */
