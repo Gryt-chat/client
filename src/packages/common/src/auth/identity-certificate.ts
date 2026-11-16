@@ -4,7 +4,7 @@
  */
 import { getGrytConfig } from "../../../../config";
 import { certificateVerdict } from "./certificate-verdict";
-import { asIdentityScope, clearIdentityKeys, deriveScopedKeyPair, getPublicKeyJwk, signJwtWithKey } from "./identity-keys";
+import { asIdentityScope, clearIdentityKeys, deriveScopedKeyPair, getPublicKeyJwk, sealedDeviceName, signJwtWithKey } from "./identity-keys";
 import { decodeJwt } from "./jwt";
 import { getValidIdentityToken } from "./keycloak";
 import { jwkThumbprint } from "./server-pins";
@@ -88,6 +88,14 @@ export function clearIdentityCertificate(): void {
 
 let fetchPromise: Promise<string> | null = null;
 
+let thisDeviceName: string | undefined;
+/** Set once at start. Sent sealed: only your own devices can read it in your list of keys. */
+export function setAccountDeviceName(name: string): void {
+  thisDeviceName = name;
+}
+
+const sealedName = () => (thisDeviceName ? sealedDeviceName(thisDeviceName).catch(() => undefined) : Promise.resolve(undefined));
+
 async function fetchCertificateFromService(): Promise<string> {
   const cfg = getGrytConfig();
   const identityUrl = cfg.GRYT_IDENTITY_URL.replace(/\/+$/, "");
@@ -106,7 +114,7 @@ async function fetchCertificateFromService(): Promise<string> {
       "Content-Type": "application/json",
       Authorization: `Bearer ${keycloakToken}`,
     },
-    body: JSON.stringify({ jwk: publicJwk, proof }),
+    body: JSON.stringify({ jwk: publicJwk, proof, device: await sealedName() }),
   });
 
   if (res.status === 403) {
@@ -228,7 +236,7 @@ export async function accountKeyCall(path: "status" | "reset" | "reset/cancel"):
   const res = await fetch(`${identityUrl}/api/v1/account-key/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ jwk, proof: await seedProof(token, jwk) }),
+    body: JSON.stringify({ jwk, proof: await seedProof(token, jwk), device: await sealedName() }),
   }).catch(() => null);
   return res?.ok ? res.json() : null;
 }

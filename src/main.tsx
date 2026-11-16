@@ -21,6 +21,7 @@ import {
   clearWithdrawnBlocksOnce,
   migrateLegacyMergeChoice,
   pruneReproducibleKeys,
+  setAccountDeviceName,
   SingletonHooks,
   useCustomThemes,
   useTheme,
@@ -44,6 +45,7 @@ import { initGlobalStorage } from "./lib/globalStorage";
 import { syncGoogleFonts } from "./lib/googleFonts";
 import { captureLogs } from "./lib/reports/logs";
 import { pushTitlebarOverlay } from "./lib/titlebarOverlay";
+import { thisDeviceCertificateName } from "./packages/socket/src/mls/deviceName";
 
 // eslint-disable-next-line react-refresh/only-export-components
 function ThemedApp() {
@@ -201,6 +203,7 @@ function ThemedApp() {
 captureLogs();
 
 setPluginHostVersion(__APP_VERSION__);
+setAccountDeviceName(thisDeviceCertificateName());
 
 /* One pass, and only on an install that predates it. Failing is not worth
    blocking a render for: `hasLocalIdentity` heals each server on its own. */
