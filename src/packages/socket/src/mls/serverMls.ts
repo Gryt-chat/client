@@ -432,6 +432,12 @@ export async function approveHandover(request: HandoverRequest): Promise<boolean
 
 const LINK_HANDOVER_WAIT_MS = 10_000;
 
+/** Servers moved to the linked key in this run. This app holds the old key until it restarts, so they mismatch on purpose. */
+const handedOver = new Set<string>();
+export function handedOverHere(host: string): boolean {
+  return handedOver.has(host);
+}
+
 /**
  * Linking replaces this device's seed. Before it does: every server where it holds the account's key
  * moves to the new seed's key, signed with the old one, and its own open asks are withdrawn.
@@ -453,7 +459,8 @@ export async function handOverBeforeLinking(newSeed: Uint8Array): Promise<void> 
         ),
         new Promise<boolean>((resolve) => setTimeout(() => resolve(false), LINK_HANDOVER_WAIT_MS)),
       ]);
-      if (!ok) console.warn("[MLS] Couldn't hand", host, "over to the linked key before linking");
+      if (ok) handedOver.add(host);
+      else console.warn("[MLS] Couldn't hand", host, "over to the linked key before linking");
     } catch (e) {
       console.warn("[MLS] Handing", host, "over before linking failed:", e);
     }
