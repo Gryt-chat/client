@@ -30,14 +30,12 @@ import type { InviteJoinRequest } from "@/socket/src/components/InviteAcceptModa
 import { useVoiceSounds } from "@/webRTC";
 
 import { ApproveDeviceDialog } from "./components/approveDevice";
-import { ApproveThisDevice } from "./components/approveThisDevice";
 import { AuthLoadingOverlay } from "./components/AuthLoadingOverlay";
 import { CallStatsRecorder } from "./components/callStatsRecorder";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GameDetectPrompt } from "./components/gameDetectPrompt";
 import { GlobalLightbox } from "./components/GlobalLightbox";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
-import { KeyResetDialog } from "./components/keyResetDialog";
 import { LeaveServer } from "./components/leaveServer";
 import { LinkDeviceDialog } from "./components/linkDevice";
 import { MainApp } from "./components/mainApp";
@@ -151,9 +149,7 @@ export function App() {
           <Settings />
           <Welcome />
           <LinkDeviceDialog />
-          <ApproveThisDevice />
           <SaveWordsDialog />
-          <KeyResetDialog />
           <SignInApproval />
           <FriendRequestDialog />
           <ApproveDeviceDialog />
