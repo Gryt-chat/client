@@ -2,34 +2,36 @@ import { Button, Dialog } from "@gryt/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { type Box, type Corner, initialBox, moveBox, previewOf, renderAvatar, resizeBox, scaleBox } from "./avatarCrop";
+import { type Box, type Corner, type CropShape, initialBox, moveBox, previewOf, renderCrop, resizeBox, scaleBox } from "./pictureCrop";
 
-const FRAME = 280;
+const FRAME_W = 300, FRAME_H = 280;
 const CORNERS: Corner[] = ["nw", "ne", "sw", "se"];
 const CORNER_LABEL: Record<Corner, string> = { nw: "top left", ne: "top right", sw: "bottom left", se: "bottom right" };
 
 /**
- * Frames a still picture for the avatar: the whole picture shows, the square on it is what's kept,
- * and the circle in the square is what people see. Drag moves it, a corner resizes it.
+ * Frames a still picture: the whole picture shows, the box on it is what's kept. Drag moves the box,
+ * a corner resizes it, and the card beside it shows the result.
  */
-export function AvatarCropDialog({ file, onDone, preview }: { file: File | null; onDone: (cropped: File | null) => void; preview?: (src: string) => ReactNode }) {
+export function PictureCropDialog({ file, shape, onDone, preview }: { file: File | null; shape: CropShape; onDone: (cropped: File | null) => void; preview?: (src: string) => ReactNode }) {
   const [url, setUrl] = useState<string | null>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [shown, setShown] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const drag = useRef<{ corner: Corner | null; x: number; y: number } | null>(null);
+  const a = shape.aspect;
 
   useEffect(() => {
     setImg(null);
     setBox(null);
+    setShown(null);
     if (!file) return setUrl(null);
     const next = URL.createObjectURL(file);
     setUrl(next);
     const el = new Image();
     el.onload = () => {
       setImg(el);
-      setBox(initialBox(el.naturalWidth, el.naturalHeight));
+      setBox(initialBox(el.naturalWidth, el.naturalHeight, a));
     };
     el.onerror = () => {
       toast.error("Couldn't open that picture");
@@ -44,15 +46,15 @@ export function AvatarCropDialog({ file, onDone, preview }: { file: File | null;
   // The card preview follows the box, a frame at a time.
   useEffect(() => {
     if (!img || !box || !preview) return;
-    const id = requestAnimationFrame(() => setShown(previewOf(img, box)));
+    const id = requestAnimationFrame(() => setShown(previewOf(img, box, a)));
     return () => cancelAnimationFrame(id);
-  }, [img, box, preview]);
+  }, [img, box, preview, a]);
 
-  const w = img?.naturalWidth ?? 1, h = img?.naturalHeight ?? 1;
+  const W = img?.naturalWidth ?? 1, H = img?.naturalHeight ?? 1;
   // The picture fits the frame whole; k turns its pixels into the frame's.
-  const k = Math.min(FRAME / w, FRAME / h);
-  const left = (FRAME - w * k) / 2, top = (FRAME - h * k) / 2;
-  const min = Math.min(w, h) * 0.1;
+  const k = Math.min(FRAME_W / W, FRAME_H / H);
+  const left = (FRAME_W - W * k) / 2, top = (FRAME_H - H * k) / 2;
+  const min = Math.min(W, H * a) * 0.1;
 
   const start = (corner: Corner | null) => (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -61,20 +63,20 @@ export function AvatarCropDialog({ file, onDone, preview }: { file: File | null;
   };
   const move = (e: React.PointerEvent) => {
     const d = drag.current;
-    if (!d || !img) return;
+    if (!d) return;
     const dx = (e.clientX - d.x) / k, dy = (e.clientY - d.y) / k;
     d.x = e.clientX;
     d.y = e.clientY;
-    setBox((b) => b && (d.corner ? resizeBox(b, d.corner, dx, dy, w, h, min) : moveBox(b, dx, dy, w, h)));
+    setBox((b) => b && (d.corner ? resizeBox(b, d.corner, dx, dy, W, H, a, min) : moveBox(b, dx, dy, W, H, a)));
   };
   const end = () => { drag.current = null; };
 
   const onKey = (e: React.KeyboardEvent) => {
-    const step = (e.shiftKey ? 0.05 : 0.01) * Math.min(w, h);
+    const step = (e.shiftKey ? 0.05 : 0.01) * Math.min(W, H * a);
     const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
-    if (moves[e.key]) setBox((b) => b && moveBox(b, ...moves[e.key], w, h));
-    else if (e.key === "+" || e.key === "=") setBox((b) => b && scaleBox(b, step * 2, w, h, min));
-    else if (e.key === "-") setBox((b) => b && scaleBox(b, -step * 2, w, h, min));
+    if (moves[e.key]) setBox((b) => b && moveBox(b, ...moves[e.key], W, H, a));
+    else if (e.key === "+" || e.key === "=") setBox((b) => b && scaleBox(b, step * 2, W, H, a, min));
+    else if (e.key === "-") setBox((b) => b && scaleBox(b, -step * 2, W, H, a, min));
     else return;
     e.preventDefault();
   };
@@ -83,7 +85,7 @@ export function AvatarCropDialog({ file, onDone, preview }: { file: File | null;
     if (!img || !box) return;
     setBusy(true);
     try {
-      onDone(await renderAvatar(img, box));
+      onDone(await renderCrop(img, box, a, shape.outW, shape.name));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't crop the picture");
     } finally {
@@ -91,43 +93,45 @@ export function AvatarCropDialog({ file, onDone, preview }: { file: File | null;
     }
   };
 
-  const b = box && { x: left + box.x * k, y: top + box.y * k, s: box.size * k };
+  const b = box && { x: left + box.x * k, y: top + box.y * k, w: box.w * k, h: (box.w / a) * k };
+  const hole = b && (shape.round
+    ? `radial-gradient(circle at ${b.x + b.w / 2}px ${b.y + b.h / 2}px, transparent ${b.w / 2}px, rgba(10, 11, 15, 0.68) ${b.w / 2 + 1}px)`
+    : undefined);
 
   return (
     <Dialog.Root open={!!file} onOpenChange={(open) => !open && onDone(null)}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="flex w-[37.5rem] max-w-[calc(100vw-2rem)] flex-col gap-3 p-4">
-          <Dialog.Title className="text-lg">Frame your picture</Dialog.Title>
-          <Dialog.Description className="text-xs text-gryt-muted">
-            Drag the circle to move it, pull a corner to resize. The circle is what everyone sees.
-          </Dialog.Description>
+        <Dialog.Popup className="flex w-[40rem] max-w-[calc(100vw-2rem)] flex-col gap-3 p-4">
+          <Dialog.Title className="text-lg">{shape.title}</Dialog.Title>
+          <Dialog.Description className="text-xs text-gryt-muted">{shape.hint}</Dialog.Description>
           <div className="flex flex-wrap items-start gap-4">
             <div
               className="relative shrink-0 touch-none overflow-hidden rounded-(--gryt-radius-lg) bg-gryt-surface select-none"
-              style={{ width: FRAME, height: FRAME }}
+              style={{ width: FRAME_W, height: FRAME_H }}
               onPointerMove={move}
               onPointerUp={end}
               onPointerCancel={end}
             >
-              {url && <img src={url} alt="" draggable={false} className="pointer-events-none absolute max-w-none" style={{ left, top, width: w * k, height: h * k }} />}
-              {b && (
+              {url && <img src={url} alt="" draggable={false} className="pointer-events-none absolute max-w-none" style={{ left, top, width: W * k, height: H * k }} />}
+              {b && box && (
                 <>
-                  <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at ${b.x + b.s / 2}px ${b.y + b.s / 2}px, transparent ${b.s / 2}px, rgba(10, 11, 15, 0.68) ${b.s / 2 + 1}px)` }} />
+                  {hole && <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: hole }} />}
                   <div
                     role="slider"
                     tabIndex={0}
                     aria-label="Picture framing. Arrow keys move it, plus and minus resize it."
-                    aria-valuenow={Math.round((box.size / Math.min(w, h)) * 100)}
+                    aria-valuenow={Math.round((box.w / Math.min(W, H * a)) * 100)}
                     aria-valuemin={10}
                     aria-valuemax={100}
                     className="absolute cursor-move outline-offset-2 focus-visible:outline-2 focus-visible:outline-gryt-accent"
-                    style={{ left: b.x, top: b.y, width: b.s, height: b.s, boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.55)" }}
+                    // A wide box dims what's outside it with its own shadow; the round one has the gradient above.
+                    style={{ left: b.x, top: b.y, width: b.w, height: b.h, boxShadow: shape.round ? "inset 0 0 0 1px rgba(255, 255, 255, 0.55)" : "0 0 0 9999px rgba(10, 11, 15, 0.68), inset 0 0 0 2px rgba(255, 255, 255, 0.95)" }}
                     onPointerDown={start(null)}
-                    onDoubleClick={() => img && setBox(initialBox(w, h))}
+                    onDoubleClick={() => img && setBox(initialBox(W, H, a))}
                     onKeyDown={onKey}
                   >
-                    <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.95)" }} />
+                    {shape.round && <div aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.95)" }} />}
                     {CORNERS.map((c) => (
                       <span
                         key={c}

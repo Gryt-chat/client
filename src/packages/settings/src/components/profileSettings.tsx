@@ -12,8 +12,9 @@ import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
 import { EMPTY_CARD, useStoredCard } from "../../../socket/src/lib/memberCard/cardStore";
-import { AvatarCropDialog } from "./AvatarCropDialog";
 import { isStillPicture } from "./bannerCrop";
+import { AVATAR_SHAPE } from "./pictureCrop";
+import { PictureCropDialog } from "./PictureCropDialog";
 import { RichPresenceSettings } from "./richPresence";
 import { SettingsContainer } from "./settingsComponents";
 import { WatchedPrograms } from "./watchedPrograms";
@@ -1021,8 +1022,9 @@ export function ProfileSettings() {
         onChange={handleFileChange}
       />
 
-      <AvatarCropDialog
+      <PictureCropDialog
         file={cropping?.file ?? null}
+        shape={AVATAR_SHAPE}
         onDone={(cropped) => {
           const target = cropping;
           setCropping(null);
