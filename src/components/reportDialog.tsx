@@ -139,6 +139,14 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
           onIncludeLogs={(on) => setLogs(on ? [...recentLogs(), ...callTimeline()] : null)}
         />
 
+        <p className="text-xs text-gryt-muted">
+          Want to add a screenshot?{" "}
+          <a className="gryt-link" href="https://github.com/Gryt-chat/gryt/issues/new" target="_blank" rel="noopener noreferrer">
+            Open an issue on GitHub
+          </a>{" "}
+          instead.
+        </p>
+
         {error && <Alert severity="error">{error}</Alert>}
 
         <Divider />
