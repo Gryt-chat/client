@@ -27,13 +27,16 @@ import {
   subscribeToPrefs,
 } from "@/common";
 import {
+  checkApproveTicket,
   evaluateMemberKeys,
   forgetGuestScope,
+  getCertificateSub,
   identityScopeFor,
   localPeerPinStore,
   type MemberKeyState,
   ownDmPublicKey,
   ownPersonPublicKey,
+  pendingApproveTicket,
 } from "@/common";
 import { rememberChannelNames } from "@/lib/channelDirectory";
 import { claimOutcomeToast, guestIsGone, takeClaimOutcome } from "@/lib/identityClaimOutcome";
@@ -45,6 +48,7 @@ import type {
 } from "@/settings/src/types/server";
 
 import { PiArrowsClockwiseFill, PiClockFill, PiInfoFill } from "../../../../lib/icons";
+import { showApprovePrompt } from "../components/approvePromptToast";
 import { type DmKeyFix, dmKeyWarningsOff, showDmKeyWarning } from "../components/dmKeyWarningToast";
 import { showHistoryAsk } from "../components/historyAskToast";
 import type { MemberInfo } from "../components/MemberSidebar";
@@ -811,6 +815,25 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       }
     }
   });
+
+  // A device waiting for your account key asks your other devices here, now and on each reconnect.
+  const askToBeApproved = () => {
+    const ticket = pendingApproveTicket();
+    if (ticket && socket.connected) socket.emit("device:approve:ask", { ticket });
+  };
+  socket.on("connect", askToBeApproved);
+  window.addEventListener("gryt:sign-in-approval", askToBeApproved);
+  socket.on("disconnect", () => window.removeEventListener("gryt:sign-in-approval", askToBeApproved));
+  askToBeApproved();
+  socket.on("device:approve:asked", (ask?: { askId?: string; ticket?: string }) => {
+    const sub = getCertificateSub();
+    if (!sub || pendingApproveTicket() || typeof ask?.askId !== "string" || typeof ask.ticket !== "string") return;
+    const askId = ask.askId;
+    void checkApproveTicket(ask.ticket, sub).then((ok) => {
+      if (ok) showApprovePrompt(ok.deviceType, () => socket.emit("device:approve:deny", { askId }));
+    });
+  });
+  socket.on("device:approve:denied", () => window.dispatchEvent(new Event("gryt:approve-denied")));
 
   /* "Send me your copy" from someone in a DM: offered only while their key is the one this device
      trusts, so a key nobody has checked can't pull history. */

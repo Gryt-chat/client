@@ -15,6 +15,7 @@ export * from "./src/archive/local-archive";
 export * from "./src/archive/message-archive";
 export * from "./src/auth/account-api";
 export * from "./src/auth/answer-challenge";
+export * from "./src/auth/approve-ticket";
 export * from "./src/auth/device-delegation";
 export * from "./src/auth/guest-history";
 export * from "./src/auth/identity-backup-lock";
