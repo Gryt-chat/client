@@ -1,4 +1,5 @@
-import { bothWays, establish, openDmFromList } from "../support/dm";
+import { messageRow, unique } from "../support/app";
+import { bothWays, establish, openDmFromList, send } from "../support/dm";
 import { expect, test } from "../support/fixtures";
 import { startIdentity, type TestIdentity } from "../support/identity";
 
@@ -44,7 +45,11 @@ test.describe("one key per account", () => {
     await compare.getByRole("button", { name: "Not now" }).click();
     await expect(compare).toBeHidden();
 
-    await bothWays(erin, kari, "after the move");
+    // Erin's first line waits for Kari's app to add the new device, which her next message does.
+    const waiting = unique("written on the new device");
+    await send(erin.page, kari.name, waiting);
+    await bothWays(kari, erin, "after the move");
+    await expect(messageRow(kari.page, waiting), "the line that waited goes out on its own").toBeVisible({ timeout: 30_000 });
     await kari.page.reload();
     await openDmFromList(kari.page, erin.name);
     await bothWays(erin, kari, "after a restart");
