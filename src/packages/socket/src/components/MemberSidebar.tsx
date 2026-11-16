@@ -10,7 +10,6 @@ import { useDirectory } from "../hooks/dmDirectory";
 import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { UserStatus } from "../types/clients";
-import type { SignedHandover } from "../utils/followHandovers";
 import { BotTag } from "./BotTag";
 import { GameIcon } from "./GameIcon";
 import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
@@ -76,12 +75,8 @@ export interface MemberInfo {
    * joined with. Verified and pinned client-side; the server never reads it.
    */
   dmKeyBinding?: string | null;
-  /** When a pending key reset takes over (GRYT-1886), or null. */
-  keyResetAt?: number | null;
   /** Their MLS person key, signed by the same identity. Checked the same way. */
   personKeyBinding?: string | null;
-  /** The note their previous key signed when it handed over, for contacts who trusted that key. */
-  dmKeyHandover?: SignedHandover | null;
   /**
    * How many times this member has renamed themselves here, and when they last
    * did. The old names are deliberately not sent.

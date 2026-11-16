@@ -111,9 +111,6 @@ interface UseChatReturn {
   peerKeyNotice: boolean;
   /** This device waits for the other side's app to add it to the DM. */
   mlsNotAdded: boolean;
-  /** The other person's key is being reset, so comparing codes is what to offer. */
-  peerKeyResetPending: boolean;
-  /** This server still has another of your devices' keys. */
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -801,8 +798,7 @@ export function useChat({
      encrypted, which it is, and the composer line says why it can't send. */
   const onMlsPath = !!dmPeer && (mlsMode === "mls" || mlsMode === "refused");
   /* Until somebody checks it, their new devices can't be added, so nothing reads as encrypted. */
-  const { memberKeyStates, memberLists } = useSockets();
-  const peerKeyResetAt = dmPeer ? memberLists[serverHost]?.find((m) => m.serverUserId === dmPeer)?.keyResetAt ?? null : null;
+  const { memberKeyStates } = useSockets();
   const peerKey = dmPeer ? memberKeyStates[serverHost]?.[dmPeer] : undefined;
   const peerKeyChanged = peerKey?.decision.kind === "changed" || peerKey?.personKey.kind === "changed";
   /* A message from them that opened here proves both ends share a working key.
@@ -815,7 +811,7 @@ export function useChat({
   );
 
   // When the line shown is "<name> has a new key", its buttons are for checking that key, not this device's.
-  const peerKeyNotice = mls.mode?.kind === "mls" && peerKeyChanged && mls.problems.lost !== "device_removed" && !(peerKeyResetAt && peerKeyResetAt > Date.now());
+  const peerKeyNotice = mls.mode?.kind === "mls" && peerKeyChanged && mls.problems.lost !== "device_removed";
   const composer = dmComposer({ dmPeer, mode: mls.mode, waiting: mls.waiting, archiveFailed: mls.archiveFailed, peerKeyChanged });
   const sendPath = composer.path;
   const sendOnEitherPath = useCallback(
@@ -880,7 +876,6 @@ export function useChat({
           peerName: dmPeerName ?? "The other person",
           signedIn: isSignedIn,
           peerKeyChanged,
-          peerKeyResetAt,
         })
       : null,
     composerHeld: composer.held,
@@ -891,6 +886,5 @@ export function useChat({
     mlsActions: dmPeer && !peerKeyNotice ? mls.actions : NO_ACTIONS,
     peerKeyNotice,
     mlsNotAdded: !!dmPeer && !peerKeyNotice && mls.problems.lost === "not_added",
-    peerKeyResetPending: !!dmPeer && !!peerKeyResetAt && peerKeyResetAt > Date.now(),
   };
 }
