@@ -31,8 +31,10 @@ export interface ServerOptions {
   messageCacheTtlMs?: number;
   /** Open unless a test asks. The first person to join owns the server whatever this is. */
   joinPolicy?: "open" | "invite" | "request";
-  /** Guests unless a test asks for accounts only, which nobody in the suite can have. */
-  identityTiers?: "local" | "account";
+  /** Guests unless a test asks for accounts, which also need `trustIssuer`. */
+  identityTiers?: "local" | "account" | "local,account";
+  /** A test identity service to trust for accounts, from `startIdentity`. */
+  trustIssuer?: string;
   /** What the rail calls it. Two servers in one app need two names to be told apart. */
   displayName?: string;
 }
@@ -120,9 +122,12 @@ export async function startServer(appOrigin: string, runId: string, options: Ser
     GRYT_ADMIN_PORT: "5099",
   };
   if (options.instanceId) env.SERVER_INSTANCE_ID = options.instanceId;
+  if (options.trustIssuer) env.GRYT_TRUSTED_CERT_ISSUERS = options.trustIssuer;
   if (options.messageCacheTtlMs !== undefined) env.MESSAGE_CACHE_TTL_MS = String(options.messageCacheTtlMs);
 
   const args = ["run", "--detach", "--label", `${RUN_LABEL}=${runId}`];
+  // The test identity service listens on this machine; Linux has no host.docker.internal by default.
+  if (options.trustIssuer) args.push("--add-host", "host.docker.internal:host-gateway");
   const published = options.instanceId ? `127.0.0.1:${serverPort}:${serverPort}` : "127.0.0.1::5000";
   args.push("--publish", published, "--publish", "127.0.0.1::5099");
   for (const [key, value] of Object.entries(env)) args.push("--env", `${key}=${value}`);

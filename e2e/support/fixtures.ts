@@ -6,6 +6,7 @@ import { type BrowserContext, type BrowserContextOptions, expect, test as base }
 
 import { channelComposer, joinServer, type Member, membersPanel, nicknameOf, recordFrames, sidebarChannelRow } from "./app";
 import { routeExternal } from "./external";
+import { signIn, type TestIdentity } from "./identity";
 import { ProblemLog } from "./problems";
 import { externalServer, type GrytServer, type ServerOptions, startServer } from "./server";
 
@@ -33,6 +34,8 @@ export interface MemberOptions {
   nickname?: string;
   /** Frames this page sends that never reach the server. */
   dropSent?: (frame: string) => boolean;
+  /** Signed in to this account on a test identity service, rather than a guest. */
+  account?: { identity: TestIdentity; sub: string };
 }
 
 const PHONE: BrowserContextOptions = {
@@ -184,11 +187,13 @@ export const test = base.extend<
       contexts.push(context);
       await prepare(context, problems.report, { nickname: name, welcome: options.welcome, agreed: options.agreed });
       if (options.dropSent) await dropSent(context, options.dropSent);
+      if (options.account) await signIn(context, options.account.identity, options.account.sub);
       const page = await context.newPage();
       problems.watch(page, label, server.httpBase);
       const frames = recordFrames(page);
       await page.goto("/");
-      await expect.poll(() => nicknameOf(page), "the seeded nickname should be the one in use").toBe(name);
+      // An account brings its own name; only a guest takes the seeded one.
+      if (!options.account) await expect.poll(() => nicknameOf(page), "the seeded nickname should be the one in use").toBe(name);
       if (options.join !== false) await joinServer(page, server.host);
       return { context, page, name, frames };
     });
