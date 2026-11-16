@@ -351,9 +351,11 @@ export function useHostsAwaitingApproval(): ReadonlySet<string> {
 }
 
 /** Whether your account's published key here is another device's, from the member list. */
-export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding: string | null = null, resetAt: number | null = null): void {
+export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding: string | null = null, resetAt: number | null = null, personKeyBehind = false): void {
   const state = hosts.get(host);
   if (!state) return;
+  // Right after a handover only the DM key is ours; the person key follows, or nothing flips until a restart.
+  if (personKeyBehind) void sendPersonKey(host, state);
   // Open asks come next: the key holder answers them, and the device that asked gets its own back.
   if (keyMatches.get(host) !== !rewritten) state.socket.emit("dm:key:handover:pending", {});
   keyMatches.set(host, !rewritten);
@@ -369,6 +371,18 @@ export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding
     dismissHandoverWaiting(host);
   }
   void refresh(host);
+}
+
+const sendingPersonKey = new Set<string>();
+async function sendPersonKey(host: string, state: HostState): Promise<void> {
+  const accessToken = getServerAccessToken(host);
+  if (!accessToken || sendingPersonKey.has(host)) return;
+  sendingPersonKey.add(host);
+  try {
+    await publishPersonKey(state.socket, accessToken, await personKeyBindingFor(host));
+  } finally {
+    sendingPersonKey.delete(host);
+  }
 }
 
 /** Whether this device's key is already the account's on another server, so it's the one to move this one over. */
