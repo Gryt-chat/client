@@ -6,7 +6,7 @@ import { SettingsContainer } from "./settingsComponents";
 
 const GITHUB_URL = "https://github.com/Gryt-chat/gryt";
 const SPONSORS_URL = "https://github.com/sponsors/Gryt-chat";
-const SPONSORS_PAGE_URL = "https://gryt.chat/sponsors";
+const SPONSORS_PAGE_URL = "https://gryt.chat/sponsor";
 const KOFI_URL = "https://ko-fi.com/sivert";
 
 export function SupportSettings() {

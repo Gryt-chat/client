@@ -571,23 +571,22 @@ export function Settings() {
                           </AnimatePresence>
                         </Fragment>
                       ))}
-
-                      <div style={{ flex: 1, minHeight: "12px" }} />
-
-                      {PINNED_DESTINATIONS.map(({ value, label, icon: Icon }) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => changeDestination(value)}
-                          className="gryt-settings-nav gryt-settings-nav-cta"
-                          data-active={value === active}
-                        >
-                          <Icon size={16} />
-                          {label}
-                        </button>
-                      ))}
                     </div>
                   )}
+                </div>
+                <div className="flex flex-col pt-3">
+                  {PINNED_DESTINATIONS.map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => changeDestination(value)}
+                      className="gryt-settings-nav gryt-settings-nav-cta"
+                      data-active={value === active}
+                    >
+                      <Icon size={16} />
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </nav>
 
