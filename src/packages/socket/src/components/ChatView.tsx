@@ -44,6 +44,7 @@ import type { MentionMember } from "./MentionAutocomplete";
 import { MentionViewerContext } from "./mentionViewerContext";
 import { MessageRow } from "./MessageRow";
 import { MlsNoticeLine } from "./MlsNoticeLine";
+import { OldKeyNotice } from "./OldKeyNotice";
 import { PinsButton } from "./PinsButton";
 import { PollDialog } from "./PollDialog";
 import { ThreadPanel } from "./ThreadPanel";
@@ -96,6 +97,8 @@ export interface MlsView {
   archiveFailed: boolean;
   /** Buttons for the notice line: ask again to be added, link this device. */
   actions?: MlsAction[];
+  /** This server still has an older device's key, and this device holds the account's. */
+  oldKey?: { host: string; serverName: string; peerName: string } | null;
 }
 
 /** Where the composer would be, for somebody who may read a channel and not post. */
@@ -1140,7 +1143,11 @@ export const ChatView = memo(({
               when somebody comes back to a box that stopped taking input. */}
           {mls?.archiveFailed && <LocalHistoryProblem compact />}
 
-          {mls?.notice && !mls.archiveFailed && <MlsNoticeLine notice={mls.notice} actions={mls.actions ?? []} />}
+          {mls?.oldKey && !mls.archiveFailed ? (
+            <OldKeyNotice {...mls.oldKey} />
+          ) : (
+            mls?.notice && !mls.archiveFailed && <MlsNoticeLine notice={mls.notice} actions={mls.actions ?? []} />
+          )}
 
           {muteLine && (
             <div

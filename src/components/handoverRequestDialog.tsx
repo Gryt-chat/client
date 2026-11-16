@@ -14,11 +14,11 @@ export function HandoverRequestDialog() {
   const request = requests[0];
 
   const approve = async () => {
-    if (!request) return;
+    if (!request || busy) return;
     setBusy(true);
     const ok = await approveHandover(request).catch(() => false);
     setBusy(false);
-    if (ok) toast.success(`${request.deviceName} now uses the same key as your other servers.`);
+    if (ok) toast.success(`${request.deviceName} can use DMs on ${request.host} now.`);
     else toast.error("That didn't go through. Ask again from the other device.");
   };
 
@@ -27,23 +27,15 @@ export function HandoverRequestDialog() {
       <Dialog.Portal>
         <Dialog.Backdrop />
         <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)]">
-          <Dialog.Title>Is this your {request?.deviceName}?</Dialog.Title>
+          <Dialog.Title>Approve {/^(iPhone|iPad|Android phone|Android tablet)$/.test(request?.deviceName ?? "") ? `your ${request?.deviceName}` : request?.deviceName}?</Dialog.Title>
           <div className="mt-3 flex flex-col gap-3 text-sm">
-            <p>
-              It wants {request?.host} to use the same key as your other servers. Only approve it if it&rsquo;s a
-              device you&rsquo;re holding right now.
-            </p>
-            <div className="flex flex-col items-center gap-1 rounded-md border border-gryt-border p-3">
-              <span>Does it show this code?</span>
-              <span className="font-mono text-2xl font-semibold tracking-widest">{request?.code}</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={busy} onClick={() => void approve()}>
-                Yes, approve
+            <p className="m-0 text-gryt-muted">It wants to use DMs on {request?.host}. Check it shows this code:</p>
+            <code className="self-center rounded-[12px] bg-gryt-bg px-4 py-2 font-mono text-[28px] tracking-[0.2em] text-gryt-text">{request?.code}</code>
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button tone="neutral" onClick={() => request && denyHandover(request, { stop: true })}>
+                That&rsquo;s not mine
               </Button>
-              <Button tone="neutral" disabled={busy} onClick={() => request && denyHandover(request, { stop: true })}>
-                No, that&rsquo;s not mine
-              </Button>
+              <Button onClick={() => void approve()}>{busy ? "Approving…" : "Approve"}</Button>
             </div>
           </div>
         </Dialog.Popup>

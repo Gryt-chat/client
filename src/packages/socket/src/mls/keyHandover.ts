@@ -62,5 +62,8 @@ export interface OwnHandover {
 /** Per server, what this device's own request is doing. */
 export const ownHandover = store<Readonly<Record<string, OwnHandover>>>({});
 
+/** Servers this device moved over to its key from the notice, so the chat can say it's done. */
+export const movedToThisKey = store<readonly string[]>([]);
+
 /** Per server, a pending key reset: when it takes over, and whether this device holds the key it replaces. */
 export const keyResets = store<Readonly<Record<string, { at: number; holdsCurrentKey: boolean }>>>({});
