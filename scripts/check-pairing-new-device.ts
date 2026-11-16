@@ -28,7 +28,6 @@ function recordingDeps(existingPins: Pins = {}) {
   const log: (string | number | null | undefined)[][] = [];
   let pins = existingPins;
   const deps: LinkDeps = {
-    handOver: async (seed) => void log.push(["handOver", seed.length]),
     installIdentity: async (seed, keys) => void log.push(["identity", seed.length, keys.length]),
     expectLineage: (host, origin) => void log.push(["lineage", host, origin]),
     pinStore: { read: () => pins, write: (next) => { pins = next; log.push(["pins", Object.keys(next).length]); } },
@@ -116,7 +115,6 @@ async function link({ env, keycloak = memoryKeycloak(), deps = recordingDeps(), 
   assert.equal(joining.from, "Sivert's laptop");
 
   assert.deepEqual(deps.log, [
-    ["handOver", 32],
     ["forgetMls"],
     ["pins", 2],
     ["seen", "srv:ORIGINKEY", "member-a"],
