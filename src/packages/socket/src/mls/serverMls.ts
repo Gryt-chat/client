@@ -4,15 +4,12 @@ import type { Socket } from "socket.io-client";
 
 import {
   claimMlsWorker,
-  dmKeyBindingFor,
-  dmKeyBindingFromSeed,
   getLocalArchiveSnapshot,
   getOwnServerUserId,
   getServerAccessToken,
   getUploadsFileUrl,
   getValidIdentityToken,
   identityScopeFor,
-  keyHandoverFor,
   type LocalArchive,
   localPeerPinStore,
   type MlsWorkerClaim,
@@ -337,7 +334,6 @@ export function serverMlsOwnKey(host: string, rewritten: boolean, personKeyBehin
   if (personKeyBehind) void sendPersonKey(host, state);
   // This device has the account key, so the server takes it from us directly. Once per connection.
   else if (rewritten && !triedAccountMove.has(host)) void moveToAccountKey(host, state);
-  keyMatches.set(host, !rewritten);
   if (state.otherIdentity === rewritten) return;
   state.otherIdentity = rewritten;
   if (!rewritten) setAwaitingApproval(host, false);
@@ -360,46 +356,6 @@ async function sendPersonKey(host: string, state: HostState): Promise<void> {
   } finally {
     sendingPersonKey.delete(host);
   }
-}
-
-/* Per server: whether the account's key there is this device's. */
-const keyMatches = new Map<string, boolean>();
-
-const LINK_HANDOVER_WAIT_MS = 10_000;
-
-/** Servers moved to the linked key in this run. This app holds the old key until it restarts, so they mismatch on purpose. */
-const handedOver = new Set<string>();
-export function handedOverHere(host: string): boolean {
-  return handedOver.has(host);
-}
-
-/**
- * Linking replaces this device's seed. Before it does: every server where it holds the account's key
- * moves to the new seed's key, signed with the old one, and its own open asks are withdrawn.
- */
-export async function handOverBeforeLinking(newSeed: Uint8Array): Promise<void> {
-  await Promise.all([...hosts].map(async ([host, state]) => {
-    try {
-      const [old, next] = await Promise.all([dmKeyBindingFor(host), dmKeyBindingFromSeed(newSeed, host)]);
-      if (!old || old === next) return;
-      if (keyMatches.get(host) !== true) {
-        // An ask left open names a key that's about to stop existing, so approving it would strand the server.
-        state.socket.emit("dm:key:handover:deny", { askerId: old });
-        return;
-      }
-      const handover = await keyHandoverFor(host, next);
-      const ok = await Promise.race([
-        new Promise<boolean>((resolve) =>
-          state.socket.emit("dm:key:publish", { binding: next, replace: true, handover }, (reply?: { ok?: boolean }) => resolve(reply?.ok === true)),
-        ),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), LINK_HANDOVER_WAIT_MS)),
-      ]);
-      if (ok) handedOver.add(host);
-      else console.warn("[MLS] Couldn't hand", host, "over to the linked key before linking");
-    } catch (e) {
-      console.warn("[MLS] Handing", host, "over before linking failed:", e);
-    }
-  }));
 }
 
 /** The member list's person keys are pinned. A Welcome from somebody unpinned is thrown away. */
