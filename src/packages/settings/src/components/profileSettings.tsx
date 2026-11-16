@@ -3,13 +3,18 @@ import { AvatarChoiceDialog, OwlDesignerDialog } from "@gryt/ui";
 import { useCallback,useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { compressStaticAvatarToLimit, freshUploadsFileUrl, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getStoredWorn, getUploadsFileUrl, resolveAvatarSrc, setStoredWorn, useUserId } from "@/common";
+import { compressStaticAvatarToLimit, freshUploadsFileUrl, generatedAvatarColor, getAvatarHash, getServerAccessToken, getServerHttpBase, getStoredAvatar, getStoredWorn, getUploadsFileUrl, resolveAvatarSrc, setStoredWorn, useTheme, useUserId } from "@/common";
 import { useSettings } from "@/settings";
 import { useServerManagement, useSockets } from "@/socket";
 
 import { PiArrowsClockwiseFill, PiCameraFill, PiCheck, PiCopyFill } from "../../../../lib/icons";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
+import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
+import { EMPTY_CARD, useStoredCard } from "../../../socket/src/lib/memberCard/cardStore";
+import { isStillPicture } from "./bannerCrop";
+import { AVATAR_SHAPE } from "./pictureCrop";
+import { PictureCropDialog } from "./PictureCropDialog";
 import { RichPresenceSettings } from "./richPresence";
 import { SettingsContainer } from "./settingsComponents";
 import { WatchedPrograms } from "./watchedPrograms";
@@ -630,6 +635,10 @@ export function ProfileSettings() {
     });
   };
 
+  const [cropping, setCropping] = useState<{ file: File; hosts: string[] } | null>(null);
+  const storedCard = useStoredCard();
+  const { resolvedAppearance } = useTheme();
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !(file.type.startsWith("image/") || VIDEO_AVATAR_TYPES.includes(file.type))) {
@@ -639,9 +648,11 @@ export function ProfileSettings() {
 
     const action = pendingActionRef.current;
     const hosts = action.host ? [action.host] : serverHosts;
+    e.target.value = "";
+    // A still picture is framed first; GIFs, animated WebP and video go up as they are.
+    if (await isStillPicture(file)) return setCropping({ file, hosts });
     // A picture somebody picked, so any designed look is being replaced.
     await processAndUpload(file, hosts, null);
-    e.target.value = "";
   };
 
   const triggerFilePick = (host: string | null) => {
@@ -1009,6 +1020,19 @@ export function ProfileSettings() {
           : "image/png,image/jpeg,image/webp,image/gif"}
         style={{ display: "none" }}
         onChange={handleFileChange}
+      />
+
+      <PictureCropDialog
+        file={cropping?.file ?? null}
+        shape={AVATAR_SHAPE}
+        onDone={(cropped) => {
+          const target = cropping;
+          setCropping(null);
+          if (cropped && target) void processAndUpload(cropped, target.hosts, null);
+        }}
+        preview={(src) => (
+          <MemberCardView name={nickname} avatarSrc={src} status="online" profile={storedCard ?? EMPTY_CARD} owlHex={generatedAvatarColor(nickname, null) ?? "#7c5cff"} seedKey={nickname} appearance={resolvedAppearance} />
+        )}
       />
 
       <AvatarChoiceDialog

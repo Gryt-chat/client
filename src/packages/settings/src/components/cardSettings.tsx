@@ -37,9 +37,9 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
-import { isStillPicture } from "./bannerCrop";
-import { BannerCropDialog } from "./BannerCropDialog";
+import { BANNER_SHAPE, isStillPicture } from "./bannerCrop";
 import { CardPresetTile } from "./CardPresetTile";
+import { PictureCropDialog } from "./PictureCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
 /** A game for the preview when you are not playing one, so the band can be seen. */
@@ -324,8 +324,12 @@ export function CardSettings() {
               void isStillPicture(file).then((still) => (still ? setCropping(file) : changeBanner(file)));
             }}
           />
-          <BannerCropDialog
+          <PictureCropDialog
             file={cropping}
+            shape={BANNER_SHAPE}
+            preview={(src) => (
+              <MemberCardView name={nickname} avatarSrc={resolveAvatarSrc(avatarDataUrl, nickname, worn)} status="online" profile={draft} owlHex={owlHex} bannerUrl={src} bannerType="image" appearance={resolvedAppearance} seedKey={seedKey} worn={worn} />
+            )}
             onDone={(cropped) => {
               setCropping(null);
               if (cropped) changeBanner(cropped);
