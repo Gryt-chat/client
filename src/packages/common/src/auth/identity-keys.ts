@@ -1,4 +1,4 @@
-import { base64Url as sharedBase64Url, base64UrlDecode as sharedBase64UrlDecode } from "@gryt/crypto";
+import { base64Url as sharedBase64Url, base64UrlDecode as sharedBase64UrlDecode, sealDeviceName } from "@gryt/crypto";
 /**
  * Client-side ECDSA P-256 keypair management for challenge-response
  * identity authentication. The private key never leaves the client.
@@ -413,6 +413,18 @@ export async function dmKeyBindingFor(host: string): Promise<string | null> {
     db.close();
   }
   return dmKeyBindingFromSeed(seed, host);
+}
+
+/** This device's name sealed with the seed, so only your own devices can read it. */
+export async function sealedDeviceName(name: string): Promise<string> {
+  const db = await openDB();
+  let seed: Uint8Array;
+  try {
+    seed = await getOrCreateSeed(db);
+  } finally {
+    db.close();
+  }
+  return sealDeviceName(seed, name);
 }
 
 /** The binding `seed` would publish for one server, before it's this device's seed. */
