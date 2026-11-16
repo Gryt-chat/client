@@ -7,7 +7,6 @@ import { setAnnouncedPlugins } from "@/addons";
 import {
   addMention,
   addThreadMention,
-  getAccountProfile,
   getServerAccessToken,
   getServerRefreshToken,
   getStoredWorn,
@@ -49,7 +48,6 @@ import type {
 
 import { PiArrowsClockwiseFill, PiClockFill, PiInfoFill } from "../../../../lib/icons";
 import { showApprovePrompt } from "../components/approvePromptToast";
-import { type DmKeyFix, dmKeyWarningsOff, showDmKeyWarning } from "../components/dmKeyWarningToast";
 import { showHistoryAsk } from "../components/historyAskToast";
 import type { MemberInfo } from "../components/MemberSidebar";
 import {
@@ -60,7 +58,7 @@ import {
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { resendHistoryAsks } from "../mls/historyAsk";
-import { answerOwnAsk, askToApproveHere, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
+import { answerOwnAsk, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
 import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
@@ -113,84 +111,8 @@ export interface ServerEventContext {
   setIsServerDeafened: (value: boolean) => void;
 }
 
-/** Long enough for our publish and the member list after it to land, short
-    enough that a genuine mismatch is not hidden. */
-const DM_KEY_WARNING_DELAY_MS = 5000;
-
-/** Pending warnings, per host, so a resolution can cancel one before it shows. */
-const dmKeyWarningTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-/* One toast for every server with the mismatch: a second device mismatches on all of them,
-   and one toast each stacked up into a wall of the same warning. */
-const DM_KEY_TOAST_ID = "dm-key-rewritten";
-const dmKeyWarnedHosts = new Map<string, string>();
-/** The latest key decisions and members per server, for answers given outside React. */
 const lastKeyStates = new Map<string, Record<string, MemberKeyState>>();
 const lastMembers = new Map<string, MemberInfo[]>();
-let dmKeyLastFix: DmKeyFix = "none";
-
-function renderDmKeyWarning(): void {
-  if (dmKeyWarnedHosts.size === 0 || dmKeyWarningsOff()) {
-    toast.dismiss(DM_KEY_TOAST_ID);
-    return;
-  }
-  showDmKeyWarning({
-    id: DM_KEY_TOAST_ID,
-    serverNames: [...dmKeyWarnedHosts.values()],
-    fix: dmKeyLastFix,
-    // Opens the approve-or-link dialog for the first server with the mismatch.
-    onFix: () => {
-      const [first] = dmKeyWarnedHosts.keys();
-      if (first) askToApproveHere(first);
-    },
-    onDismiss: () => {
-      for (const host of dmKeyWarnedHosts.keys()) rememberDmKeyWarningDismissed(host);
-      dmKeyWarnedHosts.clear();
-    },
-  });
-}
-
-/**
- * A dismissal that holds. The warning is re-armed from every `members:list`, so
- * dismissing it bought seconds. Per device: the key it is about is this device's.
- */
-const DM_KEY_DISMISSED_PREFIX = "gryt_dm_key_warning_dismissed:";
-
-function dmKeyWarningDismissed(host: string): boolean {
-  try {
-    return localStorage.getItem(`${DM_KEY_DISMISSED_PREFIX}${host}`) === "1";
-  } catch {
-    // No storage. Showing it is the safe direction for a warning.
-    return false;
-  }
-}
-
-function rememberDmKeyWarningDismissed(host: string): void {
-  try {
-    localStorage.setItem(`${DM_KEY_DISMISSED_PREFIX}${host}`, "1");
-  } catch {
-    /* Then it comes back next launch, which is a nuisance and not a bug. */
-  }
-}
-
-function forgetDmKeyWarningDismissed(host: string): void {
-  try {
-    localStorage.removeItem(`${DM_KEY_DISMISSED_PREFIX}${host}`);
-  } catch {
-    /* as above */
-  }
-}
-
-/** What this device can do about a mismatch, asked of the account. */
-async function dmKeyFix(): Promise<DmKeyFix> {
-  try {
-    return (await getAccountProfile()).sub ? "set-up" : "none";
-  } catch {
-    // Not signed in, or the account would not answer. Neither button would
-    // work, so neither is offered.
-    return "none";
-  }
-}
 
 type MentionRow = { conversation_id?: string; thread_id?: string | null; kind?: string };
 
@@ -883,39 +805,6 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
           !mine?.ownKeyRewritten && !!mine?.ownPersonKeyRewritten,
         );
         serverMlsPinned(host);
-
-        /* Held back before it is shown, since our own publish races the first
-           member list. A second device really does mismatch, so it is named first. */
-        const myId = myServerUserIdByHost.get(host);
-        const pending = dmKeyWarningTimers.get(host);
-
-        if (myId && states[myId]?.ownKeyRewritten) {
-          if (pending === undefined && !dmKeyWarningDismissed(host)) {
-            dmKeyWarningTimers.set(
-              host,
-              setTimeout(() => {
-                dmKeyWarningTimers.delete(host);
-                /* Which repair to offer depends on the account, so it is asked
-                   here rather than guessed. A guest gets no button at all. */
-                void dmKeyFix().then((fix) => {
-                  if (dmKeyWarningDismissed(host)) return;
-                  dmKeyLastFix = fix;
-                  dmKeyWarnedHosts.set(host, serversRef.current[host]?.name || host);
-                  renderDmKeyWarning();
-                });
-              }, DM_KEY_WARNING_DELAY_MS),
-            );
-          }
-        } else {
-          if (pending !== undefined) {
-            clearTimeout(pending);
-            dmKeyWarningTimers.delete(host);
-          }
-          /* The mismatch is gone, so an earlier dismissal has done its job. If
-             it ever comes back it is news again, and should say so. */
-          forgetDmKeyWarningDismissed(host);
-          if (dmKeyWarnedHosts.delete(host)) renderDmKeyWarning();
-        }
       })
       .catch(() => {
         // Storage that will not read, most likely. Leaving the previous states

@@ -10,7 +10,7 @@ import { getGrytConfig } from "../config";
 import { getElectronAPI } from "../lib/electron";
 import { useApproveDevice } from "../lib/pairing/useApproveDevice";
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
-import { openUserSettings } from "../packages/socket/src/components/dmKeyWarningToast";
+import { openUserSettings } from "../packages/socket/src/utils/openUserSettings";
 import { QrCode } from "./linkDevice";
 
 /**

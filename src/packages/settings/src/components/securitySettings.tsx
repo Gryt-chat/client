@@ -17,7 +17,6 @@ import {
 
 import { PiCheck, PiFingerprintFill, PiPencilSimpleFill, PiPlus, PiTrashSimpleFill, PiX } from "../../../../lib/icons";
 import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
-import { dmKeyWarningsOff, setDmKeyWarningsOff } from "../../../socket/src/components/dmKeyWarningToast";
 import { LocalHistoryProblem } from "../../../socket/src/components/LocalHistoryProblem";
 import { LocalIdentitySection } from "./localIdentitySection";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
@@ -180,7 +179,6 @@ function LocalHistorySection() {
 }
 
 export function SecuritySettings() {
-  const [keyWarnings, setKeyWarnings] = useState(() => !dmKeyWarningsOff());
   const { isSignedIn } = useAccount();
   const [credentials, setCredentials] = useState<KeycloakCredential[]>([]);
   const [loading, setLoading] = useState(true);
@@ -346,22 +344,6 @@ export function SecuritySettings() {
       )}
 
       <LocalHistorySection />
-
-      <SettingGroup
-        title="Message key warnings"
-        description="Warns when a server holds a message key this device didn't publish, which happens when you sign in on another device. Turn it off if your direct messages don't need to be private from the server."
-      >
-        <label className="flex cursor-pointer items-center gap-3 text-sm">
-          <Switch
-            checked={keyWarnings}
-            onCheckedChange={(on) => {
-              setKeyWarnings(on);
-              setDmKeyWarningsOff(!on);
-            }}
-          />
-          Warn me about message keys
-        </label>
-      </SettingGroup>
 
       <SettingGroup
         title="Persist server access tokens"
