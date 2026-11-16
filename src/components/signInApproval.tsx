@@ -4,7 +4,7 @@ import { Key as PiKey, Warning } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import { accountKeyCall, clearIdentityCertificate, getValidCertificate, restoreIdentityFromWords, useAccount } from "@/common";
+import { accountKeyCall, accountKeyThumbprint, clearIdentityCertificate, fetchKeyBook, getCertificateSub, getValidCertificate, restoreIdentityFromWords, useAccount } from "@/common";
 
 import { getGrytConfig } from "../config";
 import { getElectronAPI } from "../lib/electron";
