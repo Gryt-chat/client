@@ -2,6 +2,8 @@
  * Fetches and caches identity certificates from the Gryt Identity Service. A
  * certificate is **not a bearer token** — it only proves ownership of a key.
  */
+import type { KeyBookEntry } from "@gryt/core";
+
 import { getGrytConfig } from "../../../../config";
 import { isElectron } from "../../../../lib/electron";
 import { describeThisDevice } from "../../../../lib/pairing/device";
@@ -229,6 +231,27 @@ async function seedProof(keycloakToken: string, certJwk: JsonWebKey): Promise<st
     privateKey,
     { jwk: { kty, crv, x, y } },
   );
+}
+
+/** A server's binding signed by the account key, so the server takes it without an older device's handover. */
+export async function accountKeyProof(binding: string): Promise<string> {
+  const { privateKey, publicJwk } = await deriveScopedKeyPair(ACCOUNT_CERT_SCOPE);
+  const { kty, crv, x, y } = publicJwk;
+  return signJwtWithKey({ binding, iat: Math.floor(Date.now() / 1000) }, privateKey, { jwk: { kty, crv, x, y } });
+}
+
+/** This device's account key, as the key book names it. */
+export async function accountKeyThumbprint(): Promise<string> {
+  return jwkThumbprint((await deriveScopedKeyPair(ACCOUNT_CERT_SCOPE)).publicJwk);
+}
+
+/** The public key book for one account. Null when the identity service doesn't answer. */
+export async function fetchKeyBook(sub: string): Promise<KeyBookEntry[] | null> {
+  const identityUrl = getGrytConfig().GRYT_IDENTITY_URL.replace(/\/+$/, "");
+  const res = await fetch(`${identityUrl}/api/v1/account-key/book/${encodeURIComponent(sub)}`).catch(() => null);
+  if (!res?.ok) return null;
+  const body = (await res.json().catch(() => null)) as { book?: unknown } | null;
+  return Array.isArray(body?.book) ? (body.book as KeyBookEntry[]) : null;
 }
 
 /** The account service's view of this device's seed key: on record, and any reset under way. */

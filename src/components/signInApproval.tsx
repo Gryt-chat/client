@@ -1,9 +1,10 @@
+import { foreignKeyDay, keyBookId } from "@gryt/core";
 import { Alert, Button, Dialog, Spinner, TextField } from "@gryt/ui";
-import { Warning } from "@phosphor-icons/react";
+import { Key as PiKey, Warning } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import { accountKeyCall, clearIdentityCertificate, getValidCertificate, restoreIdentityFromWords, useAccount } from "@/common";
+import { accountKeyCall, accountKeyThumbprint, clearIdentityCertificate, fetchKeyBook, getCertificateSub, getValidCertificate, restoreIdentityFromWords, useAccount } from "@/common";
 
 import { getGrytConfig } from "../config";
 import { getElectronAPI } from "../lib/electron";
@@ -25,6 +26,7 @@ export function SignInApproval() {
   const [busy, setBusy] = useState(false);
   const [notMe, setNotMe] = useState(false);
   const [denied, setDenied] = useState(false);
+  const [newKeyDay, setNewKeyDay] = useState<string | null>(null);
   const { open: openApproveDevice } = useApproveDevice();
 
   useEffect(() => {
@@ -67,6 +69,11 @@ export function SignInApproval() {
         void getValidCertificate().catch(() => undefined);
       }
     });
+  }, [isSignedIn]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    void watchKeyBook().then((day) => { if (day) setNewKeyDay(day); });
   }, [isSignedIn]);
 
   const restore = async () => {
@@ -218,6 +225,27 @@ export function SignInApproval() {
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
+      <Dialog.Root open={newKeyDay !== null} onOpenChange={(open) => { if (!open) setNewKeyDay(null); }}>
+        <Dialog.Portal>
+          <Dialog.Backdrop />
+          <Dialog.Popup className="w-[28rem] max-w-[calc(100vw-2rem)]">
+            <div className="flex items-start gap-3">
+              <PiKey size={22} weight="bold" className="mt-0.5 shrink-0" style={{ color: "var(--gryt-accent-9)" }} aria-hidden />
+              <div className="flex flex-col gap-1.5">
+                <Dialog.Title>Your account has a new key</Dialog.Title>
+                <Dialog.Description className="m-0 text-sm text-gryt-muted">
+              On {newKeyDay ? new Date(newKeyDay).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : ""} your account
+              got a key none of your devices made. If you didn&rsquo;t reset your account, change your password.
+                </Dialog.Description>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <Button tone="neutral" onClick={() => { setNewKeyDay(null); changePassword(); }}>Change password</Button>
+              <Button onClick={() => setNewKeyDay(null)}>I reset it</Button>
+            </div>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }
@@ -263,6 +291,30 @@ function ApproveCode() {
       )}
     </>
   );
+}
+
+/** A key none of your devices made, once per key. The first look only remembers what's there. */
+async function watchKeyBook(): Promise<string | null> {
+  // Waits for the certificate the app fetches anyway: asking early can go out before the key is ready.
+  let sub = getCertificateSub();
+  for (let i = 0; !sub && i < 30; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    sub = getCertificateSub();
+  }
+  if (!sub) return null;
+  const [book, mine] = await Promise.all([fetchKeyBook(sub), accountKeyThumbprint().catch(() => null)]);
+  if (!book || !mine) return null;
+  const store = `gryt:key-book-seen:${sub}`;
+  const ids = book.map(keyBookId);
+  let seen: Set<string> | null = null;
+  try {
+    const raw = localStorage.getItem(store);
+    if (raw) seen = new Set(JSON.parse(raw) as string[]);
+    localStorage.setItem(store, JSON.stringify(ids));
+  } catch {
+    return null;
+  }
+  return foreignKeyDay(book, mine, seen);
 }
 
 /** Once, on the device that kept the account key. Only several-key accounts ever see it. */
