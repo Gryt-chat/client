@@ -14,9 +14,7 @@ export function OutputMeters() {
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      // `output` comes with @gryt/voice 0.9.2; an older engine leaves it out and the meters stay hidden.
-      const levels = getTransportLevels?.() as { output?: Sides | null } | null | undefined;
-      setSides(levels?.output ?? null);
+      setSides(getTransportLevels?.()?.output ?? null);
     }, POLL_MS);
     return () => window.clearInterval(id);
   }, [getTransportLevels]);
