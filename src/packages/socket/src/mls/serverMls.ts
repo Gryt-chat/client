@@ -29,7 +29,7 @@ import { publishDmKey } from "../utils/dmKeys";
 import { readMlsCapability, readMlsReports } from "./capability";
 import { thisDeviceCertificateName } from "./deviceName";
 import { askForHistory, askOwnDevices } from "./historyAsk";
-import { handoverCode, type HandoverRequest, handoverRequests, keyResets, type OwnHandover, ownHandover } from "./keyHandover";
+import { handoverCode, type HandoverRequest, handoverRequests, keyResets, movedToThisKey, type OwnHandover, ownHandover } from "./keyHandover";
 import { expectOwnDevice, noteOwnDevices } from "./linkedDevices";
 import { createModeOnlySource } from "./modeOnly";
 import { publishPersonKey } from "./publishPersonKey";
@@ -363,11 +363,42 @@ export function serverMlsOwnKey(host: string, rewritten: boolean, accountBinding
   if (!rewritten) for (const waiting of awaitingApproval) void askHandoverOnce(waiting, hosts.get(waiting) ?? state);
   if (state.otherIdentity === rewritten) return;
   state.otherIdentity = rewritten;
+  if (!rewritten && fromNotice.has(host)) movedToThisKey.set([...movedToThisKey.get(), host]);
   if (!rewritten) {
     setAwaitingApproval(host, false);
     dismissHandoverWaiting(host);
   }
   void refresh(host);
+}
+
+/** Whether this device's key is already the account's on another server, so it's the one to move this one over. */
+export function holdsKeyElsewhere(host: string): boolean {
+  return [...keyMatches].some(([other, ok]) => other !== host && ok);
+}
+
+/** Which of your devices has this server's key, as it named itself. Null when the server doesn't say. */
+export function keyHolderHere(host: string): Promise<{ holder: string | null; seenAt: number | null } | null> {
+  const state = hosts.get(host);
+  if (!state) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    // shortcut: servers before 1.12.17 never answer, so the notice falls back to "another of your devices".
+    const timer = setTimeout(() => resolve(null), 5000);
+    state.socket.emit("dm:key:holder", {}, (reply?: { holder?: string | null; seenAt?: number | null }) => {
+      clearTimeout(timer);
+      resolve(reply ? { holder: reply.holder ?? null, seenAt: reply.seenAt ?? null } : null);
+    });
+  });
+}
+
+/** The notice's button: asks the device with this server's key to hand it over, with no dialog or toast. */
+export function moveServerToThisKey(host: string): void {
+  const state = hosts.get(host);
+  if (!state) return;
+  fromNotice.add(host);
+  askedHandover.delete(host);
+  const mine = ownHandover.get()[host];
+  if (mine?.denied) ownHandover.set(Object.fromEntries(Object.entries(ownHandover.get()).filter(([h]) => h !== host)));
+  void askHandoverOnce(host, state);
 }
 
 /** "Use this device's key instead": your account takes this device's key here, and contacts see it change. */
@@ -383,6 +414,7 @@ export async function adoptThisDevicesKey(host: string): Promise<boolean> {
 const keyMatches = new Map<string, boolean>();
 const accountBindings = new Map<string, string>();
 const askedHandover = new Set<string>();
+const fromNotice = new Set<string>();
 
 /**
  * Asked only when this key is already the account's on another server: then this server should
@@ -407,7 +439,7 @@ async function askHandoverOnce(host: string, state: HostState): Promise<void> {
 
 function setOwnHandover(host: string, handover: OwnHandover): void {
   ownHandover.set({ ...ownHandover.get(), [host]: handover });
-  if (!awaitingApproval.has(host) && handover.code) showHandoverWaiting(host, handover);
+  if (!awaitingApproval.has(host) && !fromNotice.has(host) && handover.code) showHandoverWaiting(host, handover);
 }
 
 /** After a reload this device only knows it asked because the server hands the ask back. */
