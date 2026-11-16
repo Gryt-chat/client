@@ -60,8 +60,7 @@ import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
-import { movedToThisKey } from "../mls/keyHandover";
-import { useHoldsKeyElsewhere, useMlsSource } from "../mls/serverMls";
+import { useMlsSource } from "../mls/serverMls";
 import type { MlsAction } from "../mls/useMlsConversation";
 import { type DiscordImportState, useDiscordImport } from "../utils/discordImport";
 import { getCustomEmojis } from "../utils/emojiData";
@@ -490,7 +489,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
     mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded, peerKeyResetPending,
-    mlsOtherIdentity,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -499,19 +497,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     dmPeer: activeConversation?.kind === "dm" ? activeConversation.other.server_user_id : null,
     dmPeerName: activeConversation?.other.nickname,
   });
-  const viewHost = currentlyViewingServer?.host ?? "";
-  const movedHere = movedToThisKey.use().includes(viewHost);
-  const keyElsewhere = useHoldsKeyElsewhere(viewHost);
-  const oldKey = useMemo(
-    () =>
-      viewHost && ((mlsOtherIdentity && keyElsewhere) || movedHere)
-        ? { host: viewHost, serverName: currentlyViewingServer?.name || viewHost, peerName: activeConversation?.other.nickname || "They" }
-        : null,
-    [viewHost, mlsOtherIdentity, keyElsewhere, movedHere, currentlyViewingServer?.name, activeConversation?.other.nickname],
-  );
   const mlsView = useMemo(
     () => ({
-      oldKey,
       notice: mlsNotice,
       held: composerHeld,
       remove: deleteMlsMessage,
@@ -520,7 +507,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
       archiveFailed,
       actions: noticeActions(peerKeyNotice || peerKeyResetPending, mlsNotAdded, mlsActions, compareKeys),
     }),
-    [oldKey, mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, peerKeyResetPending, mlsNotAdded, compareKeys],
+    [mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, peerKeyResetPending, mlsNotAdded, compareKeys],
   );
 
   /** The server already withholds new messages, so this covers what was drawn

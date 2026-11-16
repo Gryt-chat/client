@@ -36,7 +36,6 @@ import { CallStatsRecorder } from "./components/callStatsRecorder";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GameDetectPrompt } from "./components/gameDetectPrompt";
 import { GlobalLightbox } from "./components/GlobalLightbox";
-import { HandoverRequestDialog } from "./components/handoverRequestDialog";
 import { IdentityClaimPrompt } from "./components/identityClaimPrompt";
 import { KeyResetDialog } from "./components/keyResetDialog";
 import { LeaveServer } from "./components/leaveServer";
@@ -154,7 +153,6 @@ export function App() {
           <LinkDeviceDialog />
           <ApproveThisDevice />
           <SaveWordsDialog />
-          <HandoverRequestDialog />
           <KeyResetDialog />
           <SignInApproval />
           <FriendRequestDialog />

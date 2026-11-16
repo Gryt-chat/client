@@ -1,28 +1,4 @@
-import { base64Url, comparisonCode, verifyDmKeyBinding } from "@gryt/crypto";
 import { useSyncExternalStore } from "react";
-
-import { identityScopeFor } from "@/common";
-
-/** Another device of yours asking this one to hand a server over to its key (GRYT-1886). */
-export interface HandoverRequest {
-  host: string;
-  binding: string;
-  deviceName: string;
-  askerId: string;
-  /** The same short code the asking device shows, so you know it's the one in front of you. */
-  code: string;
-}
-
-/** Eight digits both screens show: from the account's current binding and the new one. */
-export async function handoverCode(host: string, accountBinding: string, newBinding: string): Promise<string> {
-  const scope = identityScopeFor(host);
-  const side = async (binding: string) => {
-    const v = await verifyDmKeyBinding(binding, scope);
-    return { thumbprint: v.identityThumbprint, dmPublicKey: base64Url(v.dmPublicKey) };
-  };
-  const digits = comparisonCode(await side(accountBinding), await side(newBinding));
-  return `${digits.slice(0, 4)} ${digits.slice(4, 8)}`;
-}
 
 function store<T>(initial: T) {
   let value = initial;
@@ -43,27 +19,6 @@ function store<T>(initial: T) {
       ),
   };
 }
-
-/** Requests this device has been asked to approve, newest last. */
-export const handoverRequests = store<readonly HandoverRequest[]>([]);
-
-export interface OwnHandover {
-  /** The key this device asked to take over with, which a "no" names. */
-  binding: string;
-  code: string;
-  denied: boolean;
-  /** The device holding the current key, as it named itself, and when it was last connected. */
-  holder?: string | null;
-  seenAt?: number | null;
-  /** When this device takes over by itself if nobody says no. */
-  at?: number;
-}
-
-/** Per server, what this device's own request is doing. */
-export const ownHandover = store<Readonly<Record<string, OwnHandover>>>({});
-
-/** Servers this device moved over to its key from the notice, so the chat can say it's done. */
-export const movedToThisKey = store<readonly string[]>([]);
 
 /** Per server, a pending key reset: when it takes over, and whether this device holds the key it replaces. */
 export const keyResets = store<Readonly<Record<string, { at: number; holdsCurrentKey: boolean }>>>({});
