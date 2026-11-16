@@ -1,5 +1,6 @@
-import { Button } from "@gryt/ui";
 import { Component, type ErrorInfo, type ReactNode } from "react";
+
+import { CrashScreen } from "./CrashScreen";
 
 interface Props {
   children: ReactNode;
@@ -23,24 +24,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
-
-    return (
-      <div className="flex items-center justify-center" style={{ width: "100vw", height: "100vh", background: "var(--gryt-neutral-1)" }}>
-        <div style={{ textAlign: "center", maxWidth: 420, padding: 32 }}>
-          <p className="text-xl font-bold mb-3">
-            Something went wrong
-          </p>
-          <p className="text-sm text-gryt-muted mb-4" style={{ marginTop: 8 }}>
-            {this.state.error?.message || "An unexpected error occurred."}
-          </p>
-          <Button size="small"
-            style={{ marginTop: 16 }}
-            onClick={() => window.location.reload()}
-          >
-            Reload
-          </Button>
-        </div>
-      </div>
-    );
+    return <CrashScreen message={this.state.error?.message || "An unexpected error occurred."} />;
   }
 }
