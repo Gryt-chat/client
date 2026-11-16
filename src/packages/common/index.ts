@@ -23,6 +23,7 @@ export * from "./src/auth/identity-certificate";
 export * from "./src/auth/identity-claims";
 export * from "./src/auth/identity-keys";
 export * from "./src/auth/identity-source";
+export * from "./src/auth/key-book";
 export * from "./src/auth/keycloak";
 export * from "./src/auth/local-identity";
 export * from "./src/auth/message-key";

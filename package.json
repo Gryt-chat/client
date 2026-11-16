@@ -154,6 +154,7 @@
     "test:discord-import": "node --disable-warning=ExperimentalWarning scripts/check-discord-import.ts",
     "test:mls-dm": "node --disable-warning=ExperimentalWarning scripts/check-mls-dm.ts",
     "test:approve-ticket": "node --disable-warning=ExperimentalWarning scripts/check-approve-ticket.ts",
+    "test:key-book": "node --disable-warning=ExperimentalWarning scripts/check-key-book.ts",
     "test:mls-restart": "node --disable-warning=ExperimentalWarning scripts/check-mls-restart.ts",
     "test:clear-local-history": "node --disable-warning=ExperimentalWarning scripts/check-clear-local-history.ts",
     "test:channel-permissions": "node scripts/check-channel-permissions.ts",
