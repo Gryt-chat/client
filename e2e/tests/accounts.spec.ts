@@ -38,10 +38,10 @@ test.describe("one key per account", () => {
     identity.oneKey("acct-erin");
     // Same member on the server, so Kari still knows it by the name the first device gave it.
     const erin = { ...(await newMember({ server, account: { identity, sub: "acct-erin" }, label: "erin new" })), name: old.name };
+    // The server's answer to the account proof: a server from before server#377 refuses it.
+    await expect.poll(() => erin.frames.some((f) => /"changed":true|handover_required/.test(f)), { timeout: 30_000 }).toBe(true);
+    test.skip(!erin.frames.some((f) => f.includes('"changed":true')), "the server predates taking the account key (server#377)");
     await openDmFromList(erin.page, kari.name);
-    // A server from before server#377 can't take the account key, and asks for the old device instead.
-    const asksForOldDevice = await erin.page.getByText(/^Approve this device on /).waitFor({ timeout: 8_000 }).then(() => true, () => false);
-    test.skip(asksForOldDevice, "the server predates taking the account key (server#377)");
 
     await kari.page.reload();
     await openDmFromList(kari.page, erin.name);
