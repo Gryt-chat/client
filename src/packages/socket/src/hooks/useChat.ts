@@ -114,7 +114,6 @@ interface UseChatReturn {
   /** The other person's key is being reset, so comparing codes is what to offer. */
   peerKeyResetPending: boolean;
   /** This server still has another of your devices' keys. */
-  mlsOtherIdentity: boolean;
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -893,6 +892,5 @@ export function useChat({
     peerKeyNotice,
     mlsNotAdded: !!dmPeer && !peerKeyNotice && mls.problems.lost === "not_added",
     peerKeyResetPending: !!dmPeer && !!peerKeyResetAt && peerKeyResetAt > Date.now(),
-    mlsOtherIdentity: !!dmPeer && !peerKeyNotice && mls.problems.lost === "other_identity",
   };
 }

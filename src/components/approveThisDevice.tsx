@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { restoreIdentityFromWords } from "@/common";
-import { clearRemovedEverywhere, ownHandover, requestKeyReset, useHostsAwaitingApproval } from "@/socket";
+import { clearRemovedEverywhere, requestKeyReset, useHostsAwaitingApproval } from "@/socket";
 
 import { useLinkDevice } from "../lib/pairing/useLinkDevice";
 
@@ -14,8 +14,6 @@ import { useLinkDevice } from "../lib/pairing/useLinkDevice";
  */
 export function ApproveThisDevice() {
   const hosts = useHostsAwaitingApproval();
-  const own = ownHandover.use();
-  const handover = [...hosts].map((h) => own[h]).find(Boolean);
   const { open: openLinkDevice, isOpen: linking } = useLinkDevice();
   const [later, setLater] = useState(false);
   const [panel, setPanel] = useState<"words" | "fresh" | null>(null);
@@ -65,27 +63,7 @@ export function ApproveThisDevice() {
               To open your private messages on this device, approve it once from a device you already use.
               Servers and channels work right away. Only DMs wait for this.
             </p>
-            {handover && !handover.denied && (
-              <div className="flex flex-col gap-1 rounded-md border border-gryt-border p-3">
-                <span className="font-semibold">
-                  Waiting for {handover.holder || "your other device"}
-                  {handover.seenAt ? `, last used ${new Date(handover.seenAt).toLocaleDateString()}` : ""}
-                </span>
-                <span>
-                  Open Gryt there and check it shows <span className="font-mono font-semibold">{handover.code}</span>,
-                  then approve. This server then uses the same key as your other servers.
-                </span>
-                {handover.at && (
-                  <span className="text-gryt-muted">
-                    If nobody answers, this device takes over by itself on {new Date(handover.at).toLocaleDateString()}.
-                  </span>
-                )}
-              </div>
-            )}
-            {handover?.denied && (
-              <Alert severity="warning">Your other device said no, so nothing changed. If that was a mistake, approve from another device below.</Alert>
-            )}
-            <Button onClick={openLinkDevice} disabled={busy} tone={handover && !handover.denied ? "neutral" : undefined}>
+            <Button onClick={openLinkDevice} disabled={busy}>
               Show the code to scan
             </Button>
 
