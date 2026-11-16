@@ -37,7 +37,7 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
-import { BANNER_SHAPE, isStillPicture } from "./bannerCrop";
+import { BANNER_SHAPE, CARD_BANNER_SHAPE, isStillPicture } from "./bannerCrop";
 import { CardPresetTile } from "./CardPresetTile";
 import { PictureCropDialog } from "./PictureCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
@@ -326,7 +326,7 @@ export function CardSettings() {
           />
           <PictureCropDialog
             file={cropping}
-            shape={BANNER_SHAPE}
+            shape={style.bannerSize === "card" ? CARD_BANNER_SHAPE : BANNER_SHAPE}
             preview={(src) => (
               <MemberCardView name={nickname} avatarSrc={resolveAvatarSrc(avatarDataUrl, nickname, worn)} status="online" profile={draft} owlHex={owlHex} bannerUrl={src} bannerType="image" appearance={resolvedAppearance} seedKey={seedKey} worn={worn} />
             )}
