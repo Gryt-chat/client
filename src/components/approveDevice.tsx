@@ -13,7 +13,7 @@ import { deviceCapLine } from "../lib/pairing/deviceCap";
 import { type ApproverInFlight, approverSteps, useWakeLock } from "../lib/pairing/linkSteps";
 import { useApproveDevice } from "../lib/pairing/useApproveDevice";
 import { useSecondsLeft } from "../lib/pairing/useSecondsLeft";
-import { openUserSettings } from "../packages/socket/src/components/dmKeyWarningToast";
+import { openUserSettings } from "../packages/socket/src/utils/openUserSettings";
 import { EmojiRow, LinkSteps, Waiting } from "./pairingParts";
 
 function CodeEntry() {

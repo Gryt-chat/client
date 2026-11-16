@@ -2,7 +2,7 @@ import { Button } from "@gryt/ui";
 import toast from "react-hot-toast";
 
 import { groupLinkedDeviceNotices, linkedDeviceLine, type LinkedDeviceNotice, linkedDeviceNotices } from "../mls/linkedDevices";
-import { openUserSettings } from "./dmKeyWarningToast";
+import { openUserSettings } from "../utils/openUserSettings";
 
 /** The live half of "New device linked". Settings, Security keeps it until it's dismissed there.
     One toast per device: the same install turning up on each server redraws it rather than stacking. */

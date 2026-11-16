@@ -14,10 +14,10 @@ import {
 
 import { useLinkDevice } from "../../../../lib/pairing/useLinkDevice";
 import type { AttachmentMeta, ChatMessage } from "../components/chatUtils";
-import { openUserSettings } from "../components/dmKeyWarningToast";
 import { draftKey, returnDraft } from "../hooks/returnedDrafts";
 import { uploadChatFile } from "../hooks/uploadChatFile";
 import { getMediaDimensions } from "../utils/imageUtils";
+import { openUserSettings } from "../utils/openUserSettings";
 import { openSealedAttachment } from "../utils/sealedAttachments";
 import { forgetHistoryAsk, historyAsked } from "./historyAsk";
 import { askOwnCopy, askTheirCopy, askToApproveHere, useMlsSource } from "./serverMls";
