@@ -2,6 +2,8 @@
  * Fetches and caches identity certificates from the Gryt Identity Service. A
  * certificate is **not a bearer token** — it only proves ownership of a key.
  */
+import type { KeyBookEntry } from "@gryt/core";
+
 import { getGrytConfig } from "../../../../config";
 import { isElectron } from "../../../../lib/electron";
 import { describeThisDevice } from "../../../../lib/pairing/device";
@@ -9,7 +11,6 @@ import { setPendingApproveTicket } from "./approve-ticket";
 import { certificateVerdict } from "./certificate-verdict";
 import { asIdentityScope, clearIdentityKeys, deriveScopedKeyPair, getPublicKeyJwk, sealedDeviceName, signJwtWithKey } from "./identity-keys";
 import { decodeJwt } from "./jwt";
-import { type KeyBookEntry } from "./key-book";
 import { getValidIdentityToken } from "./keycloak";
 import { jwkThumbprint } from "./server-pins";
 

@@ -163,7 +163,6 @@ jobs:
       - run: yarn test:discord-import
       - run: yarn test:mls-dm
       - run: yarn test:approve-ticket
-      - run: yarn test:key-book
       - run: yarn test:mls-restart
       - run: yarn test:clear-local-history
       - run: yarn test:owl-export
