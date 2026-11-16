@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { PiArrowCircleUpFill,PiBugFill, PiChatTeardropDotsFill } from "../lib/icons";
 import { callTimeline } from "../lib/reports/callTimeline";
 import { useDiagnostics } from "../lib/reports/diagnostics";
+import { issueUrl } from "../lib/reports/issueUrl";
 import { recentLogs } from "../lib/reports/logs";
 import { submitReport } from "../lib/reports/submit";
 import { useReportForm } from "../lib/reports/useReportForm";
@@ -141,7 +142,7 @@ function ReportForm({ type, draft, onDone }: { type: ReportType; draft: string; 
 
         <p className="text-xs text-gryt-muted">
           Want to add a screenshot?{" "}
-          <a className="gryt-link" href="https://github.com/Gryt-chat/gryt/issues/new" target="_blank" rel="noopener noreferrer">
+          <a className="gryt-link" href={issueUrl(report)} target="_blank" rel="noopener noreferrer">
             Open an issue on GitHub
           </a>{" "}
           instead.
