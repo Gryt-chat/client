@@ -131,14 +131,18 @@ function Body({ state, replaces, history }: { state: NewDeviceState | null; repl
       return (
         <div className="flex flex-col items-center gap-4">
           <Dialog.Description className="m-0 self-stretch">
-            Point your phone&rsquo;s camera at this. Gryt opens there and asks &ldquo;Is this your
-            computer?&rdquo;. Check the pictures match, tap Approve, and you&rsquo;re done.
+            On your other device, open Settings, Your devices, Link a device, and type this code. Check the pictures
+            match on both screens, and you&rsquo;re done.
           </Dialog.Description>
-          <QrCode text={`gryt://link?p=${encodeURIComponent(state.qr)}`} />
-          <span className="text-sm text-gryt-muted">Or on your other device, open Link a device and type</span>
-          <code className="font-mono text-2xl tracking-[0.2em] text-gryt-text select-all" aria-label="Code to type">
+          <code className="font-mono text-3xl tracking-[0.2em] text-gryt-text select-all" aria-label="Code to type">
             {state.code}
           </code>
+          <details className="self-stretch text-sm">
+            <summary className="gryt-link cursor-pointer text-center">Approving from your phone? Show a QR code</summary>
+            <div className="mt-3 flex justify-center">
+              <QrCode text={`gryt://link?p=${encodeURIComponent(state.qr)}`} />
+            </div>
+          </details>
           {state.renewed === "timed_out" && (
             <span className="text-xs text-gryt-muted">The last one wasn&rsquo;t approved in time, so this is a new code.</span>
           )}
