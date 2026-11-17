@@ -6,15 +6,16 @@ import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
 
 const DISCORD_BLUE = "#5865F2";
 
-/** The badge alone, over an avatar in a parent with `position: relative`. */
-export function DiscordBadgeDot({ size }: { size: number }) {
+/** The badge alone, over an avatar in a parent with `position: relative`. Pass `avatarPx` on a large avatar so it sits on the circle, not the box corner. */
+export function DiscordBadgeDot({ size, avatarPx }: { size: number; avatarPx?: number }) {
+  const inset = avatarPx ? Math.round(avatarPx * (1 - Math.SQRT1_2) / 2 - size / 2) : -2;
   return (
     <Tooltip title="Only on Discord">
       <span
         aria-label="Only on Discord"
         role="img"
         className="absolute grid place-items-center rounded-full"
-        style={{ right: -2, bottom: -2, width: size, height: size, background: DISCORD_BLUE, boxShadow: "0 0 0 2px var(--gryt-neutral-3)" }}
+        style={{ right: inset, bottom: inset, width: size, height: size, background: DISCORD_BLUE, boxShadow: "0 0 0 2px var(--gryt-neutral-3)" }}
       >
         <DiscordLogo size={Math.round(size * 0.62)} color="#fff" aria-hidden />
       </span>
