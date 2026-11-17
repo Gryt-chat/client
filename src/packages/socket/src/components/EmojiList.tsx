@@ -1,14 +1,15 @@
 import { Button, IconButton, TextField } from "@gryt/ui";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 import { getServerHttpBase } from "@/common";
 
-import { PiCheck, PiPencilSimpleFill, PiTrashSimpleFill, PiX } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiCheck, PiPencilSimpleFill, PiTrashSimpleFill, PiX } from "../../../../lib/icons";
 import { getCustomEmojiUrl } from "../utils/emojiData";
 import type { EmojiItem } from "../utils/emojiFileUtils";
 import { EMOJI_NAME_RE } from "../utils/emojiFileUtils";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { EmojiReplaceDialog,type EmojiReplacement } from "./EmojiReplaceDialog";
 
 interface EmojiListProps {
   host: string;
@@ -36,6 +37,10 @@ export function EmojiList({
   const [editingName, setEditingName] = useState("");
   const [editingError, setEditingError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
+  const replaceInput = useRef<HTMLInputElement>(null);
+  const [replaceTarget, setReplaceTarget] = useState<{ name: string; beforeUrl: string } | null>(null);
+  const [replacement, setReplacement] = useState<(EmojiReplacement & { file: File }) | null>(null);
+  const [replacing, setReplacing] = useState(false);
 
   const base = getServerHttpBase(host);
 
@@ -98,6 +103,49 @@ export function EmojiList({
       toast.error(e instanceof Error ? e.message : "Failed to delete emojis.");
     } finally {
       setDeletingAll(false);
+    }
+  };
+
+  const pickReplacement = (ev: ChangeEvent<HTMLInputElement>) => {
+    const file = ev.target.files?.[0];
+    ev.target.value = "";
+    if (!file || !replaceTarget) return;
+    setReplacement({ ...replaceTarget, file, afterUrl: URL.createObjectURL(file) });
+  };
+
+  const closeReplacement = () => {
+    if (replacement) URL.revokeObjectURL(replacement.afterUrl);
+    setReplacement(null);
+  };
+
+  // The server's upload replaces an emoji with the same name, so the name stays and the file id changes.
+  const handleReplace = async () => {
+    if (!replacement || !effectiveAccessToken) return;
+    setReplacing(true);
+    try {
+      const form = new FormData();
+      form.append("file", replacement.file);
+      form.append("name", replacement.name);
+      const resp = await fetch(`${base}/api/emojis`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${effectiveAccessToken}` },
+        body: form,
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(
+          (typeof data?.message === "string" && data.message) ||
+          (typeof data?.error === "string" && data.error) ||
+          `HTTP ${resp.status}`,
+        );
+      }
+      toast.success(`Replaced :${replacement.name}:`);
+      closeReplacement();
+      await refresh();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Couldn't replace the emoji.");
+    } finally {
+      setReplacing(false);
     }
   };
 
@@ -261,6 +309,16 @@ export function EmojiList({
                     <PiPencilSimpleFill size={14} />
                   </IconButton>
                   <IconButton tone="ghost" size="xsmall"
+                    onClick={() => {
+                      setReplaceTarget({ name: e.name, beforeUrl: getCustomEmojiUrl(host, e.name, e.file_id) });
+                      replaceInput.current?.click();
+                    }}
+                    title={`Replace :${e.name}:`}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <PiArrowsClockwiseFill size={14} />
+                  </IconButton>
+                  <IconButton tone="ghost" size="xsmall"
                     onClick={() => setConfirmDelete(e.name)}
                     disabled={deletingName === e.name}
                     title={`Delete :${e.name}:`}
@@ -274,6 +332,14 @@ export function EmojiList({
           ))}
         </div>
       )}
+
+      <input ref={replaceInput} type="file" accept="image/*" hidden onChange={pickReplacement} />
+      <EmojiReplaceDialog
+        replacement={replacement}
+        busy={replacing}
+        onConfirm={() => void handleReplace()}
+        onCancel={closeReplacement}
+      />
 
       <ConfirmDialog
         open={confirmDelete !== null}
