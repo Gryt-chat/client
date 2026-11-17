@@ -571,6 +571,24 @@ body {
   font-size: 28px;
 }
 
+.chat-editor-file-preview img,
+.chat-editor-file-preview video,
+.chat-editor-file-preview-icon {
+  transition: height 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-editor-file-preview img,
+  .chat-editor-file-preview video,
+  .chat-editor-file-preview-icon {
+    transition: none;
+  }
+}
+
+/* Folded with the text while you're elsewhere. */
+.chat-editor-wrapper:not(:focus-within) :is(.chat-editor-file-preview img, .chat-editor-file-preview video, .chat-editor-file-preview-icon) {
+  height: 36px;
+}
+
 .chat-editor-file-preview-info {
   display: flex;
   flex-direction: column;
