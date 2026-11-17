@@ -545,7 +545,16 @@ body {
 .chat-editor-file-preview[data-drop="before"] { box-shadow: -5px 0 0 -2px var(--gryt-accent-9); }
 .chat-editor-file-preview[data-drop="after"] { box-shadow: 5px 0 0 -2px var(--gryt-accent-9); }
 
-.chat-editor-file-preview img {
+.chat-editor-file-preview-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.chat-editor-file-preview img,
+.chat-editor-file-preview video {
   width: 100px;
   height: 70px;
   object-fit: cover;

@@ -61,6 +61,7 @@ import { $createEmojiNode, $createMentionNode, $isMentionNode, composerTransform
 import { EmojiAutocomplete } from "./EmojiAutocomplete";
 import { EmojiPicker } from "./EmojiPicker";
 import { emojiQueryAt } from "./emojiQuery";
+import { ImageLightbox } from "./ImageLightbox";
 import { MentionAutocomplete, type MentionMember } from "./MentionAutocomplete";
 
 /**
@@ -225,6 +226,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [dragFrom, setDragFrom] = useState<number | null>(null);
     const [dropAt, setDropAt] = useState<number | null>(null);
+    const [viewing, setViewing] = useState<number | null>(null);
     /** Moves a staged file from one place to another; `to` counts gaps, 0 is before the first. */
     const moveFile = (from: number, to: number) => {
       setPendingFiles((files) => {
@@ -318,7 +320,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
           toast.error(`File "${file.name}" is too large. Max file size is ${limitMb} MB.`);
           continue;
         }
-        const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+        const previewUrl = /^(image|video)\//.test(file.type) ? URL.createObjectURL(file) : null;
         const id = `file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         setPendingFiles((prev) => [...prev, { id, file, previewUrl }]);
       }
@@ -639,6 +641,7 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
 
     const hint = placeholder || "Type a message...";
     const canSend = length > 0 || pendingFiles.length > 0;
+    const media = pendingFiles.filter((p) => p.previewUrl);
     return (
       <div className={`gryt-composer ${disabled ? "gryt-composer-disabled" : ""}`}>
         {/* The phone's + menu, outside the field (GRYT-1722). */}
@@ -701,7 +704,18 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                 onDragEnd={() => { setDragFrom(null); setDropAt(null); }}
               >
                 {pf.previewUrl ? (
-                  <img src={pf.previewUrl} alt="Upload preview" />
+                  <button
+                    type="button"
+                    className="chat-editor-file-preview-open"
+                    aria-label={`Open ${pf.file.name}`}
+                    onClick={() => setViewing(media.indexOf(pf))}
+                  >
+                    {pf.file.type.startsWith("video/") ? (
+                      <video src={pf.previewUrl} muted preload="metadata" />
+                    ) : (
+                      <img src={pf.previewUrl} alt="Upload preview" />
+                    )}
+                  </button>
                 ) : (
                   <div className="chat-editor-file-preview-icon">
                     {getFileIcon(pf.file.type)}
@@ -722,6 +736,19 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
               </div>
             ))}
           </div>
+        )}
+        {viewing !== null && (
+          <ImageLightbox
+            gallery={{
+              index: viewing,
+              items: media.map((p) => ({
+                kind: p.file.type.startsWith("video/") ? "video" : "image",
+                name: p.file.name,
+                local: p.previewUrl ?? undefined,
+              })),
+            }}
+            onClose={() => setViewing(null)}
+          />
         )}
         <EmojiAutocomplete
           query={emojiQuery || ""}
