@@ -403,7 +403,11 @@ export const MarkdownRenderer = memo(({
   const { emojiSize } = useTheme();
   const serverAllows = useExternalEmojisAllowed(serverHost);
   const externalOk = allowExternalEmojis ?? serverAllows;
-  const emojiOnly = useMemo(() => content ? isEmojiOnly(content) : false, [content]);
+  // On the converted text, so a typed :D is as big as a picked 😄.
+  const emojiOnly = useMemo(
+    () => (content ? isEmojiOnly(smileyConversion ? preprocessSmileys(content, disabledSmileys) : content) : false),
+    [content, smileyConversion, disabledSmileys],
+  );
   const hasProfanity = !!(blurProfanity && profanityMatches && profanityMatches.length > 0);
 
   const membersById = useMemo(() => {
