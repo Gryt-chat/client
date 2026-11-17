@@ -197,7 +197,7 @@ export function EmojiList({
                 transition: "background 120ms",
               }}>
               <img
-                src={getCustomEmojiUrl(host, e.name)}
+                src={getCustomEmojiUrl(host, e.name, e.file_id)}
                 alt={`:${e.name}:`}
                 style={{
                   width: 32,

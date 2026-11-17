@@ -74,8 +74,9 @@ export function onCustomEmojisChange(fn: EmojiChangeListener): () => void {
   return () => { emojiChangeListeners.delete(fn); };
 }
 
-export function getCustomEmojiUrl(serverHost: string, name: string): string {
-  return `${getServerHttpBase(serverHost)}/api/emojis/img/${encodeURIComponent(name)}`;
+/** The file id is in the URL because the server caches the image as immutable by name, and a replaced emoji keeps its name. */
+export function getCustomEmojiUrl(serverHost: string, name: string, fileId: string): string {
+  return `${getServerHttpBase(serverHost)}/api/emojis/img/${encodeURIComponent(name)}?v=${encodeURIComponent(fileId)}`;
 }
 
 export function setCustomEmojis(emojis: { name: string; file_id: string }[], serverHost: string): void {
@@ -83,7 +84,7 @@ export function setCustomEmojis(emojis: { name: string; file_id: string }[], ser
     name: e.name,
     emoji: null,
     isCustom: true,
-    url: getCustomEmojiUrl(serverHost, e.name),
+    url: getCustomEmojiUrl(serverHost, e.name, e.file_id),
     tags: [],
     aliases: [],
   }));
