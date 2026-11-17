@@ -49,7 +49,7 @@ export function DiscordLinkDialog({ host, open, onOpenChange }: { host: string; 
               Run /link on the bot in this server&rsquo;s Discord. It gives you a code only you can see. Enter it here and your Discord messages show under your name.
             </span>
             <TextField label="Code" placeholder="ABCD2345" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button size="small" tone="ghost" type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button size="small" type="submit" disabled={busy}>Link</Button>
             </div>
