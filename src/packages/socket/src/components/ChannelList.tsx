@@ -541,7 +541,8 @@ export const ChannelList = ({
                           isDeafened={clients[id].isDeafened}
                           isAFK={clients[id].isAFK}
                           nickname={clients[id].nickname}
-                          avatarSrc={resolveAvatarSrc(
+                          discordOnly={!!clients[id].discord}
+                          avatarSrc={clients[id].discord?.avatar ?? resolveAvatarSrc(
                             clients[id].serverUserId && avatarByServerUserId.get(clients[id].serverUserId)
                               ? getUploadsFileUrl(serverHost, avatarByServerUserId.get(clients[id].serverUserId) as string, { thumb: true })
                               : undefined,

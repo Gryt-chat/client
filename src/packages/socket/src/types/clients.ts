@@ -26,6 +26,8 @@ export type Client = {
   screenShares?: { videoStreamID: string; audioStreamID: string; name?: string }[];
   status?: UserStatus;
   lastSeen?: Date;
+  /** Someone in a bridged Discord voice channel, not a member here: their Discord name and picture. */
+  discord?: { name: string; avatar: string };
 };
 
 export type Clients = { [id: string]: Client };
