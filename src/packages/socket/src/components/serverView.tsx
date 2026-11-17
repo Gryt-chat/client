@@ -490,7 +490,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
-    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded,
+    mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded, sealedHistory,
   } = useChat({
     currentConnection, activeConversationId, currentlyViewingServer,
     currentChannelId, isConnected, serverDetailsList, nickname,
@@ -1932,6 +1932,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           peerId={activeDm.other.server_user_id}
           peerName={activeDm.other.nickname}
           onCall={() => startCall(activeDm.conversation_id)}
+          sealedHistory={sealedHistory}
         />
       )}
       {activeDm?.kind === "dm" && (
