@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { DiscordLogo } from "../../../../lib/icons";
 import { useSockets } from "../hooks/useSockets";
 import { bridgeFetch } from "./discordBridgeApi";
+import { DiscordOnlyBadge } from "./DiscordOnlyBadge";
 
 type DiscordStatus = "online" | "idle" | "dnd" | "offline";
 
@@ -65,7 +66,11 @@ export function DiscordMemberSection({ host, avatarsOnly, className }: { host: s
               compact={avatarsOnly}
               name={p.name}
               offline={p.status === "offline"}
-              avatar={<Avatar size="small" className={avatarsOnly ? "h-6 w-6 text-[10px]" : undefined} src={p.avatar} fallback={p.name[0]} alt="" />}
+              avatar={
+                <DiscordOnlyBadge name={p.name} avatar={p.avatar} status={s.label ?? (p.status === "online" ? "Online" : "Offline")} size={avatarsOnly ? 11 : 14}>
+                  <Avatar size="small" className={avatarsOnly ? "h-6 w-6 text-[10px]" : undefined} src={p.avatar} fallback={p.name[0]} alt="" />
+                </DiscordOnlyBadge>
+              }
               status={s.label}
               statusColor={s.color}
             />

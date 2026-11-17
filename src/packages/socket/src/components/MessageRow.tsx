@@ -20,6 +20,7 @@ import type { ChatMessage, Reaction } from "./chatUtils";
 import { DateSeparator, MessageTimestamp, NewMessagesDivider, toDate } from "./chatUtils";
 import { ADDED_LINE } from "./chatViewHelpers";
 import { CollapsibleText } from "./CollapsibleText";
+import { DiscordOnlyBadge } from "./DiscordOnlyBadge";
 import { EmojiPicker } from "./EmojiPicker";
 import { type LightboxGallery } from "./ImageLightbox";
 import { galleryOf } from "./lightboxGallery";
@@ -300,6 +301,15 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
   const bubbleSide = alignRight ? "flex-end" : "flex-start";
   const bubbleAlign = look === "bubbles" ? bubbleSide : undefined;
 
+  const bareAvatar = <Avatar size="large" className="h-[51px] w-[51px] shrink-0 text-lg" fallback={meta.senderName[0]} src={meta.avatarUrl} />;
+  const plainAvatar = m.sender_imported_from ? (
+    <span className="mt-0.5 shrink-0">
+      <DiscordOnlyBadge name={meta.senderName} avatar={meta.avatarUrl} size={18}>{bareAvatar}</DiscordOnlyBadge>
+    </span>
+  ) : (
+    <span className="mt-0.5 shrink-0">{bareAvatar}</span>
+  );
+
   const avatarNode = (
     <>
             {/* The same card the member sidebar shows, on the avatar in the
@@ -328,14 +338,7 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   </Popover.Portal>
                 )}
               </Popover.Root>
-            ) : (
-              <Avatar
-                size="large"
-                className="mt-0.5 h-[51px] w-[51px] shrink-0 text-lg"
-                fallback={meta.senderName[0]}
-                src={meta.avatarUrl}
-              />
-            )}
+            ) : plainAvatar}
     </>
   );
 
@@ -379,8 +382,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   </span>
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} receivedAt={m.received_at} />
-                {(m.imported_from ?? m.sender_imported_from) && (
-                  <Tooltip title="From Discord">
+                {m.imported_from && (
+                  <Tooltip title="Imported from Discord">
                     <span className="discord-import-tag">Discord</span>
                   </Tooltip>
                 )}
