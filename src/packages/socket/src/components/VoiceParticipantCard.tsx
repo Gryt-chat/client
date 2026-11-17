@@ -703,7 +703,7 @@ export function VoiceParticipantCard({
             ...(compact ? {} : { width: avatarPx, height: avatarPx }),
           }}
         />
-        {client.discord && <DiscordBadgeDot size={compact ? 12 : Math.round(avatarPx * 0.28)} />}
+        {client.discord && <DiscordBadgeDot size={compact ? 12 : Math.round(avatarPx * 0.28)} avatarPx={compact ? undefined : avatarPx} />}
 
         {isUserConnecting && (
           <div className="flex absolute items-center justify-center" style={{
