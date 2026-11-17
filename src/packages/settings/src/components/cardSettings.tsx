@@ -1,4 +1,4 @@
-import { Button, CardIcon, Checkbox, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
+import { Avatar, Button, CardIcon, Checkbox, CopyCardLink, createGrytTheme, Dialog, GrytProvider, grytTheme, grytThemeToOptions, MemberCardEditor, MemberItem, seedFromId, TextField, Toggle, ToggleGroup } from "@gryt/ui";
 import { UserCircle } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -21,6 +21,8 @@ import type { RichActivity } from "../../../../lib/richActivity";
 import { takeSharedLook, useSharedLook } from "../../../../lib/sharedLook";
 import { useCardEmojiGroups } from "../../../socket/src/components/memberCard/cardEmojiGroups";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
+import { useRowCard } from "../../../socket/src/components/memberCard/rowCard";
+import type { MemberInfo } from "../../../socket/src/components/MemberSidebar";
 import { type CardPreset, forgetCardPreset, saveCardPreset, useCardPresets } from "../../../socket/src/lib/memberCard/cardPresets";
 import {
   cardUpdatePayload,
@@ -292,6 +294,8 @@ export function CardSettings() {
           </summary>
         </details>
       </MemberCardView>
+      <span className="mt-2 text-[11px] font-bold tracking-wider uppercase">In the member list</span>
+      <RowPreview nickname={nickname} cardStyle={draft.cardStyle} worn={worn} seedKey={seedKey} avatarSrc={resolveAvatarSrc(avatarDataUrl, nickname, worn)} host={connected[0] ?? ""} />
     </GrytProvider>
   );
 
@@ -475,5 +479,16 @@ export function CardSettings() {
       </Dialog.Root>
       {bannerPicker}
     </SettingsContainer>
+  );
+}
+
+/** Your row in the member list, drawn from the card as the list draws it: colours and pattern, not the picture. */
+function RowPreview({ nickname, cardStyle, worn, seedKey, avatarSrc, host }: { nickname: string; cardStyle: unknown; worn: string | null; seedKey: string; avatarSrc?: string; host: string }) {
+  const member: MemberInfo = { serverUserId: seedKey, nickname, cardStyle, avatarWorn: worn, status: "online", isMuted: false, isDeafened: false, color: "", isConnectedToVoice: false, hasJoinedChannel: false, streamID: "" };
+  const card = useRowCard(member, host);
+  return (
+    <div className="w-60 max-w-full" aria-hidden="true">
+      <MemberItem card={card} name={nickname} avatar={<Avatar size="small" fallback={nickname[0]} src={avatarSrc} />} />
+    </div>
   );
 }
