@@ -11,6 +11,7 @@ import { useDirectoryUnread } from "../hooks/useDirectoryUnread";
 import { useServerPermissions } from "../hooks/usePermissions";
 import type { UserStatus } from "../types/clients";
 import { BotTag } from "./BotTag";
+import { DiscordMemberSection } from "./DiscordMemberSection";
 import { GameIcon } from "./GameIcon";
 import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
 import { useRowCard } from "./memberCard/rowCard";
@@ -405,6 +406,8 @@ export const MemberSidebar = ({
               </div>
             </section>
           ))}
+
+          <DiscordMemberSection host={serverHost} avatarsOnly={avatarsOnly} className={groups.length > 0 ? groupGap : ""} />
 
           {/* Under the members, inside the same scroll (GRYT-951). A plugin's
               panel is extra rather than instead: the member list stays the
