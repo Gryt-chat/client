@@ -2,9 +2,11 @@ import { Button, Dialog } from "@gryt/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { type Box, type Corner, type CropShape, initialBox, moveBox, previewOf, renderCrop, resizeBox, scaleBox } from "./pictureCrop";
+import { type Box, type Corner, type CropShape, initialBox, MAX_PICTURE_BYTES, MAX_PICTURE_PIXELS, moveBox, previewOf, renderCrop, resizeBox, scaleBox, smallCopy } from "./pictureCrop";
 
 const FRAME_W = 300, FRAME_H = 280;
+// Room around the picture, so a corner handle on its edge isn't cut off by the frame.
+const PAD = 10;
 const CORNERS: Corner[] = ["nw", "ne", "sw", "se"];
 const CORNER_LABEL: Record<Corner, string> = { nw: "top left", ne: "top right", sw: "bottom left", se: "bottom right" };
 
@@ -15,6 +17,7 @@ const CORNER_LABEL: Record<Corner, string> = { nw: "top left", ne: "top right", 
 export function PictureCropDialog({ file, shape, onDone, preview }: { file: File | null; shape: CropShape; onDone: (cropped: File | null) => void; preview?: (src: string) => ReactNode }) {
   const [url, setUrl] = useState<string | null>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [small, setSmall] = useState<ReturnType<typeof smallCopy> | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [shown, setShown] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23,36 +26,52 @@ export function PictureCropDialog({ file, shape, onDone, preview }: { file: File
 
   useEffect(() => {
     setImg(null);
+    setSmall(null);
     setBox(null);
     setShown(null);
     if (!file) return setUrl(null);
-    const next = URL.createObjectURL(file);
-    setUrl(next);
-    const el = new Image();
-    el.onload = () => {
-      setImg(el);
-      setBox(initialBox(el.naturalWidth, el.naturalHeight, a));
-    };
-    el.onerror = () => {
-      toast.error("Couldn't open that picture");
+    const refuse = (why: string) => {
+      toast.error(why);
       onDone(null);
     };
+    if (file.size > MAX_PICTURE_BYTES) return refuse("That picture is too large (max 25 MB).");
+    const next = URL.createObjectURL(file);
+    setUrl(null);
+    let live = true;
+    const el = new Image();
+    el.onload = () => {
+      if (!live) return;
+      const { naturalWidth: w, naturalHeight: h } = el;
+      if (w * h > MAX_PICTURE_PIXELS) return refuse("That picture has too many pixels to open.");
+      // The box would be too thin to see or grab.
+      if (Math.min(w, h * a) * Math.min((FRAME_W - 2 * PAD) / w, (FRAME_H - 2 * PAD) / h) < 24) return refuse("That picture is too narrow to frame.");
+      setUrl(next);
+      setImg(el);
+      setSmall(smallCopy(el, 1200));
+      setBox(initialBox(w, h, a));
+    };
+    el.onerror = () => {
+      if (live) refuse("Couldn't open that picture");
+    };
     el.src = next;
-    return () => URL.revokeObjectURL(next);
+    return () => {
+      live = false;
+      URL.revokeObjectURL(next);
+    };
     // onDone changes every render of the parent; the picture only changes with the file.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file]);
 
   // The card preview follows the box, a frame at a time.
   useEffect(() => {
-    if (!img || !box || !preview) return;
-    const id = requestAnimationFrame(() => setShown(previewOf(img, box, a)));
+    if (!small || !box || !preview) return;
+    const id = requestAnimationFrame(() => setShown(previewOf(small, box, a)));
     return () => cancelAnimationFrame(id);
-  }, [img, box, preview, a]);
+  }, [small, box, preview, a]);
 
   const W = img?.naturalWidth ?? 1, H = img?.naturalHeight ?? 1;
   // The picture fits the frame whole; k turns its pixels into the frame's.
-  const k = Math.min(FRAME_W / W, FRAME_H / H);
+  const k = Math.min((FRAME_W - 2 * PAD) / W, (FRAME_H - 2 * PAD) / H);
   const left = (FRAME_W - W * k) / 2, top = (FRAME_H - H * k) / 2;
   const min = Math.min(W, H * a) * 0.1;
 
