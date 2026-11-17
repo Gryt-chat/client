@@ -103,8 +103,9 @@ export function usePreview(host: string): Preview | null {
   const [preview, setPreview] = useState<Preview | null>(null);
   useEffect(() => {
     void (async () => {
-      const res = await bridgeFetch(host, "/bridge/preview");
-      if (res.ok) setPreview((await res.json()) as Preview);
+      const res = await bridgeFetch(host, "/bridge/preview").catch(() => null);
+      // A server from before the preview route: ask everything, as for a server with messages.
+      setPreview(res?.ok ? ((await res.json()) as Preview) : { hasMessages: true, name: null, emoji: 0, emojiClashes: [], roles: 0 });
     })();
   }, [host]);
   return preview;
