@@ -124,6 +124,8 @@ export type serverDetails = {
     uploads_checked?: boolean;
     /** Takes polls (GRYT-1732). Older servers leave it out. */
     polls?: boolean;
+    /** Has the Discord bridge routes, so the owner gets the Discord tab. */
+    discord_bridge?: boolean;
     /** Video avatars and banners are taken here: the host can and the owner allows it. */
     video_profiles?: boolean;
     /** Messages here may show other Gryt servers' custom emoji. */

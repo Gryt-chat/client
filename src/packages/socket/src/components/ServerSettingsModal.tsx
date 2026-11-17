@@ -295,7 +295,7 @@ export function ServerSettingsModal() {
       ),
     },
     // Owner only, like the server's bridge routes: it writes as other people.
-    ...(host && serverDetailsList[host]?.server_info?.role === "owner"
+    ...(host && serverDetailsList[host]?.server_info?.role === "owner" && serverDetailsList[host]?.server_info?.discord_bridge
       ? [
           {
             value: "discord",
