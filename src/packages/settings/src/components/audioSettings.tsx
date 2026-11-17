@@ -8,7 +8,7 @@ import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
-import { PiArrowsClockwiseFill, PiGameControllerFill, PiGaugeFill, PiMicrophoneFill, PiSlidersHorizontalFill, PiWarningFill } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiCrosshairFill, PiFadersHorizontalFill, PiLightningFill, PiSparkleFill, PiWarningFill } from "../../../../lib/icons";
 import { LOW_LATENCY_GATE, LOW_LATENCY_VOLUME, PRESET_SWITCHES, presetOf, type VoicePreset } from "../hooks/voicePreset";
 import { OutputMeters } from "./outputMeters";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
@@ -51,7 +51,7 @@ const MIC_GATE = {
 
 /* The numbers are measured (voice#53): RNNoise ~20 ms, compressor 6, and the limiter that
    runs while any processing is on 10. "Lowest" is the 10 ms frames on top of no processing. */
-const PRESET_ICONS: Record<VoicePreset, typeof PiGaugeFill> = { quality: PiMicrophoneFill, low_latency: PiGaugeFill, esports: PiGameControllerFill, custom: PiSlidersHorizontalFill };
+const PRESET_ICONS: Record<VoicePreset, typeof PiLightningFill> = { quality: PiSparkleFill, low_latency: PiLightningFill, esports: PiCrosshairFill, custom: PiFadersHorizontalFill };
 
 const PRESETS: Record<VoicePreset, { label: string; description: string }> = {
   quality: {
