@@ -297,6 +297,35 @@ export function CardSettings() {
 
   const refused = Object.entries(refusals);
 
+  /* Mounted once for every tab, so the Whole card prompt on the Colour tab can open it too. */
+  const bannerPicker = (
+    <>
+    <input
+      ref={bannerInput}
+      type="file"
+      accept={videoBannerHosts.length > 0 ? "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" : "image/png,image/jpeg,image/webp,image/gif"}
+      style={{ display: "none" }}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        void isStillPicture(file).then((still) => (still ? setCropping(file) : changeBanner(file)));
+      }}
+    />
+    <PictureCropDialog
+      file={cropping}
+      shape={style.bannerSize === "card" ? CARD_BANNER_SHAPE : BANNER_SHAPE}
+      preview={(src) => (
+        <MemberCardView name={nickname} avatarSrc={resolveAvatarSrc(avatarDataUrl, nickname, worn)} status="online" profile={draft} owlHex={owlHex} bannerUrl={src} bannerType="image" appearance={resolvedAppearance} seedKey={seedKey} worn={worn} />
+      )}
+      onDone={(cropped) => {
+        setCropping(null);
+        if (cropped) changeBanner(cropped);
+      }}
+    />
+    </>
+  );
+
   const about = (
     <>
       <SettingGroup title="Pronouns" description="Shown under your name.">
@@ -333,29 +362,6 @@ export function CardSettings() {
               </Button>
             )}
           </div>
-          <input
-            ref={bannerInput}
-            type="file"
-            accept={videoBannerHosts.length > 0 ? "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" : "image/png,image/jpeg,image/webp,image/gif"}
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (!file) return;
-              void isStillPicture(file).then((still) => (still ? setCropping(file) : changeBanner(file)));
-            }}
-          />
-          <PictureCropDialog
-            file={cropping}
-            shape={style.bannerSize === "card" ? CARD_BANNER_SHAPE : BANNER_SHAPE}
-            preview={(src) => (
-              <MemberCardView name={nickname} avatarSrc={resolveAvatarSrc(avatarDataUrl, nickname, worn)} status="online" profile={draft} owlHex={owlHex} bannerUrl={src} bannerType="image" appearance={resolvedAppearance} seedKey={seedKey} worn={worn} />
-            )}
-            onDone={(cropped) => {
-              setCropping(null);
-              if (cropped) changeBanner(cropped);
-            }}
-          />
         </SettingGroup>
       )}
     </>
@@ -467,6 +473,7 @@ export function CardSettings() {
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
+      {bannerPicker}
     </SettingsContainer>
   );
 }
