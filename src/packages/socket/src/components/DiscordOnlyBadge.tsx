@@ -6,6 +6,22 @@ import { MEMBER_CARD_POPUP } from "./memberCard/memberCardContext";
 
 const DISCORD_BLUE = "#5865F2";
 
+/** The badge alone, over an avatar in a parent with `position: relative`. */
+export function DiscordBadgeDot({ size }: { size: number }) {
+  return (
+    <Tooltip title="Only on Discord">
+      <span
+        aria-label="Only on Discord"
+        role="img"
+        className="absolute grid place-items-center rounded-full"
+        style={{ right: -2, bottom: -2, width: size, height: size, background: DISCORD_BLUE, boxShadow: "0 0 0 2px var(--gryt-neutral-3)" }}
+      >
+        <DiscordLogo size={Math.round(size * 0.62)} color="#fff" aria-hidden />
+      </span>
+    </Tooltip>
+  );
+}
+
 /** Someone who's only on Discord: a badge where a status dot would sit, and a plain card instead of a Gryt profile. */
 export function DiscordOnlyBadge({ name, avatar, status, size, children }: {
   name: string;
