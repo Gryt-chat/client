@@ -1,4 +1,5 @@
 /* Hallmark · component: dialog · genre: modern-minimal · theme: @gryt/ui (design.md) */
+import type { MlsHistoryEntry } from "@gryt/core";
 import { Alert, Button, Dialog } from "@gryt/ui";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -10,7 +11,7 @@ import { useMlsSource } from "../mls/serverMls";
 import { shareHistory } from "../mls/shareHistory";
 
 /** The code two people read to each other to check nobody is in between, opened from the chat. */
-export function CompareCodesDialog({ open, onOpenChange, host, conversationId, peerId, peerName, onCall }: {
+export function CompareCodesDialog({ open, onOpenChange, host, conversationId, peerId, peerName, onCall, sealedHistory }: {
   open: boolean;
   /** The DM, for sending them your copy once a new key is trusted (GRYT-1875). */
   conversationId: string;
@@ -20,6 +21,8 @@ export function CompareCodesDialog({ open, onOpenChange, host, conversationId, p
   peerName: string;
   /** Starts a call with them, so the numbers can be read out loud. */
   onCall?: () => void;
+  /** Old sealed messages this device can open, sent along with the copy. */
+  sealedHistory?: () => Promise<MlsHistoryEntry[]>;
 }) {
   const check = usePeerKeyCheck(host, peerId);
   const [different, setDifferent] = useState(false);
@@ -43,7 +46,8 @@ export function CompareCodesDialog({ open, onOpenChange, host, conversationId, p
     }
     setSharing("sending");
     try {
-      const sent = await shareHistory(mlsSource, (await openLocalArchive()).messages, conversationId, peerId);
+      const older = (await sealedHistory?.()) ?? [];
+      const sent = await shareHistory(mlsSource, (await openLocalArchive()).messages, conversationId, peerId, older);
       toast.success(`Sent ${peerName} your copy: ${sent} message${sent === 1 ? "" : "s"}`);
       close(false);
     } catch (e) {
@@ -122,6 +126,9 @@ export function CompareCodesDialog({ open, onOpenChange, host, conversationId, p
                     They match
                   </Button>
                 </>
+              )}
+              {check.comparedAt && mlsSource && (
+                <Button tone="neutral" onClick={() => setSharing("offer")}>Send them your copy</Button>
               )}
               {(!check.code || check.comparedAt) && <Button tone="neutral" onClick={() => close(false)}>Close</Button>}
             </div>}

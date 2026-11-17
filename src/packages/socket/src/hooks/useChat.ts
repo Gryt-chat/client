@@ -1,3 +1,4 @@
+import type { MlsHistoryEntry } from "@gryt/core";
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
@@ -15,6 +16,7 @@ import type { ChatMessage } from "../components/chatUtils";
 import { fakeDmsOn, fakeHistory } from "../dev/fakeDms";
 import { heldRoleIds } from "../lib/permissions";
 import { useMlsReportsTaken } from "../mls/serverMls";
+import { openedSealedHistory } from "../mls/shareHistory";
 import { dmComposer, isMlsPlaceholder, mergeTimeline, mlsNotice } from "../mls/timeline";
 import { type MlsAction, useMlsConversation } from "../mls/useMlsConversation";
 
@@ -41,6 +43,7 @@ import { forgetArchivedCopy, useArchiveReadCopies } from "./useArchiveReadCopies
 import { useChatSend } from "./useChatSend";
 import { useConversationSealing } from "./useConversationSealing";
 import { HISTORY_CAP, type HistoryWindowControls, isWindowPayload, useHistoryWindow, type WindowedHistoryPayload } from "./useHistoryWindow";
+import { fetchOlder } from "./useReencrypt";
 import { useSockets } from "./useSockets";
 
 interface UseChatParams {
@@ -111,6 +114,8 @@ interface UseChatReturn {
   peerKeyNotice: boolean;
   /** This device waits for the other side's app to add it to the DM. */
   mlsNotAdded: boolean;
+  /** The DM's sealed messages this device can open, for "Send them your copy". */
+  sealedHistory: () => Promise<MlsHistoryEntry[]>;
 }
 
 /** What the channel keeps of the present once the rest moves to a window. */
@@ -833,6 +838,13 @@ export function useChat({
     [shownMessages, editOverMls, editMessage],
   );
 
+  const sealedHistory = useCallback(
+    () => currentConnection && activeConversationId && sealing.canOpen
+      ? openedSealedHistory((before) => fetchOlder(currentConnection, activeConversationId, before), sealing.open)
+      : Promise.resolve([]),
+    [currentConnection, activeConversationId, sealing],
+  );
+
   return {
     plaintextPrompt,
     reencryptReady,
@@ -886,5 +898,6 @@ export function useChat({
     mlsActions: dmPeer && !peerKeyNotice ? mls.actions : NO_ACTIONS,
     peerKeyNotice,
     mlsNotAdded: !!dmPeer && !peerKeyNotice && mls.problems.lost === "not_added",
+    sealedHistory,
   };
 }

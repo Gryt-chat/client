@@ -97,7 +97,9 @@ export function mergeTimeline({
   archived: ChatMessage[];
   archiveHasMore: boolean;
 }): ChatMessage[] {
-  const shown = server.filter((m) => !isMlsPlaceholder(m));
+  // A shared copy of a sealed message wins: the server's row may be one this device can't open.
+  const copied = new Set(archived.map((m) => m.message_id));
+  const shown = server.filter((m) => !isMlsPlaceholder(m) && !(m.sealed && copied.has(m.message_id)));
   const settled = (list: ChatMessage[]) => list.filter((m) => !m.pending && !m.failed);
   const floorOf = (list: ChatMessage[], more: boolean) =>
     more && settled(list).length ? Math.min(...settled(list).map(at)) : -Infinity;

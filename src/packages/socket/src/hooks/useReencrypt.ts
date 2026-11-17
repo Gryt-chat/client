@@ -12,7 +12,7 @@ import type { HistoryPayload } from "./chatEventHandlers";
 const FETCH_TIMEOUT_MS = 15_000;
 const PAGE = 100;
 
-function fetchOlder(socket: Socket, conversationId: string, before: string | undefined): Promise<{ items: ReencryptCandidate[]; hasMore: boolean }> {
+export function fetchOlder(socket: Socket, conversationId: string, before: string | undefined): Promise<{ items: ReencryptCandidate[]; hasMore: boolean }> {
   return new Promise((resolve, reject) => {
     const timer = window.setTimeout(() => {
       socket.off("chat:history", onHistory);
