@@ -1,4 +1,4 @@
-import { Button, Progress, Radio, RadioGroup, Spinner, Surface, TextField } from "@gryt/ui";
+import { Button, Progress, Radio, RadioGroup, Spinner, Surface, Switch, TextField } from "@gryt/ui";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -6,7 +6,7 @@ import { getServerAccessToken, getServerHttpBase } from "@/common";
 
 import { DiscordLogo } from "../../../../lib/icons";
 import { useChannelMatches } from "./discordBridgeApi";
-import { ChannelMatches, DiscordPeople } from "./DiscordBridgeSections";
+import { ChannelMatches, DiscordPeople, MembersToDiscord } from "./DiscordBridgeSections";
 
 type Status = "connecting" | "token_invalid" | "intents_missing" | "waiting_for_invite" | "linked" | "removed";
 type Direction = "to_gryt" | "both" | "to_discord";
@@ -29,6 +29,8 @@ type Bridge =
       inviteUrl: string;
       direction: Direction | null;
       copy: { status: "idle" | "running" | "done" | "failed"; progress: Progress | null };
+      syncNewChannels?: boolean;
+      excludedMembers?: string[];
     };
 
 const DIRECTIONS: { value: Direction; label: string; hint: string }[] = [
@@ -255,7 +257,19 @@ export function ServerDiscordTab({ host, members = [] }: { host: string; members
         </Surface>
       )}
 
-      {bridge.status === "linked" && bridge.copy.status !== "idle" && <DiscordPeople host={host} members={members} />}
+      {bridge.status === "linked" && bridge.copy.status !== "idle" && (
+        <>
+          <LiveChannels
+            host={host}
+            syncNewChannels={bridge.syncNewChannels ?? true}
+            onNewChannels={(on) => void call("/settings", { method: "PUT", body: JSON.stringify({ syncNewChannels: on }) })}
+          />
+          <DiscordPeople host={host} members={members} />
+          {(bridge.direction === "both" || bridge.direction === "to_discord") && (
+            <MembersToDiscord host={host} members={members} excluded={bridge.excludedMembers ?? []} onChange={() => void call("")} />
+          )}
+        </>
+      )}
 
       <div className="flex flex-col gap-2 border-t border-gryt-border pt-4">
         <span className="text-sm font-medium">Unlink Discord</span>
@@ -327,6 +341,36 @@ function StartCopy({
           Start copying
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Which Discord channels sync, changeable after the copy; a change only moves what's copied from now on. */
+function LiveChannels({ host, syncNewChannels, onNewChannels }: { host: string; syncNewChannels: boolean; onNewChannels: (on: boolean) => void }) {
+  const matches = useChannelMatches(host);
+  return (
+    <div className="flex flex-col gap-3">
+      <ChannelMatches matches={matches} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="small"
+          tone="ghost"
+          onClick={() =>
+            void (async () => {
+              if (await matches.save()) toast.success("Channel choices saved");
+            })()
+          }
+        >
+          Save channel choices
+        </Button>
+      </div>
+      <label className="flex items-center gap-3 text-sm">
+        <Switch checked={syncNewChannels} onCheckedChange={onNewChannels} />
+        <span className="flex flex-col">
+          <span className="font-medium">Sync new Discord channels</span>
+          <span className="text-gryt-muted">Off, and a channel made on Discord later is left out until you add it here.</span>
+        </span>
+      </label>
     </div>
   );
 }
