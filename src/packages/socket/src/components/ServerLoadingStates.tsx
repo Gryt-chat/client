@@ -242,3 +242,18 @@ export const ServerLoadingStates = ({
     </div>
   );
 };
+
+/** Every channel was deleted, so there is nothing to open. */
+export function NoChannels({ onCreate }: { onCreate?: () => void }) {
+  return (
+    <div className="flex grow items-center justify-center p-4">
+      <div style={cardStyle} className="flex flex-col items-center gap-3">
+        <span className="text-lg font-bold">No channels yet</span>
+        <span className="text-sm text-gryt-muted">
+          {onCreate ? "Make the first one and people can start talking." : "Nobody has made a channel here yet."}
+        </span>
+        {onCreate && <Button size="small" onClick={onCreate}>Create channel</Button>}
+      </div>
+    </div>
+  );
+}
