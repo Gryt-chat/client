@@ -1,8 +1,9 @@
 import type { CropShape } from "./pictureCrop";
 
-/* The banner box: the card's 320 by 164 at 3x, the same box the server and media worker use. */
+/* The banner's band: the card's 320 by 164 at 3x. A whole-card banner is the card's 320 by 420 at 3x. */
 export const BANNER_W = 960;
 export const BANNER_H = 492;
+export const CARD_BANNER_H = 1260;
 /** PNG, JPEG and still WebP get cropped; GIFs, animated WebP and video go up as they are. */
 export async function isStillPicture(file: File): Promise<boolean> {
   if (file.type === "image/png" || file.type === "image/jpeg") return true;
@@ -15,3 +16,6 @@ export async function isStillPicture(file: File): Promise<boolean> {
 
 /** The card's banner, cropped at its full 960 by 492. */
 export const BANNER_SHAPE: CropShape = { title: "Frame your banner", hint: "Drag the box to move it, pull a corner to resize. The box is exactly what your card shows.", aspect: BANNER_W / BANNER_H, outW: BANNER_W, round: false, name: "banner" };
+
+/** A whole-card banner, cropped at the card's full 960 by 1260. */
+export const CARD_BANNER_SHAPE: CropShape = { ...BANNER_SHAPE, aspect: BANNER_W / CARD_BANNER_H, hint: "Drag the box to move it, pull a corner to resize. A short card shows the middle of it." };

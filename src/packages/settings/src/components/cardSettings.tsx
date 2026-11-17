@@ -37,7 +37,7 @@ import {
   PRONOUNS_MAX,
   STATUS_LINE_MAX,
 } from "../../../socket/src/lib/memberCard/cardStyle";
-import { BANNER_SHAPE, isStillPicture } from "./bannerCrop";
+import { BANNER_SHAPE, CARD_BANNER_SHAPE, isStillPicture } from "./bannerCrop";
 import { CardPresetTile } from "./CardPresetTile";
 import { PictureCropDialog } from "./PictureCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
@@ -128,6 +128,27 @@ export function CardSettings() {
   };
 
   const style = draft.cardStyle;
+  const bannerWhere = style.bannerSize === "card" ? "A picture behind your whole card" : "A picture across the top of your card";
+  /* A banner framed for the band is too short to fill the whole card, so switching offers to pick it again. */
+  const changeStyle = (next: typeof style) => {
+    commit({ ...draft, cardStyle: next });
+    if (next.bannerSize !== "card" || style.bannerSize === "card" || !bannerUrl) return;
+    toast((t) => (
+      <span>
+        Your banner was framed for the top of the card.{" "}
+        <button
+          type="button"
+          className="gryt-link cursor-pointer border-0 bg-transparent p-0"
+          onClick={() => {
+            toast.dismiss(t.id);
+            bannerInput.current?.click();
+          }}
+        >
+          Pick a picture for the whole card
+        </button>
+      </span>
+    ), { duration: 8000 });
+  };
   const presets = useCardPresets();
 
   /* A link from somebody, or from the card builder: shown in the editor, and only kept on Save. */
@@ -276,6 +297,35 @@ export function CardSettings() {
 
   const refused = Object.entries(refusals);
 
+  /* Mounted once for every tab, so the Whole card prompt on the Colour tab can open it too. */
+  const bannerPicker = (
+    <>
+    <input
+      ref={bannerInput}
+      type="file"
+      accept={videoBannerHosts.length > 0 ? "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" : "image/png,image/jpeg,image/webp,image/gif"}
+      style={{ display: "none" }}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        void isStillPicture(file).then((still) => (still ? setCropping(file) : changeBanner(file)));
+      }}
+    />
+    <PictureCropDialog
+      file={cropping}
+      shape={style.bannerSize === "card" ? CARD_BANNER_SHAPE : BANNER_SHAPE}
+      preview={(src) => (
+        <MemberCardView name={nickname} avatarSrc={resolveAvatarSrc(avatarDataUrl, nickname, worn)} status="online" profile={draft} owlHex={owlHex} bannerUrl={src} bannerType="image" appearance={resolvedAppearance} seedKey={seedKey} worn={worn} />
+      )}
+      onDone={(cropped) => {
+        setCropping(null);
+        if (cropped) changeBanner(cropped);
+      }}
+    />
+    </>
+  );
+
   const about = (
     <>
       <SettingGroup title="Pronouns" description="Shown under your name.">
@@ -295,8 +345,8 @@ export function CardSettings() {
           title="Banner"
           description={
             bannerHosts.length === connected.length
-              ? "A picture across the top of your card. Everywhere else your pattern shows instead."
-              : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
+              ? `${bannerWhere}. Everywhere else your pattern shows instead.`
+              : `${bannerWhere}, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
           }
         >
           <span className="text-xs text-gryt-muted">
@@ -312,29 +362,6 @@ export function CardSettings() {
               </Button>
             )}
           </div>
-          <input
-            ref={bannerInput}
-            type="file"
-            accept={videoBannerHosts.length > 0 ? "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" : "image/png,image/jpeg,image/webp,image/gif"}
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (!file) return;
-              void isStillPicture(file).then((still) => (still ? setCropping(file) : changeBanner(file)));
-            }}
-          />
-          <PictureCropDialog
-            file={cropping}
-            shape={BANNER_SHAPE}
-            preview={(src) => (
-              <MemberCardView name={nickname} avatarSrc={resolveAvatarSrc(avatarDataUrl, nickname, worn)} status="online" profile={draft} owlHex={owlHex} bannerUrl={src} bannerType="image" appearance={resolvedAppearance} seedKey={seedKey} worn={worn} />
-            )}
-            onDone={(cropped) => {
-              setCropping(null);
-              if (cropped) changeBanner(cropped);
-            }}
-          />
         </SettingGroup>
       )}
     </>
@@ -394,7 +421,7 @@ export function CardSettings() {
               <div className="flex min-h-0 flex-1 @max-3xl:flex-col">
                 <MemberCardEditor
                   value={style}
-                  onChange={(next) => commit({ ...draft, cardStyle: next })}
+                  onChange={changeStyle}
                   owlHex={owlHex}
                   nickname={nickname}
                   worn={worn}
@@ -446,6 +473,7 @@ export function CardSettings() {
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
+      {bannerPicker}
     </SettingsContainer>
   );
 }
