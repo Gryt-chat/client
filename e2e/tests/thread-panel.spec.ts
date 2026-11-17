@@ -4,6 +4,9 @@ import { accessTokenOf, setProfanityMode } from "../support/admin";
 import { addChannel, composer, CONFIRMED_ROW, type Member, messageRow, sendMessage, sidebarChannelRow, unique } from "../support/app";
 import { expect, test, uniqueName } from "../support/fixtures";
 
+// Each test brings its own members and messages, so they spread across workers and shards.
+test.describe.configure({ mode: "parallel" });
+
 /** The panel itself: what closes it, what Escape means inside it, where it opens. */
 
 /** Wide enough for the panel to sit beside the conversation; `hasRoomForThreadBeside` says 1164. */

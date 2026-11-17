@@ -60,7 +60,8 @@ async function noDeadEndNotice(page: Page) {
 }
 
 test.describe("encrypted DMs across devices", () => {
-  test.describe.configure({ timeout: 240_000 });
+  // Over eight minutes of tests: as one group they held a single shard for ten.
+  test.describe.configure({ mode: "parallel", timeout: 240_000 });
 
   test("a second device linked from the first sends and receives", async ({ newMember, problems }) => {
     problems.tolerate([RELAY_GONE]);
