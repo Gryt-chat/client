@@ -96,7 +96,7 @@ import { SearchPanel } from "./SearchPanel";
 import { SecurityNoticeBanner } from "./SecurityNoticeBanner";
 import { ServerChip } from "./ServerChip";
 import { ServerConfirmDialogs } from "./ServerConfirmDialogs";
-import { ServerLoadingStates } from "./ServerLoadingStates";
+import { NoChannels, ServerLoadingStates } from "./ServerLoadingStates";
 import { ServerNoticePanel } from "./ServerNoticePanel";
 import { ServerSidebar } from "./ServerSidebar";
 import { SidebarEditDialog } from "./SidebarEditDialog";
@@ -1342,6 +1342,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const wideOrMobile = isMobile ? "mobile" : "wide";
   const layout = isTiny ? "tiny" : wideOrMobile;
   const sidePanel = sidePanelOf({ searchOpen, dmSpace, dmSearchOpen, activeDm: !!activeDm, isTiny });
+  const noChannels = !dmSpace && hostChannels.length === 0;
   const chatView = dmSpace && !activeDm ? (
     <MessagesHome onSearch={openDmSearch} />
   ) : (
@@ -1713,7 +1714,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                 ...(isVoiceOnThisServer && isServerUnreachable && { opacity: 0.5, pointerEvents: "none" as const }),
                 transition: "opacity 0.3s ease",
               }}>
-                {chatView}
+                {noChannels ? <NoChannels onCreate={canManage ? () => handleAddItem("channel:text") : undefined} /> : chatView}
               </div>
             </div>
             {sidePanel === "search" && (
