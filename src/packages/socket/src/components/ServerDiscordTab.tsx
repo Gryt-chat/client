@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { getServerAccessToken, getServerHttpBase } from "@/common";
 
 import { DiscordLogo } from "../../../../lib/icons";
+import { useChannelMatches } from "./discordBridgeApi";
+import { ChannelMatches, DiscordPeople } from "./DiscordBridgeSections";
 
 type Status = "connecting" | "token_invalid" | "intents_missing" | "waiting_for_invite" | "linked" | "removed";
 type Direction = "to_gryt" | "both" | "to_discord";
@@ -38,7 +40,7 @@ const DIRECTIONS: { value: Direction; label: string; hint: string }[] = [
 const DIRECTION_LABEL: Record<Direction, string> = { to_gryt: "Discord → Gryt", both: "both ways", to_discord: "Gryt → Discord" };
 
 /** Owner only, like the server's routes: the bridge writes as other people. */
-export function ServerDiscordTab({ host }: { host: string }) {
+export function ServerDiscordTab({ host, members = [] }: { host: string; members?: { serverUserId: string; nickname: string }[] }) {
   const [bridge, setBridge] = useState<Bridge | null>(null);
   const [appId, setAppId] = useState("");
   const [token, setToken] = useState("");
@@ -225,31 +227,7 @@ export function ServerDiscordTab({ host }: { host: string }) {
       )}
 
       {bridge.status === "linked" && bridge.copy.status === "idle" && (
-        <div className="flex flex-col gap-4">
-          <Surface className="p-4 text-sm">
-            The bot is in <strong>{guildName}</strong>.
-          </Surface>
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Which way</span>
-            <RadioGroup value={direction} onValueChange={(v) => setDirection(v as Direction)}>
-              {DIRECTIONS.map((d) => (
-                <label key={d.value} className="flex items-start gap-2 text-sm">
-                  <Radio value={d.value} />
-                  <span className="flex flex-col">
-                    <span className="font-medium">{d.label}</span>
-                    <span className="text-gryt-muted">{d.hint}</span>
-                  </span>
-                </label>
-              ))}
-            </RadioGroup>
-          </div>
-          <span className="text-sm text-gryt-muted">
-            Every channel comes across with its whole history, files and threads. Big servers take a while, and you can close this while it runs.
-          </span>
-          <div>
-            <Button size="small" disabled={busy} onClick={() => void startCopy()}>Start copying</Button>
-          </div>
-        </div>
+        <StartCopy host={host} guildName={guildName} busy={busy} direction={direction} setDirection={setDirection} onStart={() => void startCopy()} />
       )}
 
       {bridge.status === "linked" && bridge.copy.status !== "idle" && (
@@ -277,6 +255,8 @@ export function ServerDiscordTab({ host }: { host: string }) {
         </Surface>
       )}
 
+      {bridge.status === "linked" && bridge.copy.status !== "idle" && <DiscordPeople host={host} members={members} />}
+
       <div className="flex flex-col gap-2 border-t border-gryt-border pt-4">
         <span className="text-sm font-medium">Unlink Discord</span>
         <span className="text-sm text-gryt-muted">Stops the bridge and logs the bot out. Everything already copied stays here.</span>
@@ -290,6 +270,62 @@ export function ServerDiscordTab({ host }: { host: string }) {
             <Button size="small" tone="ghost" onClick={() => setConfirmUnlink(true)}>Unlink…</Button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function StartCopy({
+  host,
+  guildName,
+  busy,
+  direction,
+  setDirection,
+  onStart,
+}: {
+  host: string;
+  guildName: string;
+  busy: boolean;
+  direction: Direction;
+  setDirection: (d: Direction) => void;
+  onStart: () => void;
+}) {
+  const matches = useChannelMatches(host);
+  return (
+    <div className="flex flex-col gap-4">
+      <Surface className="p-4 text-sm">
+        The bot is in <strong>{guildName}</strong>.
+      </Surface>
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">Which way</span>
+        <RadioGroup value={direction} onValueChange={(v) => setDirection(v as Direction)}>
+          {DIRECTIONS.map((d) => (
+            <label key={d.value} className="flex items-start gap-2 text-sm">
+              <Radio value={d.value} />
+              <span className="flex flex-col">
+                <span className="font-medium">{d.label}</span>
+                <span className="text-gryt-muted">{d.hint}</span>
+              </span>
+            </label>
+          ))}
+        </RadioGroup>
+      </div>
+      <ChannelMatches matches={matches} />
+      <span className="text-sm text-gryt-muted">
+        Every channel comes across with its whole history, files and threads. Big servers take a while, and you can close this while it runs.
+      </span>
+      <div>
+        <Button
+          size="small"
+          disabled={busy}
+          onClick={() =>
+            void (async () => {
+              if (await matches.save()) onStart();
+            })()
+          }
+        >
+          Start copying
+        </Button>
       </div>
     </div>
   );
