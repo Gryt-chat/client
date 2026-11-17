@@ -369,8 +369,9 @@ export function shouldNotifyForMessage(
   // On screen in a focused window: the message is in view or one click away.
   if (ctx.viewingThisServer && ctx.windowFocused) return false;
 
-  const placement = msg.conversation_id ? getPlacement(host, msg.conversation_id) : null;
-  const level = resolveAnnounceLevel(host, placement);
+  const level = msg.conversation_id
+    ? quieterOf(stored.global, conversationLevel(host, msg.conversation_id))
+    : resolveAnnounceLevel(host, null);
   // Being named is being named, in a thread as much as in the channel.
   if (ctx.mentionsMe) return shouldAnnounceMention(level);
   // A plain thread reply is news about the thread, and the thread tracker holds it.
@@ -395,15 +396,26 @@ export function getOwnLevel(
 // "Nothing" means silent everywhere, not just unannounced: no badge, no bold,
 // no count. Read markers still move underneath; only what is drawn goes quiet.
 
+/** A DM keeps its own level and never takes its server's or a folder's. Groups start with "dm_g". */
+export function isDmConversation(id: string): boolean {
+  return id.startsWith("dm_");
+}
+
+/** What a conversation is set to here, before the global ceiling. */
+function conversationLevel(host: string, id: string): NotificationLevel {
+  if (isDmConversation(id)) return stored.servers[host]?.channels?.[id] ?? "all";
+  return resolveLevel(stored.servers, host, getPlacement(host, id));
+}
+
 /** Whether this conversation is muted: level "Nothing", set on it or inherited.
     Not the global ceiling, which quietens everything for a different reason. */
 export function isChannelMuted(host: string, channelId: string): boolean {
-  return resolveLevel(stored.servers, host, getPlacement(host, channelId)) === "none";
+  return conversationLevel(host, channelId) === "none";
 }
 
 /** Whether every message here counts in the server's number, which is only on "Everything". Mentions count apart. */
 export function countsEveryMessage(host: string, channelId: string): boolean {
-  return shouldAnnounceMessage(resolveLevel(stored.servers, host, getPlacement(host, channelId)));
+  return shouldAnnounceMessage(conversationLevel(host, channelId));
 }
 
 /** `counts`, with a muted conversation's entry left out. The map is returned

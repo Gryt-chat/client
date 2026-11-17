@@ -1,7 +1,9 @@
 import { Avatar, ContextMenu, ConversationItem } from "@gryt/ui";
+import { BellSlash } from "@phosphor-icons/react";
 import { Reorder } from "motion/react";
+import { useSyncExternalStore } from "react";
 
-import { getOwnServerUserId, getUploadsFileUrl, resolveAvatarSrc } from "@/common";
+import { getOwnServerUserId, getUploadsFileUrl, isChannelMuted, NotificationLevelMenu, resolveAvatarSrc, subscribeToPrefs } from "@/common";
 
 import type { DirectoryEntry } from "../hooks/dmDirectory";
 import { isPinned, pinFor, setPinned } from "../hooks/dmPins";
@@ -59,6 +61,9 @@ function ConversationRow({
   const isGroup = conversation.kind === "group";
   const groupSize = isGroup ? `${conversation.members.length + 1} people` : undefined;
   const subtitle = preview ? <EmojiText text={preview.text} /> : groupSize;
+  // Muted draws no badge and no bold, like a muted channel, and says so with a bell.
+  const mutedNow = () => isChannelMuted(host, conversation.conversation_id);
+  const muted = useSyncExternalStore(subscribeToPrefs, mutedNow, mutedNow);
 
   return (
     <ContextMenu.Root>
@@ -72,10 +77,19 @@ function ConversationRow({
           active={selected}
           hidden={hidden}
           pinned={pinned}
-          unread={unread}
+          unread={muted ? 0 : unread}
           presence={isGroup ? undefined : otherStatus}
           note={clash ? serverName : undefined}
-          meta={when(conversation.last_message_at)}
+          meta={
+            muted ? (
+              <span className="inline-flex items-center gap-1">
+                <BellSlash weight="fill" size={12} aria-label="Muted" />
+                {when(conversation.last_message_at)}
+              </span>
+            ) : (
+              when(conversation.last_message_at)
+            )
+          }
           title={<EmojiText text={title} />}
           subtitle={subtitle}
           avatar={
@@ -111,6 +125,7 @@ function ConversationRow({
               host={host}
               scope={{ kind: "conversation", id: conversation.conversation_id }}
             />
+            <NotificationLevelMenu host={host} scope={{ kind: "channel", id: conversation.conversation_id }} />
             {onShow && (
               <>
                 <ContextMenu.Separator />

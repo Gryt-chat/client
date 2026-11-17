@@ -9,6 +9,7 @@ import {
   getStoredSnapshot,
   getSuppressEveryone,
   globalOverrules,
+  isDmConversation,
   type NotificationLevel,
   resolveInheritedLevel,
   setHideMuted,
@@ -70,29 +71,37 @@ export function NotificationLevelMenu({
 
   /* What "Default" comes out as. A channel follows its folder or server, quietened
      by the level the server set for it; a folder follows the server; the server hears everything. */
-  const inherited: NotificationLevel =
-    scope.kind === "channel"
-      ? resolveInheritedLevel(getStoredSnapshot().servers, host, {
-          channelId: scope.id,
-          parentItemId: placement?.parentItemId ?? null,
-          defaultLevel: getPlacement(host, scope.id)?.defaultLevel ?? null,
-        })
-      : (scope.kind === "folder" && getOwnLevel(host, { kind: "server" })) || "all";
+  const dm = scope.kind === "channel" && isDmConversation(scope.id);
+  let inherited: NotificationLevel = (scope.kind === "folder" && getOwnLevel(host, { kind: "server" })) || "all";
+  if (scope.kind === "channel" && !dm) {
+    inherited = resolveInheritedLevel(getStoredSnapshot().servers, host, {
+      channelId: scope.id,
+      parentItemId: placement?.parentItemId ?? null,
+      defaultLevel: getPlacement(host, scope.id)?.defaultLevel ?? null,
+    });
+  }
 
   /* What this scope currently comes out as: its own setting, else what it inherits. */
   const resolved: NotificationLevel = own ?? inherited;
 
   const overruled = globalOverrules(global, resolved);
 
-  const choices: { label: string; value: NotificationLevel | null }[] = [
-    { label: "Everything", value: "all" },
-    { label: "Only mentions", value: "mentions" },
-    { label: "Nothing", value: "none" },
-    {
-      label: `Default (${LEVEL_WORDS[inherited]})`,
-      value: null,
-    },
-  ];
+  // A DM has no folder or server above it, and in a 1:1 every message is aimed at you.
+  const choices: { label: string; value: NotificationLevel | null }[] = dm
+    ? [
+        { label: "Everything", value: "all" },
+        ...(scope.id.startsWith("dm_g") ? [{ label: "Only mentions", value: "mentions" as const }] : []),
+        { label: "Nothing", value: "none" },
+      ]
+    : [
+        { label: "Everything", value: "all" },
+        { label: "Only mentions", value: "mentions" },
+        { label: "Nothing", value: "none" },
+        {
+          label: `Default (${LEVEL_WORDS[inherited]})`,
+          value: null,
+        },
+      ];
 
   return (
     <M.SubmenuRoot>
@@ -101,12 +110,12 @@ export function NotificationLevelMenu({
         <M.Positioner>
           <M.Popup>
             <M.RadioGroup
-              value={own ?? "default"}
+              value={own ?? (dm ? "all" : "default")}
               onValueChange={(value) =>
                 setNotificationLevel(
                   host,
                   scope,
-                  value === "default" ? null : (value as NotificationLevel),
+                  value === "default" || (dm && value === "all") ? null : (value as NotificationLevel),
                 )
               }
             >
@@ -114,6 +123,7 @@ export function NotificationLevelMenu({
                 <M.RadioItem
                   key={choice.label}
                   value={choice.value ?? "default"}
+                  closeOnClick
                 >
                   {choice.label}
                 </M.RadioItem>

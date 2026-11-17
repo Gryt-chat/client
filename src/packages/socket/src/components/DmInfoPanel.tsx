@@ -1,10 +1,11 @@
 import type { DirectConversation } from "@gryt/core";
-import { Avatar, Button } from "@gryt/ui";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Avatar, Button, Menu } from "@gryt/ui";
+import { BellSlash } from "@phosphor-icons/react";
+import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-import { generatedAvatarColor, getUploadsFileUrl, identityScopeFor, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey, useTheme } from "@/common";
+import { generatedAvatarColor, getOwnLevel, getUploadsFileUrl, identityScopeFor, type NotificationLevel, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey, setNotificationLevel, subscribeToPrefs, useTheme } from "@/common";
 
-import { PiArchiveFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiLockFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
+import { PiArchiveFill, PiBellFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiLockFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
@@ -146,9 +147,51 @@ function Pinned({ pins, memberList, onJump }: { pins: ReturnType<typeof usePins>
 
 const footerButton = "mt-auto flex cursor-pointer items-center gap-2 border-0 bg-transparent px-1 py-2 text-left text-sm";
 
+const OPTION_CLASS = "flex h-[38px] w-full cursor-pointer items-center gap-2.5 rounded-(--gryt-radius-full) border-0 bg-transparent px-2.5 text-left text-sm text-gryt-neutral-11 hover:bg-gryt-neutral-3 hover:text-gryt-text disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-gryt-neutral-11";
+
+const LEVEL_LABEL: Record<NotificationLevel, string> = { all: "Everything", mentions: "Only mentions", none: "Muted" };
+
+/** This DM's own level, with the same choices as its right-click menu. Only mentions is for groups. */
+function NotificationsOption({ host, conversationId }: { host: string; conversationId: string }) {
+  const read = () => getOwnLevel(host, { kind: "channel", id: conversationId }) ?? "all";
+  const level = useSyncExternalStore(subscribeToPrefs, read, read);
+  const choices: [NotificationLevel, string][] = [
+    ["all", "Everything"],
+    ...(conversationId.startsWith("dm_g") ? [["mentions", "Only mentions"] as [NotificationLevel, string]] : []),
+    ["none", "Nothing"],
+  ];
+  return (
+    <Menu.Root>
+      <Menu.Trigger render={<button type="button" className={OPTION_CLASS} />}>
+        <span className="flex text-gryt-muted">{level === "none" ? <BellSlash weight="fill" size={16} /> : <PiBellFill size={16} />}</span>
+        <span className="flex-1">Notifications</span>
+        <span className="text-xs text-gryt-muted">{LEVEL_LABEL[level]}</span>
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner align="end">
+          <Menu.Popup aria-label="Notifications">
+            <Menu.RadioGroup
+              value={level}
+              onValueChange={(value) =>
+                setNotificationLevel(host, { kind: "channel", id: conversationId }, value === "all" ? null : (value as NotificationLevel))
+              }
+            >
+              {choices.map(([value, label]) => (
+                <Menu.RadioItem key={value} value={value} closeOnClick>
+                  {label}
+                </Menu.RadioItem>
+              ))}
+            </Menu.RadioGroup>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
+}
+
 function Option({ icon, label, detail, onClick }: { icon: ReactNode; label: string; detail?: string; onClick?: () => void }) {
   return (
-    <button type="button" onClick={onClick} disabled={!onClick} className="flex h-[38px] w-full cursor-pointer items-center gap-2.5 rounded-(--gryt-radius-full) border-0 bg-transparent px-2.5 text-left text-sm text-gryt-neutral-11 hover:bg-gryt-neutral-3 hover:text-gryt-text disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-gryt-neutral-11">
+    <button type="button" onClick={onClick} disabled={!onClick} className={OPTION_CLASS}>
       <span className="flex text-gryt-muted">{icon}</span>
       <span className="flex-1">{label}</span>
       {detail && <span className="text-xs text-gryt-muted">{detail}</span>}
@@ -240,6 +283,7 @@ export function DmPersonPanel({
         <div className="flex flex-col gap-0.5">
           <Option icon={<PiMagnifyingGlassBold size={16} />} label="Search in this chat" onClick={onSearch} />
           <Option icon={<PiArchiveFill size={16} />} label="Import from Discord" onClick={onImport} />
+          <NotificationsOption host={host} conversationId={conversation.conversation_id} />
           {reencryptProgress && <Option icon={<PiLockFill size={16} />} label="Encrypting older messages" detail={`${reencryptProgress.done} of ${reencryptProgress.total}`} />}
         </div>
         {importSection}
