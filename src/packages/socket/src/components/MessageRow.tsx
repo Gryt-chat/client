@@ -379,8 +379,8 @@ export const MessageRow = memo(forwardRef<HTMLDivElement, MessageRowProps>(({
                   </span>
                 )}
                 <MessageTimestamp date={toDate(m.created_at)} receivedAt={m.received_at} />
-                {m.imported_from && (
-                  <Tooltip title="Imported from Discord">
+                {(m.imported_from ?? m.sender_imported_from) && (
+                  <Tooltip title="From Discord">
                     <span className="discord-import-tag">Discord</span>
                   </Tooltip>
                 )}

@@ -1,144 +1,140 @@
-import { Button, Select, Surface, Switch } from "@gryt/ui";
-import { useCallback, useEffect, useState } from "react";
+import { Avatar, Button, Combobox, Select, Surface, Switch } from "@gryt/ui";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
-import { bridgeFetch, type useChannelMatches } from "./discordBridgeApi";
+import { DiscordLogo } from "../../../../lib/icons";
+import { bridgeFetch, type Member, type useChannelMatches, type usePeople } from "./discordBridgeApi";
 
-interface Person {
-  discordUserId: string;
-  name: string | null;
-  messages: number;
-  linkedTo: string | null;
-  proof: "code" | "admin" | null;
-  sync: boolean;
-}
+const sign = (kind: "text" | "voice") => (kind === "voice" ? "🔊" : "#");
 
+/** Every Discord channel and where it goes here, grouped like Discord's sidebar. */
 export function ChannelMatches({ matches }: { matches: ReturnType<typeof useChannelMatches> }) {
-  const [open, setOpen] = useState(false);
   const { channels, gryt, picks, setPicks } = matches;
-  if (!channels || channels.length === 0) return null;
-  const matched = channels.filter((d) => picks[d.id] !== "new" && picks[d.id] !== "skip").length;
-  const skipped = channels.filter((d) => picks[d.id] === "skip").length;
+  if (!channels) return null;
+  const taken = new Map(Object.entries(picks).filter(([, t]) => t !== "new" && t !== "skip").map(([d, t]) => [t, d]));
+  const onlyHere = gryt.filter((g) => !taken.has(g.id));
+
+  const row = (d: (typeof channels)[number]) => {
+    const options = [
+      { label: `+ New ${d.kind === "voice" ? "voice channel" : "channel"} “${d.name}”`, value: "new" },
+      { label: "– Skip, don't link it", value: "skip" },
+      ...gryt
+        .filter((g) => g.kind === d.kind && (!taken.has(g.id) || taken.get(g.id) === d.id))
+        .map((g) => ({ label: `${sign(g.kind)} ${g.name}${d.suggested === g.id ? " · suggested" : ""}`, value: g.id })),
+    ];
+    return (
+      <div key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-sm">
+        <span className="min-w-0 flex-1 truncate">
+          <span className="text-gryt-muted">{sign(d.kind)}</span> {d.name}
+          {d.category && <span className="text-gryt-muted"> · {d.category}</span>}
+        </span>
+        <span className="text-gryt-muted" aria-hidden>→</span>
+        <div className="w-60 max-w-full shrink-0">
+          <Select value={picks[d.id] ?? "new"} onValueChange={(v) => setPicks((p) => ({ ...p, [d.id]: String(v) }))} options={options} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <span className="flex-1 text-sm">
-          <span className="font-medium">Channels:</span>{" "}
-          <span className="text-gryt-muted">
-            {channels.length - matched - skipped} new, {matched} into channels already here, {skipped} left out
-          </span>
+      {(["text", "voice"] as const).map((kind) => {
+        const list = channels.filter((d) => d.kind === kind);
+        if (list.length === 0) return null;
+        return (
+          <div key={kind} className="flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gryt-muted">{kind === "text" ? "Text" : "Voice"}</span>
+            <Surface className="flex flex-col p-1">{list.map(row)}</Surface>
+          </div>
+        );
+      })}
+      {onlyHere.length > 0 && (
+        <span className="text-sm text-gryt-muted">
+          Only here, not on Discord: {onlyHere.map((g) => `${sign(g.kind)} ${g.name}`).join(", ")}. They stay on this server.
         </span>
-        <Button size="small" tone="ghost" onClick={() => setOpen((o) => !o)}>{open ? "Done" : "Change"}</Button>
-      </div>
-      {open && (
-        <Surface className="flex flex-col gap-1 p-2">
-          {channels.map((d) => {
-            const options = [
-              { label: `New channel “${d.name}”`, value: "new" },
-              { label: "Skip, don't copy it", value: "skip" },
-              ...gryt.filter((g) => g.kind === d.kind).map((g) => ({ label: `${g.kind === "voice" ? "🔊" : "#"} ${g.name}${d.suggested === g.id ? " (suggested)" : ""}`, value: g.id })),
-            ];
-            return (
-              <div key={d.id} className="flex items-center gap-3 px-2 py-1 text-sm">
-                <span className="min-w-0 flex-1 truncate">
-                  <span className="text-gryt-muted">{d.kind === "voice" ? "🔊" : "#"}</span> {d.name}
-                  {d.category && <span className="text-gryt-muted"> · {d.category}</span>}
-                </span>
-                <div className="w-64 shrink-0">
-                  <Select value={picks[d.id] ?? "new"} onValueChange={(v) => setPicks((p) => ({ ...p, [d.id]: String(v) }))} options={options} />
-                </div>
-              </div>
-            );
-          })}
-        </Surface>
       )}
+      <span className="text-sm text-gryt-muted">Voice channels get linked too, so names and order stay in step. The voice itself isn&rsquo;t bridged.</span>
     </div>
   );
 }
 
-/** Everyone whose messages came from Discord. Linking shows their messages as the member's; unlinking undoes it. */
-export function DiscordPeople({ host, members }: { host: string; members: { serverUserId: string; nickname: string }[] }) {
-  const [people, setPeople] = useState<Person[] | null>(null);
-  const load = useCallback(async () => {
-    const res = await bridgeFetch(host, "/bridge/people");
-    if (res.ok) setPeople(((await res.json()) as { people: Person[] }).people);
-  }, [host]);
-  useEffect(() => void load(), [load]);
+/** Pick which member a Discord person is. A member someone else already has isn't offered again. */
+function MemberPicker({ members, takenBy, value, onPick }: { members: Member[]; takenBy: Set<string>; value: string | null; onPick: (id: string | null) => void }) {
+  const items = members.filter((m) => m.serverUserId === value || !takenBy.has(m.serverUserId));
+  const current = members.find((m) => m.serverUserId === value) ?? null;
+  return (
+    <Combobox.Root
+      items={items}
+      value={current}
+      onValueChange={(m: Member | null) => onPick(m?.serverUserId ?? null)}
+      itemToStringLabel={(m: Member) => m.nickname}
+      isItemEqualToValue={(a: Member, b: Member) => a.serverUserId === b.serverUserId}
+    >
+      <Combobox.Input placeholder="Not linked · pick a member" aria-label="Member here" />
+      <Combobox.Portal>
+        <Combobox.Positioner>
+          <Combobox.Popup>
+            <Combobox.Empty>No member by that name, or they&rsquo;re linked already</Combobox.Empty>
+            <Combobox.List>
+              {(m: Member) => (
+                <Combobox.Item key={m.serverUserId} value={m}>
+                  {m.nickname}
+                </Combobox.Item>
+              )}
+            </Combobox.List>
+          </Combobox.Popup>
+        </Combobox.Positioner>
+      </Combobox.Portal>
+    </Combobox.Root>
+  );
+}
 
+/** People on the Discord server, each linkable to one member here, and each with their own sync switch. */
+export function DiscordPeople({ people: hook, members }: { people: ReturnType<typeof usePeople>; members: Member[] }) {
+  const { people, link, setSync } = hook;
   const [confirmOff, setConfirmOff] = useState<string | null>(null);
-  const setSync = async (discordUserId: string, sync: boolean, removeCopied = false) => {
-    const res = await bridgeFetch(host, "/bridge/sync", { method: "PUT", body: JSON.stringify({ kind: "discord", id: discordUserId, sync, removeCopied }) });
-    if (!res.ok) toast.error("That didn't work. Try again in a moment.");
-    setConfirmOff(null);
-    await load();
-  };
-
-  const link = async (discordUserId: string, serverUserId: string | null) => {
-    const res = serverUserId
-      ? await bridgeFetch(host, `/bridge/people/${discordUserId}`, { method: "PUT", body: JSON.stringify({ serverUserId }) })
-      : await bridgeFetch(host, `/bridge/people/${discordUserId}`, { method: "DELETE" });
-    if (!res.ok) toast.error("That didn't work. Try again in a moment.");
-    await load();
-  };
-
-  if (!people || people.length === 0) return null;
-  const name = (id: string) => members.find((m) => m.serverUserId === id)?.nickname ?? "a member";
+  if (!people) return null;
+  if (people.length === 0) return <span className="text-sm text-gryt-muted">Nobody from Discord yet.</span>;
+  const takenBy = new Set(people.flatMap((p) => (p.linkedTo ? [p.linkedTo] : [])));
 
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium">People from Discord</span>
-      <span className="text-sm text-gryt-muted">
-        Link someone to a member here and their messages show under that member. They can do it themselves with /link on the bot. Unlinking puts the Discord name back. Switch someone off and nothing of theirs is copied any more.
-      </span>
-      <Surface className="flex flex-col gap-1 p-2">
-        {people.map((p) => (
-          <div key={p.discordUserId} className="flex flex-wrap items-center gap-3 px-2 py-1 text-sm">
-            <Switch
-              checked={p.sync}
-              aria-label={`Sync ${p.name ?? "this person"}`}
-              onCheckedChange={(on) => (on ? void setSync(p.discordUserId, true) : setConfirmOff(p.discordUserId))}
-            />
-            <span className={`min-w-0 flex-1 truncate ${p.sync ? "" : "text-gryt-muted line-through"}`}>
-              {p.name ?? "Discord user"} <span className="text-gryt-muted">· {p.messages.toLocaleString()} messages</span>
+    <Surface className="flex flex-col p-1">
+      {people.map((p) => (
+        <div key={p.discordUserId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-sm">
+          <Switch
+            checked={p.sync}
+            aria-label={`Sync ${p.name ?? "this person"}`}
+            onCheckedChange={(on) => (on ? void setSync(p.discordUserId, true) : setConfirmOff(p.discordUserId))}
+          />
+          <Avatar size="small" src={p.avatar ?? undefined} seed={p.discordUserId} alt="" />
+          <span className={`flex min-w-0 flex-1 flex-col ${p.sync ? "" : "text-gryt-muted line-through"}`}>
+            <span className="flex items-center gap-1.5 truncate">
+              {p.name ?? "Discord user"} <DiscordLogo size={12} color="#5865F2" aria-label="Discord" />
             </span>
-            {confirmOff === p.discordUserId && (
-              <span className="flex w-full flex-wrap items-center gap-2 pl-12">
-                <span className="text-gryt-muted">Stop syncing {p.name ?? "them"}?</span>
-                <Button size="small" tone="ghost" onClick={() => void setSync(p.discordUserId, false)}>Stop, keep what&rsquo;s here</Button>
-                <Button size="small" tone="danger" onClick={() => void setSync(p.discordUserId, false, true)}>Stop and remove their messages</Button>
-                <Button size="small" tone="ghost" onClick={() => setConfirmOff(null)}>Cancel</Button>
-              </span>
-            )}
-            {p.linkedTo ? (
-              <>
-                <span className="text-gryt-muted">→ {name(p.linkedTo)}{p.proof === "code" ? " (proved)" : ""}</span>
-                <Button size="small" tone="ghost" onClick={() => void link(p.discordUserId, null)}>Unlink</Button>
-              </>
-            ) : (
-              <div className="w-52 shrink-0">
-                <Select
-                  value=""
-                  placeholder="Link to a member"
-                  onValueChange={(v) => void link(p.discordUserId, String(v))}
-                  options={members.map((m) => ({ label: m.nickname, value: m.serverUserId }))}
-                />
-              </div>
-            )}
+            <span className="text-xs text-gryt-muted">
+              {p.messages > 0 ? `${p.messages.toLocaleString()} messages` : "No messages copied yet"}
+              {p.proof === "code" ? " · proved with /link" : ""}
+            </span>
+          </span>
+          <div className="w-56 max-w-full shrink-0">
+            <MemberPicker members={members} takenBy={takenBy} value={p.linkedTo} onPick={(id) => void link(p.discordUserId, id)} />
           </div>
-        ))}
-      </Surface>
-    </div>
+          {confirmOff === p.discordUserId && (
+            <span className="flex w-full flex-wrap items-center gap-2 pl-12">
+              <span className="text-gryt-muted">Stop syncing {p.name ?? "them"}?</span>
+              <Button size="small" tone="ghost" onClick={() => void setSync(p.discordUserId, false).then(() => setConfirmOff(null))}>Stop, keep what&rsquo;s here</Button>
+              <Button size="small" tone="danger" onClick={() => void setSync(p.discordUserId, false, true).then(() => setConfirmOff(null))}>Stop and remove their messages</Button>
+              <Button size="small" tone="ghost" onClick={() => setConfirmOff(null)}>Cancel</Button>
+            </span>
+          )}
+        </div>
+      ))}
+    </Surface>
   );
 }
 
 /** Members whose messages go to Discord. Everyone is on until the owner switches them off. */
-export function MembersToDiscord({ host, members, excluded, onChange }: {
-  host: string;
-  members: { serverUserId: string; nickname: string }[];
-  excluded: string[];
-  onChange: () => void;
-}) {
+export function MembersToDiscord({ host, members, excluded, onChange }: { host: string; members: Member[]; excluded: string[]; onChange: () => void }) {
   if (members.length === 0) return null;
   const off = new Set(excluded);
   const setSync = async (id: string, sync: boolean) => {
@@ -158,6 +154,36 @@ export function MembersToDiscord({ host, members, excluded, onChange }: {
           </label>
         ))}
       </Surface>
+    </div>
+  );
+}
+
+const KINDS: { kind: string; label: string }[] = [
+  { kind: "messages", label: "Messages" },
+  { kind: "edits", label: "Edits" },
+  { kind: "deletes", label: "Deletes" },
+  { kind: "replies", label: "Replies" },
+  { kind: "reactions", label: "Reactions" },
+  { kind: "emoji", label: "Custom emoji" },
+  { kind: "pins", label: "Pins" },
+  { kind: "threads", label: "Threads" },
+  { kind: "files", label: "Files" },
+];
+
+/** What crosses between the two. Switching one off only affects what happens from now on. */
+export function SyncKinds({ off, onChange }: { off: string[]; onChange: (off: string[]) => void }) {
+  const set = new Set(off);
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {KINDS.map(({ kind, label }) => (
+        <label key={kind} className="flex items-center gap-2 text-sm">
+          <Switch
+            checked={!set.has(kind)}
+            onCheckedChange={(on) => onChange(on ? off.filter((k) => k !== kind) : [...off, kind])}
+          />
+          {label}
+        </label>
+      ))}
     </div>
   );
 }
