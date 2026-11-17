@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
 
+# A new push to a pull request replaces the run still going. Main gets a group per run, since a
+# shared group would still drop a queued run there even without cancel-in-progress.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -476,8 +482,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: yarn
-      - run: yarn install --frozen-lockfile
       # The report is a convenience. Only the shards' result below decides this job.
       - uses: actions/download-artifact@v4
         continue-on-error: true
@@ -485,7 +489,8 @@ jobs:
           pattern: blob-report-*
           path: e2e/all-blob-reports
           merge-multiple: true
-      - run: yarn playwright merge-reports --reporter=html e2e/all-blob-reports
+      # Only Playwright is needed, so it comes from npm at the lockfile's version rather than a full install.
+      - run: npx -y "playwright@$(sed -n 's/^playwright@\(.*\):$/\1/p' yarn.lock)" merge-reports --reporter=html e2e/all-blob-reports
         continue-on-error: true
         env:
           PLAYWRIGHT_HTML_REPORT: e2e/playwright-report
