@@ -168,4 +168,16 @@ assert.equal(shouldNotifyForMessage(HOST, from("u2", "general"), background(fals
 rememberPlacements(HOST, sidebar, [{ id: "git-activity", defaultNotificationLevel: "all" }]);
 assert.equal(shouldNotifyForMessage(HOST, from("webhook:1", "git-activity"), background(false)), true);
 
+// ── A DM has its own level and never takes the server's ─────────────────────
+const DM = "dm_abc";
+setNotificationLevel(HOST, { kind: "server" }, "none");
+assert.equal(shouldNotifyForMessage(HOST, from("u2", "general"), background(false)), false);
+assert.equal(shouldNotifyForMessage(HOST, from("u2", DM), background(false)), true, "a muted server leaves its DMs alone");
+setNotificationLevel(HOST, { kind: "server" }, null);
+level(DM, "none");
+assert.equal(shouldNotifyForMessage(HOST, from("u2", DM), background(false)), false, "a muted DM is quiet");
+assert.equal(shouldNotifyForMessage(HOST, naming("u2", DM), background(false, true)), false, "even when named");
+level(DM, null);
+assert.equal(shouldNotifyForMessage(HOST, from("u2", DM), background(false)), true);
+
 console.log("message notification: ok");
