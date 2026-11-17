@@ -6,7 +6,7 @@ import { HostedServerControls } from "@/settings/src/components/myServersSetting
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt } from "@/settings/src/hostedServers";
 
-import { PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiList, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { DiscordLogo,PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiList, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
 import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
@@ -16,6 +16,7 @@ import { ReportsPanel } from "./ReportsPanel";
 import { ServerAuditTab } from "./ServerAuditTab";
 import { ServerBansTab } from "./ServerBansTab";
 import { ServerBotsTab } from "./ServerBotsTab";
+import { ServerDiscordTab } from "./ServerDiscordTab";
 import { ServerEmojisTab } from "./ServerEmojisTab";
 import { ServerInvitesTab } from "./ServerInvitesTab";
 import { ServerJoinRequestsTab } from "./ServerJoinRequestsTab";
@@ -293,6 +294,18 @@ export function ServerSettingsModal() {
         />
       ),
     },
+    // Owner only, like the server's bridge routes: it writes as other people.
+    ...(host && serverDetailsList[host]?.server_info?.role === "owner" && serverDetailsList[host]?.server_info?.discord_bridge
+      ? [
+          {
+            value: "discord",
+            group: "Integrations" as const,
+            label: "Discord",
+            icon: DiscordLogo,
+            content: <ServerDiscordTab host={host} />,
+          },
+        ]
+      : []),
     {
       value: "replace-user",
       group: "People",

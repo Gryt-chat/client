@@ -1351,6 +1351,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         /* Wide enough for the thread to sit beside the conversation rather than
            take the chat pane. */
         threadBeside={threadBeside}
+        discordOfferHost={!activeDm && currentUserRole === "owner" && serverDetails?.server_info?.discord_bridge ? host : undefined}
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={
