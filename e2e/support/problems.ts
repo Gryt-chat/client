@@ -29,7 +29,13 @@ const ALLOWED: Allowed[] = [
   { text: /^Failed to establish a connection to https:\/\/[^/]+\/audio\?ticket=[^:]+: net::ERR_QUIC_PROTOCOL_ERROR\.QUIC_NETWORK_IDLE_TIMEOUT/ },
   // The test server runs without an SFU, so a call rings and then can't join its room.
   { text: /^Could not start the call: Error: SFU configuration not available/ },
+  // Any worker starting or killing a container changes the runner's network, and Chrome drops what was in flight.
+  { text: /^Failed to load resource: net::ERR_NETWORK_CHANGED$/ },
 ];
+
+/** A fetch the app logs as failed this soon after a network change is that change, not a bug. */
+const NETWORK_CHANGE_ECHO_MS = 2_000;
+const FAILED_FETCH = /TypeError: Failed to fetch/;
 
 /** Everything that should fail a test without an assertion asking: console errors, crashes, live sites. */
 export class ProblemLog {
@@ -50,10 +56,13 @@ export class ProblemLog {
   };
 
   watch(page: Page, who: string, serverHttpBase: string) {
+    let networkChangedAt = -Infinity;
     page.on("console", (msg) => {
       if (msg.type() !== "error") return;
       const text = msg.text();
       const { url, lineNumber } = msg.location();
+      if (text.endsWith("net::ERR_NETWORK_CHANGED")) networkChangedAt = Date.now();
+      if (FAILED_FETCH.test(text) && Date.now() - networkChangedAt < NETWORK_CHANGE_ECHO_MS) return;
       if (ALLOWED.some((a) => a.text.test(text) && (!a.url || a.url.test(url)))) return;
       if ([...this.tolerated].some((p) => p.test(text))) return;
       this.report(`[${who}] console.error: ${text}${url ? `\n    at ${url}:${lineNumber}` : ""}`);

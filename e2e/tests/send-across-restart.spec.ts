@@ -32,7 +32,8 @@ interface Wire {
   /** Every nonce the page sent, so a row still carrying one as its id reads as unconfirmed. */
   nonces: Set<string>;
   sendsDelivered: number;
-  open: number;
+  /** A set, not a count: a redial the server refuses reports its close twice. */
+  open: Set<WebSocketRoute>;
 }
 
 async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wire> {
@@ -46,15 +47,15 @@ async function tapWire(context: BrowserContext, server: GrytServer): Promise<Wir
     heldRestores: [],
     nonces: new Set(),
     sendsDelivered: 0,
-    open: 0,
+    open: new Set(),
   };
   await context.routeWebSocket(
     (url) => url.port === port && url.pathname.startsWith("/socket.io/"),
     (page) => {
       const toServer = page.connectToServer();
-      wire.open++;
+      wire.open.add(page);
       toServer.onClose(() => {
-        wire.open--;
+        wire.open.delete(page);
         void page.close();
       });
       page.onMessage((message) => {
@@ -233,10 +234,10 @@ for (const kind of ["channel", "dm", "thread"] as const) {
     await expect.poll(() => wire.loseNextSend, { message: "the page should have sent it" }).toBe(false);
 
     const stopTolerating = problems.tolerate([REDIAL_FAILED]);
+    const openAtKill = [...wire.open];
+    expect(openAtKill.length, "a socket should be open before the kill").toBeGreaterThan(0);
     await run("docker", ["kill", container]);
-    // A killed container often sends no close, so the page only notices when the heartbeat
-    // runs out: the server's pingInterval plus pingTimeout, 25 s, past the default 15 s.
-    await expect.poll(() => wire.open, { message: "the page should have lost its socket", timeout: 40_000 }).toBe(0);
+    await expect.poll(() => openAtKill.filter((route) => wire.open.has(route)).length, { message: "the page should have lost its socket" }).toBe(0);
 
     const whileDown = unique("sent while the server was down");
     await type(alice.page, conversation.box, whileDown);
