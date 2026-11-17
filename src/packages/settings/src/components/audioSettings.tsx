@@ -8,7 +8,7 @@ import { MAX_VOLUME_PERCENT } from "@/lib/audioVolume";
 import { setNotificationOutputDevice } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
-import { PiArrowsClockwiseFill, PiWarningFill } from "../../../../lib/icons";
+import { PiArrowsClockwiseFill, PiCrosshairFill, PiFadersHorizontalFill, PiLightningFill, PiSparkleFill, PiWarningFill } from "../../../../lib/icons";
 import { LOW_LATENCY_GATE, LOW_LATENCY_VOLUME, PRESET_SWITCHES, presetOf, type VoicePreset } from "../hooks/voicePreset";
 import { OutputMeters } from "./outputMeters";
 import { SettingGroup, SettingsContainer, SliderSetting, ToggleSetting } from "./settingsComponents";
@@ -51,6 +51,8 @@ const MIC_GATE = {
 
 /* The numbers are measured (voice#53): RNNoise ~20 ms, compressor 6, and the limiter that
    runs while any processing is on 10. "Lowest" is the 10 ms frames on top of no processing. */
+const PRESET_ICONS: Record<VoicePreset, typeof PiLightningFill> = { quality: PiSparkleFill, low_latency: PiLightningFill, esports: PiCrosshairFill, custom: PiFadersHorizontalFill };
+
 const PRESETS: Record<VoicePreset, { label: string; description: string }> = {
   quality: {
     label: "Best quality · about 36 ms",
@@ -372,7 +374,18 @@ export function AudioSettings() {
           options={(Object.keys(PRESETS) as VoicePreset[])
             // Custom is a state you end up in, not one you pick.
             .filter((key) => key !== "custom" || preset === "custom")
-            .map((key) => ({ label: PRESETS[key].label, value: key }))}
+            .map((key) => {
+              const Icon = PRESET_ICONS[key];
+              return {
+                value: key,
+                label: (
+                  <span className="inline-flex items-center gap-2">
+                    <Icon aria-hidden className="shrink-0 text-gryt-accent-11" size={16} />
+                    {PRESETS[key].label}
+                  </span>
+                ),
+              };
+            })}
         />
       </SettingGroup>
 
