@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 
 import { NotificationLevelMenu } from "@/common";
 
-import { PiBellFill, PiCaretDownFill, PiCopySimpleBold, PiDoorOpenBold, PiFolderFill, PiGearSixFill, PiHardDrivesFill, PiHashBold, PiLinkSimpleBold, PiMinusCircleFill, PiPuzzlePieceFill, PiUserPlusFill } from "../../../../lib/icons";
+import { DiscordLogo,PiBellFill, PiCaretDownFill, PiCopySimpleBold, PiDoorOpenBold, PiFolderFill, PiGearSixFill, PiHardDrivesFill, PiHashBold, PiLinkSimpleBold, PiMinusCircleFill, PiPuzzlePieceFill, PiUserPlusFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 import { MarkAsReadItem } from "./MarkAsReadItem";
 
@@ -20,6 +20,7 @@ export const ServerHeader = ({
   onCreateFolder,
   onOpenInvites,
   onOpenSettings,
+  onLinkDiscord,
   onManageServer,
   role,
   canManageChannels,
@@ -44,6 +45,8 @@ export const ServerHeader = ({
   onCreateFolder?: () => void;
   onOpenInvites?: () => void;
   onOpenSettings?: () => void;
+  /** The server has the Discord bridge: anyone can link their Discord account. */
+  onLinkDiscord?: () => void;
   /** This app's controls for the server. Only passed when this app hosts it. Server settings has them too. */
   onManageServer?: () => void;
   role?: string;
@@ -128,6 +131,9 @@ export const ServerHeader = ({
                   {/* The same control as the rail's right-click and a channel's ⋯ (GRYT-1771). */}
                   <NotificationLevelMenu host={serverHost} scope={{ kind: "server" }} inMenu icon={<PiBellFill size={16} />} />
                   <MarkAsReadItem host={serverHost} scope={{ kind: "server" }} inMenu />
+                  {onLinkDiscord && (
+                    <Menu.Item onClick={onLinkDiscord}><DiscordLogo size={16} />Link Discord</Menu.Item>
+                  )}
                 </>
               )}
 

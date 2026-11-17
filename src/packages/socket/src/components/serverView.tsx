@@ -76,6 +76,7 @@ import { CreateChannelDialog } from "./CreateChannelDialog";
 import { DiscordImportCard } from "./DiscordImportCard";
 import { DiscordImportDialog } from "./DiscordImportDialog";
 import { DiscordImportReceipt } from "./DiscordImportReceipt";
+import { DiscordLinkDialog } from "./DiscordLinkDialog";
 import { DmGroupPanel, DmPersonPanel, PANEL_WIDTH as DM_PANEL_WIDTH } from "./DmInfoPanel";
 import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
@@ -241,6 +242,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   useAnyCallButtonPress(() => setVoiceStop(VOICE_PRESET_1));
 
   const [focusedChatHidden, setFocusedChatHidden] = useState(false);
+  const [discordLinkOpen, setDiscordLinkOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [createChannelType, setCreateChannelType] = useState<"chat" | "voice" | "forum" | "automated">("chat");
@@ -1612,6 +1614,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               serverName={serverName}
               serverRole={currentUserRole}
               onOpenSettings={onOpenSettings}
+              onLinkDiscord={serverDetails?.server_info?.discord_bridge ? () => setDiscordLinkOpen(true) : undefined}
               onOpenInvites={onOpenInvites}
               onManageServer={onManageServer}
               pendingReportCount={pendingReportCount}
@@ -1968,6 +1971,9 @@ forumTags={activeDm ? [] : activeChannelForumTags}
           setPendingLeave(null);
         }}
       />
+      {serverDetails?.server_info?.discord_bridge && (
+        <DiscordLinkDialog host={host} open={discordLinkOpen} onOpenChange={setDiscordLinkOpen} />
+      )}
       <ServerConfirmDialogs
         pendingDeleteItem={pendingDeleteItem}
         channelById={channelById}

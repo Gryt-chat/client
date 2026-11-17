@@ -302,7 +302,7 @@ export function ServerSettingsModal() {
             group: "Integrations" as const,
             label: "Discord",
             icon: DiscordLogo,
-            content: <ServerDiscordTab host={host} />,
+            content: <ServerDiscordTab host={host} members={memberLists[host] ?? []} />,
           },
         ]
       : []),
