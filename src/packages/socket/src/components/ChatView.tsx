@@ -34,6 +34,7 @@ import type { ChatMessage } from "./chatUtils";
 import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
+import { DiscordOffer } from "./DiscordOffer";
 import { EmojiText } from "./EmojiText";
 import { ForumView } from "./ForumView";
 import { ImageLightbox, type LightboxGallery } from "./ImageLightbox";
@@ -131,6 +132,7 @@ export const ChatView = memo(({
   hidePins = false,
   moreMenu,
   underHeader,
+  discordOfferHost,
   flush,
   isRateLimited,
   rateLimitCountdown,
@@ -200,6 +202,8 @@ export const ChatView = memo(({
   /** A slot rather than the panel, because this is the same component for a DM
       and knows nothing about servers. */
   underHeader?: React.ReactNode;
+  /** The owner's server: an empty channel offers to bring a Discord server. */
+  discordOfferHost?: string;
   /** In the tiny window the conversation is the window, and a rounded corner
       against the window's own reads as something clipped. */
   flush?: boolean;
@@ -1008,8 +1012,9 @@ export const ChatView = memo(({
             </div>
           )}
           {!showVoiceDisabled && !isLoadingMessages && chatMessages.length === 0 && (
-            <div className="flex grow items-center justify-center" style={{ paddingBottom: "16px" }}>
+            <div className="flex grow flex-col items-center justify-center gap-4" style={{ paddingBottom: "16px" }}>
               <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} sealing={sealing} />
+              {discordOfferHost && <DiscordOffer host={discordOfferHost} />}
             </div>
           )}
           {!showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0 && showMessages && (
