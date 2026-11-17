@@ -50,7 +50,22 @@ export function scaleBox(b: Box, by: number, W: number, H: number, aspect: numbe
   return moveBox({ w, x: b.x + (b.w - w) / 2, y: b.y + (b.w - w) / aspect / 2 }, 0, 0, W, H, aspect);
 }
 
-function draw(img: HTMLImageElement, b: Box, aspect: number, outW: number): HTMLCanvasElement {
+/** Bigger than this and a phone or laptop runs short of memory decoding it; the server refuses past 100M too. */
+export const MAX_PICTURE_BYTES = 25 * 1024 * 1024;
+export const MAX_PICTURE_PIXELS = 100_000_000;
+
+/** A copy no wider or taller than `side`, so the preview doesn't redraw a 12000 px picture on every move. */
+export function smallCopy(img: HTMLImageElement, side: number): { src: CanvasImageSource; scale: number } {
+  const scale = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+  if (scale === 1) return { src: img, scale };
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+  canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return { src: canvas, scale };
+}
+
+function draw(img: CanvasImageSource, b: Box, aspect: number, outW: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = outW;
   canvas.height = Math.round(outW / aspect);
@@ -62,8 +77,9 @@ function draw(img: HTMLImageElement, b: Box, aspect: number, outW: number): HTML
 }
 
 /** A small copy for the card preview while the box moves. */
-export function previewOf(img: HTMLImageElement, b: Box, aspect: number): string {
-  return draw(img, b, aspect, 240).toDataURL("image/png");
+export function previewOf(small: { src: CanvasImageSource; scale: number }, b: Box, aspect: number): string {
+  const s = small.scale;
+  return draw(small.src, { x: b.x * s, y: b.y * s, w: b.w * s }, aspect, 240).toDataURL("image/png");
 }
 
 /** The kept part at outW wide, as WebP where the browser can encode it. */
