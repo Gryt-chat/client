@@ -234,7 +234,9 @@ for (const kind of ["channel", "dm", "thread"] as const) {
 
     const stopTolerating = problems.tolerate([REDIAL_FAILED]);
     await run("docker", ["kill", container]);
-    await expect.poll(() => wire.open, { message: "the page should have lost its socket" }).toBe(0);
+    // A killed container often sends no close, so the page only notices when the heartbeat
+    // runs out: the server's pingInterval plus pingTimeout, 25 s, past the default 15 s.
+    await expect.poll(() => wire.open, { message: "the page should have lost its socket", timeout: 40_000 }).toBe(0);
 
     const whileDown = unique("sent while the server was down");
     await type(alice.page, conversation.box, whileDown);
