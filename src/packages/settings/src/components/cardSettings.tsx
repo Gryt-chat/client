@@ -128,6 +128,27 @@ export function CardSettings() {
   };
 
   const style = draft.cardStyle;
+  const bannerWhere = style.bannerSize === "card" ? "A picture behind your whole card" : "A picture across the top of your card";
+  /* A banner framed for the band is too short to fill the whole card, so switching offers to pick it again. */
+  const changeStyle = (next: typeof style) => {
+    commit({ ...draft, cardStyle: next });
+    if (next.bannerSize !== "card" || style.bannerSize === "card" || !bannerUrl) return;
+    toast((t) => (
+      <span>
+        Your banner was framed for the top of the card.{" "}
+        <button
+          type="button"
+          className="gryt-link cursor-pointer border-0 bg-transparent p-0"
+          onClick={() => {
+            toast.dismiss(t.id);
+            bannerInput.current?.click();
+          }}
+        >
+          Pick a picture for the whole card
+        </button>
+      </span>
+    ), { duration: 8000 });
+  };
   const presets = useCardPresets();
 
   /* A link from somebody, or from the card builder: shown in the editor, and only kept on Save. */
@@ -295,8 +316,8 @@ export function CardSettings() {
           title="Banner"
           description={
             bannerHosts.length === connected.length
-              ? "A picture across the top of your card. Everywhere else your pattern shows instead."
-              : `A picture across the top of your card, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
+              ? `${bannerWhere}. Everywhere else your pattern shows instead.`
+              : `${bannerWhere}, on the ${bannerHosts.length} of your servers that let you upload. The others show your pattern.`
           }
         >
           <span className="text-xs text-gryt-muted">
@@ -394,7 +415,7 @@ export function CardSettings() {
               <div className="flex min-h-0 flex-1 @max-3xl:flex-col">
                 <MemberCardEditor
                   value={style}
-                  onChange={(next) => commit({ ...draft, cardStyle: next })}
+                  onChange={changeStyle}
                   owlHex={owlHex}
                   nickname={nickname}
                   worn={worn}

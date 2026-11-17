@@ -18,4 +18,4 @@ export async function isStillPicture(file: File): Promise<boolean> {
 export const BANNER_SHAPE: CropShape = { title: "Frame your banner", hint: "Drag the box to move it, pull a corner to resize. The box is exactly what your card shows.", aspect: BANNER_W / BANNER_H, outW: BANNER_W, round: false, name: "banner" };
 
 /** A whole-card banner, cropped at the card's full 960 by 1260. */
-export const CARD_BANNER_SHAPE: CropShape = { ...BANNER_SHAPE, aspect: BANNER_W / CARD_BANNER_H };
+export const CARD_BANNER_SHAPE: CropShape = { ...BANNER_SHAPE, aspect: BANNER_W / CARD_BANNER_H, hint: "Drag the box to move it, pull a corner to resize. A short card shows the middle of it." };
