@@ -104,6 +104,8 @@ export type ChatMessage = {
   /** When the server got this copy. Its sent date is only what the sender says. */
   received_at?: string;
   imported_from?: "discord";
+  /** Set by the server on a channel message copied from Discord by the bridge. */
+  sender_imported_from?: "discord";
   /** Why a failed send failed, when there's more to say than that it did. */
   failure?: string;
   /** The line the server writes for apps from before MLS. This app hides it (GRYT-1517). */
