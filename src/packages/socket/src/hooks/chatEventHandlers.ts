@@ -1,7 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
-import { isLapsedPlanMode } from "@/lib/planMode";
-
 import type { ChatMessage } from "../components/chatUtils";
 import { handleRateLimitError } from "../utils/rateLimitHandler";
 import { mergeMessages } from "./mergeMessages";
@@ -295,7 +293,8 @@ export function isContactRefusal(error: ChatErrorPayload): error is { error: "co
 
 export function isNonRetryableError(error: ChatErrorPayload): boolean {
   if (isMutedError(error) || isContactRefusal(error)) return true;
-  if (typeof error === "object" && isLapsedPlanMode(error.error)) return true;
+  // A lapsed Gryt Cloud plan: the answer won't change on a retry.
+  if (typeof error === "object" && (error.error === "read_only" || error.error === "paused")) return true;
   const msg = typeof error === "string" ? error : error.message || error.error || "";
   return NON_RETRYABLE_ERRORS.some((e) => msg.includes(e));
 }
