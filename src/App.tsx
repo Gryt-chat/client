@@ -49,6 +49,7 @@ import { TrayVoiceState } from "./components/trayVoiceState";
 import { VaultUpgradePrompt } from "./components/vaultUpgradePrompt";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
+import { cloudWait } from "./packages/settings/src/cloudWait";
 import { offerSharedLook } from "./lib/sharedLook";
 
 export function App() {
@@ -94,6 +95,7 @@ export function App() {
   // Listen for invite deep links from the Electron main process (gryt://invite?...).
   useEffect(() => {
     return window.electronAPI?.onDeepLinkInvite(({ host, code }) => {
+      if (cloudWait.take(host)) return;
       const pending = writePendingInvite(host, code);
       if (pending) setPendingInvite(pending);
     });

@@ -2600,3 +2600,15 @@ img.discord-import-letter { object-fit: cover; }
 @media (prefers-reduced-motion: reduce) {
   .gryt-settings-drawer, .gryt-settings-drawer[data-open="true"] { transition: none; }
 }
+
+/* Gryt Cloud's celebrations: confetti and the cheering owl. */
+.gryt-confetti { position: absolute; left: 50%; top: 40%; width: 0; height: 0; pointer-events: none; }
+.gryt-confetti i { position: absolute; border-radius: 2px; opacity: 0; animation: gryt-burst 3.2s cubic-bezier(.16, 1, .3, 1) infinite; }
+@keyframes gryt-burst { 0% { transform: translate(0, 0) rotate(0); opacity: 1 } 45% { transform: translate(var(--dx), calc(var(--dy) + 120px)) rotate(var(--r)); opacity: 1 } 60%, 100% { transform: translate(var(--dx), calc(var(--dy) + 160px)) rotate(var(--r)); opacity: 0 } }
+.cheer-owl { display: inline-flex; }
+.cheer-owl .owl-hop { transform-box: view-box; animation: gryt-hop 1.6s cubic-bezier(.16, 1, .3, 1) infinite; }
+.cheer-owl .arm-r, .cheer-owl .arm-l { transform-box: view-box; transform-origin: 1010px 844px; animation: gryt-cheer .8s ease-in-out infinite alternate; }
+.cheer-owl.still .owl-hop, .cheer-owl.still .arm-r, .cheer-owl.still .arm-l { animation: none; }
+@keyframes gryt-hop { 0%, 100% { transform: translateY(0) } 30% { transform: translateY(-70px) } }
+@keyframes gryt-cheer { from { transform: rotate(0) } to { transform: rotate(-14deg) } }
+@media (prefers-reduced-motion: reduce) { .gryt-confetti { display: none } .cheer-owl .owl-hop, .cheer-owl .arm-r, .cheer-owl .arm-l { animation: none } }
