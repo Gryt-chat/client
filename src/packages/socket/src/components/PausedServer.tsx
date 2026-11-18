@@ -10,7 +10,7 @@ export function PausedServer({ serverName, isOwner, dates, onLeave }: { serverNa
   return (
     <div className="flex grow items-center justify-center p-6">
       <div className="flex w-[26rem] max-w-full flex-col items-center gap-3.5 text-center">
-        <span className="flex items-center justify-center" style={{ width: 56, height: 56, borderRadius: 16, background: "var(--gryt-danger-a3)", color: "var(--gryt-danger-11)" }}>
+        <span className="flex items-center justify-center" style={{ width: 56, height: 56, borderRadius: 16, background: "var(--gryt-danger-3)", color: "var(--gryt-danger-11)" }}>
           <PiPauseFill size={26} />
         </span>
         <span className="text-xl font-bold">{serverName} is paused</span>
@@ -18,7 +18,7 @@ export function PausedServer({ serverName, isOwner, dates, onLeave }: { serverNa
         <div className="flex flex-wrap justify-center gap-2.5 pt-1.5">
           {isOwner ? (
             <>
-              <Button tone="secondary" onClick={() => window.open(CLOUD_BILLING_URL.replace("/billing", "/servers"), "_blank", "noopener,noreferrer")}>
+              <Button tone="neutral" onClick={() => window.open(CLOUD_BILLING_URL.replace("/billing", "/servers"), "_blank", "noopener,noreferrer")}>
                 Download
               </Button>
               <Button onClick={() => window.open(CLOUD_BILLING_URL, "_blank", "noopener,noreferrer")}>
@@ -26,7 +26,7 @@ export function PausedServer({ serverName, isOwner, dates, onLeave }: { serverNa
               </Button>
             </>
           ) : (
-            <Button tone="secondary" onClick={onLeave}>
+            <Button tone="neutral" onClick={onLeave}>
               Leave server
             </Button>
           )}

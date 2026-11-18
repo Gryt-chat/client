@@ -20,7 +20,7 @@ export function StorageFull({ host, serverName, isOwner }: { host: string; serve
   if (!full) return null;
   return (
     <div className="mx-3 mb-2 flex flex-wrap items-center gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface px-3 py-2.5">
-      <span className="flex shrink-0 items-center justify-center" style={{ width: 36, height: 36, borderRadius: "var(--gryt-radius-md)", background: "var(--gryt-danger-a3)", color: "var(--gryt-danger-11)" }}>
+      <span className="flex shrink-0 items-center justify-center" style={{ width: 36, height: 36, borderRadius: "var(--gryt-radius-md)", background: "var(--gryt-danger-3)", color: "var(--gryt-danger-11)" }}>
         <PiArchiveFill size={18} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
@@ -34,7 +34,7 @@ export function StorageFull({ host, serverName, isOwner }: { host: string; serve
           Upgrade
         </Button>
       )}
-      <Button size="small" tone="secondary" onClick={() => window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host, tab: "storage" } }))}>
+      <Button size="small" tone="neutral" onClick={() => window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host, tab: "storage" } }))}>
         Free up space
       </Button>
     </div>

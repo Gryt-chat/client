@@ -22,7 +22,7 @@ export function PlanModeBanner({ serverInfo, serverName }: { serverInfo: Info; s
         role="status"
         aria-label="Server plan"
         className="flex items-center gap-3 px-3 py-2"
-        style={{ flexShrink: 0, borderRadius: "var(--gryt-radius-lg)", background: "var(--gryt-danger-a3)", border: "1px solid var(--gryt-danger-a5)" }}
+        style={{ flexShrink: 0, borderRadius: "var(--gryt-radius-lg)", background: "var(--gryt-danger-3)", border: "1px solid var(--gryt-danger-6)" }}
       >
         <PiWarningFill size={18} style={{ flexShrink: 0, color: "var(--gryt-danger-11)" }} />
         <button type="button" onClick={() => owner && setWhy(true)} className="flex min-w-0 flex-1 flex-col border-0 bg-transparent p-0 text-left text-gryt-text" style={{ cursor: owner ? "pointer" : "default" }}>
