@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 
-import { getUserValue, setUserValue } from "@/settings";
 import { useSockets } from "@/socket";
 
-const SEEN = "hasSeenOwnerTour";
+/** Per device, like gryt.hasSeenWelcome: signing in on this device doesn't show it again. */
+const SEEN = "gryt.hasSeenOwnerTour";
+
+function seen(): boolean {
+  try {
+    return localStorage.getItem(SEEN) === "true";
+  } catch {
+    return false;
+  }
+}
 
 /** The server an owner tour is running for: the first one this person owns, or one asked for from its settings. */
 export function useOwnerTour(host: string | null, firstTourShowing: boolean) {
@@ -13,7 +21,7 @@ export function useOwnerTour(host: string | null, firstTourShowing: boolean) {
 
   useEffect(() => {
     if (!host || !isOwner || firstTourShowing || tourHost) return;
-    if (getUserValue(SEEN, false)) return;
+    if (seen()) return;
     setTourHost(host);
   }, [host, isOwner, firstTourShowing, tourHost]);
 
@@ -27,7 +35,11 @@ export function useOwnerTour(host: string | null, firstTourShowing: boolean) {
   }, []);
 
   const finish = () => {
-    setUserValue(SEEN, true);
+    try {
+      localStorage.setItem(SEEN, "true");
+    } catch {
+      // Unwritable storage only means it may show once more.
+    }
     setTourHost(null);
   };
   return { ownerTourHost: tourHost, finishOwnerTour: finish };
