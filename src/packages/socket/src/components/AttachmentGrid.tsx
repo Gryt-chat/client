@@ -4,6 +4,7 @@ import { type CSSProperties, useState } from "react";
 import { useStableFileUrl } from "../hooks/useStableFileUrl";
 import { readBlobUrl } from "../utils/downloadFile";
 import type { AttachmentMeta } from "./chatUtils";
+import { DeletedAttachment } from "./DeletedAttachment";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
 
 const GAP = 4;
@@ -73,6 +74,7 @@ function GridTile({
     background: "var(--gryt-neutral-3)", minWidth: 0, ...style,
   };
 
+  if (meta?.deleted) return <DeletedAttachment name={meta.original_name} tile style={box} />;
   // Still with the image worker: a loader in the tile, over the sender's own copy if there is one.
   if (meta?.processing) {
     return (
