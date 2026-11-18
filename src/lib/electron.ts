@@ -400,7 +400,7 @@ export interface ElectronAPI {
     callback: (server: { host: string; port: number }) => void
   ): () => void;
   onDeepLinkInvite(
-    callback: (data: { host: string; code: string }) => void
+    callback: (data: { host: string; code: string; welcome?: boolean }) => void
   ): () => void;
   onDeepLinkLook(
     callback: (data: { card?: string; owl?: string }) => void

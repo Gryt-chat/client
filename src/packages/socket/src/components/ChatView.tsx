@@ -34,6 +34,7 @@ import type { ChatMessage } from "./chatUtils";
 import { buildMessageMap, buildMessageMetadata, getReplyPreview } from "./chatViewHelpers";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
+import { CloudWelcome } from "./CloudWelcome";
 import { DiscordOffer } from "./DiscordOffer";
 import { EmojiText } from "./EmojiText";
 import { ForumView } from "./ForumView";
@@ -133,6 +134,7 @@ export const ChatView = memo(({
   moreMenu,
   underHeader,
   discordOfferHost,
+  cloudWelcomeHost,
   flush,
   isRateLimited,
   rateLimitCountdown,
@@ -204,6 +206,8 @@ export const ChatView = memo(({
   underHeader?: React.ReactNode;
   /** The owner's server: an empty channel offers to bring a Discord server. */
   discordOfferHost?: string;
+  /** The owner's first open of a new Gryt Cloud server. */
+  cloudWelcomeHost?: string;
   /** In the tiny window the conversation is the window, and a rounded corner
       against the window's own reads as something clipped. */
   flush?: boolean;
@@ -1013,8 +1017,14 @@ export const ChatView = memo(({
           )}
           {!showVoiceDisabled && !isLoadingMessages && chatMessages.length === 0 && (
             <div className="flex grow flex-col items-center justify-center gap-4" style={{ paddingBottom: "16px" }}>
-              <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} sealing={sealing} />
-              {discordOfferHost && <DiscordOffer host={discordOfferHost} />}
+              {cloudWelcomeHost ? (
+                <CloudWelcome host={cloudWelcomeHost} serverName={serverName ?? cloudWelcomeHost} />
+              ) : (
+                <>
+                  <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} sealing={sealing} />
+                  {discordOfferHost && <DiscordOffer host={discordOfferHost} />}
+                </>
+              )}
             </div>
           )}
           {!showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0 && showMessages && (

@@ -36,6 +36,7 @@ import { useSettings } from "../hooks/useSettings";
 import { sameServer } from "../serverId";
 import { CheerOwl } from "../../../../components/cheerOwl";
 import { Confetti } from "../../../../components/confetti";
+import { markCloudWelcome } from "../../../socket/src/components/CloudWelcome";
 import { cloudWait } from "../cloudWait";
 import { CreateServerPanel } from "./createServer";
 
@@ -212,6 +213,7 @@ export function AddNewServer({
   useEffect(() => {
     if (cloud !== "waiting") return;
     cloudWait.start((host) => {
+      markCloudWelcome(host);
       setCloud({ host });
       setInviteInput(host);
     });

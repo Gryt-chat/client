@@ -106,6 +106,7 @@ import { type ChannelPlacement, folderOf } from "./sidebarTree";
 import { UnreachableServer } from "./UnreachableServer";
 import { VoiceGrip } from "./VoiceGrip";
 import { VoiceSheetButton } from "./VoiceSheetButton";
+import { wantsCloudWelcome } from "./CloudWelcome";
 import { VoiceView } from "./VoiceView";
 
 // Parsed once at module load. The query string overrides the Developer panel
@@ -452,6 +453,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     isConnected: currentConnectionStatus === "connected",
   });
   // `?fakedms` in dev: the fake conversations open like real ones on the server carrying them.
+  // Read once per server: the card clears the flag as it shows, and must not vanish on the next render.
+  const cloudWelcome = useMemo(() => !!host && wantsCloudWelcome(host), [host]);
   const directConversations = useMemo(
     () => (fakeDmsOn && fakeHostNow() === currentlyViewingServer?.host ? [...realDirectConversations, ...fakeConversations()] : realDirectConversations),
     // The directory rebuilds when the fake host is claimed, which is the moment to look again.
@@ -1373,6 +1376,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
            take the chat pane. */
         threadBeside={threadBeside}
         discordOfferHost={!activeDm && currentUserRole === "owner" && serverDetails?.server_info?.discord_offer ? host : undefined}
+        cloudWelcomeHost={!activeDm && currentUserRole === "owner" && cloudWelcome ? host : undefined}
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={
