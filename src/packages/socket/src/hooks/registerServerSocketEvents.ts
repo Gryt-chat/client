@@ -39,6 +39,7 @@ import {
 } from "@/common";
 import { rememberChannelNames } from "@/lib/channelDirectory";
 import { claimOutcomeToast, guestIsGone, takeClaimOutcome } from "@/lib/identityClaimOutcome";
+import { isLapsedPlanMode, planModeRefusalText } from "@/lib/planMode";
 import type {
   Server,
   serverDetails,
@@ -470,6 +471,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
      `ServerNoticePanel`. Re-checked here, because that is somebody else's machine. */
   socket.on("server:notice", (payload: unknown) => {
     setServerNotice(host, payload);
+  });
+
+  socket.on("server:plan_mode", (data: { error?: unknown }) => {
+    if (isLapsedPlanMode(data?.error)) toast(planModeRefusalText(data.error), { id: `plan-mode-${host}` });
   });
 
   socket.on("server:kicked", (data: { reason?: string; action?: "kick" | "ban" }) => {
