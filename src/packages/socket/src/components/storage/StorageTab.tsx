@@ -10,7 +10,7 @@ import { formatFileSize } from "../../utils/formatFileSize";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ImageLightbox, type LightboxGallery } from "../ImageLightbox";
 import { FreeUpSpaceDialog } from "./FreeUpSpaceDialog";
-import { ask, type FilesPage, type StorageFile, type StorageFilter, type StorageOverview } from "./storageApi";
+import { ask, TIMEOUT, type FilesPage, type StorageFile, type StorageFilter, type StorageOverview } from "./storageApi";
 import { clearSelection, selectionFor, setFiles, toggleFile, useSelectionVersion } from "./storageSelection";
 
 const KIND_LABELS: Record<string, string> = { uploads: "Files in messages", avatars: "Avatars", banners: "Banners", emojis: "Emoji" };
@@ -43,10 +43,11 @@ export function StorageTab({ host, socket, onClose }: { host: string; socket: So
   const [overview, setOverview] = useState<StorageOverview | null>(null);
   const [files, setFilesView] = useState<{ conversationId?: string; label?: string } | null>(null);
   const [freeOpen, setFreeOpen] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!socket) return;
-    ask<StorageOverview>(socket, "storage:overview", {}).then(setOverview).catch((e: Error) => toast.error(e.message));
+    ask<StorageOverview>(socket, "storage:overview", {}).then((o) => { setFailed(null); setOverview(o); }).catch((e: Error) => setFailed(e.message));
   }, [socket]);
   useEffect(load, [load]);
 
@@ -54,6 +55,8 @@ export function StorageTab({ host, socket, onClose }: { host: string; socket: So
   if (files) {
     return <FilesView host={host} socket={socket} scope={files} onBack={() => { setFilesView(null); load(); }} onClose={onClose} />;
   }
+  // A server from before storage:overview never answers, which is the usual reason this fails.
+  if (failed && !overview) return <p className="text-sm text-gryt-muted py-6">{failed === TIMEOUT ? "This server doesn't show its storage yet. It needs an update first." : failed}</p>;
   if (!overview) return <div className="flex justify-center py-10"><Spinner size={18} /></div>;
 
   const pct = overview.limit ? Math.min(100, (overview.used / overview.limit) * 100) : 0;

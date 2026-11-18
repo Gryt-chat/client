@@ -41,6 +41,8 @@ export interface FilesPage {
   requestId?: string;
 }
 
+export const TIMEOUT = "The server didn't answer. Try again.";
+
 /** One request and its answer. The server answers on its own event name, or storage:error. */
 export function ask<T>(socket: Socket, event: string, payload: unknown, reply = event, timeoutMs = 15_000): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -52,7 +54,7 @@ export function ask<T>(socket: Socket, event: string, payload: unknown, reply = 
     };
     const onReply = (data: T) => done(() => resolve(data));
     const onError = (err: { message?: string }) => done(() => reject(new Error(err?.message || "The server refused that.")));
-    const timer = setTimeout(() => done(() => reject(new Error("The server didn't answer. Try again."))), timeoutMs);
+    const timer = setTimeout(() => done(() => reject(new Error(TIMEOUT))), timeoutMs);
     socket.on(reply, onReply);
     socket.on("storage:error", onError);
     socket.emit(event, payload);
