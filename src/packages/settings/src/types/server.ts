@@ -132,6 +132,8 @@ export type serverDetails = {
     video_profiles?: boolean;
     /** Messages here may show other Gryt servers' custom emoji. */
     external_emojis?: boolean;
+    /** A Gryt Cloud plan's video ceiling; null or absent is none. */
+    video_max?: { maxHeight: number; maxFps: number; maxKbps: number } | null;
     version?: string;
     /**
      * Every plugin this server is running, and what each may do. All of them — an
