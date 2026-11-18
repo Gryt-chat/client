@@ -14,6 +14,8 @@ type ProfanityMode = "off" | "flag" | "censor" | "block";
 
 /** Mirrors the server's. Anything else reads as `normal`, as it does there. */
 type SpamSensitivity = "low" | "normal" | "high";
+type ChatVideoMode = "original" | "balanced" | "small";
+const isChatVideoMode = (v: unknown): v is ChatVideoMode => v === "original" || v === "balanced" || v === "small";
 function normalizeSpamSensitivity(v: unknown): SpamSensitivity {
   return v === "low" || v === "high" ? v : "normal";
 }
@@ -60,6 +62,8 @@ type ServerSettingsPayload = {
   spamFilter?: boolean;
   spamSensitivity?: SpamSensitivity;
   videoProfiles?: boolean;
+  /** Absent on a server from before GRYT-2159, which then shows no choice. */
+  chatVideoMode?: ChatVideoMode;
   /** Absent on a server from before the setting, which then shows no switch. */
   externalEmojis?: boolean;
   /** Absent on a server from before GRYT-2055, which then shows no switch. */
@@ -121,6 +125,7 @@ export function ServerOverviewTab({
   const [spamFilter, setSpamFilter] = useState(true);
   const [spamSensitivity, setSpamSensitivity] = useState<SpamSensitivity>("normal");
   const [videoProfiles, setVideoProfiles] = useState(true);
+  const [chatVideoMode, setChatVideoMode] = useState<ChatVideoMode | null>(null);
   const [externalEmojis, setExternalEmojis] = useState<boolean | null>(null);
   const [linkHistory, setLinkHistory] = useState<boolean | null>(null);
   const [media, setMedia] = useState<{ checked: boolean; video: boolean } | null>(null);
@@ -142,6 +147,7 @@ export function ServerOverviewTab({
     spamFilter: boolean;
     spamSensitivity: SpamSensitivity;
     videoProfiles: boolean;
+    chatVideoMode: ChatVideoMode;
     externalEmojis: boolean;
     linkHistory: boolean;
   } | null>(null);
@@ -202,6 +208,7 @@ export function ServerOverviewTab({
       setSpamFilter(payload.spamFilter !== false);
       setSpamSensitivity(normalizeSpamSensitivity(payload.spamSensitivity));
       setVideoProfiles(payload.videoProfiles !== false);
+      setChatVideoMode(isChatVideoMode(payload.chatVideoMode) ? payload.chatVideoMode : null);
       setExternalEmojis(typeof payload.externalEmojis === "boolean" ? payload.externalEmojis : null);
       setLinkHistory(typeof payload.linkHistory === "boolean" ? payload.linkHistory : null);
       setMedia(payload.media ? { checked: !!payload.media.checked, video: !!payload.media.video } : null);
@@ -234,6 +241,7 @@ export function ServerOverviewTab({
         spamFilter: payload.spamFilter !== false,
         spamSensitivity: normalizeSpamSensitivity(payload.spamSensitivity),
         videoProfiles: payload.videoProfiles !== false,
+        chatVideoMode: isChatVideoMode(payload.chatVideoMode) ? payload.chatVideoMode : "original",
         externalEmojis: payload.externalEmojis === true,
         linkHistory: payload.linkHistory !== false,
       };
@@ -298,6 +306,7 @@ export function ServerOverviewTab({
     spamFilter: boolean;
     spamSensitivity: SpamSensitivity;
     videoProfiles: boolean;
+    chatVideoMode: ChatVideoMode;
     externalEmojis: boolean;
     linkHistory: boolean;
   }>): boolean => {
@@ -596,6 +605,33 @@ export function ServerOverviewTab({
               ? "Each video becomes a silent clip of up to ten seconds, at the size of the card."
               : "Not available here: it needs the same sandbox."}
           </span>
+          {media.video && chatVideoMode !== null && (
+            <>
+              <span className="text-sm font-medium">Videos in chat</span>
+              <Select
+                className="max-w-80"
+                value={chatVideoMode}
+                onValueChange={(v) => {
+                  if (!isChatVideoMode(v)) return;
+                  const previous = chatVideoMode;
+                  setChatVideoMode(v);
+                  if (!saveIfChanged({ chatVideoMode: v })) setChatVideoMode(previous);
+                }}
+                disabled={!canEdit}
+                options={[
+                  { label: "Original quality", value: "original" },
+                  { label: "Balanced: up to 1080p, 60 fps", value: "balanced" },
+                  { label: "Save space: 720p, 30 fps", value: "small" },
+                ]}
+              />
+              <span className="text-xs text-gryt-muted" style={{ lineHeight: 1.4 }}>
+                {chatVideoMode === "original"
+                  ? "Videos most devices can play are kept as sent, and others are converted at full size. Higher quality fills your storage faster."
+                  : "Every video is converted, which keeps files smaller."}
+                {" "}Location and other hidden data are always removed.
+              </span>
+            </>
+          )}
         </div>
       )}
 
