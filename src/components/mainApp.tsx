@@ -14,6 +14,8 @@ import { useIsTinyWindow } from "@/socket/src/hooks/useNarrowWindow";
 import { useRememberPlace } from "../lib/reports/session";
 import { Discovery } from "./discovery";
 import { OnboardingTour } from "./onboarding/OnboardingTour";
+import { ownerTourSteps } from "./onboarding/steps";
+import { useOwnerTour } from "./onboarding/useOwnerTour";
 import { Sidebar } from "./sidebar";
 
 export function MainApp() {
@@ -27,6 +29,7 @@ export function MainApp() {
     setLastSelectedChannelForServer,
   } = useServerManagement();
   const { showTour, dismissTour } = useSettings();
+  const { ownerTourHost, finishOwnerTour } = useOwnerTour(currentlyViewingServer?.host ?? null, showTour);
 
   /* A window this small is one channel, so the shell around it goes: at 300px the
      padding and the rail are a fifth of it. `ServerView` drops the rest. */
@@ -106,6 +109,16 @@ export function MainApp() {
       )}
 
       {showTour && <OnboardingTour onFinish={dismissTour} />}
+      {!showTour && ownerTourHost && (
+        <OnboardingTour
+          key={ownerTourHost}
+          host={ownerTourHost}
+          steps={ownerTourSteps}
+          hello="Your own server! Let me show you around."
+          bye="That's the tour. Have fun with your server!"
+          onFinish={finishOwnerTour}
+        />
+      )}
     </div>
   );
 }

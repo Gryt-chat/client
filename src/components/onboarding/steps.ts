@@ -8,6 +8,8 @@ export interface TourControls {
   openSettings: (tab: string) => void;
   closeSettings: () => void;
   setShowAddServer: (show: boolean) => void;
+  /** On the server the tour is about; a no-op on the first-run tour. */
+  openServerSettings: (tab: string) => void;
 }
 
 export interface TourStep {
@@ -97,5 +99,37 @@ export const tourSteps: TourStep[] = [
     body: "Gryt Chat is the server we host. Come say hi, ask anything, or tell us what's broken.",
     mood: "happy",
     // Already on the join screen. Hidden, joined or unreachable, and the tour ends a step early.
+  },
+];
+
+/** The first time somebody owns a server: where its settings are, in the order an owner needs them. */
+export const ownerTourSteps: TourStep[] = [
+  {
+    id: "owner-name",
+    target: "server-name",
+    title: "This is your server",
+    body: "Give it a name, an icon and a line about what it's for. It's the first thing people see when they join.",
+    enter: (app) => app.openServerSettings("overview"),
+  },
+  {
+    id: "owner-join",
+    target: "server-join",
+    title: "Decide who gets in",
+    body: "With an invite, after you let them in, or anyone who has the address. You can change it whenever.",
+  },
+  {
+    id: "owner-roles",
+    target: "server-settings-role-editor",
+    title: "Roles decide who can do what",
+    body: "Give your moderators what they need here, and keep the rest for yourself.",
+    via: ["server-settings-role-editor"],
+  },
+  {
+    id: "owner-uploads",
+    target: "server-uploads",
+    title: "Pictures and videos",
+    body: "How big uploads may be, and how videos in chat are stored. Higher quality fills your storage faster.",
+    mood: "wink",
+    enter: (app) => app.openServerSettings("overview"),
   },
 ];

@@ -509,7 +509,7 @@ export function ServerSettingsModal() {
                             {group.label}
                           </span>
                           {group.options.map(({ value, label, icon: Icon }) => (
-                            <Tabs.Tab key={value} value={value}>
+                            <Tabs.Tab key={value} value={value} data-tour={`server-settings-${value}`}>
                               <Icon size={16} />
                               {label}
                             </Tabs.Tab>

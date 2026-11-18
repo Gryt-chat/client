@@ -451,11 +451,22 @@ export function ServerOverviewTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <span className="text-sm">
-        {canEdit
-          ? "Update the server display name and icon."
-          : "You can see these settings, but your role cannot change them."}
-      </span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm">
+          {canEdit
+            ? "Update the server display name and icon."
+            : "You can see these settings, but your role cannot change them."}
+        </span>
+        {canEdit && (
+          <Button
+            size="small"
+            tone="neutral"
+            onClick={() => window.dispatchEvent(new CustomEvent("owner_tour_start", { detail: { host } }))}
+          >
+            Show me around
+          </Button>
+        )}
+      </div>
 
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">
@@ -466,7 +477,7 @@ export function ServerOverviewTab({
         </span>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" data-tour="server-name">
         <span className="text-sm font-medium">
           Display name
         </span>
@@ -582,7 +593,7 @@ export function ServerOverviewTab({
       </div>
 
       {media && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" data-tour="server-uploads">
           <span className="text-sm font-medium">Uploads</span>
           <span className="text-xs" style={{ lineHeight: 1.4 }}>
             {media.checked
@@ -853,7 +864,7 @@ export function ServerOverviewTab({
         />
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" data-tour="server-join">
         <span className="text-sm font-medium">
           Who can join
         </span>

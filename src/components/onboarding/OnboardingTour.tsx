@@ -8,7 +8,7 @@ import { useServerManagement } from "@/socket";
 
 import { GuideOwl, type Rect } from "./GuideOwl";
 import type { TourControls } from "./steps";
-import { tourSteps } from "./steps";
+import { type TourStep, tourSteps } from "./steps";
 
 /** Breathing room between the cut-out and the control it reveals. */
 const HALO = 8;
@@ -16,8 +16,8 @@ const HALO = 8;
 const TARGET_WAIT_MS = 2500;
 
 const FADE_MS = 260;
-const HELLO = { id: "hello", title: "Hi! Let me show you around." };
-const BYE = { id: "bye", title: "Goodbye! Enjoy Gryt!" };
+const HELLO = "Hi! Let me show you around.";
+const BYE = "Goodbye! Enjoy Gryt!";
 /** The wave and the goodbye line, before the owl shrinks away and the tour closes. */
 const BYE_MS = 2600;
 /** The entrance, then the wave while it says hi, in the middle of the window. */
@@ -60,12 +60,25 @@ function readRect(target: string): Rect | null {
   return { top: r.top, left: r.left, width: r.width, height: r.height };
 }
 
-export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
+export function OnboardingTour({
+  onFinish,
+  steps = tourSteps,
+  hello = HELLO,
+  bye: byeLine = BYE,
+  host,
+}: {
+  onFinish: () => void;
+  steps?: TourStep[];
+  hello?: string;
+  bye?: string;
+  /** The server an owner tour is about. */
+  host?: string;
+}) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
 
-  const step = tourSteps[index];
-  const isLast = index === tourSteps.length - 1;
+  const step = steps[index];
+  const isLast = index === steps.length - 1;
 
   const { openSettings, setShowSettings } = useSettings();
   const { setShowAddServer } = useServerManagement();
@@ -75,11 +88,15 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     openSettings: () => undefined,
     closeSettings: () => undefined,
     setShowAddServer: () => undefined,
+    openServerSettings: () => undefined,
   });
   controlsRef.current = {
     openSettings,
     closeSettings: () => setShowSettings(false),
     setShowAddServer,
+    openServerSettings: (tab) => {
+      if (host) window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host, tab } }));
+    },
   };
 
   const reduceMotion = useReducedMotion();
@@ -279,8 +296,8 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
 
   const lit = focusShown && !bye ? rect : null;
   const stepLine = lit && { id: shownStep.id, title: shownStep.title, body: shownStep.body };
-  let said = waving ? HELLO : stepLine;
-  if (bye) said = BYE;
+  let said = waving ? { id: "hello", title: hello } : stepLine;
+  if (bye) said = { id: "bye", title: byeLine };
   const cut = lit && {
     top: lit.top - HALO,
     left: lit.left - HALO,
@@ -317,7 +334,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
               className="flex items-center gap-2 rounded-full bg-gryt-surface py-1 pr-1 pl-3 shadow-[0_10px_30px_rgb(0_0_0/0.35)]"
             >
               <span className="font-mono text-xs text-gryt-muted">
-                {tourSteps.indexOf(shownStep) + 1}/{tourSteps.length}
+                {steps.indexOf(shownStep) + 1}/{steps.length}
               </span>
               <Button tone="ghost" size="small" onClick={goodbye}>
                 Skip
