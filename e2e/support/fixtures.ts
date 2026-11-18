@@ -87,6 +87,8 @@ export async function prepare(
           localStorage.setItem(`user:${device}:nickname`, JSON.stringify(nickname));
         }
         if (!welcome) localStorage.setItem("gryt.hasSeenWelcome", "true");
+        // Tests that own a server would otherwise have the owner tour over the page.
+        localStorage.setItem("gryt.hasSeenOwnerTour", "true");
         if (agreement && !localStorage.getItem(agreement.key)) localStorage.setItem(agreement.key, agreement.value);
         // Members here are strangers who DM each other, which the Friends default (GRYT-1814) refuses.
         if (!localStorage.getItem("gryt_contact_prefs")) {
