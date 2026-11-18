@@ -446,11 +446,11 @@ export function AddNewServer({
                 <div className="flex flex-col items-center gap-3 py-5 text-center">
                   <span className="relative flex">
                     <Confetti />
-                    <Avatar size="large" fallback={<GeneratedServerIcon seed={serverInfo?.name ?? cloud.host} />} />
+                    <Avatar size="large" className="size-14 rounded-(--gryt-radius-lg)" src={serverInfo ? `${getServerHttpBase(cloud.host)}/icon` : undefined} fallback={<GeneratedServerIcon seed={serverInfo?.name ?? cloud.host} />} />
                   </span>
                   <span className="text-xl font-bold">{serverInfo?.name ?? cloud.host} is live! 🎉</span>
                   <span className="inline-flex items-center gap-1.5 text-sm" style={{ color: "var(--gryt-neutral-11)" }}>
-                    Thanks for running it on Gryt Cloud <CheerOwl size={22} still />
+                    Thanks for running it on Gryt Cloud <CheerOwl size={30} still />
                   </span>
                 </div>
                 <Button size="large" onClick={() => void handleJoin()}>
