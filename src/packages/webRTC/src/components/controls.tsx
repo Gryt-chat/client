@@ -73,6 +73,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     getPeerConnection,
     getScreenVideoSender,
     setVideoSendSettings,
+    setVideoCeiling,
   } = useSFU();
   const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
@@ -85,7 +86,15 @@ export function Controls({ onDisconnect }: ControlsProps) {
   const [showAudioSourcesModal, setShowAudioSourcesModal] = useState(false);
   const [micMenuOpen, setMicMenuOpen] = useState(false);
   const [headsetMenuOpen, setHeadsetMenuOpen] = useState(false);
-  const { sockets } = useSockets();
+  const { sockets, serverDetailsList } = useSockets();
+  // A Gryt Cloud plan's ceiling for the server this call is on; the engine holds every send to it.
+  const videoMax = currentServerConnected ? serverDetailsList[currentServerConnected]?.server_info?.video_max ?? null : null;
+  const maxHeight = videoMax?.maxHeight;
+  const maxFps = videoMax?.maxFps;
+  const maxKbps = videoMax?.maxKbps;
+  useEffect(() => {
+    setVideoCeiling?.(maxHeight && maxFps && maxKbps ? { maxHeight, maxFps, maxKbps } : null);
+  }, [maxHeight, maxFps, maxKbps, setVideoCeiling]);
   const {
     setIsMuted, isMuted, isDeafened, setIsDeafened,
     isServerMuted, isServerDeafened,
