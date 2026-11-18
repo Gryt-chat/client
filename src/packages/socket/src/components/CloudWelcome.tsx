@@ -5,27 +5,9 @@ import { CheerOwl } from "../../../../components/cheerOwl";
 import { Confetti } from "../../../../components/confetti";
 import { PiArrowSquareOutBold, PiCaretRightBold, PiCloudFill, PiHashBold, PiUsersThreeFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
-
-const key = (host: string) => `gryt:cloud-welcome:${host}`;
+import { cloudWelcomeKey as key } from "../lib/cloudWelcomeFlag";
 // shortcut: same guess as Add a server's, until Gryt Cloud is public.
 const CONSOLE_URL = "https://cloud.gryt.chat";
-
-/** Set by the console's Open in Gryt link (welcome=1) and by Add a server when the new Cloud server arrives. */
-export function markCloudWelcome(host: string) {
-  try {
-    localStorage.setItem(key(host), "1");
-  } catch {
-    /* private mode: no welcome, nothing else lost */
-  }
-}
-
-export function wantsCloudWelcome(host: string): boolean {
-  try {
-    return localStorage.getItem(key(host)) === "1";
-  } catch {
-    return false;
-  }
-}
 
 /** 3.5: the owner's first open of a brand-new Gryt Cloud server. Shown once. */
 export function CloudWelcome({ host, serverName }: { host: string; serverName: string }) {

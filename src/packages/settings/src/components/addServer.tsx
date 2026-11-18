@@ -10,17 +10,21 @@ import {
   useAccount,
 } from "@/common";
 
+import { CheerOwl } from "../../../../components/cheerOwl";
+import { Confetti } from "../../../../components/confetti";
 import {
   PiArrowSquareOutBold,
   PiCaretRightBold,
   PiCloudFill,
-  PiMonitorFill,
   PiInfoFill,
+  PiMonitorFill,
   PiUsersThreeFill,
   PiWarningFill,
   PiX,
 } from "../../../../lib/icons";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
+import { markCloudWelcome } from "../../../socket/src/lib/cloudWelcomeFlag";
+import { cloudWait } from "../cloudWait";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 import { useLanDiscovery } from "../hooks/useLanDiscovery";
 import {
@@ -34,10 +38,6 @@ import {
 } from "../hooks/useServerJoin";
 import { useSettings } from "../hooks/useSettings";
 import { sameServer } from "../serverId";
-import { CheerOwl } from "../../../../components/cheerOwl";
-import { Confetti } from "../../../../components/confetti";
-import { markCloudWelcome } from "../../../socket/src/components/CloudWelcome";
-import { cloudWait } from "../cloudWait";
 import { CreateServerPanel } from "./createServer";
 
 const CLOUD_URL = "https://gryt.chat/cloud";
@@ -446,7 +446,7 @@ export function AddNewServer({
                 <div className="flex flex-col items-center gap-3 py-5 text-center">
                   <span className="relative flex">
                     <Confetti />
-                    <Avatar size="large" fallback={<GeneratedServerIcon name={serverInfo?.name ?? cloud.host} />} />
+                    <Avatar size="large" fallback={<GeneratedServerIcon seed={serverInfo?.name ?? cloud.host} />} />
                   </span>
                   <span className="text-xl font-bold">{serverInfo?.name ?? cloud.host} is live! 🎉</span>
                   <span className="inline-flex items-center gap-1.5 text-sm" style={{ color: "var(--gryt-neutral-11)" }}>

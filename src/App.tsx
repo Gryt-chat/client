@@ -49,9 +49,9 @@ import { TrayVoiceState } from "./components/trayVoiceState";
 import { VaultUpgradePrompt } from "./components/vaultUpgradePrompt";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
-import { cloudWait } from "./packages/settings/src/cloudWait";
-import { markCloudWelcome } from "./packages/socket/src/components/CloudWelcome";
 import { offerSharedLook } from "./lib/sharedLook";
+import { cloudWait } from "./packages/settings/src/cloudWait";
+import { markCloudWelcome } from "./packages/socket/src/lib/cloudWelcomeFlag";
 
 export function App() {
   const { isSignedIn, login, loginInProgress } = useAccount();

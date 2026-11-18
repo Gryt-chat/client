@@ -57,6 +57,7 @@ import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { useWaitingBots } from "../hooks/useWaitingBots";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
+import { wantsCloudWelcome } from "../lib/cloudWelcomeFlag";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
@@ -106,7 +107,6 @@ import { type ChannelPlacement, folderOf } from "./sidebarTree";
 import { UnreachableServer } from "./UnreachableServer";
 import { VoiceGrip } from "./VoiceGrip";
 import { VoiceSheetButton } from "./VoiceSheetButton";
-import { wantsCloudWelcome } from "./CloudWelcome";
 import { VoiceView } from "./VoiceView";
 
 // Parsed once at module load. The query string overrides the Developer panel
@@ -454,7 +454,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   });
   // `?fakedms` in dev: the fake conversations open like real ones on the server carrying them.
   // Read once per server: the card clears the flag as it shows, and must not vanish on the next render.
-  const cloudWelcome = useMemo(() => !!host && wantsCloudWelcome(host), [host]);
+  const welcomeHost = currentlyViewingServer?.host;
+  const cloudWelcome = useMemo(() => !!welcomeHost && wantsCloudWelcome(welcomeHost), [welcomeHost]);
   const directConversations = useMemo(
     () => (fakeDmsOn && fakeHostNow() === currentlyViewingServer?.host ? [...realDirectConversations, ...fakeConversations()] : realDirectConversations),
     // The directory rebuilds when the fake host is claimed, which is the moment to look again.
