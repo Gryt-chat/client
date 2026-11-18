@@ -5,6 +5,7 @@ import { useStableFileUrl } from "../hooks/useStableFileUrl";
 import { readBlobUrl } from "../utils/downloadFile";
 import { ChatMediaPlayer, ChatSealedVideo } from "./ChatMediaPlayer";
 import type { AttachmentMeta } from "./chatUtils";
+import { DeletedAttachment } from "./DeletedAttachment";
 import { FileCard } from "./FileCard";
 import { ImageAttachment } from "./ImageAttachment";
 import { type MessageActions, MessageContextMenu } from "./MediaContextMenu";
@@ -36,6 +37,7 @@ export function MessageAttachment({
   const openLocal = local ? () => readBlobUrl(local) : undefined;
   const fileName = meta?.original_name;
 
+  if (meta?.deleted) return <DeletedAttachment name={fileName ?? null} tile={mime.startsWith("image/")} style={mime.startsWith("image/") ? { width: 240, height: 160 } : undefined} />;
   if (meta?.refused) {
     return (
       <div className="text-xs text-gryt-muted" style={{ padding: "8px 0" }}>

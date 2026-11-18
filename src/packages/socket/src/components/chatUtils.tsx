@@ -21,6 +21,8 @@ export type AttachmentMeta = {
   processing?: boolean;
   /** The worker couldn't write it out, so the server never serves it. */
   refused?: boolean;
+  /** An owner deleted it to free space. Its name and size are still known. */
+  deleted?: boolean;
   /** Blob URL of the file itself, when it is decrypted or still being sent. */
   local_url?: string;
   /** A sealed file not fetched yet. Calling it fetches and decrypts it. */
