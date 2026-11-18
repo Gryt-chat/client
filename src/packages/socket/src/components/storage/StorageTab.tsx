@@ -10,7 +10,7 @@ import { formatFileSize } from "../../utils/formatFileSize";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { ImageLightbox, type LightboxGallery } from "../ImageLightbox";
 import { FreeUpSpaceDialog } from "./FreeUpSpaceDialog";
-import { ask, TIMEOUT, type FilesPage, type StorageFile, type StorageFilter, type StorageOverview } from "./storageApi";
+import { ask, type FilesPage, type StorageFile, type StorageFilter, type StorageOverview,TIMEOUT } from "./storageApi";
 import { clearSelection, selectionFor, setFiles, toggleFile, useSelectionVersion } from "./storageSelection";
 
 const KIND_LABELS: Record<string, string> = { uploads: "Files in messages", avatars: "Avatars", banners: "Banners", emojis: "Emoji" };
