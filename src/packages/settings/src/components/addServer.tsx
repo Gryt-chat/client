@@ -434,7 +434,7 @@ export function AddNewServer({
                   <Button size="large" tone="ghost" onClick={() => setCloud(null)}>
                     Cancel
                   </Button>
-                  <Button size="large" tone="secondary" onClick={() => window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer")}>
+                  <Button size="large" tone="neutral" onClick={() => window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer")}>
                     Open browser again
                   </Button>
                 </div>
@@ -470,7 +470,7 @@ export function AddNewServer({
                     onChange={(e) => setInviteInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && setMode("join")}
                   />
-                  <Button tone="secondary" onClick={() => setMode("join")}>
+                  <Button tone="neutral" onClick={() => setMode("join")}>
                     Join
                   </Button>
                 </div>
