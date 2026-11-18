@@ -6,7 +6,7 @@ import { HostedServerControls } from "@/settings/src/components/myServersSetting
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt } from "@/settings/src/hostedServers";
 
-import { DiscordLogo,PiArrowsLeftRightFill, PiFlagFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiList, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { DiscordLogo,PiArrowsLeftRightFill, PiFlagFill, PiFolderFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiList, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
 import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
@@ -30,6 +30,7 @@ import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 import { ServerWebhooksTab } from "./ServerWebhooksTab";
+import { StorageTab } from "./storage/StorageTab";
 
 type SetupRequiredDetail = {
   host: string;
@@ -186,6 +187,14 @@ export function ServerSettingsModal() {
           channels={host ? serverDetailsList[host]?.channels ?? [] : []}
         />
       ),
+    },
+    {
+      value: "storage",
+      group: "General",
+      label: "Storage",
+      icon: PiFolderFill,
+      needs: ["manage_server"],
+      content: <StorageTab host={host} socket={socket} onClose={() => handleDialogChange(false)} />,
     },
     {
       value: "invites",

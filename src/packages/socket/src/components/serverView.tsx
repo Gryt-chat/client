@@ -871,6 +871,24 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     handleChannelClick(channel);
   }, [handleChannelClick, setSelectedDmId]);
 
+  /* Go to message from somewhere outside the chat, like the storage list in server settings. */
+  useEffect(() => {
+    const open = (event: Event) => {
+      const d = (event as CustomEvent<{ host?: string; conversationId?: string; messageId?: string }>).detail;
+      const viewing = currentlyViewingServer?.host;
+      if (!d?.conversationId || !d.messageId || !viewing || d.host !== viewing) return;
+      const channel = (serverDetailsList[viewing]?.channels || []).find((c) => c.id === d.conversationId);
+      if (channel) handleChannelClickAndCloseDm(channel);
+      else {
+        visitConversation(d.conversationId);
+        setSelectedDmId(d.conversationId);
+      }
+      setPendingJump({ conversationId: d.conversationId, messageId: d.messageId, nonce: Date.now() });
+    };
+    window.addEventListener("open_message", open);
+    return () => window.removeEventListener("open_message", open);
+  }, [currentlyViewingServer?.host, serverDetailsList, handleChannelClickAndCloseDm, setSelectedDmId]);
+
   /** A ring carries a nickname and nothing else, or a person's appearance is a
       second copy to go stale. A caller not in the list draws from the name. */
   const caller = incomingCall ? memberListMap[incomingCall.from.server_user_id] : undefined;
