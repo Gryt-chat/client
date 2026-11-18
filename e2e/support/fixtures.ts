@@ -85,6 +85,8 @@ export async function prepare(
           const device = `device:${crypto.randomUUID()}`;
           localStorage.setItem("gryt.deviceId", device);
           localStorage.setItem(`user:${device}:nickname`, JSON.stringify(nickname));
+          // Tests that own a server would otherwise have the owner tour over the page.
+          localStorage.setItem(`user:${device}:hasSeenOwnerTour`, "true");
         }
         if (!welcome) localStorage.setItem("gryt.hasSeenWelcome", "true");
         if (agreement && !localStorage.getItem(agreement.key)) localStorage.setItem(agreement.key, agreement.value);

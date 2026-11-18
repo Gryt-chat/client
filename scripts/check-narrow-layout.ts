@@ -344,7 +344,7 @@ assert.doesNotMatch(pageColumn.slice(0, pageColumn.indexOf(">")), /overflowX/, "
 const accountStep = tourSteps.find((step) => step.id === "account");
 assert.ok(accountStep?.via?.includes("settings-account"), "the tour's account step no longer presses the rail");
 const opened: string[] = [];
-accountStep?.enter?.({ openSettings: (tab: string) => opened.push(tab), closeSettings() {}, setShowAddServer() {} });
+accountStep?.enter?.({ openSettings: (tab: string) => opened.push(tab), closeSettings() {}, setShowAddServer() {}, openServerSettings() {} });
 assert.deepEqual(opened, ["account"], "the tour's account step has no way to Account without the rail");
 
 console.log("narrow layout ok: member list yields to the voice and thread panels, tiny window is desktop-only, both settings dialogs fit");
