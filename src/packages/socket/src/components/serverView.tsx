@@ -91,6 +91,7 @@ import { MessagesHome } from "./MessagesHome";
 import { MobileServerView } from "./MobileServerView";
 import { NewFolderDialog } from "./NewFolderDialog";
 import { NotEncryptedPopover } from "./NotEncryptedPopover";
+import { PlanModeBanner } from "./PlanModeBanner";
 import { PresenceDot } from "./PresenceDot";
 import { ReportUserDialog } from "./ReportUserDialog";
 import { SearchPanel } from "./SearchPanel";
@@ -1447,6 +1448,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         {!dmSpace && currentConnectionStatus === "connected" && (
           <SecurityNoticeBanner host={host} serverInfo={serverDetails.server_info} hostedHere={!!hostedHere} />
         )}
+        {!dmSpace && currentConnectionStatus === "connected" && <PlanModeBanner serverInfo={serverDetails.server_info} />}
         {layout === "tiny" && (
           /* One channel and no way to change it; the way out is a bigger window.
              A call is the exception, or the microphone has no button to close it. */

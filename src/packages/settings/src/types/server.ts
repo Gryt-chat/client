@@ -134,6 +134,8 @@ export type serverDetails = {
     external_emojis?: boolean;
     /** A Gryt Cloud plan's video ceiling; null or absent is none. */
     video_max?: { maxHeight: number; maxFps: number; maxKbps: number } | null;
+    /** "read_only" or "paused" on a Gryt Cloud server whose payment failed. */
+    plan_mode?: "active" | "read_only" | "paused";
     version?: string;
     /**
      * Every plugin this server is running, and what each may do. All of them — an
