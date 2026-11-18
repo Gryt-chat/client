@@ -74,6 +74,7 @@ export async function uploadChatFile(
       else if (STORAGE_CODES[err.error]) msg = STORAGE_CODES[err.error];
       else if (err.message) msg = err.message;
       else if (err.error) msg = err.error;
+      if (err.error === "storage_full") window.dispatchEvent(new CustomEvent("gryt:storage-full", { detail: { host: serverHost, used: err.used, limit: err.limit } }));
     } catch { /* ignored */ }
     console.error("[Upload] Failed:", { status: resp.status, url: `${base}/api/uploads`, body: raw });
     throw Object.assign(new Error(msg), { status: resp.status, retryAfter: resp.headers.get("retry-after") });

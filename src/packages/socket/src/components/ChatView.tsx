@@ -36,6 +36,7 @@ import { CloudWelcome } from "./CloudWelcome";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { DiscordOffer } from "./DiscordOffer";
+import { StorageFull } from "./StorageFull";
 import { EmojiText } from "./EmojiText";
 import { ForumView } from "./ForumView";
 import { ImageLightbox, type LightboxGallery } from "./ImageLightbox";
@@ -56,6 +57,7 @@ const MESSAGE_ENTER_MS = 600;
 
 function placeholderFor(s: {
   offlineLine: string | undefined;
+  planLine: string | undefined;
   voiceTextHidden: boolean | undefined;
   mayRead: boolean | undefined;
   maySend: boolean | undefined;
@@ -65,6 +67,7 @@ function placeholderFor(s: {
   inClear: boolean | undefined;
 }): string {
   if (s.offlineLine) return s.offlineLine;
+  if (s.planLine) return s.planLine;
   /* A placeholder, so short. The notice in the body says why. */
   if (s.voiceTextHidden) return "Can't chat here right now";
   if (!s.mayRead) return "This channel is not readable with your role.";
@@ -135,6 +138,8 @@ export const ChatView = memo(({
   underHeader,
   discordOfferHost,
   cloudWelcomeHost,
+  planLine,
+  isOwner,
   flush,
   isRateLimited,
   rateLimitCountdown,
@@ -208,6 +213,9 @@ export const ChatView = memo(({
   discordOfferHost?: string;
   /** The owner's first open of a new Gryt Cloud server. */
   cloudWelcomeHost?: string;
+  /** A read-only Gryt Cloud server says so in the composer. */
+  planLine?: string;
+  isOwner?: boolean;
   /** In the tiny window the conversation is the window, and a rounded corner
       against the window's own reads as something clipped. */
   flush?: boolean;
@@ -888,6 +896,7 @@ export const ChatView = memo(({
 
   const editorPlaceholder = placeholderFor({
     offlineLine,
+    planLine,
     voiceTextHidden: !canViewVoiceChannelText && isVoiceChannelTextChat,
     mayRead,
     maySend,
@@ -897,7 +906,7 @@ export const ChatView = memo(({
     inClear,
   });
 
-  const editorDisabled = !!offlineLine || (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
+  const editorDisabled = !!offlineLine || !!planLine || (!canViewVoiceChannelText && isVoiceChannelTextChat) || !maySend || !mayRead || !!mls?.held;
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = mayRead && !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
@@ -1179,6 +1188,7 @@ export const ChatView = memo(({
             </div>
           ) : (
           <>
+          {serverHost && <StorageFull host={serverHost} serverName={serverName ?? serverHost} isOwner={isOwner === true} />}
           <TypingIndicator typingUsers={typingUsers} serverHost={serverHost} nameTags={nameTagsFor(memberList)} />
           <ChatEditorBar
             replyingTo={replyingTo}
