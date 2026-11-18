@@ -336,7 +336,8 @@ jobs:
       - if: runner.os == 'Linux'
         run: test -z "$(gofmt -l .)"
       - run: go vet ./...
-      - run: go test -count=1 ./...
+      # A hang on macOS used to run into the job's limit and get cancelled with no log. This fails with a stack trace instead.
+      - run: go test -count=1 -v -timeout 5m ./...
 
   # verify runs the check scripts on ubuntu only, so twenty of them were failing on a
   # Windows checkout with nothing anywhere to notice. Globbed, because a second list drifts.
