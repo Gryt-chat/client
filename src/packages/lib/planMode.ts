@@ -34,3 +34,9 @@ export function planModeRefusalText(mode: Exclude<PlanMode, "active">): string {
     ? "This server is paused, so that didn't go through."
     : "This server is read-only right now, so that didn't go through.";
 }
+
+/** What the composer says on a read-only server, or undefined when posting works. */
+export function planLineFor(info: { plan_mode?: string; is_owner?: boolean } | undefined, serverName: string): string | undefined {
+  if (info?.plan_mode !== "read_only") return undefined;
+  return info.is_owner ? "Read-only" : `${serverName} is read-only for now`;
+}

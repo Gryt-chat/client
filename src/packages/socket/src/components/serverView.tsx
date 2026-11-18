@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 
 import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, NotificationLevelMenu, resolveAvatarSrc, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
+import { planLineFor } from "@/lib/planMode";
 import { useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
@@ -92,6 +93,7 @@ import { MessagesHome } from "./MessagesHome";
 import { MobileServerView } from "./MobileServerView";
 import { NewFolderDialog } from "./NewFolderDialog";
 import { NotEncryptedPopover } from "./NotEncryptedPopover";
+import { PausedServer } from "./PausedServer";
 import { PlanModeBanner } from "./PlanModeBanner";
 import { PresenceDot } from "./PresenceDot";
 import { ReportUserDialog } from "./ReportUserDialog";
@@ -107,7 +109,6 @@ import { type ChannelPlacement, folderOf } from "./sidebarTree";
 import { UnreachableServer } from "./UnreachableServer";
 import { VoiceGrip } from "./VoiceGrip";
 import { VoiceSheetButton } from "./VoiceSheetButton";
-import { PausedServer } from "./PausedServer";
 import { VoiceView } from "./VoiceView";
 
 // Parsed once at module load. The query string overrides the Developer panel
@@ -1380,7 +1381,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         discordOfferHost={!activeDm && currentUserRole === "owner" && serverDetails?.server_info?.discord_offer ? host : undefined}
         cloudWelcomeHost={!activeDm && currentUserRole === "owner" && cloudWelcome ? host : undefined}
         isOwner={serverDetails?.server_info?.is_owner === true}
-        planLine={!activeDm && serverDetails?.server_info?.plan_mode === "read_only" ? (serverDetails.server_info.is_owner ? "Read-only" : `${serverName || host} is read-only for now`) : undefined}
+        planLine={!activeDm ? planLineFor(serverDetails?.server_info, serverName || host) : undefined}
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={

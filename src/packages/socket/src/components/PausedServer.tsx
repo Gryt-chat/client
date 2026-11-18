@@ -1,6 +1,6 @@
 import { Button } from "@gryt/ui";
 
-import { type PlanDates, pausedText } from "@/lib/planMode";
+import { pausedText,type PlanDates } from "@/lib/planMode";
 
 import { PiArrowSquareOutBold, PiPauseFill } from "../../../../lib/icons";
 import { CLOUD_BILLING_URL } from "./PlanModeBanner";

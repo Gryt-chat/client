@@ -36,7 +36,6 @@ import { CloudWelcome } from "./CloudWelcome";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { DirectMessagePrivacyNotice } from "./DirectMessagePrivacyNotice";
 import { DiscordOffer } from "./DiscordOffer";
-import { StorageFull } from "./StorageFull";
 import { EmojiText } from "./EmojiText";
 import { ForumView } from "./ForumView";
 import { ImageLightbox, type LightboxGallery } from "./ImageLightbox";
@@ -49,6 +48,7 @@ import { MessageRow } from "./MessageRow";
 import { MlsNoticeLine } from "./MlsNoticeLine";
 import { PinsButton } from "./PinsButton";
 import { PollDialog } from "./PollDialog";
+import { StorageFull } from "./StorageFull";
 import { ThreadPanel } from "./ThreadPanel";
 import { TypingIndicator } from "./TypingIndicator";
 
