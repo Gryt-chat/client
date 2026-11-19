@@ -14,7 +14,8 @@ async function openServerSettings(page: Page): Promise<Locator> {
 
 /** A webhook URL doesn't wrap, which is what pushed the dialog wide in GRYT-1199. */
 async function createWebhook(dialog: Locator) {
-  const panel = dialog.getByRole("tabpanel", { name: "Webhooks" });
+  const panel = dialog.getByRole("tabpanel", { name: "Integrations" });
+  await panel.getByRole("button", { name: "Add a webhook" }).click();
   await panel.getByRole("button", { name: "Create webhook" }).click();
   await expect(panel.getByText(/\/api\/webhooks\/[^/]+\/[^/]+$/).first()).toBeVisible();
 }
@@ -32,13 +33,13 @@ async function expectNoOverflow(dialog: Locator, tab: string) {
 test("server settings at 1280px: no tab runs past the dialog", async ({ owner }) => {
   const dialog = await openServerSettings(owner.page);
   const tabs = await dialog.getByRole("tablist", { name: "Server settings" }).getByRole("tab").allInnerTexts();
-  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(12);
+  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(9);
 
   const pick = async (tab: string) => {
     await dialog.getByRole("tab", { name: tab, exact: true }).click();
     await expect(dialog.getByRole("tab", { name: tab, exact: true })).toHaveAttribute("aria-selected", "true");
   };
-  await pick("Webhooks");
+  await pick("Integrations");
   await createWebhook(dialog);
 
   for (const tab of tabs) {
@@ -66,7 +67,7 @@ test("server settings on a 390px phone: no tab runs past the dialog", async ({ n
   await openMenu();
   await expect(nav).toBeInViewport({ ratio: 1 });
   const tabs = await nav.getByRole("tab").allInnerTexts();
-  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(12);
+  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(9);
 
   const pick = async (tab: string) => {
     await openMenu();
@@ -74,7 +75,7 @@ test("server settings on a 390px phone: no tab runs past the dialog", async ({ n
     await expect(nav).toHaveAttribute("data-open", "false");
     await expect(dialog.getByText(tab, { exact: true }).first()).toBeVisible();
   };
-  await pick("Webhooks");
+  await pick("Integrations");
   await createWebhook(dialog);
 
   for (const tab of tabs) {

@@ -119,10 +119,10 @@ export const ownerTourSteps: TourStep[] = [
   },
   {
     id: "owner-roles",
-    target: "server-settings-role-editor",
+    target: "server-settings-roles",
     title: "Roles decide who can do what",
     body: "Give your moderators what they need here, and keep the rest for yourself.",
-    via: ["server-settings-role-editor"],
+    via: ["server-settings-roles"],
   },
   {
     id: "owner-uploads",
