@@ -31,7 +31,6 @@ import { ServerPermissionTemplatesTab } from "./ServerPermissionTemplatesTab";
 import { ServerReleaseNotes } from "./ServerReleaseNotes";
 import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
-import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 import { ServerWebhooksTab } from "./ServerWebhooksTab";
 import { SettingsSubViews } from "./SettingsSubViews";
 import { StorageTab } from "./storage/StorageTab";
@@ -58,7 +57,7 @@ const GROUPS = [""] as const;
 type Group = (typeof GROUPS)[number];
 
 // Old tab names still land somewhere: other screens and older links ask for them.
-const MOVED_TABS: Record<string, [string, string]> = { requests: ["members", "waiting"], "replace-user": ["members", "replace"], "role-editor": ["roles", "roles"], "permission-templates": ["roles", "channels"], emojis: ["emoji", ""], reports: ["moderation", "reports"], bans: ["moderation", "bans"], audit: ["moderation", "audit"], bots: ["integrations", "bots"], webhooks: ["integrations", "webhooks"], discord: ["integrations", "discord"], storage: ["hosting", ""], cloud: ["hosting", ""] };
+const MOVED_TABS: Record<string, [string, string]> = { requests: ["members", "waiting"], "replace-user": ["members", "everyone"], "role-editor": ["roles", "roles"], "permission-templates": ["roles", "channels"], emojis: ["emoji", ""], reports: ["moderation", "reports"], bans: ["moderation", "bans"], audit: ["moderation", "audit"], bots: ["integrations", "bots"], webhooks: ["integrations", "webhooks"], discord: ["integrations", "discord"], storage: ["hosting", ""], cloud: ["hosting", ""] };
 
 export function ServerSettingsModal() {
   const { sockets, serverDetailsList, tokenRevision, memberLists } = useSockets();
@@ -228,15 +227,13 @@ export function ServerSettingsModal() {
       group: "",
       label: "Members",
       icon: PiUsersThreeFill,
-      needs: ["manage_roles", "manage_join_requests", "replace_identity"],
+      needs: ["manage_roles", "manage_join_requests"],
       content: (
         <SettingsSubViews
           key={sub} initial={sub}
           views={only([
             { value: "everyone", label: "Everyone", needs: ["manage_roles"], content: <ServerRolesTab host={host} socket={socket} accessToken={accessToken} /> },
             { value: "waiting", label: "Waiting", needs: ["manage_join_requests"], content: <ServerJoinRequestsTab host={host} socket={socket} accessToken={accessToken} /> },
-            // The owner still holds this alone unless somebody deliberately grants it.
-            { value: "replace", label: "Replace an account", needs: ["replace_identity"], content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} /> },
           ])}
         />
       ),
