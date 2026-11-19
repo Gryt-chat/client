@@ -50,6 +50,7 @@ import { VaultUpgradePrompt } from "./components/vaultUpgradePrompt";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 import { offerSharedLook } from "./lib/sharedLook";
+import { useCloudServerSync } from "./lib/useCloudServerSync";
 import { cloudWait } from "./packages/settings/src/cloudWait";
 import { markCloudWelcome } from "./packages/socket/src/lib/cloudWelcomeFlag";
 
@@ -65,6 +66,7 @@ export function App() {
   const { join } = useServerJoin();
 
   useSettingsShortcut();
+  useCloudServerSync();
   const { disconnect } = useSFU();
   const { playDisconnect } = useVoiceSounds();
 
