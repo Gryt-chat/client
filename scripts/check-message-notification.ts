@@ -76,7 +76,7 @@ assert.equal(mentionsMember({ text: "[@Sivert](mention:user_me) look", sender_se
 // Named under an old nickname: the link still carries the id.
 assert.equal(mentionsMember({ text: "[@Siv](mention:user_me)", sender_server_id: "u2" }, me), true);
 // An email address, a longer name, the bare name, and nothing to read.
-assert.equal(mentionsMember({ text: "mail me at a@sivert.io", sender_server_id: "u2" }, me), false);
+assert.equal(mentionsMember({ text: "mail me at a@example.com", sender_server_id: "u2" }, me), false);
 assert.equal(mentionsMember({ text: "@Sivert2 is somebody else", sender_server_id: "u2" }, me), false);
 assert.equal(mentionsMember({ text: "email@Sivert", sender_server_id: "u2" }, me), false);
 assert.equal(mentionsMember({ text: "no at sign, Sivert", sender_server_id: "u2" }, me), false);
