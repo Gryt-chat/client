@@ -1461,6 +1461,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
   if (!dmSpace && serverDetails.server_info?.plan_mode === "paused") {
     return (
       <PausedServer
+        host={host}
         serverName={serverName || host}
         isOwner={serverDetails.server_info?.is_owner === true}
         dates={serverDetails.server_info ?? {}}
@@ -1486,7 +1487,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         {!dmSpace && currentConnectionStatus === "connected" && (
           <SecurityNoticeBanner host={host} serverInfo={serverDetails.server_info} hostedHere={!!hostedHere} />
         )}
-        {!dmSpace && currentConnectionStatus === "connected" && <PlanModeBanner serverInfo={serverDetails.server_info} serverName={serverName || host} />}
+        {!dmSpace && currentConnectionStatus === "connected" && <PlanModeBanner host={host} serverInfo={serverDetails.server_info} serverName={serverName || host} />}
         {layout === "tiny" && (
           /* One channel and no way to change it; the way out is a bigger window.
              A call is the exception, or the microphone has no button to close it. */
