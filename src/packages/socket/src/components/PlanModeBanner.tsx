@@ -5,7 +5,6 @@ import { planBanner,type PlanDates } from "@/lib/planMode";
 
 import { PiArrowSquareOutBold, PiClockFill, PiProhibitFill, PiShieldWarningFill, PiWarningFill, PiX } from "../../../../lib/icons";
 
-// shortcut: same guess as Add a server's, until Gryt Cloud is public.
 export const CLOUD_BILLING_URL = "https://cloud.gryt.chat/billing";
 
 type Info = PlanDates & { plan_mode?: string; is_owner?: boolean } | undefined;
