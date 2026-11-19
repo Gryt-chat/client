@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { freshAccessToken, useAccount } from "@/common";
 
-import { CLOUD_CONSOLE_URL, cloudEnabled } from "./cloud";
+import { CLOUD_CONSOLE_URL } from "./cloud";
 
 export type CloudUsage = {
   plan: { id: string; name: string };
@@ -18,7 +18,7 @@ export function useCloudUsage(host: string | undefined, active: boolean) {
   const [usage, setUsage] = useState<CloudUsage | null>(null);
   useEffect(() => {
     setUsage(null);
-    if (!cloudEnabled || !isSignedIn || !host || !active) return;
+    if (!isSignedIn || !host || !active) return;
     let live = true;
     void (async () => {
       const token = await freshAccessToken().catch(() => null);

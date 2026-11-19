@@ -18,7 +18,7 @@ import {
   useSettings,
   useSettingsShortcut,
 } from "@/settings";
-import { type JoinOutcome, useServerJoin } from "@/settings/src/hooks/useServerJoin";
+import { fetchServerInfo, type JoinOutcome, useServerJoin } from "@/settings/src/hooks/useServerJoin";
 import {
   DeviceSwitchModal,
   InviteAcceptModal,
@@ -132,6 +132,20 @@ export function App() {
 
   const alreadyMember = pendingInvite ? hasServer(normalizeHost(pendingInvite.host)) : false;
 
+  // A link with no code, signed in: try the join first, so an owner or an open server never sees the dialog.
+  const [tryingHost, setTryingHost] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingInvite || pendingInvite.code || !isSignedIn || alreadyMember) return;
+    const host = pendingInvite.host;
+    setTryingHost(host);
+    void (async () => {
+      const info = await fetchServerInfo(host);
+      const outcome = info.kind === "info" ? await join({ host, info: info.info }) : null;
+      if (outcome?.ok) forgetInvite();
+      setTryingHost(null);
+    })();
+  }, [pendingInvite, isSignedIn, alreadyMember, join, forgetInvite]);
+
   const handleGoToServer = useCallback(() => {
     if (!pendingInvite) return;
     switchToServer(normalizeHost(pendingInvite.host));
@@ -164,7 +178,7 @@ export function App() {
           <DeviceSwitchModal />
           <ServerSettingsModal />
           <InviteAcceptModal
-            invite={pendingInvite}
+            invite={tryingHost ? null : pendingInvite}
             alreadyMember={alreadyMember}
             isSignedIn={isSignedIn}
             signingIn={loginInProgress}
