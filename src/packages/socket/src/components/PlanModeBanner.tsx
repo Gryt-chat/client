@@ -5,16 +5,18 @@ import { planBanner,type PlanDates } from "@/lib/planMode";
 
 import { CLOUD_CONSOLE_URL } from "../../../../lib/cloud";
 import { PiArrowSquareOutBold, PiCreditCardFill, PiProhibitFill, PiShieldWarningFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { useCloudUsage } from "../../../../lib/useCloudUsage";
 
 export const CLOUD_BILLING_URL = `${CLOUD_CONSOLE_URL}/billing`;
 
 type Info = PlanDates & { plan_mode?: string; is_owner?: boolean } | undefined;
 
 /** 6.2 and 6.5: why a Gryt Cloud server is limited, and for the owner the way out. */
-export function PlanModeBanner({ serverInfo, serverName }: { serverInfo: Info; serverName: string }) {
+export function PlanModeBanner({ host, serverInfo, serverName }: { host: string; serverInfo: Info; serverName: string }) {
   const [why, setWhy] = useState(false);
   const owner = serverInfo?.is_owner === true;
   const b = planBanner(serverInfo?.plan_mode, owner, serverInfo ?? {});
+  const usage = useCloudUsage(host, owner && !!b);
   if (!b) return null;
   if (!owner)
     return (
@@ -46,7 +48,7 @@ export function PlanModeBanner({ serverInfo, serverName }: { serverInfo: Info; s
           </Button>
         )}
       </div>
-      {why && <WhyDialog serverName={serverName} d={serverInfo ?? {}} onClose={() => setWhy(false)} />}
+      {why && <WhyDialog serverName={serverName} d={serverInfo ?? {}} amount={usage?.amount} failedOn={usage?.failedOn} onClose={() => setWhy(false)} />}
     </>
   );
 }
@@ -54,7 +56,7 @@ export function PlanModeBanner({ serverInfo, serverName }: { serverInfo: Info; s
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 /** 6.3: what happened, what happens next, and the usual reasons a card is refused. */
-function WhyDialog({ serverName, d, onClose }: { serverName: string; d: PlanDates; onClose: () => void }) {
+function WhyDialog({ serverName, d, amount, failedOn, onClose }: { serverName: string; d: PlanDates; amount?: number; failedOn?: number | null; onClose: () => void }) {
   const steps = [
     d.plan_read_only_at && { when: `Until ${day(d.plan_read_only_at)}`, what: "Works as normal", c: "var(--gryt-success-11)" },
     d.plan_read_only_at && { when: day(d.plan_read_only_at), what: "Read-only", c: "var(--gryt-warning-11)" },
@@ -83,7 +85,11 @@ function WhyDialog({ serverName, d, onClose }: { serverName: string; d: PlanDate
           </div>
           <div className="flex flex-col gap-0.5 rounded-(--gryt-radius-lg) border border-gryt-border px-4 py-3">
             <span className="text-[13px] text-gryt-muted">What happened</span>
-            <span className="text-sm font-semibold">The payment for {serverName} didn’t go through.</span>
+            <span className="text-sm font-semibold">
+              {amount && failedOn
+                ? `€${amount} for ${serverName} didn’t go through on ${new Date(failedOn).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                : `The payment for ${serverName} didn’t go through.`}
+            </span>
           </div>
           {steps.length > 0 && (
             <>

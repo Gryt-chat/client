@@ -4,10 +4,12 @@ import { pausedText,type PlanDates } from "@/lib/planMode";
 
 import { CLOUD_CONSOLE_URL } from "../../../../lib/cloud";
 import { PiArrowSquareOutBold, PiPauseFill } from "../../../../lib/icons";
+import { useCloudUsage } from "../../../../lib/useCloudUsage";
 import { CLOUD_BILLING_URL } from "./PlanModeBanner";
 
 /** 6.6 (members) and 6.7 (owner): a paused Gryt Cloud server, in place of its channels. */
-export function PausedServer({ serverName, isOwner, dates, onLeave }: { serverName: string; isOwner: boolean; dates: PlanDates; onLeave: () => void }) {
+export function PausedServer({ host, serverName, isOwner, dates, onLeave }: { host: string; serverName: string; isOwner: boolean; dates: PlanDates; onLeave: () => void }) {
+  const amount = useCloudUsage(host, isOwner)?.amount;
   return (
     <div className="flex grow items-center justify-center p-6">
       <div className="flex w-[420px] max-w-full flex-col items-center gap-3.5 text-center">
@@ -23,7 +25,7 @@ export function PausedServer({ serverName, isOwner, dates, onLeave }: { serverNa
                 Download
               </Button>
               <Button onClick={() => window.open(CLOUD_BILLING_URL, "_blank", "noopener,noreferrer")}>
-                Renew <PiArrowSquareOutBold size={12} />
+                {amount ? `Renew · €${amount}` : "Renew"} <PiArrowSquareOutBold size={12} />
               </Button>
             </>
           ) : (

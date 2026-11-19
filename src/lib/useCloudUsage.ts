@@ -7,6 +7,8 @@ import { CLOUD_CONSOLE_URL } from "./cloud";
 export type CloudUsage = {
   plan: { id: string; name: string };
   cycle: "monthly" | "yearly";
+  amount?: number;
+  failedOn?: number | null;
   storage: { used: number | null; limit: number };
   transfer: { sent: number | null; month: string };
   manage: string;
