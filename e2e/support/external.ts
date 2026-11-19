@@ -62,6 +62,10 @@ function fixtureFor(route: Route, url: URL) {
     case "id.gryt.chat":
       // Held open: the welcome asks the relay for a code at once, and most tests aren't about linking.
       return url.pathname.startsWith("/api/v1/pairing/") ? new Promise<void>(() => {}) : null;
+    case "cloud.gryt.chat":
+      // The sign-in sync and the usage tab ask here; no test account owns a Cloud server.
+      if (url.pathname === "/api/app/servers") return json(route, { servers: [] });
+      return url.pathname.startsWith("/api/app/servers/") ? route.fulfill({ status: 404, headers: CORS, body: "" }) : null;
     case "status.gryt.chat":
       if (url.pathname === "/api/v1/config") return json(route, { announcements: [] });
       return url.pathname === "/" ? route.fulfill({ status: 200, body: "" }) : null;

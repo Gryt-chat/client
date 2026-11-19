@@ -36,14 +36,15 @@ export function useRememberView({
       setShowDiscovery(true);
       return;
     }
-    if (view.kind === "dm") {
+    // A first server joined just now is not a launch: stay on it instead of reopening old DMs.
+    if (view.kind === "dm" && view.host === host) {
       if (view.conversationId) {
         rememberConversation(view.host, view.conversationId);
         requestConversation(view.host, view.conversationId);
       }
       setDmSpaceOpen(true);
     }
-  }, [ready, setShowDiscovery]);
+  }, [ready, host, setShowDiscovery]);
 
   /* Afterwards, every move. An empty conversation is saved as none, since closing
      Gryt is leaving it, and the list drops those on the way out. */

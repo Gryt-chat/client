@@ -4,7 +4,7 @@ import { freshAccessToken, useAccount } from "@/common";
 
 import { fetchServerInfo, useServerJoin } from "../packages/settings/src/hooks/useServerJoin";
 import { useServerManagement } from "../packages/socket/src/hooks/useServerManagement";
-import { CLOUD_CONSOLE_URL, cloudEnabled } from "./cloud";
+import { CLOUD_CONSOLE_URL } from "./cloud";
 
 /** On sign-in, join any Gryt Cloud server the account owns that this device doesn't have yet. Once per session. */
 export function useCloudServerSync() {
@@ -14,7 +14,7 @@ export function useCloudServerSync() {
   const done = useRef(false);
 
   useEffect(() => {
-    if (!cloudEnabled || !isSignedIn || done.current) return;
+    if (!isSignedIn || done.current) return;
     done.current = true;
     void (async () => {
       const token = await freshAccessToken().catch(() => null);
