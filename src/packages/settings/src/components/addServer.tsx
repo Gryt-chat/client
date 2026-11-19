@@ -12,6 +12,7 @@ import {
 
 import { CheerOwl } from "../../../../components/cheerOwl";
 import { Confetti } from "../../../../components/confetti";
+import { CLOUD_CONSOLE_URL, cloudEnabled } from "../../../../lib/cloud";
 import {
   PiArrowSquareOutBold,
   PiCaretRightBold,
@@ -41,8 +42,6 @@ import { sameServer } from "../serverId";
 import { CreateServerPanel } from "./createServer";
 
 const CLOUD_URL = "https://gryt.chat/cloud";
-// shortcut: the console address is a guess until Gryt Cloud is public, then read it from config.
-const CLOUD_CONSOLE_URL = "https://cloud.gryt.chat";
 
 const STEP_TITLE = { host: "Create your server", join: "Join a server", choose: "Add a server" };
 
@@ -485,15 +484,26 @@ export function AddNewServer({
                     hint="Free"
                     onPick={() => setMode("host")}
                   />
-                  <EntryCard
-                    tour="choose-cloud"
-                    icon={<PiCloudFill size={17} />}
-                    name="Gryt Cloud"
-                    hint="From €4 a month"
-                    external
-                    accent
-                    onPick={startCloud}
-                  />
+                  {cloudEnabled ? (
+                    <EntryCard
+                      tour="choose-cloud"
+                      icon={<PiCloudFill size={17} />}
+                      name="Gryt Cloud"
+                      hint="From €4 a month"
+                      external
+                      accent
+                      onPick={startCloud}
+                    />
+                  ) : (
+                    <EntryCard
+                      tour="choose-cloud"
+                      icon={<PiCloudFill size={17} />}
+                      name="Gryt Cloud"
+                      hint="Soon"
+                      external
+                      onPick={() => window.open(CLOUD_URL, "_blank", "noopener,noreferrer")}
+                    />
+                  )}
                 </div>
 
                 {/* Below a rule rather than between the two doors. The server we

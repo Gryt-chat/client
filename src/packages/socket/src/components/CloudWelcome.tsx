@@ -3,11 +3,10 @@ import { useEffect, useState } from "react";
 
 import { CheerOwl } from "../../../../components/cheerOwl";
 import { Confetti } from "../../../../components/confetti";
+import { CLOUD_CONSOLE_URL } from "../../../../lib/cloud";
 import { PiArrowSquareOutBold, PiCaretRightBold, PiCloudFill, PiHashBold, PiUsersThreeFill } from "../../../../lib/icons";
 import { useOpenInviteLink } from "../hooks/useOpenInviteLink";
 import { cloudWelcomeKey as key } from "../lib/cloudWelcomeFlag";
-// shortcut: same guess as Add a server's, until Gryt Cloud is public.
-const CONSOLE_URL = "https://cloud.gryt.chat";
 
 /** 3.5: the owner's first open of a brand-new Gryt Cloud server. Shown once. */
 export function CloudWelcome({ host, serverName }: { host: string; serverName: string }) {
@@ -57,7 +56,7 @@ export function CloudWelcome({ host, serverName }: { host: string; serverName: s
           </span>
           <PiCaretRightBold size={14} className="text-gryt-muted" />
         </button>
-        <a href={`${CONSOLE_URL}/servers/${encodeURIComponent(host)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 border-t border-gryt-border px-4 py-3 text-gryt-text no-underline">
+        <a href={`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 border-t border-gryt-border px-4 py-3 text-gryt-text no-underline">
           <Tile icon={<PiCloudFill size={18} />} />
           <span className="flex-1 text-sm font-bold">Manage in Gryt Cloud</span>
           <PiArrowSquareOutBold size={14} className="text-gryt-muted" aria-label="Opens in your browser" />
