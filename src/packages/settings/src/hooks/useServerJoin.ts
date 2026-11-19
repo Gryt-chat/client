@@ -212,6 +212,8 @@ export interface JoinRequest {
   info?: FetchInfo | null;
   inviteCode?: string;
   note?: string;
+  /** False for a join nobody is watching, such as the sign-in sync of Gryt Cloud servers. */
+  focus?: boolean;
 }
 
 /**
@@ -225,7 +227,7 @@ export function useServerJoin() {
   const [joiningHost, setJoiningHost] = useState<string | null>(null);
 
   const join = useCallback(
-    async ({ host, info, inviteCode, note }: JoinRequest): Promise<JoinOutcome> => {
+    async ({ host, info, inviteCode, note, focus = true }: JoinRequest): Promise<JoinOutcome> => {
       const normalizedHost = normalizeHost(host);
       if (!normalizedHost) {
         return { ok: false, kind: "error", message: "No address" };
@@ -300,7 +302,7 @@ export function useServerJoin() {
             // the wait, and a stale mark would keep the rail saying otherwise.
             approvalRequestedAt: undefined,
           },
-          true,
+          focus,
         );
 
         return { ok: true };
