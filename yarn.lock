@@ -571,24 +571,24 @@
     fflate "0.8.3"
     ts-mls "npm:@gryt/ts-mls@1.6.4-gryt.1"
 
-"@gryt/owl@^0.8.0":
-  version "0.8.0"
-  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.8.0.tgz#ee3c0ee94d6ff49ea4e9f13e6847e512b02766c0"
-  integrity sha512-lG7AjDiTQtPJ7RQmF+g82uENRTnUU5PVxcnF56l83oALfLnksI5kV9Dl1knlT9eecD1aHIZfAsfaqXsDtjFbvw==
+"@gryt/owl@^0.8.1":
+  version "0.8.1"
+  resolved "https://registry.yarnpkg.com/@gryt/owl/-/owl-0.8.1.tgz#478f4a9b10635446a1ccab4479534eda825d8b5b"
+  integrity sha512-FgtPHYjE0XbISEphFR1OwDKiealPR1jk65GKMqrmDseH96DIVs9nh8WPxigaDBoUhP4wge7gmMzrkHPHZrF5XA==
 
-"@gryt/theme@^0.13.0":
-  version "0.13.0"
-  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.13.0.tgz#640f3049b53cfe427f0067cfc5faeffbd04d36aa"
-  integrity sha512-7CW/wBKZFL1bfk5xQcJtvdoD+rbCvmHeA0U2uTQMQ9gfXAvIbPx7GL+TjMYYouTtLdJ/OKFARK+NXuS0RaBveg==
+"@gryt/theme@^0.13.1":
+  version "0.13.1"
+  resolved "https://registry.yarnpkg.com/@gryt/theme/-/theme-0.13.1.tgz#0979f78b677413d205896892044dd6ea10a62fec"
+  integrity sha512-/NeIgtMR1axuCSmMPsWDGeQWhenCsshtKT3js/y1nAdYCPmVayJ81jM6t2c0CQ1zlNYsSEMPkkPcKVOZdGw2eA==
 
-"@gryt/ui@^0.53.0":
-  version "0.53.0"
-  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.53.0.tgz#3652f14a8595a8bdebdd694f49874bfc1161ee7d"
-  integrity sha512-owZKhahz7cPdBY6tOF1kFgLWt5Ie0CofiEO1l//vu49y9U71s7fYJqnn6KVmiTLhR+GmZbp1bAi+7EoMZkLXtw==
+"@gryt/ui@^0.54.0":
+  version "0.54.0"
+  resolved "https://registry.yarnpkg.com/@gryt/ui/-/ui-0.54.0.tgz#d2b7da130ec15916f7a632dce4aba20f08c011b0"
+  integrity sha512-t/jnTnMRH8xPgjMfi0ReJXxMz31lYMFKTp3YBaZl/Ku4kl6Rq5OpJqackRzpTOEp+UvCLnE4wEX2uxMJxcYZ/g==
   dependencies:
     "@base-ui/react" "^1.7.0"
-    "@gryt/owl" "^0.8.0"
-    "@gryt/theme" "^0.13.0"
+    "@gryt/owl" "^0.8.1"
+    "@gryt/theme" "^0.13.1"
     "@phosphor-icons/react" "^2.1.10"
     "@tanstack/react-virtual" "^3.13.12"
     clsx "^2.1.1"
