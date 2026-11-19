@@ -10,11 +10,11 @@ import { CLOUD_BILLING_URL } from "./PlanModeBanner";
 export function PausedServer({ serverName, isOwner, dates, onLeave }: { serverName: string; isOwner: boolean; dates: PlanDates; onLeave: () => void }) {
   return (
     <div className="flex grow items-center justify-center p-6">
-      <div className="flex w-[26rem] max-w-full flex-col items-center gap-3.5 text-center">
+      <div className="flex w-[420px] max-w-full flex-col items-center gap-3.5 text-center">
         <span className="flex items-center justify-center" style={{ width: 56, height: 56, borderRadius: 16, background: "var(--gryt-danger-3)", color: "var(--gryt-danger-11)" }}>
           <PiPauseFill size={26} />
         </span>
-        <span className="text-xl font-bold">{serverName} is paused</span>
+        <span className="text-2xl font-bold">{serverName} is paused</span>
         <span className="text-sm text-gryt-muted">{pausedText(isOwner, dates)}</span>
         <div className="flex flex-wrap justify-center gap-2.5 pt-1.5">
           {isOwner ? (

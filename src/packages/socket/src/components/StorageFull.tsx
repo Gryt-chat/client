@@ -19,22 +19,22 @@ export function StorageFull({ host, serverName, isOwner }: { host: string; serve
   }, [host]);
   if (!full) return null;
   return (
-    <div className="mx-3 mb-2 flex flex-wrap items-center gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface px-3 py-2.5">
+    <div className="mx-3 mb-2 flex flex-wrap items-center gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface-raised px-3.5 py-3">
       <span className="flex shrink-0 items-center justify-center" style={{ width: 36, height: 36, borderRadius: "var(--gryt-radius-md)", background: "var(--gryt-danger-3)", color: "var(--gryt-danger-11)" }}>
         <PiArchiveFill size={18} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-sm font-bold">{serverName} is out of space</span>
-        <span className="text-xs text-gryt-muted">
+        <span className="text-sm font-semibold">{serverName} is out of space</span>
+        <span className="text-[13px] text-gryt-muted">
           {gb(Math.min(full.used, full.limit))} / {gb(full.limit)} GB
         </span>
       </span>
       {isOwner && (
-        <Button size="small" onClick={() => window.open(`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`, "_blank", "noopener,noreferrer")}>
+        <Button onClick={() => window.open(`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`, "_blank", "noopener,noreferrer")}>
           Upgrade
         </Button>
       )}
-      <Button size="small" tone="neutral" onClick={() => window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host, tab: "storage" } }))}>
+      <Button tone="neutral" style={{ background: "var(--gryt-neutral-4)" }} onClick={() => window.dispatchEvent(new CustomEvent("server_settings_open", { detail: { host, tab: "storage" } }))}>
         Free up space
       </Button>
     </div>

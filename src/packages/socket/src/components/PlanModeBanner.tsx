@@ -4,7 +4,7 @@ import { useState } from "react";
 import { planBanner,type PlanDates } from "@/lib/planMode";
 
 import { CLOUD_CONSOLE_URL } from "../../../../lib/cloud";
-import { PiArrowSquareOutBold, PiClockFill, PiProhibitFill, PiShieldWarningFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { PiArrowSquareOutBold, PiCreditCardFill, PiProhibitFill, PiShieldWarningFill, PiWarningFill, PiX } from "../../../../lib/icons";
 
 export const CLOUD_BILLING_URL = `${CLOUD_CONSOLE_URL}/billing`;
 
@@ -21,16 +21,18 @@ export function PlanModeBanner({ serverInfo, serverName }: { serverInfo: Info; s
       <div
         role="status"
         aria-label="Server plan"
-        className="flex items-center gap-3 px-3 py-2"
+        className="flex items-center gap-3.5 px-5 py-3"
         style={{ flexShrink: 0, borderRadius: "var(--gryt-radius-lg)", background: "var(--gryt-danger-3)", border: "1px solid var(--gryt-danger-6)" }}
       >
-        <PiWarningFill size={18} style={{ flexShrink: 0, color: "var(--gryt-danger-11)" }} />
+        <span className="flex shrink-0 items-center justify-center" style={{ width: 36, height: 36, borderRadius: "var(--gryt-radius-md)", background: "var(--gryt-danger-4)", color: "var(--gryt-danger-11)" }}>
+          <PiWarningFill size={18} />
+        </span>
         <button type="button" onClick={() => owner && setWhy(true)} className="flex min-w-0 flex-1 flex-col border-0 bg-transparent p-0 text-left text-gryt-text" style={{ cursor: owner ? "pointer" : "default" }}>
-          <span className="text-sm font-bold">{b.title}</span>
-          <span className="text-xs text-gryt-muted">{b.text}</span>
+          <span className="text-sm font-semibold">{b.title}</span>
+          <span className={owner ? "text-[13px] underline underline-offset-2" : "text-[13px] text-gryt-muted"}>{b.text}</span>
         </button>
         {owner && (
-          <Button size="small" onClick={() => window.open(CLOUD_BILLING_URL, "_blank", "noopener,noreferrer")}>
+          <Button onClick={() => window.open(CLOUD_BILLING_URL, "_blank", "noopener,noreferrer")}>
             Try again <PiArrowSquareOutBold size={12} />
           </Button>
         )}
@@ -50,53 +52,60 @@ function WhyDialog({ serverName, d, onClose }: { serverName: string; d: PlanDate
     d.plan_paused_at && { when: day(d.plan_paused_at), what: "Paused, deleted after 30 days", c: "var(--gryt-danger-11)" },
   ].filter(Boolean) as { when: string; what: string; c: string }[];
   const causes = [
-    { icon: <PiClockFill size={18} />, text: "The card has expired" },
+    { icon: <PiCreditCardFill size={18} />, text: "The card has expired" },
     { icon: <PiShieldWarningFill size={18} />, text: "Your bank blocked an online payment" },
     { icon: <PiProhibitFill size={18} />, text: "Not enough money on the card" },
   ];
+  const tile = (bg: string, fg: string) => ({ width: 36, height: 36, borderRadius: "var(--gryt-radius-md)", background: bg, color: fg, flexShrink: 0 });
+  const label = "text-[11px] font-semibold uppercase tracking-[.06em] text-gryt-muted";
   return (
     <Dialog.Root open onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
         <Dialog.Backdrop />
-        <Dialog.Popup className="w-[30rem] max-w-[calc(100vw-2rem)]">
+        <Dialog.Popup className="w-[540px] max-w-[calc(100vw-2rem)] gap-[18px] p-6">
           <div className="flex items-center gap-3">
-            <PiWarningFill size={20} style={{ color: "var(--gryt-danger-11)" }} />
-            <Dialog.Title className="m-0 flex-1 text-lg font-bold">Your card was declined</Dialog.Title>
+            <span className="flex items-center justify-center" style={tile("var(--gryt-danger-3)", "var(--gryt-danger-11)")}>
+              <PiWarningFill size={18} />
+            </span>
+            <Dialog.Title className="m-0 flex-1 text-base font-bold">Your card was declined</Dialog.Title>
             <Dialog.Close render={<IconButton aria-label="Close" />}>
               <PiX size={16} />
             </Dialog.Close>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold uppercase text-gryt-muted">What happened</span>
-            <span className="text-sm">The payment for {serverName} didn’t go through.</span>
+          <div className="flex flex-col gap-0.5 rounded-(--gryt-radius-lg) border border-gryt-border px-4 py-3">
+            <span className="text-[13px] text-gryt-muted">What happened</span>
+            <span className="text-sm font-semibold">The payment for {serverName} didn’t go through.</span>
           </div>
           {steps.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold uppercase text-gryt-muted">What happens next</span>
-              <div className="grid grid-cols-3 gap-2">
+            <>
+              <span className={label}>What happens next</span>
+              <div className="grid grid-cols-3 gap-1.5">
                 {steps.map((s) => (
-                  <span key={s.what} className="flex flex-col gap-0.5 pt-2 text-xs text-gryt-muted" style={{ borderTop: `3px solid ${s.c}` }}>
-                    <strong className="text-sm text-gryt-text">{s.when}</strong>
+                  <span key={s.what} className="flex flex-col gap-1.5 text-xs text-gryt-muted">
+                    <span style={{ height: 4, borderRadius: 999, background: s.c }} />
+                    <strong className="text-[13px] text-gryt-text">{s.when}</strong>
                     {s.what}
                   </span>
                 ))}
               </div>
-            </div>
+            </>
           )}
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold uppercase text-gryt-muted">Common causes</span>
-            {causes.map((c) => (
-              <span key={c.text} className="flex items-center gap-3 text-sm">
-                <span className="text-gryt-muted">{c.icon}</span>
+          <span className={label}>Common causes</span>
+          <div className="flex flex-col overflow-hidden rounded-(--gryt-radius-lg) border border-gryt-border">
+            {causes.map((c, i) => (
+              <span key={c.text} className="flex min-h-[60px] items-center gap-3.5 px-4 py-3 text-sm font-semibold" style={i ? { borderTop: "1px solid var(--gryt-neutral-4)" } : undefined}>
+                <span className="flex items-center justify-center" style={tile("var(--gryt-neutral-4)", "var(--gryt-text)")}>
+                  {c.icon}
+                </span>
                 {c.text}
               </span>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button tone="ghost" onClick={onClose}>
+          <div className="grid grid-cols-2 gap-2.5">
+            <Button size="large" tone="ghost" onClick={onClose}>
               Close
             </Button>
-            <Button onClick={() => window.open(CLOUD_BILLING_URL, "_blank", "noopener,noreferrer")}>
+            <Button size="large" onClick={() => window.open(CLOUD_BILLING_URL, "_blank", "noopener,noreferrer")}>
               Try again <PiArrowSquareOutBold size={12} />
             </Button>
           </div>
