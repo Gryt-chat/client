@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 
 import { clearMentions, clearSignedOut, getUploadsFileUrl, markChannelRead, NotificationLevelMenu, resolveAvatarSrc, serverIconSrc, useAccount, useMentionTracker, useThreadMentions, useThreadUnread, useUnreadTracker } from "@/common";
 import { NOTIFICATION_CHANNEL_OPEN_EVENT } from "@/lib/desktopNotification";
+import { planLineFor } from "@/lib/planMode";
 import { useIsMobile } from "@/mobile";
 import { useSettings } from "@/settings";
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
@@ -92,6 +93,7 @@ import { MessagesHome } from "./MessagesHome";
 import { MobileServerView } from "./MobileServerView";
 import { NewFolderDialog } from "./NewFolderDialog";
 import { NotEncryptedPopover } from "./NotEncryptedPopover";
+import { PausedServer } from "./PausedServer";
 import { PlanModeBanner } from "./PlanModeBanner";
 import { PresenceDot } from "./PresenceDot";
 import { ReportUserDialog } from "./ReportUserDialog";
@@ -1378,6 +1380,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         threadBeside={threadBeside}
         discordOfferHost={!activeDm && currentUserRole === "owner" && serverDetails?.server_info?.discord_offer ? host : undefined}
         cloudWelcomeHost={!activeDm && currentUserRole === "owner" && cloudWelcome ? host : undefined}
+        isOwner={serverDetails?.server_info?.is_owner === true}
+        planLine={!activeDm ? planLineFor(serverDetails?.server_info, serverName || host) : undefined}
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={
@@ -1454,6 +1458,17 @@ forumTags={activeDm ? [] : activeChannelForumTags}
     );
   }
 
+  if (!dmSpace && serverDetails.server_info?.plan_mode === "paused") {
+    return (
+      <PausedServer
+        serverName={serverName || host}
+        isOwner={serverDetails.server_info?.is_owner === true}
+        dates={serverDetails.server_info ?? {}}
+        onLeave={() => setShowRemoveServer({ host, mode: "leave" })}
+      />
+    );
+  }
+
   // D6: their imported messages are arriving and none of yours are, so offer to add your side.
   const peerHasImported = activeDm?.kind === "dm"
     && visibleChatMessages.some((m) => m.imported_from && m.sender_server_id === activeDm.other.server_user_id);
@@ -1471,7 +1486,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         {!dmSpace && currentConnectionStatus === "connected" && (
           <SecurityNoticeBanner host={host} serverInfo={serverDetails.server_info} hostedHere={!!hostedHere} />
         )}
-        {!dmSpace && currentConnectionStatus === "connected" && <PlanModeBanner serverInfo={serverDetails.server_info} />}
+        {!dmSpace && currentConnectionStatus === "connected" && <PlanModeBanner serverInfo={serverDetails.server_info} serverName={serverName || host} />}
         {layout === "tiny" && (
           /* One channel and no way to change it; the way out is a bigger window.
              A call is the exception, or the microphone has no button to close it. */

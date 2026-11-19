@@ -136,6 +136,10 @@ export type serverDetails = {
     video_max?: { maxHeight: number; maxFps: number; maxKbps: number } | null;
     /** "read_only" or "paused" on a Gryt Cloud server whose payment failed. */
     plan_mode?: "active" | "read_only" | "paused";
+    /** When a failed Gryt Cloud payment makes it read-only, pauses it and deletes it (ms). Absent until the server reports them. */
+    plan_read_only_at?: number;
+    plan_paused_at?: number;
+    plan_deleted_at?: number;
     version?: string;
     /**
      * Every plugin this server is running, and what each may do. All of them — an
