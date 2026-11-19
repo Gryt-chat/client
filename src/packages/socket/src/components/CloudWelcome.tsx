@@ -43,22 +43,22 @@ export function CloudWelcome({ host, serverName }: { host: string; serverName: s
       <Surface className="flex flex-col p-0">
         <div className="flex items-center gap-3 px-4 py-3">
           <Tile icon={<PiUsersThreeFill size={18} />} />
-          <span className="flex-1 text-sm font-bold">Invite your friends</span>
-          <Button size="small" onClick={() => void copy()}>
+          <span className="flex-1 text-sm font-semibold">Invite your friends</span>
+          <Button onClick={() => void copy()}>
             {copied ? "Copied" : "Copy invite"}
           </Button>
         </div>
         <button type="button" onClick={settings} className="flex cursor-pointer items-center gap-3 border-0 border-t border-solid border-gryt-border bg-transparent px-4 py-3 text-left text-gryt-text">
           <Tile icon={<PiHashBold size={18} />} />
           <span className="flex flex-1 flex-col">
-            <span className="text-sm font-bold">Server settings</span>
-            <span className="text-xs text-gryt-muted">Channels, roles, members</span>
+            <span className="text-sm font-semibold">Server settings</span>
+            <span className="text-[13px] text-gryt-muted">Channels, roles, members</span>
           </span>
           <PiCaretRightBold size={14} className="text-gryt-muted" />
         </button>
         <a href={`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 border-t border-gryt-border px-4 py-3 text-gryt-text no-underline">
           <Tile icon={<PiCloudFill size={18} />} />
-          <span className="flex-1 text-sm font-bold">Manage in Gryt Cloud</span>
+          <span className="flex-1 text-sm font-semibold">Manage in Gryt Cloud</span>
           <PiArrowSquareOutBold size={14} className="text-gryt-muted" aria-label="Opens in your browser" />
         </a>
       </Surface>
