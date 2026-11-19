@@ -15,8 +15,8 @@ type Info = PlanDates & { plan_mode?: string; is_owner?: boolean } | undefined;
 export function PlanModeBanner({ host, serverInfo, serverName }: { host: string; serverInfo: Info; serverName: string }) {
   const [why, setWhy] = useState(false);
   const owner = serverInfo?.is_owner === true;
-  const usage = useCloudUsage(host, owner);
   const b = planBanner(serverInfo?.plan_mode, owner, serverInfo ?? {});
+  const usage = useCloudUsage(host, owner && !!b);
   if (!b) return null;
   if (!owner)
     return (
