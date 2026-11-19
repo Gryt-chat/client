@@ -16,6 +16,15 @@ export function PlanModeBanner({ serverInfo, serverName }: { serverInfo: Info; s
   const owner = serverInfo?.is_owner === true;
   const b = planBanner(serverInfo?.plan_mode, owner, serverInfo ?? {});
   if (!b) return null;
+  if (!owner)
+    return (
+      <div role="status" aria-label="Server plan" className="flex flex-wrap items-center gap-x-3 px-5 py-2.5" style={{ flexShrink: 0, borderRadius: "var(--gryt-radius-lg)", background: "var(--gryt-danger-3)", border: "1px solid var(--gryt-danger-6)" }}>
+        <span className="text-sm font-semibold" style={{ color: "var(--gryt-danger-11)" }}>
+          {b.title}
+        </span>
+        <span className="text-[13px] text-gryt-muted">{b.text}</span>
+      </div>
+    );
   return (
     <>
       <div
