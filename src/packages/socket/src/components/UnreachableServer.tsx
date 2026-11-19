@@ -2,7 +2,9 @@ import { Button, Surface } from "@gryt/ui";
 import { useState } from "react";
 
 import { PiArrowsClockwiseFill, PiGlobeSimpleFill, PiPlugsFill, PiPulseBold } from "../../../../lib/icons";
+import { useServerGone } from "../hooks/useServerGone";
 import { ServerDoctor } from "./ServerDoctor";
+import { ServerGone } from "./ServerGone";
 
 /**
  * A server that isn't answering (board 9, GRYT-1751): its name with the reason
@@ -27,6 +29,8 @@ export function UnreachableServer({
   onUsePublic?: () => void;
 }) {
   const [doctorOpen, setDoctorOpen] = useState(false);
+  const deletedOn = useServerGone(host);
+  if (deletedOn) return <ServerGone host={host} serverName={serverName} deletedOn={deletedOn} />;
 
   return (
     <div className="flex w-full h-full min-w-0 gap-4" data-gryt="server-unreachable">
