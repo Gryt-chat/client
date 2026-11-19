@@ -6,12 +6,14 @@ import { HostedServerControls } from "@/settings/src/components/myServersSetting
 import { useEmbeddedServer } from "@/settings/src/hooks/useEmbeddedServer";
 import { hostedServerAt } from "@/settings/src/hostedServers";
 
-import { DiscordLogo,PiArrowsLeftRightFill, PiFlagFill, PiFolderFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiList, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { DiscordLogo,PiArrowsLeftRightFill, PiCloudFill, PiFlagFill, PiFolderFill, PiGearFill, PiHandWavingFill, PiHardDrivesFill, PiLinkFill, PiList, PiListChecksFill, PiProhibitFill, PiRobotFill, PiShieldCheckFill, PiSmileyWinkFill, PiUsersThreeFill, PiWebhooksLogoFill, PiX } from "../../../../lib/icons";
+import { useCloudUsage } from "../../../../lib/useCloudUsage";
 import { useRoomForSettingsRail } from "../hooks/useNarrowWindow";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSockets } from "../hooks/useSockets";
 import { useVersionStatus } from "../hooks/useVersionStatus";
 import { SERVER_SETTINGS_CHROME } from "../lib/narrowLayout";
+import { CloudUsageTab } from "./CloudUsageTab";
 import { ReportsPanel } from "./ReportsPanel";
 import { ServerAuditTab } from "./ServerAuditTab";
 import { ServerBansTab } from "./ServerBansTab";
@@ -163,6 +165,8 @@ export function ServerSettingsModal() {
     // an error toast on every open of the settings dialog.
     isOpen && hasPermission("view_server_status"),
   );
+
+  const cloudUsage = useCloudUsage(host, isOpen);
 
   const ALL_TABS: {
     value: string;
@@ -325,6 +329,17 @@ export function ServerSettingsModal() {
       needs: ["replace_identity"],
       content: <ServerUserReplaceTab host={host} socket={socket} accessToken={accessToken} />,
     },
+    ...(cloudUsage
+      ? [
+          {
+            value: "cloud",
+            group: "Hosting" as const,
+            label: "Gryt Cloud",
+            icon: PiCloudFill,
+            content: <CloudUsageTab usage={cloudUsage} />,
+          },
+        ]
+      : []),
     ...(hostedHere
       ? [
           {
