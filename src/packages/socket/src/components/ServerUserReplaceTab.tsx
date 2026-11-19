@@ -167,15 +167,18 @@ export function ServerUserReplaceTab({
   host,
   socket,
   accessToken,
+  target = "",
 }: {
   host: string;
   socket?: Socket;
   accessToken: string | null;
+  /** Opened from a member's menu: that member is already picked. */
+  target?: string;
 }) {
   const { memberLists, requestMemberList } = useSockets();
   const members = host ? memberLists[host] || [] : [];
 
-  const [targetServerUserId, setTargetServerUserId] = useState("");
+  const [targetServerUserId, setTargetServerUserId] = useState(target);
   const [newGrytUserId, setNewGrytUserId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);

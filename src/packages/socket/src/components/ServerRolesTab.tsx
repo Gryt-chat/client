@@ -1,9 +1,9 @@
-import { Button, Checkbox, Chip, Menu, Select, Surface, TextField, Tooltip } from "@gryt/ui";
+import { Button, Checkbox, Chip, Dialog, Menu, Select, Surface, TextField, Tooltip } from "@gryt/ui";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { Socket } from "socket.io-client";
 
-import { PiBootFill, PiDotsThreeVerticalBold, PiProhibitFill } from "../../../../lib/icons";
+import { PiArrowsLeftRightFill, PiBootFill, PiDotsThreeVerticalBold, PiProhibitFill } from "../../../../lib/icons";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { useSocketEvent } from "../hooks/useSocketEvent";
 import { useSockets } from "../hooks/useSockets";
@@ -11,6 +11,7 @@ import { BAN_DURATIONS, formatJoined, makeRankOf, TIER_LABEL } from "../lib/memb
 import { emitAuthenticated } from "../utils/tokenManager";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { inviteState, type MemberInvite } from "./memberInvite";
+import { ServerUserReplaceTab } from "./ServerUserReplaceTab";
 
 /** A server defines its own roles, so what can be picked comes off
     `server:details` rather than this file. */
@@ -158,6 +159,7 @@ export function ServerRolesTab({
   // being looked at. `emitAuthenticated` refreshes a token about to expire.
   const [pendingKick, setPendingKick] = useState<{ id: string; nickname: string } | null>(null);
   const [pendingBan, setPendingBan] = useState<{ id: string; nickname: string } | null>(null);
+  const [replacing, setReplacing] = useState<{ id: string; nickname: string } | null>(null);
   const [reason, setReason] = useState("");
   const [banDuration, setBanDuration] = useState("permanent");
   const [banDeleteContent, setBanDeleteContent] = useState(true);
@@ -180,6 +182,7 @@ export function ServerRolesTab({
   const myRank = rankOf(myRoleId);
   const mayKick = has("kick_members");
   const mayBan = has("ban_members");
+  const mayReplace = has("replace_identity");
 
   /*
    * Add and remove rather than replace. `server:roles:set` still replaces the
@@ -358,7 +361,7 @@ export function ServerRolesTab({
                       />
                     )}
 
-                    {(canKick || canBan) && (
+                    {(canKick || canBan || mayReplace) && (
                       <Menu.Root>
                         <Menu.Trigger
                           render={
@@ -378,6 +381,12 @@ export function ServerRolesTab({
                                 >
                                   <PiBootFill size={16} />
                                   Kick from server
+                                </Menu.Item>
+                              )}
+                              {mayReplace && (
+                                <Menu.Item onClick={() => setReplacing({ id: m.serverUserId, nickname: m.nickname })}>
+                                  <PiArrowsLeftRightFill size={16} />
+                                  Replace with another account
                                 </Menu.Item>
                               )}
                               {canBan && (
@@ -406,6 +415,15 @@ export function ServerRolesTab({
 
       {/* A kick is an interruption -- they can walk back in the moment they are
           out -- so it confirms and asks for a reason, and no more than that. */}
+      <Dialog.Root open={!!replacing} onOpenChange={(open) => !open && setReplacing(null)}>
+        <Dialog.Portal>
+          <Dialog.Backdrop />
+          <Dialog.Popup style={{ width: "min(36rem, calc(100vw - 32px))" }}>
+            <Dialog.Title>Replace {replacing?.nickname}&rsquo;s account</Dialog.Title>
+            {replacing && <ServerUserReplaceTab key={replacing.id} host={host} socket={socket} accessToken={accessToken} target={replacing.id} />}
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
       <ConfirmDialog
         open={!!pendingKick}
         onOpenChange={(open) => { if (!open) setPendingKick(null); }}
