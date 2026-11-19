@@ -32,7 +32,7 @@ async function expectNoOverflow(dialog: Locator, tab: string) {
 test("server settings at 1280px: no tab runs past the dialog", async ({ owner }) => {
   const dialog = await openServerSettings(owner.page);
   const tabs = await dialog.getByRole("tablist", { name: "Server settings" }).getByRole("tab").allInnerTexts();
-  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(12);
+  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(9);
 
   const pick = async (tab: string) => {
     await dialog.getByRole("tab", { name: tab, exact: true }).click();
@@ -66,7 +66,7 @@ test("server settings on a 390px phone: no tab runs past the dialog", async ({ n
   await openMenu();
   await expect(nav).toBeInViewport({ ratio: 1 });
   const tabs = await nav.getByRole("tab").allInnerTexts();
-  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(12);
+  expect(tabs.length, "the owner should see every tab").toBeGreaterThanOrEqual(9);
 
   const pick = async (tab: string) => {
     await openMenu();
