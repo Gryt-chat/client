@@ -50,6 +50,8 @@ import { VaultUpgradePrompt } from "./components/vaultUpgradePrompt";
 import { VideoDebugOverlay } from "./components/videoDebugOverlay";
 import { Welcome } from "./components/welcome";
 import { offerSharedLook } from "./lib/sharedLook";
+import { cloudWait } from "./packages/settings/src/cloudWait";
+import { markCloudWelcome } from "./packages/socket/src/lib/cloudWelcomeFlag";
 
 export function App() {
   const { isSignedIn, login, loginInProgress } = useAccount();
@@ -93,7 +95,9 @@ export function App() {
 
   // Listen for invite deep links from the Electron main process (gryt://invite?...).
   useEffect(() => {
-    return window.electronAPI?.onDeepLinkInvite(({ host, code }) => {
+    return window.electronAPI?.onDeepLinkInvite(({ host, code, welcome }) => {
+      if (welcome) markCloudWelcome(host);
+      if (cloudWait.take(host)) return;
       const pending = writePendingInvite(host, code);
       if (pending) setPendingInvite(pending);
     });

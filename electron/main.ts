@@ -812,10 +812,11 @@ function handleDeepLink(url: string): void {
       const parsed = new URL(url);
       const host = parsed.searchParams.get("host") || "";
       const code = parsed.searchParams.get("code") || "";
+      const welcome = parsed.searchParams.get("welcome") === "1";
 
       // No code is still an invite: a server anyone can join is shared by its address alone.
       if (host) {
-        mainWindow.webContents.send("deep-link-invite", { host, code });
+        mainWindow.webContents.send("deep-link-invite", { host, code, welcome });
       }
     } else if (url.startsWith(`${PROTOCOL}://card`) || url.startsWith(`${PROTOCOL}://owl`)) {
       const look = parseLookLink(url);

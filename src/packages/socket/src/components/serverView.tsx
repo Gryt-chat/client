@@ -57,6 +57,7 @@ import { useSockets } from "../hooks/useSockets";
 import { getUpdateAvailable } from "../hooks/useVersionStatus";
 import { useWaitingBots } from "../hooks/useWaitingBots";
 import { takeVoiceJoin, usePendingVoiceJoin } from "../hooks/voiceJoinRequest";
+import { wantsCloudWelcome } from "../lib/cloudWelcomeFlag";
 import { AVATAR_COLUMN_WIDTH, CHANNEL_ICON_LIST_WIDTH, THREAD_PANEL_WIDTH } from "../lib/narrowLayout";
 import { withSharing } from "../lib/screenItems";
 import { VOICE_PRESET_1, type VoiceStop } from "../lib/voiceGrip";
@@ -452,6 +453,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     isConnected: currentConnectionStatus === "connected",
   });
   // `?fakedms` in dev: the fake conversations open like real ones on the server carrying them.
+  // Read once per server: the card clears the flag as it shows, and must not vanish on the next render.
+  const welcomeHost = currentlyViewingServer?.host;
+  const cloudWelcome = useMemo(() => !!welcomeHost && wantsCloudWelcome(welcomeHost), [welcomeHost]);
   const directConversations = useMemo(
     () => (fakeDmsOn && fakeHostNow() === currentlyViewingServer?.host ? [...realDirectConversations, ...fakeConversations()] : realDirectConversations),
     // The directory rebuilds when the fake host is claimed, which is the moment to look again.
@@ -1373,6 +1377,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
            take the chat pane. */
         threadBeside={threadBeside}
         discordOfferHost={!activeDm && currentUserRole === "owner" && serverDetails?.server_info?.discord_offer ? host : undefined}
+        cloudWelcomeHost={!activeDm && currentUserRole === "owner" && cloudWelcome ? host : undefined}
         /* Under the header, not above: above is app chrome, and this is somebody
            else's machine talking. */
         underHeader={

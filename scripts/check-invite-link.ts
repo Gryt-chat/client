@@ -261,7 +261,7 @@ assert.deepEqual(view({ alreadyMember: true }).action, { kind: "go-to-server" })
   const body = main.slice(at, main.indexOf("\n}\n", at));
   assert.ok(/deep-link-invite/.test(body), "handleDeepLink stopped forwarding invites");
   assert.ok(!/host && code/.test(body), "a gryt://invite with no code is dropped again");
-  assert.ok(/if \(host\) \{\s*mainWindow\.webContents\.send\("deep-link-invite", \{ host, code \}\)/.test(body), "handleDeepLink sends invites some other way, so this check reads the wrong thing");
+  assert.ok(/if \(host\) \{\s*mainWindow\.webContents\.send\("deep-link-invite", \{ host, code(, welcome)? \}\)/.test(body), "handleDeepLink sends invites some other way, so this check reads the wrong thing");
 }
 
 console.log("invite links: ok");

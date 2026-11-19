@@ -38,10 +38,10 @@ ipcRenderer.on("deep-link-look", (_event, data: { card?: string; owl?: string })
 
 // Buffer invite deep links that arrive before React mounts a listener
 // (happens when the app is cold-launched via gryt://invite?...).
-let bufferedInvite: { host: string; code: string } | null = null;
+let bufferedInvite: { host: string; code: string; welcome?: boolean } | null = null;
 ipcRenderer.on(
   "deep-link-invite",
-  (_event, data: { host: string; code: string }) => {
+  (_event, data: { host: string; code: string; welcome?: boolean }) => {
     bufferedInvite = data;
   }
 );
@@ -678,7 +678,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("lan-server-removed", handler);
   },
 
-  onDeepLinkInvite(callback: (data: { host: string; code: string }) => void) {
+  onDeepLinkInvite(callback: (data: { host: string; code: string; welcome?: boolean }) => void) {
     if (bufferedInvite) {
       const data = bufferedInvite;
       bufferedInvite = null;
@@ -686,7 +686,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }
     const handler = (
       _event: Electron.IpcRendererEvent,
-      data: { host: string; code: string }
+      data: { host: string; code: string; welcome?: boolean }
     ) => {
       bufferedInvite = null;
       callback(data);
