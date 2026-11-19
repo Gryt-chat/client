@@ -2,6 +2,7 @@ import { Button } from "@gryt/ui";
 
 import { pausedText,type PlanDates } from "@/lib/planMode";
 
+import { CLOUD_CONSOLE_URL } from "../../../../lib/cloud";
 import { PiArrowSquareOutBold, PiPauseFill } from "../../../../lib/icons";
 import { CLOUD_BILLING_URL } from "./PlanModeBanner";
 
@@ -18,7 +19,7 @@ export function PausedServer({ serverName, isOwner, dates, onLeave }: { serverNa
         <div className="flex flex-wrap justify-center gap-2.5 pt-1.5">
           {isOwner ? (
             <>
-              <Button tone="neutral" onClick={() => window.open(CLOUD_BILLING_URL.replace("/billing", "/servers"), "_blank", "noopener,noreferrer")}>
+              <Button tone="neutral" onClick={() => window.open(`${CLOUD_CONSOLE_URL}/servers`, "_blank", "noopener,noreferrer")}>
                 Download
               </Button>
               <Button onClick={() => window.open(CLOUD_BILLING_URL, "_blank", "noopener,noreferrer")}>

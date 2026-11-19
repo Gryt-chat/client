@@ -1,8 +1,8 @@
 import { Button } from "@gryt/ui";
 import { useEffect, useState } from "react";
 
+import { CLOUD_CONSOLE_URL } from "../../../../lib/cloud";
 import { PiArchiveFill } from "../../../../lib/icons";
-import { CLOUD_BILLING_URL } from "./PlanModeBanner";
 
 const gb = (b: number) => `${Math.round(b / 1024 ** 3)}`;
 
@@ -30,7 +30,7 @@ export function StorageFull({ host, serverName, isOwner }: { host: string; serve
         </span>
       </span>
       {isOwner && (
-        <Button size="small" onClick={() => window.open(CLOUD_BILLING_URL.replace("/billing", `/servers/${encodeURIComponent(host)}`), "_blank", "noopener,noreferrer")}>
+        <Button size="small" onClick={() => window.open(`${CLOUD_CONSOLE_URL}/servers/${encodeURIComponent(host)}`, "_blank", "noopener,noreferrer")}>
           Upgrade
         </Button>
       )}

@@ -3,9 +3,10 @@ import { useState } from "react";
 
 import { planBanner,type PlanDates } from "@/lib/planMode";
 
+import { CLOUD_CONSOLE_URL } from "../../../../lib/cloud";
 import { PiArrowSquareOutBold, PiClockFill, PiProhibitFill, PiShieldWarningFill, PiWarningFill, PiX } from "../../../../lib/icons";
 
-export const CLOUD_BILLING_URL = "https://cloud.gryt.chat/billing";
+export const CLOUD_BILLING_URL = `${CLOUD_CONSOLE_URL}/billing`;
 
 type Info = PlanDates & { plan_mode?: string; is_owner?: boolean } | undefined;
 
