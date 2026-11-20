@@ -97,7 +97,7 @@ export const ServerHeader = ({
         ) : (
           <Menu.Trigger
             aria-label="Server menu"
-            className="flex w-full items-center gap-2 min-w-0 rounded-lg px-2 py-1 -mx-2 text-left hover:bg-gryt-neutral-3"
+            className="-m-4 flex w-[calc(100%+2rem)] cursor-pointer items-center gap-2 min-w-0 rounded-(--gryt-radius-lg) p-4 text-left hover:bg-gryt-neutral-3"
           >
             <span className="flex flex-col flex-1 min-w-0">
               <span className="truncate font-semibold">{serverName}</span>

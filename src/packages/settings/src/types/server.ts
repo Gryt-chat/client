@@ -128,6 +128,8 @@ export type serverDetails = {
     discord_bridge?: boolean;
     /** Whether the owner still gets the Discord offer: nothing linked and no messages yet. */
     discord_offer?: boolean;
+    /** The bridge bot is in its Discord server, so Link Discord can work. */
+    discord_live?: boolean;
     /** Video avatars and banners are taken here: the host can and the owner allows it. */
     video_profiles?: boolean;
     /** Messages here may show other Gryt servers' custom emoji. */
