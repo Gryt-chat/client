@@ -2612,3 +2612,43 @@ img.discord-import-letter { object-fit: cover; }
 @keyframes gryt-hop { 0%, 100% { transform: translateY(0) } 30% { transform: translateY(-70px) } }
 @keyframes gryt-cheer { from { transform: rotate(0) } to { transform: rotate(-14deg) } }
 @media (prefers-reduced-motion: reduce) { .gryt-confetti { display: none } .cheer-owl .owl-hop, .cheer-owl .arm-r, .cheer-owl .arm-l { animation: none } }
+
+/* A dialog opened from a dialog: the one underneath goes further back, so the stack reads as two layers. */
+.gryt-dialog[data-nested-dialog-open] {
+  filter: blur(3px) brightness(0.6);
+  transition: filter 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gryt-dialog[data-nested-dialog-open] { transition: none; }
+}
+
+/* Server settings: the open tab's pages, as in user settings. */
+.server-settings-subnav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px;
+}
+.server-settings-subnav {
+  display: flex;
+  align-items: center;
+  width: calc(100% - 17px);
+  margin-left: 17px;
+  padding: 7px 10px 7px 17px;
+  border: 0;
+  border-left: 1px solid var(--gryt-neutral-a4);
+  border-radius: 0 var(--gryt-radius-md) var(--gryt-radius-md) 0;
+  background: transparent;
+  color: var(--gryt-neutral-11);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.server-settings-subnav:hover { background: var(--gryt-neutral-a3); }
+.server-settings-subnav[data-active="true"] {
+  border-left-color: var(--gryt-accent-9);
+  background: var(--gryt-accent-a3);
+  color: var(--gryt-accent-11);
+  font-weight: 600;
+}

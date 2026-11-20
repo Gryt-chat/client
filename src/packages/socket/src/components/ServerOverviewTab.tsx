@@ -83,6 +83,7 @@ export function ServerOverviewTab({
   accessToken,
   initialSettings,
   channels = [],
+  section,
 }: {
   host: string;
   socket?: {
@@ -94,7 +95,10 @@ export function ServerOverviewTab({
   accessToken: string | null;
   initialSettings?: ServerOverviewInitialSettings;
   channels?: Channel[];
+  /** One sub-page of Settings. Absent shows them all. */
+  section?: "profile" | "uploads" | "chat" | "joining";
 }) {
+  const shows = (s: string) => !section || section === s;
   const { nickname } = useSettings();
 
   const MAX_ICON_SIZE_BYTES = 25 * 1024 * 1024;
@@ -451,6 +455,7 @@ export function ServerOverviewTab({
 
   return (
     <div className="flex flex-col gap-4">
+      {shows("profile") && (<>
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-sm">
           {canEdit
@@ -591,7 +596,9 @@ export function ServerOverviewTab({
           }}
         />
       </div>
+      </>)}
 
+      {shows("uploads") && (<>
       {media && (
         <div className="flex flex-col gap-2" data-tour="server-uploads">
           <span className="text-sm font-medium">Uploads</span>
@@ -645,7 +652,9 @@ export function ServerOverviewTab({
           )}
         </div>
       )}
+      </>)}
 
+      {shows("uploads") && (<>
       {externalEmojis !== null && (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Emoji from other servers</span>
@@ -665,7 +674,9 @@ export function ServerOverviewTab({
           </span>
         </div>
       )}
+      </>)}
 
+      {shows("chat") && (<>
       {linkHistory !== null && (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Linking a new device</span>
@@ -685,7 +696,9 @@ export function ServerOverviewTab({
           </span>
         </div>
       )}
+      </>)}
 
+      {shows("uploads") && (<>
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">
           Limits (optional)
@@ -746,7 +759,9 @@ export function ServerOverviewTab({
         </div>
 
       </div>
+      </>)}
 
+      {shows("chat") && (<>
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">
           Profanity filter
@@ -840,7 +855,9 @@ export function ServerOverviewTab({
           />
         )}
       </div>
+      </>)}
 
+      {shows("chat") && (<>
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium">
           System messages channel
@@ -863,7 +880,9 @@ export function ServerOverviewTab({
           ]}
         />
       </div>
+      </>)}
 
+      {shows("joining") && (<>
       <div className="flex flex-col gap-2" data-tour="server-join">
         <span className="text-sm font-medium">
           Who can join
@@ -936,6 +955,7 @@ export function ServerOverviewTab({
           <span className="text-sm">Allow public server info</span>
         </div>
       </div>
+      </>)}
 
 
       {autosaving ? (
