@@ -1655,7 +1655,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
               serverName={serverName}
               serverRole={currentUserRole}
               onOpenSettings={onOpenSettings}
-              onLinkDiscord={serverDetails?.server_info?.discord_bridge ? () => setDiscordLinkOpen(true) : undefined}
+              onLinkDiscord={serverDetails?.server_info?.discord_live ? () => setDiscordLinkOpen(true) : undefined}
               onOpenInvites={onOpenInvites}
               onManageServer={onManageServer}
               pendingReportCount={pendingReportCount}
