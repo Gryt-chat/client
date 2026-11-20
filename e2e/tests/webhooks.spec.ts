@@ -9,7 +9,7 @@ test("a webhook post with a card shows the card", async ({ owner, newMember, req
   const dialog = owner.page.getByRole("dialog", { name: "Server settings" });
   await dialog.getByRole("tab", { name: "Integrations", exact: true }).click();
   const panel = dialog.getByRole("tabpanel", { name: "Integrations" });
-  await panel.getByRole("button", { name: "Add a webhook" }).click();
+  await dialog.locator('nav[aria-label="Settings pages"]').getByRole("button", { name: "Webhooks", exact: true }).click();
   const created = owner.page.waitForResponse(
     (res) => res.url() === `${gryt.server.httpBase}/api/webhooks` && res.request().method() === "POST",
   );

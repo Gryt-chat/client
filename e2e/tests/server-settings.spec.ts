@@ -13,9 +13,10 @@ async function openServerSettings(page: Page): Promise<Locator> {
 }
 
 /** A webhook URL doesn't wrap, which is what pushed the dialog wide in GRYT-1199. */
-async function createWebhook(dialog: Locator) {
+async function createWebhook(dialog: Locator, openRail = async () => {}) {
   const panel = dialog.getByRole("tabpanel", { name: "Integrations" });
-  await panel.getByRole("button", { name: "Add a webhook" }).click();
+  await openRail();
+  await dialog.locator('nav[aria-label="Settings pages"]').getByRole("button", { name: "Webhooks", exact: true }).click();
   await panel.getByRole("button", { name: "Create webhook" }).click();
   await expect(panel.getByText(/\/api\/webhooks\/[^/]+\/[^/]+$/).first()).toBeVisible();
 }
@@ -76,7 +77,7 @@ test("server settings on a 390px phone: no tab runs past the dialog", async ({ n
     await expect(dialog.getByText(tab, { exact: true }).first()).toBeVisible();
   };
   await pick("Integrations");
-  await createWebhook(dialog);
+  await createWebhook(dialog, openMenu);
 
   for (const tab of tabs) {
     await pick(tab);

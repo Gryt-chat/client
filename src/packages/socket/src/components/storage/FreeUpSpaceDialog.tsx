@@ -45,8 +45,9 @@ export function FreeUpSpaceDialog({ open, onOpenChange, socket, overview, onDone
       title="Free up space"
       description="Delete files by age, size or channel. Their messages stay."
       confirmLabel={count ? `Delete ${count.count} ${count.count === 1 ? "file" : "files"}` : "Delete"}
-      confirmDisabled={!count || count.count === 0}
       onConfirm={() => {
+        if (!count) return void toast("Still counting the files. Try again in a second.");
+        if (!count.count) return void toast("No files match these filters. Try a shorter time or a smaller size.");
         onOpenChange(false);
         ask<{ count: number; bytes: number }>(socket, "storage:purge", { ...filter, dryRun: false }, "storage:purge", 120_000)
           .then((r) => { toast.success(`Deleted ${r.count} files, ${formatFileSize(r.bytes)} freed`); onDone(); })

@@ -32,7 +32,6 @@ import { ServerReleaseNotes } from "./ServerReleaseNotes";
 import { ServerRoleEditorTab } from "./ServerRoleEditorTab";
 import { ServerRolesTab } from "./ServerRolesTab";
 import { ServerWebhooksTab } from "./ServerWebhooksTab";
-import { SettingsSubViews } from "./SettingsSubViews";
 import { StorageTab } from "./storage/StorageTab";
 
 type SetupRequiredDetail = {
@@ -107,7 +106,9 @@ export function ServerSettingsModal() {
   const drawer = !railFits;
   const [menuOpen, setMenuOpen] = useState(false);
   const pickTab = (value: string) => {
-    setTab(value);
+    const [t, page = ""] = value.split("/");
+    setTab(t);
+    setSub(page);
     setMenuOpen(false);
   };
 
@@ -187,7 +188,9 @@ export function ServerSettingsModal() {
     group: Group;
     /** Any one of these is enough. Absent means everybody who got this far. */
     needs?: string[];
-    content: ReactNode;
+    /** Sub-pages, listed under the tab in the rail while it's open. */
+    pages?: { value: string; label: string; needs?: string[]; content: ReactNode }[];
+    content?: ReactNode;
   }[] = [
     {
       value: "overview",
@@ -212,15 +215,36 @@ export function ServerSettingsModal() {
       group: "",
       label: "Settings",
       icon: PiGearFill,
-      content: (
-        <ServerOverviewTab
+      pages: [
+        { value: "profile", label: "Profile", content: <ServerOverviewTab section="profile"
           host={host}
           socket={socket}
           accessToken={accessToken}
           initialSettings={initialOverviewSettings}
           channels={host ? serverDetailsList[host]?.channels ?? [] : []}
-        />
-      ),
+        /> },
+        { value: "uploads", label: "Uploads", content: <ServerOverviewTab section="uploads"
+          host={host}
+          socket={socket}
+          accessToken={accessToken}
+          initialSettings={initialOverviewSettings}
+          channels={host ? serverDetailsList[host]?.channels ?? [] : []}
+        /> },
+        { value: "chat", label: "Chat", content: <ServerOverviewTab section="chat"
+          host={host}
+          socket={socket}
+          accessToken={accessToken}
+          initialSettings={initialOverviewSettings}
+          channels={host ? serverDetailsList[host]?.channels ?? [] : []}
+        /> },
+        { value: "joining", label: "Joining", content: <ServerOverviewTab section="joining"
+          host={host}
+          socket={socket}
+          accessToken={accessToken}
+          initialSettings={initialOverviewSettings}
+          channels={host ? serverDetailsList[host]?.channels ?? [] : []}
+        /> },
+      ],
     },
     {
       value: "members",
@@ -228,15 +252,10 @@ export function ServerSettingsModal() {
       label: "Members",
       icon: PiUsersThreeFill,
       needs: ["manage_roles", "manage_join_requests"],
-      content: (
-        <SettingsSubViews
-          key={sub} initial={sub}
-          views={only([
+      pages: only([
             { value: "everyone", label: "Everyone", needs: ["manage_roles"], content: <ServerRolesTab host={host} socket={socket} accessToken={accessToken} /> },
             { value: "waiting", label: "Waiting", needs: ["manage_join_requests"], content: <ServerJoinRequestsTab host={host} socket={socket} accessToken={accessToken} /> },
-          ])}
-        />
-      ),
+          ]),
     },
     {
       value: "invites",
@@ -252,15 +271,10 @@ export function ServerSettingsModal() {
       label: "Roles",
       icon: PiShieldCheckFill,
       needs: ["manage_roles"],
-      content: (
-        <SettingsSubViews
-          key={sub} initial={sub}
-          views={[
+      pages: [
             { value: "roles", label: "Roles", content: <ServerRoleEditorTab host={host} socket={socket} accessToken={accessToken} /> },
             { value: "channels", label: "Channel permissions", content: <ServerPermissionTemplatesTab host={host} socket={socket} accessToken={accessToken} /> },
-          ]}
-        />
-      ),
+          ],
     },
     {
       value: "emoji",
@@ -276,10 +290,7 @@ export function ServerSettingsModal() {
       label: "Moderation",
       icon: PiFlagFill,
       needs: ["view_reports", "view_bans", "ban_members", "view_audit_log"],
-      content: (
-        <SettingsSubViews
-          key={sub} initial={sub}
-          views={only([
+      pages: only([
             {
               value: "reports",
               label: "Reports",
@@ -293,9 +304,7 @@ export function ServerSettingsModal() {
               content: <ServerBansTab host={host} socket={socket} accessToken={accessToken} onUnban={(grytUserId) => socket?.emit("server:unban", { accessToken, grytUserId })} />,
             },
             { value: "audit", label: "Audit log", needs: ["view_audit_log"], content: <ServerAuditTab host={host} socket={socket} accessToken={accessToken} /> },
-          ])}
-        />
-      ),
+          ]),
     },
     {
       value: "integrations",
@@ -303,11 +312,7 @@ export function ServerSettingsModal() {
       label: "Integrations",
       icon: PiRobotFill,
       needs: ["manage_bots", "manage_webhooks", ...(isOwner ? ["manage_server"] : [])],
-      content: (
-        <SettingsSubViews
-          key={sub} initial={sub}
-          mode="rows"
-          views={only([
+      pages: only([
             { value: "bots", label: "Bots", description: "Let a bot post and answer in channels", action: "Add a bot", needs: ["manage_bots"], content: <ServerBotsTab host={host} socket={socket} accessToken={accessToken} /> },
             {
               value: "webhooks",
@@ -321,9 +326,7 @@ export function ServerSettingsModal() {
             ...(isOwner && serverDetailsList[host]?.server_info?.discord_bridge
               ? [{ value: "discord", label: "Discord", description: "Keep a Discord server in step with this one", action: "Link Discord", content: <ServerDiscordTab host={host} members={memberLists[host] ?? []} /> }]
               : []),
-          ])}
-        />
-      ),
+          ]),
     },
     ...(cloudUsage || hostedHere || allowed(["manage_server"])
       ? [
@@ -524,11 +527,33 @@ export function ServerSettingsModal() {
                               {group.label}
                             </span>
                           )}
-                          {group.options.map(({ value, label, icon: Icon }) => (
-                            <Tabs.Tab key={value} value={value} data-tour={`server-settings-${value}`}>
-                              <Icon size={16} />
-                              {label}
-                            </Tabs.Tab>
+                          {group.options.map(({ value, label, icon: Icon, pages }) => (
+                            <Fragment key={value}>
+                              <Tabs.Tab value={value} data-tour={`server-settings-${value}`}>
+                                <Icon size={16} />
+                                {label}
+                              </Tabs.Tab>
+                              {/* As in user settings: the tab you're in lists its pages under it. */}
+                              {value === tab && pages && pages.length > 1 && (
+                                <div className="server-settings-subnav-group">
+                                  {pages.map((page, i) => {
+                                    const on = sub ? page.value === sub : i === 0;
+                                    return (
+                                      <button
+                                        key={page.value}
+                                        type="button"
+                                        className="server-settings-subnav"
+                                        data-active={on}
+                                        aria-current={on ? "page" : undefined}
+                                        onClick={() => pickTab(`${value}/${page.value}`)}
+                                      >
+                                        {page.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </Fragment>
                           ))}
                         </Fragment>
                       ))}
@@ -545,9 +570,9 @@ export function ServerSettingsModal() {
                         Loading permissions…
                       </span>
                     ) : null}
-                    {TAB_CONFIG.map(({ value, content }) => (
+                    {TAB_CONFIG.map(({ value, content, pages }) => (
                       <Tabs.Panel key={value} value={value}>
-                        {content}
+                        {content ?? (pages?.find((p) => p.value === sub) ?? pages?.[0])?.content}
                       </Tabs.Panel>
                     ))}
                   </div>
