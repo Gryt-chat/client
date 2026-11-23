@@ -1,10 +1,14 @@
-import { useVoiceLatency } from "@gryt/voice";
+import { useSFU, useVoiceLatency } from "@gryt/voice";
 import { useEffect, useRef } from "react";
 
 import { useSockets } from "@/socket";
 import { useVoicePresence } from "@/webRTC";
 
 import { endCallTimeline, recordCallSample, startCallTimeline } from "../lib/reports/callTimeline";
+
+/** Everyone's made-up frames added up; null off the own transport. */
+const madeUp = (byUser: ReadonlyMap<string, number> | undefined) =>
+  byUser ? [...byUser.values()].reduce((a, b) => a + b, 0) : null;
 
 /**
  * Records the call's numbers once a second while you're in one (GRYT-1663). Mounted at the
@@ -14,6 +18,9 @@ export function CallStatsRecorder() {
   const voice = useVoicePresence();
   const inCall = voice.inCall;
   const { latency } = useVoiceLatency(inCall);
+  const { getTransportLatency } = useSFU();
+  const transportRef = useRef(getTransportLatency);
+  transportRef.current = getTransportLatency;
   const { sockets } = useSockets();
   const latest = useRef(latency);
   const socketRtt = useRef<number | null>(null);
@@ -50,6 +57,7 @@ export function CallStatsRecorder() {
         estimatedRoundTripMs: l.estimatedRoundTripMs,
         transportBufferedMs: l.transportBufferedMs,
         transportRttMs: l.transportRttMs,
+        transportConcealed: madeUp(transportRef.current?.()?.concealedByUser),
         visible: document.visibilityState === "visible",
         focused: document.hasFocus(),
       });
