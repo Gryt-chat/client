@@ -597,7 +597,9 @@ export const ChatView = memo(({
 
   const getSenderAvatarUrl = useCallback((msg: ChatMessage): string | undefined => {
     const fileId = memberList?.[msg.sender_server_id]?.avatarFileId || msg.sender_avatar_file_id;
-    const uploaded = fileId && serverHost ? getUploadsFileUrl(serverHost, fileId) : undefined;
+    // A video avatar's file can't be drawn as an image, so it shows its still, like the member list.
+    const still = memberList?.[msg.sender_server_id]?.avatarVideo ? { thumb: true } : undefined;
+    const uploaded = fileId && serverHost ? getUploadsFileUrl(serverHost, fileId, still) : undefined;
     // From the member list, never the message: a message carries the avatar its
     // sender had, and a look is drawn live.
     const worn = memberList?.[msg.sender_server_id]?.avatarWorn;
