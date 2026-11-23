@@ -7,11 +7,20 @@ on:
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
-  # A change to the suite itself runs it before it merges.
+    inputs:
+      releases:
+        description: "Which server, SFU and image worker the desktop app embeds"
+        type: choice
+        default: stable
+        options: [stable, beta]
+  # A change to the suite, or to what the desktop-hosting test walks through, runs it before it merges.
   pull_request:
     paths:
       - e2e/nightly/**
       - .github/workflows/nightly.yml
+      - electron/**
+      - scripts/build-embedded-server.ts
+      - src/packages/settings/src/components/addServer.tsx
 
 permissions:
   contents: read
@@ -69,10 +78,13 @@ jobs:
           path: client
       # Release Client embeds the newest release of each, and build-embedded-server.mjs finds them beside the client.
       - name: Check out the newest server, SFU and image worker releases
+        env:
+          # Stable tags only, unless a hand-started run asks for the betas too.
+          TAGS: ${{ inputs.releases == 'beta' && 'v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?' || 'v[0-9]+\.[0-9]+\.[0-9]+' }}
         run: |
           for repo in server sfu image-worker; do
             url="https://github.com/Gryt-chat/$repo.git"
-            tag=$(git ls-remote --tags --refs "$url" 'v*' | sed 's#.*refs/tags/##' | grep -Ex 'v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+            tag=$(git ls-remote --tags --refs "$url" 'v*' | sed 's#.*refs/tags/##' | grep -Ex "$TAGS" | sort -V | tail -1)
             git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$tag" "$url" "$repo"
             echo "$repo $tag"
           done
@@ -123,3 +135,39 @@ jobs:
             client/e2e/nightly/playwright-report
             client/e2e/nightly/test-results
           retention-days: 14
+
+  # A red nightly keeps one open task until a run passes, so it can't sit failing unnoticed.
+  track:
+    needs: [call, electron]
+    if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open, add to or close the "Nightly is red" task
+        env:
+          TOKEN: ${{ secrets.VIKUNJA_API_TOKEN }}
+          API: https://tasks.sivert.io/api/v1
+          PROJECT: "2"
+          CALL: ${{ needs.call.result }}
+          ELECTRON: ${{ needs.electron.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TOKEN" ]; then echo "::warning::No VIKUNJA_API_TOKEN, so no task."; exit 0; fi
+          api() { curl -sS --fail-with-body --max-time 30 -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" "$@"; }
+          title="Nightly is red"
+          failed=""
+          for job in "call:$CALL" "electron:$ELECTRON"; do [ "${job#*:}" = failure ] && failed="$failed ${job%%:*}"; done
+          open=$(api "$API/tasks?s=$(jq -rn --arg t "$title" '$t|@uri')&filter=done%20%3D%20false" \
+            | jq -r --arg t "$title" --argjson p "$PROJECT" '[.[] | select(.title == $t and .project_id == $p)][0].id // empty')
+          if [ -n "$failed" ]; then
+            if [ -n "$open" ]; then
+              api -X PUT "$API/tasks/$open/comments" -d "$(jq -n --arg c "Still red:$failed. $RUN_URL" '{comment: $c}')" >/dev/null
+            else
+              body="<p>The nightly failed:$failed. This task stays open until a nightly passes, and each red night adds a comment.</p><p>$RUN_URL</p>"
+              api -X PUT "$API/projects/$PROJECT/tasks" -d "$(jq -n --arg t "$title" --arg d "$body" '{title: $t, description: $d, priority: 4}')" >/dev/null
+            fi
+          elif [ -n "$open" ] && [ "$CALL" = success ] && [ "$ELECTRON" = success ]; then
+            api -X PUT "$API/tasks/$open/comments" -d "$(jq -n --arg c "Green again. $RUN_URL" '{comment: $c}')" >/dev/null
+            # The REST update replaces the whole task, so send all of it back with done set.
+            api "$API/tasks/$open" | jq '.done = true' | api -X POST "$API/tasks/$open" -d @- >/dev/null
+          fi
