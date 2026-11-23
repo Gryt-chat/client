@@ -461,6 +461,17 @@ export function useServerState(): UseServerStateResult {
     afkTimeoutMinutes,
   ]);
 
+  // The server marks someone connected when a WebRTC peer sees their stream; on the own transport this client does it instead.
+  useEffect(() => {
+    if (!currentServerConnected || !transportUsers?.size) return;
+    const socket = sockets[currentServerConnected];
+    for (const c of Object.values(clients[currentServerConnected] || {})) {
+      if (c.serverUserId && c.streamID && !c.isConnectedToVoice && transportUsers.has(c.serverUserId)) {
+        socket?.emit("voice:peer:connected", c.streamID);
+      }
+    }
+  }, [transportUsers, clients, currentServerConnected, sockets]);
+
   useEffect(() => {
     if (!currentlyViewingServer || !audioContext) return;
     const hostClients = clients[currentlyViewingServer.host] || {};
