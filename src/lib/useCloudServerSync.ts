@@ -52,10 +52,14 @@ export function useCloudServerSync() {
       const hosts = ((await r?.json().catch(() => null)) as { servers?: string[] } | null)?.servers;
       if (!Array.isArray(hosts)) return;
       const known = new Set(seen());
+      // With no server yet the app sits on direct messages, so the first one joined is shown instead.
+      let focus = Object.keys(servers).length === 0;
       for (const host of hosts) {
         if (typeof host !== "string" || servers[host] || known.has(host)) continue;
         const info = await fetchServerInfo(host);
-        if (info.kind === "info") await join({ host, info: info.info, focus: false });
+        if (info.kind !== "info") continue;
+        await join({ host, info: info.info, focus });
+        focus = false;
       }
     };
     check();
