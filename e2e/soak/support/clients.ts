@@ -84,6 +84,8 @@ export interface CallClient {
   name: string;
   /** Back in the call when it has fallen out: the harness calls this after a minute outside. */
   rejoin(): Promise<void>;
+  /** Out of the voice channel, still on the server. */
+  leave(): Promise<void>;
   /** What the window shows: in the call or not, the server banner if one is up, and how many videos are drawing. */
   ui(): Promise<UiState>;
   close(leave: boolean): Promise<void>;
@@ -213,6 +215,7 @@ async function joinCall(
     track,
     page,
     name,
+    leave: () => leaveCall(page),
     rejoin: async () => {
       track.write("harness.rejoin", { name });
       if (!(await channelComposer(page).isVisible().catch(() => false))) {

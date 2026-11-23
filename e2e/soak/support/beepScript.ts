@@ -18,6 +18,35 @@ export function beepScript(config: BeepConfig): void {
     if (typeof sink === "function") sink({ at: Date.now(), type, ...data }).catch(() => undefined);
   };
 
+  // What the app itself feeds into Web Audio, so the harness can tell a received track from a played one.
+  const harnessStreams = new WeakSet<MediaStream>();
+  // A source node keeps the track it was made with, so record that and whether the app let go of it.
+  const appSources: { track: MediaStreamTrack | undefined; live: boolean }[] = [];
+  const pcs: RTCPeerConnection[] = [];
+  const createSource = AudioContext.prototype.createMediaStreamSource;
+  AudioContext.prototype.createMediaStreamSource = function (stream: MediaStream) {
+    const node = createSource.call(this, stream);
+    if (harnessStreams.has(stream)) return node;
+    const entry = { track: stream.getAudioTracks()[0], live: true };
+    appSources.push(entry);
+    const disconnect = node.disconnect.bind(node) as (...a: unknown[]) => void;
+    node.disconnect = ((...a: unknown[]) => { if (a.length === 0) entry.live = false; disconnect(...a); }) as typeof node.disconnect;
+    return node;
+  };
+  w.__soakPlayback = () => pcs.filter((pc) => pc.connectionState !== "closed").flatMap((pc) =>
+    pc.getTransceivers()
+      .filter((t) => t.receiver.track.kind === "audio" && (t.currentDirection === "recvonly" || t.currentDirection === "sendrecv"))
+      .map((t) => ({ mid: t.mid, track: t.receiver.track.id, played: appSources.some((e) => e.live && e.track === t.receiver.track) })));
+
+  const Untracked = w.RTCPeerConnection as typeof RTCPeerConnection;
+  class TrackedPeer extends Untracked {
+    constructor(configuration?: RTCConfiguration) {
+      super(configuration);
+      pcs.push(this);
+    }
+  }
+  Object.defineProperty(w, "RTCPeerConnection", { value: TrackedPeer, configurable: true, writable: true });
+
   /** Calls `onOnset` with Date.now() each time `track` goes loud after 300 ms of quiet. */
   const onsets = (track: MediaStreamTrack, onOnset: (at: number, peak: number) => void) => {
     // Chromium only feeds a remote track into Web Audio while a media element holds it too.
@@ -29,7 +58,9 @@ export function beepScript(config: BeepConfig): void {
     const ctx = new AudioContext();
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
-    ctx.createMediaStreamSource(new MediaStream([track])).connect(analyser);
+    const tap = new MediaStream([track]);
+    harnessStreams.add(tap);
+    ctx.createMediaStreamSource(tap).connect(analyser);
     const buf = new Float32Array(analyser.fftSize);
     let armed = true;
     let quietSince = 0;
