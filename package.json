@@ -28,6 +28,7 @@
     "test:update-supersede": "node scripts/check-update-supersede.ts",
     "test:update-in-progress": "node scripts/check-update-in-progress.ts",
     "test:dm-destination": "node scripts/check-dm-destination.ts",
+    "test:peer-voice-sounds": "node scripts/check-peer-voice-sounds.ts",
     "test:stream-quality": "node scripts/check-stream-quality.ts",
     "test:picture-crop": "node scripts/check-picture-crop.ts",
     "test:doctor-sfu": "node scripts/check-doctor-sfu.ts",
