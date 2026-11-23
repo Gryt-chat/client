@@ -48,6 +48,8 @@ export function CallStatsRecorder() {
         packetsLost: l.packetsLost,
         bitrateKbps: l.bitrateKbps,
         estimatedRoundTripMs: l.estimatedRoundTripMs,
+        transportBufferedMs: l.transportBufferedMs,
+        transportRttMs: l.transportRttMs,
         visible: document.visibilityState === "visible",
         focused: document.hasFocus(),
       });
