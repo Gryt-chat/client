@@ -27,7 +27,7 @@ export function useVoiceLifecycle() {
   const newVoice = useNewVoice();
   const { servers, currentlyViewingServer } = useServerManagement();
   const { serverDetailsList } = useSockets();
-  const { playConnect } = useVoiceSounds();
+  const { playConnect, playFailed } = useVoiceSounds();
 
   // How big we draw everybody's video goes to the SFU, so nobody sends more than is watched.
   useEffect(() => {
@@ -67,6 +67,11 @@ export function useVoiceLifecycle() {
    * giving up clears `serverId` and `roomId` in the same update.
    */
   const lastHost = useRef("");
+  // A ref, so changing a sound setting while the error shows doesn't play it again.
+  const playFailedRef = useRef(playFailed);
+  useEffect(() => {
+    playFailedRef.current = playFailed;
+  }, [playFailed]);
   const lastChannelId = useRef("");
   useEffect(() => {
     if (currentServerConnected) lastHost.current = currentServerConnected;
@@ -99,6 +104,7 @@ export function useVoiceLifecycle() {
       : "Could not reach the voice server after several attempts. This network " +
         "may not allow voice traffic through, which is common on mobile data.";
     const message = connectionError === "reconnect-failed" ? gaveUp : connectionError;
+    playFailedRef.current();
 
     if (!host) {
       toast.error(message, { id: "voice-connection", duration: 8000 });

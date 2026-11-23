@@ -93,7 +93,7 @@ export function VoiceSettings() {
           onEnabledChange={setConnectSoundEnabled}
           volume={connectSoundVolume}
           onVolumeChange={setConnectSoundVolume}
-          defaultVolume={10}
+          defaultVolume={60}
           customSoundFile={customConnectSoundFile}
           onCustomSoundFileChange={setCustomConnectSoundFile}
           defaultSoundSrc={connectMp3}
@@ -106,7 +106,7 @@ export function VoiceSettings() {
           onEnabledChange={setDisconnectSoundEnabled}
           volume={disconnectSoundVolume}
           onVolumeChange={setDisconnectSoundVolume}
-          defaultVolume={10}
+          defaultVolume={60}
           customSoundFile={customDisconnectSoundFile}
           onCustomSoundFileChange={setCustomDisconnectSoundFile}
           defaultSoundSrc={disconnectMp3}
