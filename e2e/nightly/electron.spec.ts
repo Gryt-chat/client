@@ -20,6 +20,7 @@ import { ProblemLog } from "../support/problems";
 import { freePort } from "../support/server";
 import { expectAudioArriving, type Guest, joinVoice, recordAudioSocket } from "./support/call";
 import { isAlive, isDescendantOf, listeners, occupy } from "./support/ports";
+import { watchPeerConnections } from "./support/webrtc";
 
 /** The electron package's main export is the path to its binary. It throws when the download was skipped. */
 const electronBinary = () => createRequire(import.meta.url)("electron") as string;
@@ -152,6 +153,7 @@ test("the desktop app hosts a server on an SFU of its own, and a browser joins i
         const name = uniqueName("Caller");
         const callerContext = await media.newContext({ baseURL: testInfo.project.use.baseURL, permissions: ["microphone", "camera"] });
         await prepare(callerContext, problems.report, { nickname: name });
+        await watchPeerConnections(callerContext, false);
         const page = await callerContext.newPage();
         problems.watch(page, name, `http://127.0.0.1:${serverPort}`);
         await page.goto("/");
