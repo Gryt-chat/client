@@ -8,8 +8,9 @@ as sound files in their own right. If you want one of them, get it from the page
 below rather than from this repository.
 
 The ones in `sounds/` were trimmed, faded and levelled to the same loudness for
-Gryt. `connect.mp3`, `disconnect.mp3` and `voice-failed.mp3` are Gryt's own,
-played on the Marimba from the SGM-V2.01 SoundFont.
+Gryt. `connect.mp3`, `disconnect.mp3`, `peer-join.mp3`, `peer-leave.mp3` and
+`voice-failed.mp3` are Gryt's own, played on the Marimba from the SGM-V2.01
+SoundFont.
 
 | File | Pixabay sound | By |
 |---|---|---|

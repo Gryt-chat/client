@@ -6,6 +6,7 @@ import { ServerErrorToast, serverIconSrc } from "@/common";
 import { useServerManagement, useSockets } from "@/socket";
 import { setDrawnVideoReporter } from "@/socket/src/lib/drawnVideoSize";
 
+import { usePeerVoiceSounds } from "./usePeerVoiceSounds";
 import { useVoiceSounds } from "./useVoiceSounds";
 import { useNewVoice } from "./voiceConfig";
 
@@ -28,6 +29,7 @@ export function useVoiceLifecycle() {
   const { servers, currentlyViewingServer } = useServerManagement();
   const { serverDetailsList } = useSockets();
   const { playConnect, playFailed } = useVoiceSounds();
+  usePeerVoiceSounds();
 
   // How big we draw everybody's video goes to the SFU, so nobody sends more than is watched.
   useEffect(() => {
