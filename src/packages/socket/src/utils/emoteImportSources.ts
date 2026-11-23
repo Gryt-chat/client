@@ -25,6 +25,8 @@ const BTTV_EMOTE_URL_RE = /betterttv\.com\/emotes\/([a-f0-9]{20,30})/;
 // Newer BTTV accounts have short mixed-case ids, and their user pages need a BTTV sign-in to read.
 const BTTV_SIGNED_IN_USER_RE = /betterttv\.com\/users\/[A-Za-z0-9]{8,19}(?![A-Za-z0-9])/;
 const BTTV_CDN = "https://cdn.betterttv.net/emote";
+// A Twitch channel: its BetterTTV emotes, looked up by the server (GRYT-2226).
+const TWITCH_CHANNEL_URL_RE = /twitch\.tv\/([A-Za-z0-9_]{3,25})(?![A-Za-z0-9_])/;
 
 const EMOJIGG_USER_URL_RE = /emoji\.gg\/user\/([^/?#]+)/;
 const EMOJIGG_PACK_URL_RE = /emoji\.gg\/pack\/([A-Za-z0-9_-]+)/;
@@ -60,7 +62,8 @@ function bttvEmote(raw: Record<string, unknown>, base: string): ImportEmote | nu
 
 export const BTTV_SOURCE: EmoteSource = {
   label: "BetterTTV",
-  matches: (url) => BTTV_USER_URL_RE.test(url) || BTTV_EMOTE_URL_RE.test(url) || BTTV_SIGNED_IN_USER_RE.test(url),
+  matches: (url) =>
+    BTTV_USER_URL_RE.test(url) || BTTV_EMOTE_URL_RE.test(url) || BTTV_SIGNED_IN_USER_RE.test(url) || TWITCH_CHANNEL_URL_RE.test(url),
   fetchListing: async (url, base) => {
     const emoteMatch = url.match(BTTV_EMOTE_URL_RE);
     if (emoteMatch) {
@@ -72,12 +75,16 @@ export const BTTV_SOURCE: EmoteSource = {
     }
 
     const userMatch = url.match(BTTV_USER_URL_RE);
-    if (!userMatch && BTTV_SIGNED_IN_USER_RE.test(url)) {
-      throw new Error("BetterTTV only shows this user page to people signed in to BetterTTV, so Gryt can't read it. Paste links to single emotes instead.");
+    const twitchMatch = userMatch ? null : url.match(TWITCH_CHANNEL_URL_RE);
+    if (!userMatch && !twitchMatch && BTTV_SIGNED_IN_USER_RE.test(url)) {
+      throw new Error("BetterTTV only shows this user page to people signed in to BetterTTV. Paste the channel's Twitch link instead, like twitch.tv/forsen.");
     }
-    if (!userMatch) throw new Error("Not a BetterTTV link.");
+    let path: string;
+    if (userMatch) path = `user/${userMatch[1]}`;
+    else if (twitchMatch) path = `twitch/${twitchMatch[1]}`;
+    else throw new Error("Not a BetterTTV link.");
 
-    const data = await getJson(`${base}/api/emojis/bttv/user/${userMatch[1]}`);
+    const data = await getJson(`${base}/api/emojis/bttv/${path}`);
     const lists = [data.channelEmotes, data.sharedEmotes];
     const emotes: ImportEmote[] = [];
     for (const list of lists) {
