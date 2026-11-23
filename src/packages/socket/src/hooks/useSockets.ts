@@ -35,6 +35,7 @@ import { getTokenExpiryTime } from "../utils/tokenManager";
 import { refreshDelayMs, RETRY_DELAY_MS } from "../utils/tokenRefreshSchedule";
 import { knowledgeFor, persistKnowledge, recordFiltered } from "./contactFilterStore";
 import { friendBookFor, friendGateFor, persistFriendBook } from "./friendsStore";
+import { setLeaving } from "./leavingServers";
 import { useSocketEvents } from "./useSocketEvents";
 
 /* About two minutes of trying before a server is left alone. Getting back to it
@@ -756,38 +757,40 @@ function useSocketsHook() {
   }, [sockets, nickname, failedServerDetails]);
 
 /**
-   * Removed on `server:left`, because removing it first closes the socket and the
-   * emit goes nowhere. A server that does not answer keeps its entry.
+   * Off the sidebar at once; the leave itself is sent in the background, up to five times. The entry
+   * is only really removed on `server:left` (or after the last try), because removing it closes the socket.
    */
   const leaveServer = (host: string) => {
     const socket = sockets[host];
+    const removeLocally = () => {
+      removeServerAccessToken(host);
+      removeServerRefreshToken(host);
+      // The sidebar entry lives in useServerManagement, which this layer cannot reach.
+      window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
+      setLeaving(host, false);
+    };
     if (!socket) {
-      toast.error(`Not connected to ${host}, so it cannot be told you are leaving.`);
+      removeLocally();
+      toast(`Removed ${host}. It couldn't be told you left, so it may still list you.`);
       return;
     }
-
+    setLeaving(host, true);
     const toastId = `leave-${host}`;
-    toast.loading(`Leaving ${host}...`, { id: toastId });
-
+    const TRIES = 5;
     let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = () => {
       settled = true;
       socket.off("server:left", onLeft);
       socket.off("server:error", onError);
       clearTimeout(timer);
     };
-
     const onLeft = () => {
       if (settled) return;
       finish();
-      removeServerAccessToken(host);
-      removeServerRefreshToken(host);
+      removeLocally();
       toast.success(`Left ${host}`, { id: toastId });
-      // The sidebar entry lives in useServerManagement, which this layer cannot
-      // reach. Same event a kick uses, and it does the same job.
-      window.dispatchEvent(new CustomEvent("server_force_remove", { detail: { host } }));
     };
-
     // The global handler reports everything as a join problem, and this person is
     // already in. An older server sends a bare string, so one is taken as this.
     const LEAVE_ERRORS = ["owner_cannot_leave", "leave_failed", "not_registered"];
@@ -797,24 +800,26 @@ function useSocketsHook() {
         socket.once("server:error", onError);
         return;
       }
-      const message =
-        typeof info === "string" ? info : info?.message || "The server refused.";
       finish();
-      toast.error(message, { id: toastId, duration: 8000 });
+      // A refusal means they're still in, so the server comes back.
+      setLeaving(host, false);
+      toast.error(typeof info === "string" ? info : info?.message || "The server refused.", { id: toastId, duration: 8000 });
     };
-
-    const timer = setTimeout(() => {
+    const attempt = (n: number) => {
       if (settled) return;
-      finish();
-      toast.error(
-        `${host} did not answer, so you are still a member. Try again, or remove it from the sidebar.`,
-        { id: toastId, duration: 8000 },
-      );
-    }, 8000);
-
-    socket.once("server:left", onLeft);
+      if (n > TRIES) {
+        finish();
+        removeLocally();
+        toast.error(`${host} didn't answer, so it may still list you as a member. It's off your sidebar.`, { id: toastId, duration: 8000 });
+        return;
+      }
+      if (!socket.connected) socket.connect();
+      socket.emit("server:leave");
+      timer = setTimeout(() => attempt(n + 1), 6000);
+    };
+    socket.on("server:left", onLeft);
     socket.once("server:error", onError);
-    socket.emit("server:leave");
+    attempt(1);
   };
 
   // `?fakedms` in dev: the boards' people and voice channels on the first server that answered.
