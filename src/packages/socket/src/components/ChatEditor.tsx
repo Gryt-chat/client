@@ -828,6 +828,8 @@ export const ChatEditor = forwardRef<ChatEditorHandle, ChatEditorProps>(
                 type="button"
                 aria-label="Insert emoji"
                 disabled={disabled}
+                // Keeps the picker's outside-press listener on document from closing it, so the click below toggles it shut.
+                onMouseDown={(e) => { if (emojiPickerOpen) e.stopPropagation(); }}
                 onClick={() => setEmojiPickerOpen((v) => !v)}
               >
                 <PiSmileyWinkFill size={20} />
