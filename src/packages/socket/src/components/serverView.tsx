@@ -722,8 +722,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     setSelectedDmId(conversation.conversation_id);
   }, [setSelectedDmId]);
 
-  /* Hiding the one being read points the view at a conversation that has moved
-     under the Hidden group, so the selection goes back to the channels. */
+  /* Hiding the one being read would leave the view on a conversation that's no
+     longer listed, so the selection goes back to the channels. */
   const forgetHiddenDm = useCallback((conversationId: string) => {
     setSelectedDmId((current) => (current === conversationId ? null : current));
   }, [setSelectedDmId]);

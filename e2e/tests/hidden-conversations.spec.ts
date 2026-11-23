@@ -93,6 +93,9 @@ test("comes back when you message them again", async ({ newMember }) => {
   await hide(bob.page, alice.name);
   await expect(row(bob.page, alice.name)).toHaveCount(0);
 
+  // Back to the server, where her card is, the way a person would go.
+  await bob.page.getByRole("button", { name: /^Direct messages/ }).filter({ visible: true }).first().click();
+  await expect(list(bob.page)).toBeHidden();
   await openDm(bob, alice);
   await openMessages(bob.page);
   await expect(row(bob.page, alice.name)).toBeVisible();
