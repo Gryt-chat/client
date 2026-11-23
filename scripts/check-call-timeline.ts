@@ -39,4 +39,12 @@ assert.match(lines[0], /^call started /, "the start line survives the cap");
 endCallTimeline();
 assert.match(callTimeline().at(-1) ?? "", /^call ended after /);
 
+// The next call keeps the end of this one, since people tend to report after rejoining.
+startCallTimeline();
+recordCallSample(base);
+const both = callTimeline();
+assert.equal(both.filter((l) => l.startsWith("call started")).length, 2, "the previous call is gone");
+assert.ok(both.some((l) => l.startsWith("call ended after")), "the previous call's end is gone");
+assert.equal(both.length, 120 + 2, "the previous call is kept to its last 120 lines");
+
 console.log("call timeline: ok");
