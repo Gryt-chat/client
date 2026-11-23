@@ -40,6 +40,7 @@ import { useVoicePresence,type VoicePresence } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
 
 import { useIdentityClaim } from "../hooks/useIdentityClaim";
+import { getElectronAPI } from "../lib/electron";
 import { PiChatsTeardropFill } from "../lib/icons";
 import { PiBroadcastFill, PiBugFill, PiChatTeardropDotsFill, PiGearFill, PiMicrophoneFill, PiMicrophoneSlashFill, PiPlus, PiSignInFill } from "../lib/icons";
 import { useReportForm } from "../lib/reports/useReportForm";
@@ -373,6 +374,12 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                     </div>
                   </Menu.Item>
                 )}
+              </>
+            )}
+            {isElectron && (
+              <>
+                <Menu.Separator />
+                <Menu.Item onClick={() => getElectronAPI()?.quit()}>Quit Gryt</Menu.Item>
               </>
             )}
           </Menu.Popup>
