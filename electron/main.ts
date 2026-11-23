@@ -2554,7 +2554,7 @@ function keycodeForDomCode(
 
 // ── Hotkey bindings ─────────────────────────────────────────────────────
 
-type HotkeyAction = "ptt" | "mute" | "deafen" | "disconnect";
+type HotkeyAction = "ptt" | "ptm" | "mute" | "deafen" | "disconnect";
 
 interface HotkeyBinding {
   /** uiohook keycode, or null when the binding is a mouse button. */

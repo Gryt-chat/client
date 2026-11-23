@@ -93,6 +93,8 @@ export function HotkeySettings() {
     inputMode,
     pushToTalkKey,
     setPushToTalkKey,
+    pushToMuteKey,
+    setPushToMuteKey,
     muteHotkey,
     setMuteHotkey,
     deafenHotkey,
@@ -119,6 +121,15 @@ export function HotkeySettings() {
           description="Hold this key or mouse button to transmit your microphone."
           value={pushToTalkKey}
           onChange={setPushToTalkKey}
+        />
+      )}
+
+      {inputMode === "voice_activity" && (
+        <HotkeyCapture
+          label="Push to mute"
+          description="Hold this key or mouse button to mute your microphone. Let go and it's back on."
+          value={pushToMuteKey}
+          onChange={setPushToMuteKey}
         />
       )}
 

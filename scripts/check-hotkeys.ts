@@ -83,7 +83,7 @@ assert.equal(comboMouseButton("Ctrl+Mouse5"), 5);
 assert.equal(comboMouseButton("Ctrl+KeyM"), null);
 assert.equal(comboMouseButton(""), null);
 
-assert.deepEqual(HOTKEY_ACTIONS, ["ptt", "mute", "deafen", "disconnect"]);
+assert.deepEqual(HOTKEY_ACTIONS, ["ptt", "ptm", "mute", "deafen", "disconnect"]);
 
 // The main process parses stored combos with this and hands the result to
 // uiohook, so a key has to come back as a DOM code and a mouse as a number.

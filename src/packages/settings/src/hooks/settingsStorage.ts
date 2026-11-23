@@ -162,6 +162,8 @@ export interface Settings {
 
   pushToTalkKey: string;
   setPushToTalkKey: (value: string) => void;
+  pushToMuteKey: string;
+  setPushToMuteKey: (value: string) => void;
   muteHotkey: string;
   setMuteHotkey: (value: string) => void;
   deafenHotkey: string;
@@ -376,6 +378,8 @@ export const settingsInit: Settings = {
 
   pushToTalkKey: AUDIO_DEFAULTS.pushToTalkKey,
   setPushToTalkKey: noop,
+  pushToMuteKey: AUDIO_DEFAULTS.pushToMuteKey,
+  setPushToMuteKey: noop,
   muteHotkey: AUDIO_DEFAULTS.muteHotkey,
   setMuteHotkey: noop,
   deafenHotkey: AUDIO_DEFAULTS.deafenHotkey,

@@ -37,6 +37,7 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     isServerDeafened,
     inputMode,
     pushToTalkKey,
+    pushToMuteKey,
     muteHotkey,
     deafenHotkey,
     disconnectHotkey,
@@ -51,9 +52,13 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
   // A push-to-talk binding only counts while that input mode is on, otherwise
   // holding the key in voice-activity mode would register a press for nothing.
   const pttBinding = inputMode === "push_to_talk" ? pushToTalkKey : "";
+  const ptmBinding = inputMode === "voice_activity" ? pushToMuteKey : "";
+  // Set only when the hold did the muting, so letting go never unmutes a mic muted by hand.
+  const ptmMutedRef = useRef(false);
 
   const bindings: Record<HotkeyAction, string> = {
     ptt: pttBinding,
+    ptm: ptmBinding,
     mute: muteHotkey,
     deafen: deafenHotkey,
     disconnect: disconnectHotkey,
@@ -91,6 +96,7 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     // so is a mouse binding, which types nothing.
     if (
       action !== "ptt" &&
+      action !== "ptm" &&
       comboMouseButton(s.bindings[action]) === null &&
       isInputFocused()
     ) {
@@ -100,6 +106,12 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     switch (action) {
       case "ptt":
         s.setPushToTalkActive(true);
+        return;
+
+      case "ptm":
+        if (s.isMuted) return;
+        ptmMutedRef.current = true;
+        s.setIsMuted(true);
         return;
 
       case "mute":
@@ -126,6 +138,10 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
 
   const releaseAction = useCallback((action: HotkeyAction) => {
     if (action === "ptt") stateRef.current.setPushToTalkActive(false);
+    if (action === "ptm" && ptmMutedRef.current) {
+      ptmMutedRef.current = false;
+      stateRef.current.setIsMuted(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -136,6 +152,7 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     getElectronAPI()
       ?.setHotkeys({
         ptt: pttBinding,
+        ptm: ptmBinding,
         mute: muteHotkey,
         deafen: deafenHotkey,
         disconnect: disconnectHotkey,
@@ -152,7 +169,7 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     return () => {
       cancelled = true;
     };
-  }, [pttBinding, muteHotkey, deafenHotkey, disconnectHotkey]);
+  }, [pttBinding, ptmBinding, muteHotkey, deafenHotkey, disconnectHotkey]);
 
   useEffect(() => {
     if (!globalCapture) return;
@@ -242,6 +259,7 @@ export function useGlobalHotkeys(onDisconnect?: () => void) {
     pressAction,
     releaseAction,
     pttBinding,
+    ptmBinding,
     muteHotkey,
     deafenHotkey,
     disconnectHotkey,
