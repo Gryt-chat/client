@@ -18,6 +18,12 @@ assert.equal(parseReport("started 1"), null);
 const measured = parseReport("r 0 -23.5 1 l=7:-12.3 b=7:12.5 s=7 t=7:21.4");
 assert.deepEqual(measured && [...measured.rtt], [[7, 21.4]], "the round trips gryt-voice reports didn't parse");
 assert.equal(report.rtt.size, 0, "a report without round trips should have none");
+// What gryt-voice 0.10 prints: the mic input and gate after the round trips, and made-up frames (GRYT-2231).
+const current = parseReport("r 0 -23.5 1 l=7:-12.3 b=7:12.5 s=7 t=7:21.4 w=-30.2 g=55.0 c=7:12");
+assert.ok(current, "a report with w= g= c= didn't parse, so the desktop engine's levels stayed empty");
+assert.deepEqual([...current.levels], [[7, -12.3]]);
+assert.deepEqual([...current.concealed], [[7, 12]]);
+assert.equal(parseReport("r 0 -23.5 1 l=7:-12.3 s=7"), null, "a line without buffered isn't a report");
 
 // voice_helper.c reads them positionally, so the order is the contract.
 assert.deepEqual(

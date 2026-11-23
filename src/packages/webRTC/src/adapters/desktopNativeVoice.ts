@@ -25,6 +25,7 @@ export const startDesktopNativeAudio: StartNative = async (offer, effects) => {
       ids: [...last.buffered.keys()],
       bufferedMs: [...last.buffered.values()],
       rttMs: [...last.buffered.keys()].map((id) => last.rtt.get(id) ?? -1),
+      concealed: [...last.buffered.keys()].map((id) => last.concealed.get(id) ?? 0),
       inputMs: 0,
       outputMs: 0,
       ioBufferMs: 64 / 48,

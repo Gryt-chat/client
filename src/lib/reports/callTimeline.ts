@@ -16,6 +16,8 @@ export interface CallStatsSample {
   /** On the own voice transport: the most anyone's audio waits here, and the slowest round trip. The rest is WebRTC's. */
   transportBufferedMs?: number | null;
   transportRttMs?: number | null;
+  /** Frames made up so far on the own transport, late or lost, everyone together (GRYT-2231). */
+  transportConcealed?: number | null;
   /** Background windows throttle timers, which is the first suspect for "after a while". */
   visible: boolean;
   focused: boolean;
@@ -44,7 +46,7 @@ export function formatCallSample(secs: number, now: CallStatsSample, prev: CallS
     `${now.bitrateKbps === null ? "?" : Math.round(now.bitrateKbps)}kbps`,
     ...(now.transportBufferedMs == null && now.transportRttMs == null
       ? []
-      : [`own buffer ${ms(now.transportBufferedMs ?? null)} rtt ${ms(now.transportRttMs ?? null)}`]),
+      : [`own buffer ${ms(now.transportBufferedMs ?? null)} rtt ${ms(now.transportRttMs ?? null)} made up ${lostSince(now.transportConcealed ?? null, prev?.transportConcealed)}`]),
     `est ${ms(now.estimatedRoundTripMs)}`,
     `${now.visible ? "visible" : "hidden"}${now.focused ? " focused" : ""}`,
   ].join(" | ");
