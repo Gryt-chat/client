@@ -8,7 +8,11 @@ export function markCloudWelcome(host: string) {
   } catch {
     /* private mode: no welcome, nothing else lost */
   }
+  // The server may be open already: the app joins a new Cloud server before Open in Gryt is pressed.
+  window.dispatchEvent(new CustomEvent(WELCOME_EVENT, { detail: host }));
 }
+
+export const WELCOME_EVENT = "gryt:cloud-welcome";
 
 export function wantsCloudWelcome(host: string): boolean {
   try {
