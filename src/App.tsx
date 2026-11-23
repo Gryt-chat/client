@@ -1,5 +1,5 @@
 import { useSFU } from "@gryt/voice";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useGlobalHotkeys } from "@/audio";
 import {
@@ -95,11 +95,19 @@ export function App() {
     });
   }, [openSettings]);
 
+  // Read through a ref, since the deep-link listener is registered once.
+  const openKnown = useRef({ hasServer, switchToServer });
+  useEffect(() => {
+    openKnown.current = { hasServer, switchToServer };
+  }, [hasServer, switchToServer]);
+
   // Listen for invite deep links from the Electron main process (gryt://invite?...).
   useEffect(() => {
     return window.electronAPI?.onDeepLinkInvite(({ host, code, welcome }) => {
       if (welcome) markCloudWelcome(host);
       if (cloudWait.take(host)) return;
+      // A server this device already has opens, rather than offering to join it again.
+      if (openKnown.current.hasServer(normalizeHost(host))) return openKnown.current.switchToServer(normalizeHost(host));
       const pending = writePendingInvite(host, code);
       if (pending) setPendingInvite(pending);
     });
@@ -111,6 +119,12 @@ export function App() {
     if (!ready) return;
     const pending = readPendingInvite();
     if (!pending) return;
+    const host = normalizeHost(pending.host);
+    if (openKnown.current.hasServer(host)) {
+      clearPendingInvite();
+      openKnown.current.switchToServer(host);
+      return;
+    }
     setPendingInvite(pending);
   }, [ready]);
 
