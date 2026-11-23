@@ -724,7 +724,7 @@ export function VoiceParticipantCard({
             hang a badge on. */}
         {((compact && (client.isMuted || client.isDeafened)) ||
           client.isAFK) && (
-          <div className="flex absolute gap-1" style={{ bottom: "-4px", right: "-4px", background: "var(--gryt-neutral-3)",
+          <div className="flex absolute gap-1" style={{ bottom: "-4px", right: "-4px", zIndex: 2, background: "var(--gryt-neutral-3)",
               borderRadius: "var(--gryt-radius-md)",
               padding: "2px 4px",
               border: "1px solid var(--gryt-neutral-6)" }}>
