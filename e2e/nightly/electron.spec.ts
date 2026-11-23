@@ -20,6 +20,7 @@ import { ProblemLog } from "../support/problems";
 import { freePort } from "../support/server";
 import { expectAudioArriving, type Guest, joinVoice, recordAudioSocket } from "./support/call";
 import { isAlive, isDescendantOf, listeners, occupy } from "./support/ports";
+import { watchPeerConnections } from "./support/webrtc";
 
 /** The electron package's main export is the path to its binary. It throws when the download was skipped. */
 const electronBinary = () => createRequire(import.meta.url)("electron") as string;
@@ -61,6 +62,8 @@ async function createInvite(settings: Locator, code: string): Promise<void> {
   await settings.getByRole("tab", { name: "Invites", exact: true }).click();
   const panel = settings.getByRole("tabpanel", { name: "Invites" });
   await panel.getByPlaceholder("Leave blank for random").fill(code);
+  // The guest and both callers each use it.
+  await panel.getByPlaceholder("1", { exact: true }).fill("3");
   await panel.getByRole("button", { name: "Create invite" }).click();
   await expect(panel.getByText(code, { exact: true })).toBeVisible();
 }
@@ -150,6 +153,9 @@ test("the desktop app hosts a server on an SFU of its own, and a browser joins i
         const name = uniqueName("Caller");
         const callerContext = await media.newContext({ baseURL: testInfo.project.use.baseURL, permissions: ["microphone", "camera"] });
         await prepare(callerContext, problems.report, { nickname: name });
+        await watchPeerConnections(callerContext, false);
+        // WebRTC audio, as stable sends it. Beta builds use the own transport, whose bytes the test can't count.
+        await callerContext.addInitScript(() => localStorage.setItem("gryt.ownAudioTransport", "0"));
         const page = await callerContext.newPage();
         problems.watch(page, name, `http://127.0.0.1:${serverPort}`);
         await page.goto("/");
