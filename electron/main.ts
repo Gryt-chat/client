@@ -3190,6 +3190,11 @@ if (!gotSingleInstanceLock) {
         () => isOnBetaChannel()
       );
 
+      ipcMain.on("quit-app", () => {
+        isQuitting = true;
+        app.quit();
+      });
+
       ipcMain.on(
         "set-beta-channel",
         (_event, enabled: boolean) => {

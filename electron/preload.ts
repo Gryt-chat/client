@@ -519,6 +519,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.send("auth:open-external", url);
   },
 
+  quit() {
+    ipcRenderer.send("quit-app");
+  },
+
   onAuthCallback(callback: (url: string) => void) {
     const handler = (_event: Electron.IpcRendererEvent, url: string) =>
       callback(url);

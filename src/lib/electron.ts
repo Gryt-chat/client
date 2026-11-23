@@ -368,6 +368,8 @@ export interface ElectronAPI {
   onWindowFocusChange(callback: (focused: boolean) => void): () => void;
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;
+  /** Quits for real, rather than closing to the tray: Linux often has no tray to quit from. */
+  quit(): void;
   loadUserData(userId: string): Promise<Record<string, unknown>>;
   saveUserData(userId: string, data: Record<string, unknown>): void;
   setUserData(userId: string, key: string, value: unknown): void;
