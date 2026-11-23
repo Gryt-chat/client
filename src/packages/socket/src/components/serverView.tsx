@@ -30,7 +30,7 @@ import { useFakeSpeech } from "../dev/fakeSpeech";
 import { takeCallRequest } from "../hooks/callRequest";
 import { useDirectory } from "../hooks/dmDirectory";
 import { conversationFor, conversationOpened, leftOver, rememberConversation, requestConversation, setDmSpaceOpen, usePendingConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
-import { hideConversation } from "../hooks/hiddenConversations";
+import { hideConversation, showConversation } from "../hooks/hiddenConversations";
 import { useOpenThread } from "../hooks/openThreadMemory";
 import { useAdminActions } from "../hooks/useAdminActions";
 import { useBlocks } from "../hooks/useBlocks";
@@ -84,7 +84,7 @@ import { DmSpaceSidebar } from "./DmSpaceSidebar";
 import { FriendButton } from "./FriendButton";
 import { GroupDialog } from "./GroupDialog";
 import { GroupFace } from "./GroupFace";
-import { hideConversationWithUndo, useConfirmHide } from "./hideConversation";
+import { hideConversationWithUndo } from "./hideConversation";
 import { IncomingCallCard } from "./IncomingCallCard";
 import { type MemberCardActions, MemberCardActionsContext } from "./memberCard/memberCardContext";
 import { MemberSidebarPanel } from "./MemberSidebarPanel";
@@ -302,7 +302,6 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const [dmInfoOpen, setDmInfoOpen] = useState(true);
   const [compareOpen, setCompareOpen] = useState(false);
   const compareKeys = useCallback(() => setCompareOpen(true), []);
-  const [askHide, hideDialog] = useConfirmHide();
   const [pendingLeave, setPendingLeave] = useState<{ title: string; leave: () => void } | null>(null);
   const askLeave = (title: string, leave: () => void) => setPendingLeave({ title, leave });
   const openDmSearch = useCallback(() => {
@@ -614,10 +613,12 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const goToConversation = useCallback((conversationId: string) => {
     const host = currentlyViewingServer?.host;
     if (!host) return;
+    // Messaging someone again is how a hidden conversation comes back.
+    showConversation(host, currentServerUserId ?? "", conversationId);
     requestConversation(host, conversationId);
     // This server, so the rail's button comes back here. From inside, it's ignored.
     setDmSpaceOpen(true, { kind: "server", host });
-  }, [currentlyViewingServer?.host]);
+  }, [currentlyViewingServer?.host, currentServerUserId]);
 
   /** Waits for `dm:opened` rather than deriving the id, which would mean the
       client owning a rule the server owns and opening empty when they drift. */
@@ -721,8 +722,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     setSelectedDmId(conversation.conversation_id);
   }, [setSelectedDmId]);
 
-  /* Hiding the one being read points the view at a conversation that has moved
-     under the Hidden group, so the selection goes back to the channels. */
+  /* Hiding the one being read would leave the view on a conversation that's no
+     longer listed, so the selection goes back to the channels. */
   const forgetHiddenDm = useCallback((conversationId: string) => {
     setSelectedDmId((current) => (current === conversationId ? null : current));
   }, [setSelectedDmId]);
@@ -1855,10 +1856,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   onJump={(messageId) => setPendingJump({ conversationId: activeDm.conversation_id, messageId, nonce: Date.now() })}
                   onHide={() => {
                     const dm = activeDm;
-                    askHide(conversationTitle(dm), () => {
-                      hideConversationWithUndo(host, currentServerUserId ?? "", dm.conversation_id, conversationTitle(dm));
-                      forgetHiddenDm(dm.conversation_id);
-                    });
+                    hideConversationWithUndo(host, currentServerUserId ?? "", dm.conversation_id, conversationTitle(dm));
+                    forgetHiddenDm(dm.conversation_id);
                   }}
                   onSearch={openDmSearch}
                   onImport={() => setImportOpen(true)}
@@ -1970,7 +1969,6 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         }}
       />
 
-      {hideDialog}
       {activeDm?.kind === "dm" && viewingHost && (
         <CompareCodesDialog
           open={compareOpen}
