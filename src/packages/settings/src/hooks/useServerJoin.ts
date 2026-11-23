@@ -15,6 +15,7 @@ import {
 } from "@/common";
 import { joinServerOnce } from "@/socket";
 
+import { cloudStatus, cloudStatusLine } from "../../../../lib/cloudStatus";
 import { useServerManagement } from "../../../socket/src/hooks/useServerManagement";
 import { sameServer } from "../serverId";
 import { useSettings } from "./useSettings";
@@ -97,6 +98,10 @@ export async function fetchServerInfo(
     if (served) rememberScheme(normalizedHost, served);
 
     if (res.status === 404) return { kind: "private" };
+    if (res.status === 410) {
+      const line = cloudStatusLine(await cloudStatus(normalizedHost).catch(() => null), normalizedHost);
+      if (line) return { kind: "error", message: line };
+    }
     if (!res.ok) {
       return { kind: "error", message: `Server responded with ${res.status}` };
     }
@@ -119,7 +124,8 @@ export async function fetchServerInfo(
       message === "Failed to fetch" ||
       message === "Load failed"
     ) {
-      return { kind: "error", message: "Nothing answered at this address." };
+      const line = cloudStatusLine(await cloudStatus(normalizedHost).catch(() => null), normalizedHost);
+      return { kind: "error", message: line ?? "Nothing answered at this address." };
     }
 
     return { kind: "error", message: message || "Server is not responding" };

@@ -1,10 +1,11 @@
 import { Button, Surface } from "@gryt/ui";
 import { useState } from "react";
 
+import { cloudDay, useCloudStatus } from "../../../../lib/cloudStatus";
 import { PiArrowsClockwiseFill, PiGlobeSimpleFill, PiPlugsFill, PiPulseBold } from "../../../../lib/icons";
 import { useServerGone } from "../hooks/useServerGone";
 import { ServerDoctor } from "./ServerDoctor";
-import { ServerGone } from "./ServerGone";
+import { ServerAway, ServerGone } from "./ServerGone";
 
 /**
  * A server that isn't answering (board 9, GRYT-1751): its name with the reason
@@ -30,7 +31,11 @@ export function UnreachableServer({
 }) {
   const [doctorOpen, setDoctorOpen] = useState(false);
   const deletedOn = useServerGone(host);
+  const cloud = useCloudStatus(host);
+  if (cloud?.state === "deleted" && cloud.deleted_on) return <ServerGone host={host} serverName={serverName} deletedOn={cloud.deleted_on} reason={cloud.reason} />;
   if (deletedOn) return <ServerGone host={host} serverName={serverName} deletedOn={deletedOn} />;
+  if (cloud?.state === "paused") return <ServerAway host={host} kind="paused" title={`${serverName} is paused`} text={`${cloud.reason === "payment" ? "Its plan wasn’t renewed." : "Its owner cancelled it."}${cloud.until ? ` They can still restore it until ${cloudDay(cloud.until)}, and then it’s deleted.` : ""}`} />;
+  if (cloud?.state === "down") return <ServerAway host={host} kind="down" title={`${serverName} is down`} text="The Gryt Cloud machine it runs on stopped answering. That’s on our side, and nothing you did. It comes back by itself." onTryNow={onTryNow} />;
 
   return (
     <div className="flex w-full h-full min-w-0 gap-4" data-gryt="server-unreachable">

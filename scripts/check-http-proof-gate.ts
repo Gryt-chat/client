@@ -117,6 +117,7 @@ const INFO_STUBS: Record<string, string> = {
   "../../../socket/src/hooks/useServerManagement": moduleUrl("export const useServerManagement = () => ({});"),
   "../serverId": moduleUrl("export const sameServer = () => false;"),
   "./useSettings": moduleUrl("export const useSettings = () => ({});"),
+  "../../../../lib/cloudStatus": moduleUrl("export const cloudStatus = async () => null; export const cloudStatusLine = () => null;"),
 };
 Object.assign(globalThis, { window: globalThis });
 const { fetchServerInfo } = await import(
