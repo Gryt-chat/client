@@ -1113,6 +1113,11 @@ body {
   max-height: 400px;
 }
 
+/* An iframe's own width is 300px, so a box sized to its content needs a width of its own. */
+.link-embed-container:has(> .link-embed-iframe) {
+  width: 420px;
+}
+
 .link-embed-iframe {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -1645,6 +1650,10 @@ body {
 
   .link-embed-container {
     max-width: min(620px, 100%);
+  }
+
+  .link-embed-container:has(> .link-embed-iframe) {
+    width: 620px;
   }
 
   .link-embed-image {
