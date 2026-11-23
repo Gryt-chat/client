@@ -23,6 +23,7 @@ export interface AudioSettingsData {
   eSportsModeEnabled: boolean;
   inputMode: "voice_activity" | "push_to_talk";
   pushToTalkKey: string;
+  pushToMuteKey: string;
   muteHotkey: string;
   deafenHotkey: string;
   disconnectHotkey: string;
@@ -61,6 +62,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   eSportsModeEnabled: false,
   inputMode: "voice_activity",
   pushToTalkKey: "",
+  pushToMuteKey: "",
   muteHotkey: "",
   deafenHotkey: "",
   disconnectHotkey: "",
@@ -100,6 +102,7 @@ export function loadAudioFromCache(): AudioSettingsData {
     eSportsModeEnabled: getUserValue("eSportsModeEnabled", AUDIO_DEFAULTS.eSportsModeEnabled),
     inputMode: getUserValue("inputMode", AUDIO_DEFAULTS.inputMode),
     pushToTalkKey: getUserValue("pushToTalkKey", AUDIO_DEFAULTS.pushToTalkKey),
+    pushToMuteKey: getUserValue("pushToMuteKey", AUDIO_DEFAULTS.pushToMuteKey),
     muteHotkey: getUserValue("muteHotkey", AUDIO_DEFAULTS.muteHotkey),
     deafenHotkey: getUserValue("deafenHotkey", AUDIO_DEFAULTS.deafenHotkey),
     disconnectHotkey: getUserValue("disconnectHotkey", AUDIO_DEFAULTS.disconnectHotkey),
@@ -145,6 +148,7 @@ export function useAudioSettings() {
   const [eSportsModeEnabled, setESportsModeEnabled] = useState(AUDIO_DEFAULTS.eSportsModeEnabled);
   const [inputMode, setInputMode] = useState<"voice_activity" | "push_to_talk">(AUDIO_DEFAULTS.inputMode);
   const [pushToTalkKey, setPushToTalkKey] = useState(AUDIO_DEFAULTS.pushToTalkKey);
+  const [pushToMuteKey, setPushToMuteKey] = useState(AUDIO_DEFAULTS.pushToMuteKey);
   const [muteHotkey, setMuteHotkey] = useState(AUDIO_DEFAULTS.muteHotkey);
   const [deafenHotkey, setDeafenHotkey] = useState(AUDIO_DEFAULTS.deafenHotkey);
   const [disconnectHotkey, setDisconnectHotkey] = useState(AUDIO_DEFAULTS.disconnectHotkey);
@@ -182,6 +186,7 @@ export function useAudioSettings() {
     setESportsModeEnabled(d.eSportsModeEnabled);
     setInputMode(d.inputMode);
     setPushToTalkKey(d.pushToTalkKey);
+    setPushToMuteKey(d.pushToMuteKey);
     setMuteHotkey(d.muteHotkey);
     setDeafenHotkey(d.deafenHotkey);
     setDisconnectHotkey(d.disconnectHotkey);
@@ -274,6 +279,11 @@ export function useAudioSettings() {
   function updatePushToTalkKey(key: string) {
     setPushToTalkKey(key);
     setUserValue("pushToTalkKey", key);
+  }
+
+  function updatePushToMuteKey(key: string) {
+    setPushToMuteKey(key);
+    setUserValue("pushToMuteKey", key);
   }
 
   function updateMuteHotkey(key: string) {
@@ -476,6 +486,8 @@ export function useAudioSettings() {
     setInputMode: updateInputMode,
     pushToTalkKey,
     setPushToTalkKey: updatePushToTalkKey,
+    pushToMuteKey,
+    setPushToMuteKey: updatePushToMuteKey,
     muteHotkey,
     setMuteHotkey: updateMuteHotkey,
     deafenHotkey,

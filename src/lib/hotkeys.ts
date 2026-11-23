@@ -24,9 +24,9 @@ export interface MouseLike {
 }
 
 /** Everything a hotkey can be bound to. */
-export type HotkeyAction = "ptt" | "mute" | "deafen" | "disconnect";
+export type HotkeyAction = "ptt" | "ptm" | "mute" | "deafen" | "disconnect";
 
-export const HOTKEY_ACTIONS: HotkeyAction[] = ["ptt", "mute", "deafen", "disconnect"];
+export const HOTKEY_ACTIONS: HotkeyAction[] = ["ptt", "ptm", "mute", "deafen", "disconnect"];
 
 export type HotkeyBindings = Record<HotkeyAction, string>;
 

@@ -361,6 +361,7 @@ export const SETTINGS_KEYS = [
   "preEsportsSettings",
   "inputMode",
   "pushToTalkKey",
+  "pushToMuteKey",
   "muteHotkey",
   "deafenHotkey",
   "disconnectHotkey",
