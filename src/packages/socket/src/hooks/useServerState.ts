@@ -462,8 +462,10 @@ export function useServerState(): UseServerStateResult {
   ]);
 
   useEffect(() => {
-    if (!currentlyViewingServer || !audioContext) return;
-    const hostClients = clients[currentlyViewingServer.host] || {};
+    // The call's server, not the one on screen: browsing elsewhere left a rejoiner's WebRTC copy at full volume (GRYT-1935).
+    const voiceHost = currentServerConnected ?? currentlyViewingServer?.host;
+    if (!voiceHost || !audioContext) return;
+    const hostClients = clients[voiceHost] || {};
     const baseGain = sliderToOutputGain(outputVolume);
     // The own transport takes the same per-user volume; its output gain already carries the rest.
     setTransportUserGains?.(
@@ -494,6 +496,7 @@ export function useServerState(): UseServerStateResult {
     outputVolume,
     isDeafened,
     clients,
+    currentServerConnected,
     currentlyViewingServer,
     streamSources,
     audioContext,
