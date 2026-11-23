@@ -349,11 +349,14 @@ export function AudioSettings() {
 
   const preset = presetOf({ rnnoiseEnabled, autoGainEnabled, compressorEnabled, eSportsModeEnabled, noiseGate, micVolume, inputMode });
   const choosePreset = (next: VoicePreset) => {
-    if (next === "custom" || next === preset) return;
+    if (next === preset) return;
     if (next === "esports") return setESportsModeEnabled(true);
+    // Custom, or anything else the Select hands back (null included), has no switches to set.
+    const switches = PRESET_SWITCHES[next as keyof typeof PRESET_SWITCHES];
+    if (!switches) return;
     // Leaving eSports first puts back the input mode and gate it took over.
     if (eSportsModeEnabled) setESportsModeEnabled(false);
-    const { rnnoiseEnabled: rnnoise, autoGainEnabled: autoGain, compressorEnabled: compressor } = PRESET_SWITCHES[next];
+    const { rnnoiseEnabled: rnnoise, autoGainEnabled: autoGain, compressorEnabled: compressor } = switches;
     setRnnoiseEnabled(rnnoise);
     setAutoGainEnabled(autoGain);
     setCompressorEnabled(compressor);
