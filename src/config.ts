@@ -1,3 +1,5 @@
+import { isElectron } from "./lib/electron";
+
 export type GrytRuntimeConfig = {
   GRYT_OIDC_ISSUER?: string;
   GRYT_OIDC_REALM?: string;
@@ -135,11 +137,10 @@ export function getGrytConfig(): Required<GrytRuntimeConfig> {
     );
 
   // gryt.chat's callback page only forwards to the app for another issuer, so a self-hosted one skips it.
-  const authCallbackUrl = configValue(
-    win?.GRYT_AUTH_CALLBACK_URL,
-    import.meta.env.VITE_GRYT_AUTH_CALLBACK_URL,
-    customIssuer ? 'gryt://auth/callback' : 'https://gryt.chat/auth/callback',
-  );
+  // The bundled config.js names gryt.chat's page, so on the desktop with a custom issuer it mustn't win (GRYT-2237).
+  const authCallbackUrl = customIssuer && isElectron()
+    ? configValue(undefined, import.meta.env.VITE_GRYT_AUTH_CALLBACK_URL, 'gryt://auth/callback')
+    : configValue(win?.GRYT_AUTH_CALLBACK_URL, import.meta.env.VITE_GRYT_AUTH_CALLBACK_URL, 'https://gryt.chat/auth/callback');
 
   /**
    * Where bug reports and feedback go. Not something a self-hoster points
