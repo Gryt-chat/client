@@ -146,10 +146,7 @@ test("the desktop app hosts a server on an SFU of its own, and a browser joins i
     await context.close();
 
     // Voice through the app's own SFU. The app has no fake microphone here, so two browsers that do make the call.
-    // No QUIC: audio then takes the WebSocket fallback, which the test can count. WebTransport bytes aren't visible to it.
-    const media = await chromium.launch({
-      args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--disable-quic"],
-    });
+    const media = await chromium.launch({ args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
     try {
       const callers: Guest[] = [];
       for (let i = 0; i < 2; i++) {
@@ -157,6 +154,8 @@ test("the desktop app hosts a server on an SFU of its own, and a browser joins i
         const callerContext = await media.newContext({ baseURL: testInfo.project.use.baseURL, permissions: ["microphone", "camera"] });
         await prepare(callerContext, problems.report, { nickname: name });
         await watchPeerConnections(callerContext, false);
+        // WebRTC audio, as stable sends it. Beta builds use the own transport, whose bytes the test can't count.
+        await callerContext.addInitScript(() => localStorage.setItem("gryt.ownAudioTransport", "0"));
         const page = await callerContext.newPage();
         problems.watch(page, name, `http://127.0.0.1:${serverPort}`);
         await page.goto("/");
