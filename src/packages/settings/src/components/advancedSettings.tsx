@@ -50,7 +50,7 @@ export function AdvancedSettings() {
       <ToggleSetting
         advanced
         title="Experimental voice connection"
-        description="Your voice goes over Gryt's own connection instead of WebRTC, and on a Mac it runs on the phone's voice engine, except in the App Store version. It isn't finished yet. A server that doesn't support it uses WebRTC as before. Switching it during a call rejoins the call, with a short drop."
+        description="Gryt's own voice layer instead of WebRTC. It's experimental, so expect it to break."
         checked={newVoice}
         onCheckedChange={setNewVoice}
       />
