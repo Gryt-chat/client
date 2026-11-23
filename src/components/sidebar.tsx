@@ -85,14 +85,6 @@ function iconOpacity(s: { bright: boolean; isUnavailable: boolean; awaitingAppro
 }
 
 
-/** First letters and the ending only: yours to recognise, little to someone looking on. */
-function maskEmail(email: string): string {
-  const at = email.lastIndexOf("@");
-  if (at < 1) return email;
-  const domain = email.slice(at + 1);
-  const dot = domain.lastIndexOf(".");
-  return `${email[0]}•••@${domain[0] ?? ""}•••${dot > 0 ? domain.slice(dot) : ""}`;
-}
 export function Sidebar({ setShowAddServer }: SidebarProps) {
   const { isSignedIn, email, login, loginAnotherAccount, logout } = useAccount();
   const { nickname, avatarDataUrl, setShowSettings, openSettings } = useSettings();
@@ -356,7 +348,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                   <>
                     {email && (
                       <div className="px-3 py-1 text-xs text-gryt-muted">
-                        Signed in as {maskEmail(email)}
+                        Signed in as {email}
                       </div>
                     )}
                     <Menu.Item onClick={() => void loginAnotherAccount()}>
