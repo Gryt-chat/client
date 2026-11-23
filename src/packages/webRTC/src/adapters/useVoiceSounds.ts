@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import connectMp3 from "@/audio/src/assets/connect.mp3";
 import disconnectMp3 from "@/audio/src/assets/disconnect.mp3";
+import voiceFailedMp3 from "@/audio/src/assets/voice-failed.mp3";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { useSettings } from "@/settings";
 
@@ -32,5 +33,11 @@ export function useVoiceSounds() {
     );
   }, [disconnectSoundEnabled, customDisconnectSoundFile, disconnectSoundVolume]);
 
-  return { playConnect, playDisconnect };
+  // Rides on the disconnect setting, so turning leave sounds off silences this too.
+  const playFailed = useCallback(() => {
+    if (!disconnectSoundEnabled) return;
+    playNotificationSound(voiceFailedMp3, disconnectSoundVolume);
+  }, [disconnectSoundEnabled, disconnectSoundVolume]);
+
+  return { playConnect, playDisconnect, playFailed };
 }
