@@ -1,6 +1,6 @@
 import { Button, ChannelItem, type ChannelKind, ContextMenu, Skeleton, Tooltip } from "@gryt/ui";
 import type { StreamSources } from "@gryt/voice";
-import { useCamera, useMicrophone } from "@gryt/voice";
+import { useCamera, useMicrophone, useSFU } from "@gryt/voice";
 import { AnimatePresence, LayoutGroup, motion, Reorder } from "motion/react";
 import { type CSSProperties, type ReactElement, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import toast from "react-hot-toast";
@@ -208,6 +208,8 @@ export const ChannelList = ({
   // The same analyser source the voice tile uses, so the row's ring and the
   // tile's agree. false takes no handle; useMicrophone is a singleton.
   const { microphoneBuffer } = useMicrophone(false);
+  // The server marks someone connected when a WebRTC peer sees their stream; on the own transport none may.
+  const { transportUsers } = useSFU();
   const { cameraStream: localCamera } = useCamera();
 
   const memberByServerUserId = new Map(
@@ -557,7 +559,8 @@ export const ChannelList = ({
                               isConnecting &&
                               serverHost === currentServerConnected &&
                               channel.id === currentChannelId) ||
-                            (id !== currentConnectionId && !clients[id].isConnectedToVoice)
+                            (id !== currentConnectionId && !clients[id].isConnectedToVoice &&
+                              !(clients[id].serverUserId && transportUsers?.has(clients[id].serverUserId)))
                           }
                           screenShareEnabled={clients[id].screenShareEnabled}
                           screenShareCount={shareCount(clients[id])}
