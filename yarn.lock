@@ -595,10 +595,10 @@
     gemoji "^8.1.0"
     tailwind-merge "^3.4.0"
 
-"@gryt/voice@0.10.2":
-  version "0.10.2"
-  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.10.2.tgz#8d64815e314b92f5cee018864814f48f9ed4a9a1"
-  integrity sha512-+yt8348qh0dTWrj4lZvnGJ+c1IYYzi7lfEfsoWxj5+qVxhv0zuKs65VXgTnrZrg/3tGwXifgSBRF+DBWns1mxA==
+"@gryt/voice@0.10.3":
+  version "0.10.3"
+  resolved "https://registry.yarnpkg.com/@gryt/voice/-/voice-0.10.3.tgz#4a42f2cdcd7efc65248977a399bd79a792633bff"
+  integrity sha512-5In3T9ZpSZX9T4WQ71ZuYchfFHM+ro/xjD0FJO4zINy+AXMezB13c3TbSutimr/xC7NsTYrNzBvkcommqQhgHg==
 
 "@hpke/common@^1.10.0":
   version "1.10.1"
