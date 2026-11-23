@@ -368,7 +368,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
                 )}
               </>
             )}
-            {isElectron && (
+            {/* Linux only: GNOME has no tray, so closing the window left no way out. */}
+            {isElectron && /Linux/.test(navigator.userAgent) && (
               <>
                 <Menu.Separator />
                 <Menu.Item onClick={() => getElectronAPI()?.quit()}>Quit Gryt</Menu.Item>
