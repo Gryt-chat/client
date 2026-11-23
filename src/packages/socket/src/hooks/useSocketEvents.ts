@@ -108,12 +108,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     servers,
     nickname,
     userIdRef,
-    connectSoundEnabled,
-    disconnectSoundEnabled,
     connectSoundFile,
     disconnectSoundFile,
-    connectSoundVolume,
-    disconnectSoundVolume,
     messageSoundEnabled,
     messageSoundVolume,
     messageSoundFile,
@@ -138,12 +134,6 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
     onTokenRefreshed,
   } = deps;
 
-  const connectSoundEnabledRef = useRef(connectSoundEnabled);
-  const disconnectSoundEnabledRef = useRef(disconnectSoundEnabled);
-  const connectSoundFileRef = useRef(connectSoundFile);
-  const disconnectSoundFileRef = useRef(disconnectSoundFile);
-  const connectSoundVolumeRef = useRef(connectSoundVolume);
-  const disconnectSoundVolumeRef = useRef(disconnectSoundVolume);
   const messageSoundEnabledRef = useRef(messageSoundEnabled);
   const messageSoundVolumeRef = useRef(messageSoundVolume);
   const messageSoundFileRef = useRef(messageSoundFile);
@@ -152,12 +142,8 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
   const incrementUnreadRef = useRef(incrementUnread);
   const onTokenRefreshedRef = useRef(onTokenRefreshed);
 
-  useEffect(() => { connectSoundEnabledRef.current = connectSoundEnabled; }, [connectSoundEnabled]);
-  useEffect(() => { disconnectSoundEnabledRef.current = disconnectSoundEnabled; }, [disconnectSoundEnabled]);
-  useEffect(() => { connectSoundFileRef.current = connectSoundFile; preloadNotificationSound(connectSoundFile); }, [connectSoundFile]);
-  useEffect(() => { disconnectSoundFileRef.current = disconnectSoundFile; preloadNotificationSound(disconnectSoundFile); }, [disconnectSoundFile]);
-  useEffect(() => { connectSoundVolumeRef.current = connectSoundVolume; }, [connectSoundVolume]);
-  useEffect(() => { disconnectSoundVolumeRef.current = disconnectSoundVolume; }, [disconnectSoundVolume]);
+  useEffect(() => { preloadNotificationSound(connectSoundFile); }, [connectSoundFile]);
+  useEffect(() => { preloadNotificationSound(disconnectSoundFile); }, [disconnectSoundFile]);
   useEffect(() => { messageSoundEnabledRef.current = messageSoundEnabled; }, [messageSoundEnabled]);
   useEffect(() => { messageSoundVolumeRef.current = messageSoundVolume; }, [messageSoundVolume]);
   useEffect(() => { messageSoundFileRef.current = messageSoundFile; preloadNotificationSound(messageSoundFile); }, [messageSoundFile]);
@@ -457,26 +443,6 @@ export function useSocketEvents(sockets: Sockets, deps: SocketEventDeps) {
           removeServerRefreshToken(host);
           toast.error(errorInfo.message || `Couldn't sign you in to ${host}. Try joining it again.`);
         }
-      });
-
-      // ---- Peer join/leave sound notifications ----
-
-      socket.on("voice:peer:joined", (payload: { clientId: string; nickname: string; channelId?: string }) => {
-        if (!connectSoundEnabledRef.current) return;
-        if (!payload?.channelId) return;
-        if (payload.clientId === socket.id) return;
-        const mine = myVoiceStateByHostRef.current[host];
-        if (mine && (!mine.hasJoinedChannel || payload.channelId !== mine.voiceChannelId)) return;
-        playNotificationSound(connectSoundFileRef.current, connectSoundVolumeRef.current);
-      });
-
-      socket.on("voice:peer:left", (payload: { clientId: string; nickname: string; channelId?: string }) => {
-        if (!disconnectSoundEnabledRef.current) return;
-        if (!payload?.channelId) return;
-        if (payload.clientId === socket.id) return;
-        const mine = myVoiceStateByHostRef.current[host];
-        if (mine && (!mine.hasJoinedChannel || payload.channelId !== mine.voiceChannelId)) return;
-        playNotificationSound(disconnectSoundFileRef.current, disconnectSoundVolumeRef.current);
       });
 
       // ---- Background chat notification (non-focused servers) ----
