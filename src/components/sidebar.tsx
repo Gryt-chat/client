@@ -34,6 +34,7 @@ import { MarkAsReadItem } from "@/socket/src/components/MarkAsReadItem";
 import { ServerDoctor } from "@/socket/src/components/ServerDoctor";
 import type { ServerRingState } from "@/socket/src/components/ServerStatusRing";
 import { ServerStatusRing } from "@/socket/src/components/ServerStatusRing";
+import { useLeavingServers } from "@/socket/src/hooks/leavingServers";
 import { useOpenInviteLink } from "@/socket/src/hooks/useOpenInviteLink";
 import { useVoicePresence,type VoicePresence } from "@/webRTC";
 import { MiniControls } from "@/webRTC/src/components/miniControls";
@@ -109,6 +110,8 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
     setShowDiscovery,
     newLanServers,
   } = useServerManagement();
+  const leaving = useLeavingServers();
+  const shownHosts = orderedServerHosts.filter((h) => !leaving.has(h));
   const { isElectron } = useLanDiscovery();
 
   /**
@@ -185,7 +188,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
         <div style={{ width: 26, height: 1, background: "var(--gryt-neutral-6)", alignSelf: "center" }} />
         <Reorder.Group
           axis="y"
-          values={orderedServerHosts}
+          values={shownHosts}
           onReorder={reorderServers}
           as="div"
           style={{
@@ -197,7 +200,7 @@ export function Sidebar({ setShowAddServer }: SidebarProps) {
             margin: 0,
           }}
         >
-          {orderedServerHosts.map((host) => (
+          {shownHosts.map((host) => (
             <ServerItem
               key={host}
               host={host}
