@@ -61,6 +61,8 @@ async function createInvite(settings: Locator, code: string): Promise<void> {
   await settings.getByRole("tab", { name: "Invites", exact: true }).click();
   const panel = settings.getByRole("tabpanel", { name: "Invites" });
   await panel.getByPlaceholder("Leave blank for random").fill(code);
+  // The guest and both callers each use it.
+  await panel.getByPlaceholder("1", { exact: true }).fill("3");
   await panel.getByRole("button", { name: "Create invite" }).click();
   await expect(panel.getByText(code, { exact: true })).toBeVisible();
 }
