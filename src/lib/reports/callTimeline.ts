@@ -24,7 +24,10 @@ export interface CallStatsSample {
 }
 
 const MAX_LINES = 300;
+/** How much of the call before this one a report keeps: rejoining to fix a call is when people report it. */
+const PREVIOUS_LINES = 120;
 let lines: string[] = [];
+let previous: string[] = [];
 let started = 0;
 let before: CallStatsSample | null = null;
 
@@ -52,8 +55,9 @@ export function formatCallSample(secs: number, now: CallStatsSample, prev: CallS
   ].join(" | ");
 }
 
-/** A new call starts a new timeline, so a report holds the call it was sent from or the last one. */
+/** A new call starts a new timeline and keeps the end of the one before it. */
 export function startCallTimeline(): void {
+  previous = lines.length > PREVIOUS_LINES ? [lines[0], ...lines.slice(-(PREVIOUS_LINES - 1))] : lines;
   started = Date.now();
   before = null;
   lines = [`call started ${new Date(started).toISOString()}`];
@@ -73,7 +77,7 @@ export function endCallTimeline(): void {
   started = 0;
 }
 
-/** The current or last call's lines, oldest first. Empty before the first call. */
+/** The previous call's last lines, then the current or last call's, oldest first. Empty before the first call. */
 export function callTimeline(): string[] {
-  return lines.slice();
+  return [...previous, ...lines];
 }
