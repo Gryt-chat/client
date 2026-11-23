@@ -146,7 +146,10 @@ test("the desktop app hosts a server on an SFU of its own, and a browser joins i
     await context.close();
 
     // Voice through the app's own SFU. The app has no fake microphone here, so two browsers that do make the call.
-    const media = await chromium.launch({ args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
+    // No QUIC: audio then takes the WebSocket fallback, which the test can count. WebTransport bytes aren't visible to it.
+    const media = await chromium.launch({
+      args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--disable-quic"],
+    });
     try {
       const callers: Guest[] = [];
       for (let i = 0; i < 2; i++) {
