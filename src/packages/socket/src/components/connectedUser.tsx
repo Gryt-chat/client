@@ -102,9 +102,10 @@ export function ConnectedUser({
   const rowRef = useRef<HTMLDivElement>(null);
   // Own-transport voice has no analyser; the transport reports its level, as on the tile (GRYT-1830).
   const { getTransportLevels } = useSFU();
+  // A gated sender still sends quiet packets, just without the speaking flag, so the level alone never drops out.
   const transportDb = useCallback(
-    () => (serverUserId ? (getTransportLevels?.()?.users.get(serverUserId) ?? -Infinity) : -Infinity),
-    [getTransportLevels, serverUserId],
+    () => (serverUserId && isSpeaking ? (getTransportLevels?.()?.users.get(serverUserId) ?? -Infinity) : -Infinity),
+    [getTransportLevels, serverUserId, isSpeaking],
   );
 
   return (
