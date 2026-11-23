@@ -12,6 +12,7 @@ import {
   net,
   Notification,
   powerMonitor,
+  powerSaveBlocker,
   safeStorage,
   screen,
   session,
@@ -2902,6 +2903,17 @@ function trayTooltip(): string {
  * A hidden window's timers fall to roughly one a minute, which starves the voice
  * engine's 15s keep-alive and its dropped-socket check. Off for a call only.
  */
+let sleepBlockerId: number | null = null;
+
+// The screen may still turn off; the system doesn't sleep and drop the call.
+function setSleepBlocked(blocked: boolean): void {
+  if (blocked && sleepBlockerId === null) sleepBlockerId = powerSaveBlocker.start("prevent-app-suspension");
+  if (!blocked && sleepBlockerId !== null) {
+    powerSaveBlocker.stop(sleepBlockerId);
+    sleepBlockerId = null;
+  }
+}
+
 function setRendererThrottling(allowed: boolean): void {
   const contents = mainWindow?.webContents;
   if (!contents || contents.isDestroyed()) return;
@@ -3439,6 +3451,7 @@ if (!gotSingleInstanceLock) {
             setRendererThrottling(
               !next.inVoice
             );
+            setSleepBlocked(next.inVoice);
           }
 
           refreshTray();
