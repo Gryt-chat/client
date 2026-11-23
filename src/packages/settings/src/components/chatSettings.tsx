@@ -37,7 +37,7 @@ export function ChatSettings() {
 
       {!autoLoadEmbeds && trustedHosts.length > 0 && (
         <div className="flex flex-col gap-2">
-          <span className="text-xs text-gryt-muted">Sites you chose to always load from:</span>
+          <span className="text-xs text-gryt-muted">Sites that load without asking:</span>
           <div className="flex flex-wrap gap-2">
             {trustedHosts.map((host) => (
               <span key={host} className="flex items-center gap-1 rounded-(--gryt-radius-md) border border-gryt-border px-2 py-1 text-xs">
