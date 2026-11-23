@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import {
   _electron as electron,
+  chromium,
   type ElectronApplication,
   expect,
   type Locator,
@@ -17,7 +18,9 @@ import { prepare, uniqueName } from "../support/fixtures";
 import { CLIENT_ROOT } from "../support/preview";
 import { ProblemLog } from "../support/problems";
 import { freePort } from "../support/server";
+import { expectAudioArriving, type Guest, joinVoice, recordAudioSocket } from "./support/call";
 import { isAlive, isDescendantOf, listeners, occupy } from "./support/ports";
+import { watchPeerConnections } from "./support/webrtc";
 
 /** The electron package's main export is the path to its binary. It throws when the download was skipped. */
 const electronBinary = () => createRequire(import.meta.url)("electron") as string;
@@ -42,7 +45,8 @@ function hostedServers(desktop: Page): Promise<HostedServer[]> {
 
 async function createServer(desktop: Page, name: string, port: number): Promise<void> {
   await desktop.getByRole("button", { name: "Add a server" }).first().click();
-  await desktop.getByRole("dialog", { name: "Add a server" }).getByRole("button", { name: /^Create my own/ }).click();
+  await desktop.getByRole("dialog", { name: "Add a server" }).getByRole("button", { name: /^Create/ }).click();
+  await desktop.getByRole("dialog", { name: "Create a server" }).getByRole("button", { name: /^On this computer/ }).click();
 
   const form = desktop.getByRole("dialog", { name: "Create your server" });
   await form.getByPlaceholder("My Server").fill(name);
@@ -58,6 +62,8 @@ async function createInvite(settings: Locator, code: string): Promise<void> {
   await settings.getByRole("tab", { name: "Invites", exact: true }).click();
   const panel = settings.getByRole("tabpanel", { name: "Invites" });
   await panel.getByPlaceholder("Leave blank for random").fill(code);
+  // The guest and both callers each use it.
+  await panel.getByPlaceholder("1", { exact: true }).fill("3");
   await panel.getByRole("button", { name: "Create invite" }).click();
   await expect(panel.getByText(code, { exact: true })).toBeVisible();
 }
@@ -138,6 +144,29 @@ test("the desktop app hosts a server on an SFU of its own, and a browser joins i
     const owner = (page: Page) => membersPanel(page).getByRole("region", { name: /^owner/i });
     await expect(owner(guest), "the guest sees somebody else owning the server").toHaveText((await owner(desktop).textContent())!);
     await context.close();
+
+    // Voice through the app's own SFU. The app has no fake microphone here, so two browsers that do make the call.
+    const media = await chromium.launch({ args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
+    try {
+      const callers: Guest[] = [];
+      for (let i = 0; i < 2; i++) {
+        const name = uniqueName("Caller");
+        const callerContext = await media.newContext({ baseURL: testInfo.project.use.baseURL, permissions: ["microphone", "camera"] });
+        await prepare(callerContext, problems.report, { nickname: name });
+        await watchPeerConnections(callerContext, false);
+        // WebRTC audio, as stable sends it. Beta builds use the own transport, whose bytes the test can't count.
+        await callerContext.addInitScript(() => localStorage.setItem("gryt.ownAudioTransport", "0"));
+        const page = await callerContext.newPage();
+        problems.watch(page, name, `http://127.0.0.1:${serverPort}`);
+        await page.goto("/");
+        await joinServer(page, `gryt://invite?host=127.0.0.1:${serverPort}&code=${code}`);
+        callers.push({ page, name, frames: [], audioSocket: recordAudioSocket(page) });
+      }
+      for (const caller of callers) await joinVoice(caller);
+      for (const caller of callers) await expectAudioArriving(caller);
+    } finally {
+      await media.close();
+    }
   } catch (err) {
     if (app) {
       await app.context().tracing.stop({ path: testInfo.outputPath("electron-trace.zip") }).catch(() => undefined);
