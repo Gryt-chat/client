@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import {
   _electron as electron,
+  chromium,
   type ElectronApplication,
   expect,
   type Locator,
@@ -17,6 +18,7 @@ import { prepare, uniqueName } from "../support/fixtures";
 import { CLIENT_ROOT } from "../support/preview";
 import { ProblemLog } from "../support/problems";
 import { freePort } from "../support/server";
+import { expectAudioArriving, type Guest, joinVoice, recordAudioSocket } from "./support/call";
 import { isAlive, isDescendantOf, listeners, occupy } from "./support/ports";
 
 /** The electron package's main export is the path to its binary. It throws when the download was skipped. */
@@ -139,6 +141,26 @@ test("the desktop app hosts a server on an SFU of its own, and a browser joins i
     const owner = (page: Page) => membersPanel(page).getByRole("region", { name: /^owner/i });
     await expect(owner(guest), "the guest sees somebody else owning the server").toHaveText((await owner(desktop).textContent())!);
     await context.close();
+
+    // Voice through the app's own SFU. The app has no fake microphone here, so two browsers that do make the call.
+    const media = await chromium.launch({ args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
+    try {
+      const callers: Guest[] = [];
+      for (let i = 0; i < 2; i++) {
+        const name = uniqueName("Caller");
+        const callerContext = await media.newContext({ baseURL: testInfo.project.use.baseURL, permissions: ["microphone", "camera"] });
+        await prepare(callerContext, problems.report, { nickname: name });
+        const page = await callerContext.newPage();
+        problems.watch(page, name, `http://127.0.0.1:${serverPort}`);
+        await page.goto("/");
+        await joinServer(page, `gryt://invite?host=127.0.0.1:${serverPort}&code=${code}`);
+        callers.push({ page, name, frames: [], audioSocket: recordAudioSocket(page) });
+      }
+      for (const caller of callers) await joinVoice(caller);
+      for (const caller of callers) await expectAudioArriving(caller);
+    } finally {
+      await media.close();
+    }
   } catch (err) {
     if (app) {
       await app.context().tracing.stop({ path: testInfo.outputPath("electron-trace.zip") }).catch(() => undefined);
