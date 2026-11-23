@@ -173,19 +173,6 @@ export function Controls({ onDisconnect }: ControlsProps) {
         // Kept after the share stops: the engine pauses this sender rather than removing it.
         webrtcScreenVideoStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "screenVideo", screenVideoStream.id);
         prevScreenVideoRef.current = screenVideoStream;
-
-        const quality = screenShareQuality;
-        const fps = screenShareFps;
-        const settings = screenSendSettings({
-          quality, fps, gamingMode: screenShareGamingMode, codec: screenShareCodec,
-          maxBitrate: screenShareMaxBitrate, scalabilityMode: screenShareScalabilityMode,
-          nativeH264: nativeEncodedCodec === "h264",
-        });
-        voiceLog.info("SCREEN", `settings: maxBitrate=${settings.maxBitrate} maxFramerate=${fps} ceiling=${quality} scalabilityMode=${settings.scalabilityMode ?? "none"} degradationPreference=${settings.degradationPreference}`);
-        // In order, so a quick second pick can't land before the first.
-        screenLiftChain.current = screenLiftChain.current
-          .then(() => liftScreenCapture(videoTrack, quality, fps))
-          .then(() => setVideoSendSettingsRef.current?.("screen", settings));
       }
     } else if (prevScreenVideoRef.current) {
       voiceLog.info("SCREEN", `controls: removing video track, prevStream=${prevScreenVideoRef.current.id}`);
@@ -193,7 +180,27 @@ export function Controls({ onDisconnect }: ControlsProps) {
       setVideoSendSettingsRef.current?.("screen", null);
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, nativeEncodedCodec]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareCodec]);
+
+  // The picker's preset for window 1 lives in shareMeta; the settings are only the default.
+  const firstPreset = shareMeta(firstShareKey());
+  const screenQuality = firstPreset?.quality ?? screenShareQuality;
+  const screenFps = firstPreset?.fps ?? screenShareFps;
+  useEffect(() => {
+    if (!isConnected || !screenShareActive) return;
+    const videoTrack = screenVideoStream?.getVideoTracks()[0];
+    if (!videoTrack) return;
+    const settings = screenSendSettings({
+      quality: screenQuality, fps: screenFps, gamingMode: screenShareGamingMode, codec: screenShareCodec,
+      maxBitrate: screenShareMaxBitrate, scalabilityMode: screenShareScalabilityMode,
+      nativeH264: nativeEncodedCodec === "h264",
+    });
+    voiceLog.info("SCREEN", `settings: maxBitrate=${settings.maxBitrate} maxFramerate=${screenFps} ceiling=${screenQuality} scalabilityMode=${settings.scalabilityMode ?? "none"} degradationPreference=${settings.degradationPreference}`);
+    // In order, so a quick second pick can't land before the first.
+    screenLiftChain.current = screenLiftChain.current
+      .then(() => liftScreenCapture(videoTrack, screenQuality, screenFps))
+      .then(() => setVideoSendSettingsRef.current?.("screen", settings));
+  }, [isConnected, screenShareActive, screenVideoStream, screenQuality, screenFps, screenShareGamingMode, screenShareCodec, screenShareMaxBitrate, screenShareScalabilityMode, nativeEncodedCodec]);
 
   // Attach Encoded Transform when native H.264 encoding is active: injects
   // pre-encoded NALs, bypassing the browser's decode-re-encode cycle.
