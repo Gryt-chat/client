@@ -13,6 +13,9 @@ export interface CallStatsSample {
   bitrateKbps: number | null;
   /** The whole voice path, both ways, as the latency panel estimates it. */
   estimatedRoundTripMs: number | null;
+  /** On the own voice transport: the most anyone's audio waits here, and the slowest round trip. The rest is WebRTC's. */
+  transportBufferedMs?: number | null;
+  transportRttMs?: number | null;
   /** Background windows throttle timers, which is the first suspect for "after a while". */
   visible: boolean;
   focused: boolean;
@@ -39,6 +42,9 @@ export function formatCallSample(secs: number, now: CallStatsSample, prev: CallS
     `rtt ${ms(now.rttMs)} jitter ${ms(now.jitterMs)} buffer ${ms(now.jitterBufferMs)}`,
     `lost ${lost}`,
     `${now.bitrateKbps === null ? "?" : Math.round(now.bitrateKbps)}kbps`,
+    ...(now.transportBufferedMs == null && now.transportRttMs == null
+      ? []
+      : [`own buffer ${ms(now.transportBufferedMs ?? null)} rtt ${ms(now.transportRttMs ?? null)}`]),
     `est ${ms(now.estimatedRoundTripMs)}`,
     `${now.visible ? "visible" : "hidden"}${now.focused ? " focused" : ""}`,
   ].join(" | ");

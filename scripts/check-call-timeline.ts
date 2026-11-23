@@ -24,6 +24,8 @@ assert.equal(
 );
 assert.match(formatCallSample(6, { ...base, packetsLost: 4, visible: false }, base), /lost \+3 .*\| hidden$/);
 assert.match(formatCallSample(7, { ...base, socketRttMs: null, rttMs: null }, base), /socket \? \| rtt \?/);
+// On the own transport its own numbers go in too, since the rest of the line is WebRTC's.
+assert.match(formatCallSample(8, { ...base, transportBufferedMs: 44.6, transportRttMs: 3 }, base), /32kbps \| own buffer 45ms rtt 3ms \| est/);
 
 recordCallSample(base);
 assert.equal(callTimeline().length, 0, "nothing is kept outside a call");
