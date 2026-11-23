@@ -46,13 +46,13 @@ export function EmoteImport({
         Import from a link
       </span>
       <span className="text-xs text-gryt-muted" style={{ marginTop: -6 }}>
-        A BetterTTV user or emote, or an emoji.gg user, pack or emoji.
+        A Twitch channel (its BetterTTV emotes), a BetterTTV user or emote, or an emoji.gg user, pack or emoji.
       </span>
 
       <div className="flex gap-2 items-center">
         <TextField
           size="small"
-          placeholder="https://emoji.gg/pack/... or https://betterttv.com/users/..."
+          placeholder="https://twitch.tv/... or https://emoji.gg/pack/..."
           value={url}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
           onKeyDown={(e: React.KeyboardEvent) => {

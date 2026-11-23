@@ -80,7 +80,7 @@ export function useEmoteImport({
     const source = sourceForUrl(trimmed);
     if (!source) {
       toast.error(
-        "Link not recognised. Paste a BetterTTV user or emote, or an emoji.gg user, pack or emoji.",
+        "Link not recognised. Paste a Twitch channel, a BetterTTV user or emote, or an emoji.gg user, pack or emoji.",
       );
       return;
     }
