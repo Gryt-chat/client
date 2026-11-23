@@ -22,6 +22,8 @@ export interface EmoteSource {
 
 const BTTV_USER_URL_RE = /betterttv\.com\/users\/([a-f0-9]{20,30})/;
 const BTTV_EMOTE_URL_RE = /betterttv\.com\/emotes\/([a-f0-9]{20,30})/;
+// Newer BTTV accounts have short mixed-case ids, and their user pages need a BTTV sign-in to read.
+const BTTV_SIGNED_IN_USER_RE = /betterttv\.com\/users\/[A-Za-z0-9]{8,19}(?![A-Za-z0-9])/;
 const BTTV_CDN = "https://cdn.betterttv.net/emote";
 
 const EMOJIGG_USER_URL_RE = /emoji\.gg\/user\/([^/?#]+)/;
@@ -58,7 +60,7 @@ function bttvEmote(raw: Record<string, unknown>, base: string): ImportEmote | nu
 
 export const BTTV_SOURCE: EmoteSource = {
   label: "BetterTTV",
-  matches: (url) => BTTV_USER_URL_RE.test(url) || BTTV_EMOTE_URL_RE.test(url),
+  matches: (url) => BTTV_USER_URL_RE.test(url) || BTTV_EMOTE_URL_RE.test(url) || BTTV_SIGNED_IN_USER_RE.test(url),
   fetchListing: async (url, base) => {
     const emoteMatch = url.match(BTTV_EMOTE_URL_RE);
     if (emoteMatch) {
@@ -70,6 +72,9 @@ export const BTTV_SOURCE: EmoteSource = {
     }
 
     const userMatch = url.match(BTTV_USER_URL_RE);
+    if (!userMatch && BTTV_SIGNED_IN_USER_RE.test(url)) {
+      throw new Error("BetterTTV only shows this user page to people signed in to BetterTTV, so Gryt can't read it. Paste links to single emotes instead.");
+    }
     if (!userMatch) throw new Error("Not a BetterTTV link.");
 
     const data = await getJson(`${base}/api/emojis/bttv/user/${userMatch[1]}`);
