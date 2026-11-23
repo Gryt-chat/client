@@ -650,6 +650,12 @@ body {
   gap: 0;
 }
 
+/* Centred on a one-line field (1.5em + 20px tall), and still at the bottom once it grows. */
+.chat-editor-input-row .gryt-composer-emoji,
+.chat-editor-input-row > .gryt-composer-send {
+  margin-bottom: calc(0.75 * var(--chat-font-size, 16px) - 7px);
+}
+
 /* The Lexical composer, while it's tried behind gryt.lexicalComposer. */
 .chat-editor-lexical-field {
   position: relative;
@@ -1622,7 +1628,8 @@ body {
 
 /* ── Large-screen scaling for embeds & media ────────────── */
 
-@media (min-width: 1800px) {
+/* 1536px is a 1080p screen at 125% scaling. */
+@media (min-width: 1500px) {
   .chat-attachment-image-wrapper {
     max-width: min(var(--img-w, 620px), 620px, 100%);
     max-height: 620px;
@@ -1637,7 +1644,7 @@ body {
   }
 
   .link-embed-container {
-    max-width: 620px;
+    max-width: min(620px, 100%);
   }
 
   .link-embed-image {
