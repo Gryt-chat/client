@@ -2269,6 +2269,22 @@ function createMainWindow(): BrowserWindow {
     }
   );
 
+  // Electron shows no menu of its own; only text fields and selections get one, the app draws the rest.
+  mainWindow.webContents.on("context-menu", (_event, params) => {
+    const items: Electron.MenuItemConstructorOptions[] = params.dictionarySuggestions.map((word) => ({
+      label: word,
+      click: () => mainWindow?.webContents.replaceMisspelling(word),
+    }));
+    if (items.length > 0) items.push({ type: "separator" });
+    if (params.isEditable) {
+      items.push({ role: "cut", enabled: params.editFlags.canCut }, { role: "copy", enabled: params.editFlags.canCopy },
+        { role: "paste", enabled: params.editFlags.canPaste }, { type: "separator" }, { role: "selectAll" });
+    } else if (params.selectionText) {
+      items.push({ role: "copy" });
+    }
+    if (items.length > 0) Menu.buildFromTemplate(items).popup({ window: mainWindow ?? undefined });
+  });
+
   mainWindow.webContents.setWindowOpenHandler(
     ({ url }) => {
       if (url === "about:blank") {
