@@ -9,7 +9,6 @@ import type { DirectoryEntry } from "./dmDirectory";
  */
 
 const STORAGE_PREFIX = "gryt:hiddenConversations";
-const EXPANDED_KEY = `${STORAGE_PREFIX}:expanded`;
 
 /** Conversation id to the moment it was hidden, in epoch milliseconds. */
 export type HiddenAt = Readonly<Record<string, number>>;
@@ -210,41 +209,4 @@ export function useHiddenConversations(): (host: string, serverUserId: string) =
 export function resetHiddenConversations(): void {
   byAccount = new Map();
   emitChange();
-}
-
-/* Whether the Hidden group is open. One answer for the device rather than one
-   per server: it is a row in one list that spans every server. */
-let expanded = readExpanded();
-const expandedListeners = new Set<() => void>();
-
-function readExpanded(): boolean {
-  try {
-    return localStorage.getItem(EXPANDED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function setHiddenExpanded(open: boolean): void {
-  if (expanded === open) return;
-  expanded = open;
-  try {
-    localStorage.setItem(EXPANDED_KEY, open ? "1" : "0");
-  } catch {
-    // Same as above: it holds for this session and forgets on the next launch.
-  }
-  for (const listener of expandedListeners) listener();
-}
-
-export function useHiddenExpanded(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      expandedListeners.add(listener);
-      return () => {
-        expandedListeners.delete(listener);
-      };
-    },
-    () => expanded,
-    () => expanded,
-  );
 }

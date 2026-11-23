@@ -35,14 +35,12 @@ function when(iso: string | null): string {
 }
 
 function ConversationRow({
-  entry, serverName, unread, selected, hidden, otherStatus, self, clash, pinned, preview, onOpen, onHide, onShow,
+  entry, serverName, unread, selected, otherStatus, self, clash, pinned, preview, onOpen, onHide,
 }: {
   entry: DirectoryEntry;
   serverName: string;
   unread: number;
   selected: boolean;
-  /** Drawn back and named as hidden. It still opens and reads normally. */
-  hidden?: boolean;
   /** The other party's presence, 1:1 conversations only. Undefined is "no data",
       never drawn as offline (GRYT-1467). */
   otherStatus?: UserStatus;
@@ -54,7 +52,6 @@ function ConversationRow({
   preview?: ConversationPreview;
   onOpen: () => void;
   onHide?: () => void;
-  onShow?: () => void;
 }) {
   const { host, conversation } = entry;
   const title = conversationTitle(conversation);
@@ -71,11 +68,8 @@ function ConversationRow({
         <ConversationItem
           data-gryt="dm-row"
           data-selected={selected || undefined}
-          /* Named rather than dimmed for a screen reader, which has no opacity. */
-          aria-label={hidden ? `${title}, hidden` : undefined}
           onClick={onOpen}
           active={selected}
-          hidden={hidden}
           pinned={pinned}
           unread={muted ? 0 : unread}
           presence={isGroup ? undefined : otherStatus}
@@ -126,12 +120,6 @@ function ConversationRow({
               scope={{ kind: "conversation", id: conversation.conversation_id }}
             />
             <NotificationLevelMenu host={host} scope={{ kind: "channel", id: conversation.conversation_id }} />
-            {onShow && (
-              <>
-                <ContextMenu.Separator />
-                <ContextMenu.Item onClick={onShow}>Show in list</ContextMenu.Item>
-              </>
-            )}
             {onHide && (
               <>
                 <ContextMenu.Separator />
@@ -141,7 +129,7 @@ function ConversationRow({
                     {/* Two things people assume it does and it doesn't: leave,
                         and follow you to your other devices. */}
                     <span className="text-xs text-gryt-muted">
-                      Only on this device. Comes back if they write.
+                      Only on this device. Comes back when either of you writes.
                     </span>
                   </div>
                 </ContextMenu.Item>
@@ -155,18 +143,14 @@ function ConversationRow({
 }
 
 export function DmSpaceList({
-  entries, selected, unreadFor, onOpen, onHide, onShow, hidden = false, previews, clashes, reorder,
+  entries, selected, unreadFor, onOpen, onHide, previews, clashes, reorder,
 }: {
   entries: DirectoryEntry[];
   selected: { host: string; conversationId: string } | null;
   unreadFor: (host: string, conversationId: string) => number;
   onOpen: (host: string, conversation: DirectConversation) => void;
-  /** Take it out of this device's list. Absent on the hidden rows. */
+  /** Take it out of this device's list. */
   onHide?: (entry: DirectoryEntry) => void;
-  /** Put it back. Only passed for the hidden rows. */
-  onShow?: (entry: DirectoryEntry) => void;
-  /** Whether these are the hidden ones, which are drawn back. */
-  hidden?: boolean;
   previews: ReadonlyMap<string, ConversationPreview>;
   /** Names that appear on more than one row, across every list. */
   clashes: ReadonlySet<string>;
@@ -188,7 +172,6 @@ export function DmSpaceList({
           selected?.host === entry.host &&
           selected?.conversationId === entry.conversation.conversation_id
         }
-        hidden={hidden}
         /* Same member list the sidebar reads presence off; a member it hides
            from this viewer never has an entry to find (GRYT-1467). */
         otherStatus={
@@ -204,7 +187,6 @@ export function DmSpaceList({
         preview={previews.get(previewKey(entry.host, entry.conversation.conversation_id))}
         onOpen={() => onOpen(entry.host, entry.conversation)}
         onHide={onHide ? () => onHide(entry) : undefined}
-        onShow={onShow ? () => onShow(entry) : undefined}
       />
     );
   };

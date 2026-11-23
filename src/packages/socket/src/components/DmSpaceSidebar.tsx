@@ -1,22 +1,19 @@
 import { conversationTitle, type DirectConversation } from "@gryt/core";
 import { Badge, Button, IconButton, Tabs, TextField, Tooltip } from "@gryt/ui";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getOwnServerUserId, getServerAccessToken } from "@/common";
 
-import { PiCaretDownFill, PiCaretRightFill, PiPlus, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
+import { PiPlus, PiShieldCheckFill, PiSidebarSimpleFill } from "../../../../lib/icons";
 import { admitConversation, dismissFiltered, type FilteredItem } from "../hooks/contactFilterStore";
 import { type DirectoryEntry,listedConversations, useDirectory } from "../hooks/dmDirectory";
 import { pinFor, reorderPins, usePins } from "../hooks/dmPins";
 import { requestConversation, useVisitingConversation, visitConversation } from "../hooks/dmSpace";
 import { useWaitingOnYou } from "../hooks/friendsStore";
 import {
-  setHiddenExpanded,
   showConversation,
   splitHidden,
   useHiddenConversations,
-  useHiddenExpanded,
 } from "../hooks/hiddenConversations";
 import { setNewMessageOpen } from "../hooks/newMessageDialog";
 import { useConversationPreviews } from "../hooks/useConversationPreviews";
@@ -26,7 +23,7 @@ import { useSockets } from "../hooks/useSockets";
 import { DmSpaceList } from "./DmSpaceList";
 import { FilteredContacts } from "./FilteredContacts";
 import { FriendsPanel } from "./FriendsPanel";
-import { hideConversationWithUndo, useConfirmHide } from "./hideConversation";
+import { hideConversationWithUndo } from "./hideConversation";
 
 function sidebarPanel(friends: boolean, listed: number, matched: number) {
   if (friends) return "friends";
@@ -59,7 +56,6 @@ export function DmSpaceSidebar({
   const [query, setQuery] = useState("");
   const waitingOnYou = useWaitingOnYou();
   const [tab, setTab] = useState<"chats" | "friends">("chats");
-  const reduceMotion = useReducedMotion();
 
   /* A conversation nobody has written in is listed only while it is the open one,
      so clicking through a member list leaves no rows behind. */
@@ -69,7 +65,7 @@ export function DmSpaceSidebar({
   /* Hidden is this device's answer for this account, so the split has to happen
      here rather than in the store the servers write into. */
   const hiddenAtFor = useHiddenConversations();
-  const { listed: visible, hidden, returned } = useMemo(
+  const { listed: visible, returned } = useMemo(
     () => splitHidden(listed, (rowHost) => hiddenAtFor(rowHost, getOwnServerUserId(rowHost) ?? "")),
     [listed, hiddenAtFor],
   );
@@ -91,9 +87,9 @@ export function DmSpaceSidebar({
       const server = (servers[entry.host]?.name || entry.host).toLowerCase();
       return name.includes(needle) || server.includes(needle);
     };
-    if (!needle) return { shown: visible, shownHidden: hidden };
-    return { shown: visible.filter(match), shownHidden: hidden.filter(match) };
-  }, [visible, hidden, query, servers]);
+    if (!needle) return { shown: visible };
+    return { shown: visible.filter(match) };
+  }, [visible, query, servers]);
 
   /* Pinned rows on top in the order they were dragged into, the rest by recent activity. */
   const pins = usePins();
@@ -114,14 +110,6 @@ export function DmSpaceSidebar({
     return new Set([...seen].filter(([, n]) => n > 1).map(([name]) => name));
   }, [listed]);
 
-  /* Open while the conversation being read is one of the hidden ones, whatever
-     this device last chose: a selected row nobody can see is a lost cursor. */
-  const chosenExpanded = useHiddenExpanded();
-  const selectedIsHidden = hidden.some(
-    (entry) => entry.host === host && entry.conversation.conversation_id === selectedConversationId,
-  );
-  const expanded = chosenExpanded || selectedIsHidden;
-  const Caret = expanded ? PiCaretDownFill : PiCaretRightFill;
 
   /* A row on this server opens here. One on another switches first, and the
      view that arrives claims it. */
@@ -137,12 +125,7 @@ export function DmSpaceSidebar({
     viewServerBehindDmSpace(rowHost);
   }
 
-  const [askHide, hideDialog] = useConfirmHide();
   function hide(entry: DirectoryEntry) {
-    askHide(conversationTitle(entry.conversation), () => hideNow(entry));
-  }
-
-  function hideNow(entry: DirectoryEntry) {
     const conversationId = entry.conversation.conversation_id;
     hideConversationWithUndo(
       entry.host,
@@ -153,9 +136,6 @@ export function DmSpaceSidebar({
     if (entry.host === host) onHidden?.(conversationId);
   }
 
-  function show(entry: DirectoryEntry) {
-    showConversation(entry.host, getOwnServerUserId(entry.host) ?? "", entry.conversation.conversation_id);
-  }
 
   /* A filtered conversation may not be in the list yet, since its arrival was
      dropped. Ask that server for its list again and open it when it lands. */
@@ -185,7 +165,7 @@ export function DmSpaceSidebar({
 
   const selected = selectedConversationId ? { host, conversationId: selectedConversationId } : null;
 
-  const panel = sidebarPanel(tab === "friends", listed.length, matching.shown.length + matching.shownHidden.length);
+  const panel = sidebarPanel(tab === "friends", listed.length, matching.shown.length);
 
   return (
     <aside
@@ -294,53 +274,6 @@ export function DmSpaceSidebar({
             previews={previews}
             clashes={clashes}
           />
-          {/* No row at all when nothing is hidden: an empty group would be a
-              permanent reminder of a feature most people never use. */}
-          {matching.shownHidden.length > 0 && (
-            <>
-              <button
-                type="button"
-                onClick={() => setHiddenExpanded(!expanded)}
-                aria-expanded={expanded}
-                aria-label={`Hidden, ${matching.shownHidden.length} ${matching.shownHidden.length === 1 ? "conversation" : "conversations"}`}
-                className={[
-                  "mt-2 flex w-full items-center gap-2 rounded-(--gryt-radius-md) px-2 py-1 text-left",
-                  "text-xs font-semibold tracking-wide transition-colors",
-                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gryt-accent-light",
-                  "text-gryt-muted hover:text-gryt-text active:text-gryt-text",
-                ].join(" ")}
-              >
-                <span className="shrink-0">Hidden</span>
-                <span aria-hidden="true" className="h-px min-w-2 flex-1 bg-gryt-border" />
-                <span aria-hidden="true" className="shrink-0 tabular-nums opacity-70">
-                  {matching.shownHidden.length}
-                </span>
-                <Caret size={10} className="shrink-0" />
-              </button>
-
-              <AnimatePresence initial={false}>
-                {expanded && (
-                  <motion.div
-                    initial={{ opacity: reduceMotion ? 1 : 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: reduceMotion ? 1 : 0 }}
-                    transition={{ duration: reduceMotion ? 0 : 0.15 }}
-                  >
-                    <DmSpaceList
-                      entries={matching.shownHidden}
-                      selected={selected}
-                      unreadFor={countFor}
-                      onOpen={open}
-                      onShow={show}
-                      hidden
-                      previews={previews}
-                      clashes={clashes}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </>
-          )}
         </div>
       )}
 
@@ -354,7 +287,6 @@ export function DmSpaceSidebar({
       )}
 
       <FilteredContacts onOpen={openFiltered} />
-      {hideDialog}
     </aside>
   );
 }
