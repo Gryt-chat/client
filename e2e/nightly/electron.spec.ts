@@ -42,7 +42,8 @@ function hostedServers(desktop: Page): Promise<HostedServer[]> {
 
 async function createServer(desktop: Page, name: string, port: number): Promise<void> {
   await desktop.getByRole("button", { name: "Add a server" }).first().click();
-  await desktop.getByRole("dialog", { name: "Add a server" }).getByRole("button", { name: /^Create my own/ }).click();
+  await desktop.getByRole("dialog", { name: "Add a server" }).getByRole("button", { name: /^Create/ }).click();
+  await desktop.getByRole("dialog", { name: "Create a server" }).getByRole("button", { name: /^On this computer/ }).click();
 
   const form = desktop.getByRole("dialog", { name: "Create your server" });
   await form.getByPlaceholder("My Server").fill(name);
