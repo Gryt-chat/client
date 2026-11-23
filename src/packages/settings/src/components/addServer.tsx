@@ -17,10 +17,11 @@ import {
   PiArrowSquareOutBold,
   PiCaretRightBold,
   PiCloudFill,
+  PiHandWavingFill,
   PiInfoFill,
-  PiLinkFill,
   PiMonitorFill,
-  PiPlusBold,
+  PiSignInFill,
+  PiSparkleFill,
   PiUsersThreeFill,
   PiWarningFill,
   PiX,
@@ -464,8 +465,8 @@ export function AddNewServer({
             {step === null && !cloud && (
               <div className="flex flex-col gap-4 mt-2">
                 <div className="flex flex-col gap-3">
-                  <DoorRow tour="choose-join" icon={<PiLinkFill size={18} />} name="Join" hint="You have an invite" onPick={() => setMode("join")} />
-                  <DoorRow tour="choose-create" icon={<PiPlusBold size={18} />} name="Create" hint="Start your own" onPick={() => setMode("create")} />
+                  <DoorRow tour="choose-join" icon={<PiSignInFill size={18} />} name="Join" hint="You have an invite" onPick={() => setMode("join")} />
+                  <DoorRow tour="choose-create" icon={<PiSparkleFill size={18} />} name="Create" hint="Start your own" onPick={() => setMode("create")} />
                 </div>
 
                 {showOfficial && officialServer && (
@@ -875,7 +876,7 @@ function CommunityChip({ onPick }: { onPick: () => void }) {
       style={{ border: 0, background: "var(--gryt-surface-hover, var(--gryt-neutral-4))", color: "var(--gryt-text)" }}
     >
       <span className="flex items-center justify-center rounded-full" style={{ width: 26, height: 26, background: "var(--gryt-accent-a3)", color: "var(--gryt-accent-11)" }}>
-        <PiUsersThreeFill size={14} />
+        <PiHandWavingFill size={14} />
       </span>
       Come say hi in our community server 👋
     </button>
