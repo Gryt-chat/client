@@ -797,6 +797,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     );
   },
 
+  onEmbeddedServerProgress(callback: (step: string) => void) {
+    const handler = (_event: Electron.IpcRendererEvent, step: string) => callback(step);
+    ipcRenderer.on("embedded-server:progress", handler);
+    return () => ipcRenderer.removeListener("embedded-server:progress", handler);
+  },
+
   onEmbeddedServerStatusChanged(
     callback: (states: EmbeddedServerState[]) => void
   ) {

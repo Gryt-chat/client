@@ -113,6 +113,11 @@ function explainExit(
   return `${base}: ${cleaned}`;
 }
 
+/** The step a create is on, for the dialog's button. */
+function emitProgress(step: string): void {
+  if (targetWindow && !targetWindow.isDestroyed()) targetWindow.webContents.send("embedded-server:progress", step);
+}
+
 function emitStatus(): void {
   if (targetWindow && !targetWindow.isDestroyed()) {
     targetWindow.webContents.send("embedded-server:status-changed", getAllStates());
@@ -766,6 +771,7 @@ export async function createAndStartServer(
   targetWindow = window;
 
   try {
+    emitProgress("Finding free ports…");
     const config = await generateConfig(serverName, lanDiscoverable, requestedPort);
     instances.set(config.id, {
       config,
@@ -854,6 +860,7 @@ async function startProcesses(id: string): Promise<EmbeddedServerState | null> {
   const inst = instances.get(id);
   if (!inst) return null;
 
+  emitProgress("Unpacking the server…");
   // A failure is logged by launch, and the missing paths below report it the way they always have.
   await prepareEmbeddedServerRuntime().catch(() => undefined);
 
@@ -866,6 +873,7 @@ async function startProcesses(id: string): Promise<EmbeddedServerState | null> {
 
   const config = inst.config;
 
+  emitProgress("Starting voice…");
   if (ensureSfu(config) === null) {
     setStatus(id, "error", "Failed to start SFU (binary not found)");
     return stateOf(inst);

@@ -19,10 +19,16 @@ interface CreateServerPanelProps {
  * Create writes the config, starts the process and hands the address back.
  */
 export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
-  const { isAvailable, creating, createServer, suggestPort, checkPort } =
+  const { isAvailable, creating, progress, createServer, suggestPort, checkPort } =
     useEmbeddedServer();
 
   const [serverName, setServerName] = useState("My Server");
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!creating) return setSlow(false);
+    const timer = window.setTimeout(() => setSlow(true), 5000);
+    return () => window.clearTimeout(timer);
+  }, [creating]);
   const [lanDiscoverable, setLanDiscoverable] = useState(true);
   const [error, setError] = useState("");
 
@@ -215,6 +221,12 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
         )}
       </AnimatePresence>
 
+      {slow && /Windows/.test(navigator.userAgent) && (
+        <p className="m-0 text-sm" style={{ color: "var(--gryt-neutral-11)" }}>
+          If Windows asks whether Gryt can use the network, allow it. Otherwise nobody else can join.
+        </p>
+      )}
+
       <Dialog.Footer className="justify-between">
         <Button tone="ghost" size="small" onClick={onBack} disabled={creating}>
           Back
@@ -229,7 +241,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           }
         >
           {creating ? <Spinner size={16} /> : null}
-          {creating ? "Creating…" : "Create"}
+          {creating ? (progress ?? "Creating…") : "Create"}
         </Button>
       </Dialog.Footer>
     </div>

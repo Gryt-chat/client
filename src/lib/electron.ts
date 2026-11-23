@@ -429,6 +429,7 @@ export interface ElectronAPI {
     id: string,
     ports: { serverPort?: number; sfuPort?: number; mediaPort?: number },
   ): Promise<EmbeddedServerState | null>;
+  onEmbeddedServerProgress(callback: (step: string) => void): () => void;
   onEmbeddedServerStatusChanged(
     callback: (states: EmbeddedServerState[]) => void
   ): () => void;

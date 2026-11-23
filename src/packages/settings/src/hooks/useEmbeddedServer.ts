@@ -20,6 +20,7 @@ export function useEmbeddedServer() {
   /** Ids with a call in flight, so one server's spinner is not all of them. */
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [autoStart, setAutoStartState] = useState<Record<string, boolean>>({});
 
   const markBusy = useCallback((id: string, on: boolean) => {
@@ -80,6 +81,7 @@ export function useEmbeddedServer() {
     async (serverName: string, lanDiscoverable: boolean, port?: number) => {
       if (!api) return null;
       setCreating(true);
+      const unsubProgress = api.onEmbeddedServerProgress(setProgress);
       try {
         const created = await api.createEmbeddedServer(
           serverName,
@@ -94,6 +96,8 @@ export function useEmbeddedServer() {
         console.error("[EmbeddedServer] create failed:", err);
         return null;
       } finally {
+        unsubProgress();
+        setProgress(null);
         setCreating(false);
       }
     },
@@ -256,6 +260,7 @@ export function useEmbeddedServer() {
     lanIp,
     bundled,
     creating,
+    progress,
     isBusy: (id: string) => busy.has(id),
     autoStart,
     setAutoStart,
