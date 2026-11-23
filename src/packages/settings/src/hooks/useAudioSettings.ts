@@ -50,7 +50,7 @@ export const AUDIO_DEFAULTS: AudioSettingsData = {
   // notice and correct than loud. Only new installs see this.
   micVolume: 50,
   outputVolume: 100,
-  noiseGate: 1,
+  noiseGate: 50,
   noiseGateRelease: 200,
   rnnoiseEnabled: true,
   // Off: it lifted a mixer's already-hot signal into clipping (GRYT-1679).
