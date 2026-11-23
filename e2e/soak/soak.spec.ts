@@ -89,6 +89,7 @@ test("soak", async () => {
     // GRYT_SOAK_SWITCH_MIC=1: the beeper picks another microphone 30 s in. Beeps after it mean the voice followed.
     let switchMic = process.env.GRYT_SOAK_SWITCH_MIC === "1" && config.beepMs !== null && clients.length > 0;
     const muteMs = Number(process.env.GRYT_SOAK_MUTE_SECONDS || 0) * 1000;
+    let churn = process.env.GRYT_SOAK_CHURN === "1" ? 2 : 0;
     let muteStep: "muted" | "unmuted" | null = muteMs > 0 && config.beepMs && clients[0] ? null : "unmuted";
 
     while (Date.now() < deadline && !existsSync(run.path("STOP"))) {
@@ -129,6 +130,24 @@ test("soak", async () => {
         }
         muteStep = muteStep === "muted" ? "unmuted" : "muted";
         harness.write(`harness.${muteStep}`, { who: clients[0].who, ptt });
+      }
+
+      // GRYT_SOAK_CHURN=1: twice, from 30 s in, the beeper and the third client leave and rejoin seconds apart.
+      // Then every listener logs whether the app plays each slot it receives (harness.playback).
+      if (churn > 0 && into >= 30_000 + (2 - churn) * 40_000 && clients[2]) {
+        churn--;
+        for (const client of [clients[0], clients[2]]) {
+          await client.leave();
+          await wait(2000);
+          await client.rejoin();
+          await wait(1500);
+        }
+        await wait(5000);
+        for (const c of clients) {
+          const playback = await c.page.evaluate(() => (window as unknown as { __soakPlayback(): unknown }).__soakPlayback());
+          harness.write("harness.playback", { who: c.who, playback });
+        }
+        harness.write("harness.churned", { left: churn });
       }
 
       if (switchMic && into >= 30_000) {
