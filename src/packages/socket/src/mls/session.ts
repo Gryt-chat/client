@@ -1,5 +1,6 @@
 import {
   createMlsDmDriver,
+  dmNotificationLine,
   type DmSealingMode,
   encodeMlsDmContent,
   type MlsAddOwnDeviceOptions,
@@ -86,6 +87,8 @@ export interface MlsSessionOptions {
   seen: SeenOnMls;
   ownPersonKey: Uint8Array;
   newDevice: () => Promise<MlsDeviceRecord>;
+  /** Your name here, for the line a DM shows on the other person's phone (GRYT-2275). */
+  senderName?: () => string | null;
   /** A message from somebody else that arrived live, once it's in the archive. For notifications. */
   onDelivered?: (message: { conversationId: string; senderId: string; content: MlsDmContent }) => void;
   /** The server removed this device here. The driver has stopped; the caller wipes and gates. */
@@ -373,7 +376,10 @@ export function createMlsSession(options: MlsSessionOptions): MlsSession {
         const attachmentIds = attachmentIdsOf(content);
         let seq: number;
         try {
-          ({ seq } = await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds }));
+          const line = dmNotificationLine(content);
+          const name = options.senderName?.();
+          const preview = line && name ? { t: name, b: line, o: conversationId, m: content.id } : undefined;
+          ({ seq } = await driver.send(conversationId, peer, encodeMlsDmContent(content), { attachmentIds, preview }));
         } finally {
           placeholders.delete(conversationId);
         }

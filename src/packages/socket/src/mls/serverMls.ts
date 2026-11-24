@@ -45,6 +45,13 @@ import { shareHistory } from "./shareHistory";
  */
 
 /** What a DM view needs, whether the driver is in this tab or another one. */
+
+/* Your name per server, from `server:joined`, for the line a DM shows on a phone (GRYT-2275). */
+const senderNames = new Map<string, string>();
+export function setMlsSenderName(host: string, nickname: string): void {
+  senderNames.set(host, nickname);
+}
+
 export type MlsSource = Pick<MlsSession, "storeScope" | "modeFor" | "send" | "problems" | "waiting" | "onChange"> &
   Partial<Pick<MlsSession, "requestAdd">>;
 
@@ -424,6 +431,7 @@ async function refresh(host: string): Promise<void> {
         seen: seenOnMlsFor(scope),
         ownPersonKey,
         newDevice: () => newMlsDevice(host, thisDeviceCertificateName()),
+        senderName: () => senderNames.get(host) ?? null,
         onDelivered: (m) => {
           for (const listener of deliveredListeners) listener({ host, ...m });
         },
