@@ -1,5 +1,5 @@
 import { Alert, Avatar, Button, Chip, Dialog, IconButton, Skeleton, Spinner, Surface, TextField } from "@gryt/ui";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -849,6 +849,8 @@ export function Welcome() {
   const flow = useJoinFlow({ active: true, onJoined: () => {} });
   const { joinAction, isJoining } = flow;
   const typing = flow.serverHost.length > 0;
+  const still = useReducedMotion();
+  const glide = { duration: still ? 0 : 0.32, ease: [0.2, 0, 0, 1] as const };
 
   const open = (start: Start) => {
     pendingStart = start;
@@ -858,16 +860,18 @@ export function Welcome() {
 
   return (
     <div className="flex grow items-center justify-center overflow-auto p-4">
-      <div className="flex w-full flex-col gap-7" style={{ maxWidth: "40rem" }}>
-        <div className="flex flex-col items-center gap-3 pb-2 text-center">
+      <div className="relative flex w-full flex-col gap-7" style={{ maxWidth: "40rem" }}>
+        <motion.div layout="position" transition={glide} className="flex flex-col items-center gap-3 pb-2 text-center">
           <LogoIcon size={72} />
           <h1 className="m-0 text-3xl font-bold">Welcome to Gryt</h1>
           <p className="m-0 text-base" style={{ color: "var(--gryt-neutral-11)", maxWidth: "28rem" }}>
             Glad you&rsquo;re here. Got an invite from a friend? Paste it below. Or start a server of your own.
           </p>
-        </div>
+        </motion.div>
 
-        <form
+        <motion.form
+          layout="position"
+          transition={glide}
           className="flex flex-col gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-5"
           onSubmit={(e) => {
             e.preventDefault();
@@ -892,49 +896,58 @@ export function Welcome() {
             </Button>
           </div>
           <JoinDetails flow={flow} />
-        </form>
+        </motion.form>
 
-        {!typing && (
-          <>
-            <OrRule label="or start your own" />
+        <AnimatePresence mode="popLayout" initial={false}>
+          {!typing && (
+            <motion.div
+              key="start-your-own"
+              className="flex flex-col gap-7"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ ...glide, duration: still ? 0 : 0.2 }}
+            >
+              <OrRule label="or start your own" />
 
-            <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(15rem, 100%), 1fr))" }}>
-              {canHost && (
-                <EntryCard icon={<PiMonitorFill size={17} />} name="On this computer" hint="Free. Online while this computer is on." onPick={() => open({ mode: "host" })} />
-              )}
-              {cloudEnabled ? (
-                <EntryCard
-                  icon={<PiCloudFill size={17} />}
-                  name="Gryt Cloud"
-                  hint="From €4 a month. Always online."
-                  external
-                  accent
-                  onPick={() => {
-                    window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer");
-                    open({ cloud: true });
-                  }}
-                />
-              ) : (
-                <EntryCard icon={<PiCloudFill size={17} />} name="Gryt Cloud" hint="Coming soon. Always online." external onPick={() => window.open(CLOUD_URL, "_blank", "noopener,noreferrer")} />
-              )}
-            </div>
-            {!canHost && (
-              <span className="text-xs text-center" style={{ color: "var(--gryt-neutral-11)" }}>
-                Or run one on your own computer with the{" "}
-                <a className="gryt-link" href="https://gryt.chat/download" target="_blank" rel="noopener noreferrer">
-                  desktop app
-                </a>
-                .
-              </span>
-            )}
-
-            {showOfficial && officialServer && (
-              <div data-tour="official-server" className="flex justify-center">
-                <CommunityChip onPick={() => flow.setInviteInput(officialServer.host)} />
+              <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(15rem, 100%), 1fr))" }}>
+                {canHost && (
+                  <EntryCard icon={<PiMonitorFill size={17} />} name="On this computer" hint="Free. Online while this computer is on." onPick={() => open({ mode: "host" })} />
+                )}
+                {cloudEnabled ? (
+                  <EntryCard
+                    icon={<PiCloudFill size={17} />}
+                    name="Gryt Cloud"
+                    hint="From €4 a month. Always online."
+                    external
+                    accent
+                    onPick={() => {
+                      window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer");
+                      open({ cloud: true });
+                    }}
+                  />
+                ) : (
+                  <EntryCard icon={<PiCloudFill size={17} />} name="Gryt Cloud" hint="Coming soon. Always online." external onPick={() => window.open(CLOUD_URL, "_blank", "noopener,noreferrer")} />
+                )}
               </div>
-            )}
-          </>
-        )}
+              {!canHost && (
+                <span className="text-xs text-center" style={{ color: "var(--gryt-neutral-11)" }}>
+                  Or run one on your own computer with the{" "}
+                  <a className="gryt-link" href="https://gryt.chat/download" target="_blank" rel="noopener noreferrer">
+                    desktop app
+                  </a>
+                  .
+                </span>
+              )}
+
+              {showOfficial && officialServer && (
+                <div data-tour="official-server" className="flex justify-center">
+                  <CommunityChip onPick={() => flow.setInviteInput(officialServer.host)} />
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
