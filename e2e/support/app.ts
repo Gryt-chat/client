@@ -46,9 +46,12 @@ export function messageRow(page: Page, text: string | RegExp): Locator {
   return page.locator(CONFIRMED_ROW).filter({ hasText: text });
 }
 
+/** From the empty app's welcome page, which joins in place. */
 export async function joinServer(page: Page, host: string): Promise<void> {
+  await page.getByLabel("Join with an invite").fill(host);
+  await expect(page.getByText("No account needed")).toBeVisible();
   await page.getByRole("button", { name: "Join", exact: true }).click();
-  await joinFromDialog(page, host);
+  await expect(channelComposer(page)).toBeVisible();
 }
 
 /** For a page already in a server: the empty app's button is gone, and the rail's plus is left. */

@@ -1,6 +1,6 @@
 import { Alert, Avatar, Button, Chip, Dialog, IconButton, Skeleton, Spinner, Surface, TextField } from "@gryt/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   GeneratedServerIcon,
@@ -113,43 +113,15 @@ function isLocalhostHost(host: string): boolean {
   );
 }
 
-/** Where the welcome page hands somebody over, so the dialog's own join and create run. */
-type Start = { mode: "join" | "host"; input?: string } | { cloud: true };
-let pendingStart: Start | null = null;
-
-export function AddNewServer({
-  showAddServer,
-  setShowAddServer,
-}: AddNewServerProps) {
-  const { servers, switchToServer, addServer } = useServerManagement();
+/** Joining, shared by the dialog's join step and the empty home page. */
+function useJoinFlow({ active, onJoined }: { active: boolean; onJoined: () => void }) {
+  const { servers } = useServerManagement();
   const { isElectron } = useLanDiscovery();
-
-  const inputExamples = isElectron
-    ? DESKTOP_INPUT_EXAMPLES
-    : WEB_INPUT_EXAMPLES;
-
-  const { openSettings, officialServerHidden, setOfficialServerHidden } =
-    useSettings();
+  const inputExamples = isElectron ? DESKTOP_INPUT_EXAMPLES : WEB_INPUT_EXAMPLES;
   /* Undefined until Keycloak answers, and read as signed in, so the button does
      not flip a beat after the dialog opens. */
   const { isSignedIn, login } = useAccount();
-  const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
-    useEmbeddedServer();
-  /** Only wording now: it used to decide whether create was reachable, back when
-      there could be one server and no more. */
-  const hasOwnServer = hostedServers.length > 0;
   const { join, joiningHost } = useServerJoin();
-
-  /** Probed only while the dialog is open and shown once it answers: an offer
-      that fails is worse than none, and this is a new install's first sight. */
-  const officialServer = useOfficialServer(showAddServer);
-
-  /** Null means unchosen. A browser has no embedded server, so offering the
-      choice there is one real option and one dead end. */
-  const [mode, setMode] = useState<"host" | "join" | "create" | null>(null);
-  /** 1.2 while the checkout runs in the browser, then 1.3 with the new server's address. */
-  const [cloud, setCloud] = useState<null | "waiting" | { host: string }>(null);
-  const step = embeddedServerAvailable ? mode : "join";
 
   /** Exactly what was pasted, before anything is read out of it. */
   const [inviteInput, setInviteInput] = useState("");
@@ -198,7 +170,7 @@ export function AddNewServer({
   }, [serverHost, serverInfo?.serverId, servers]);
   const alreadyMember = !!existingServer || !!existingById;
 
-  function resetJoinState() {
+  const resetJoinState = useCallback(() => {
     setInviteInput("");
     setServerInfo(null);
     setServerPrivate(false);
@@ -209,31 +181,7 @@ export function AddNewServer({
     setJoinNote("");
     setAwaitingApproval(false);
     setJoinError("");
-  }
-
-  function closeDialog() {
-    if (isJoining) return;
-
-    setMode(null);
-    setCloud(null);
-    resetJoinState();
-    setShowAddServer(false);
-  }
-
-  useEffect(() => {
-    if (cloud !== "waiting") return;
-    cloudWait.start((host) => {
-      markCloudWelcome(host);
-      setCloud({ host });
-      setInviteInput(host);
-    });
-    return () => cloudWait.stop();
-  }, [cloud]);
-
-  function startCloud() {
-    window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer");
-    setCloud("waiting");
-  }
+  }, []);
 
   /** The lookup owns everything downstream, so this clears it too: a preview left
       from the last address looks like an answer. */
@@ -274,29 +222,9 @@ export function AddNewServer({
   }, [serverHost, webAddressError]);
 
   useEffect(() => {
-    if (!showAddServer || !pendingStart) return;
-    const start = pendingStart;
-    pendingStart = null;
-    if ("cloud" in start) {
-      setCloud("waiting");
-      return;
-    }
-    setMode(start.mode);
-    if (start.input) setInviteInput(start.input);
-  }, [showAddServer]);
-
-  // From the top rather than where the last visit stopped: somebody who closed
-  // this halfway is not usually coming back to finish.
-  useEffect(() => {
-    if (showAddServer) return;
-    setMode(null);
-    setCloud(null);
-    resetJoinState();
-  }, [showAddServer]);
-
-  useEffect(() => {
     setJoinError("");
   }, [manualCode]);
+
 
   async function handleJoin() {
     if (!serverHost || webAddressError) return;
@@ -312,7 +240,7 @@ export function AddNewServer({
     });
 
     if (outcome.ok) {
-      closeDialog();
+      onJoined();
       return;
     }
 
@@ -327,28 +255,10 @@ export function AddNewServer({
     setJoinError(outcome.message);
   }
 
-  function openMyServers() {
-    closeDialog();
-    openSettings("my-servers");
-  }
-
-  /** Everything the join needs already hangs off the address in that field, and
-      the person still gets to read who they are joining. */
-  function pickOfficialServer(host: string) {
-    setMode("join");
-    setInviteInput(host);
-  }
-
-  /** Hidden once you are on it. It is a suggestion, not a shortcut. */
-
-  /** It answered, they are not on it, and they have not hidden it. */
-  const showOfficial =
-    !!officialServer && !servers[officialServer.host] && !officialServerHidden;
-
-  /* Cycles only while the field is empty and only while the dialog is open. */
+  /* Cycles only while the field is empty and the field is on screen. */
   const [exampleIndex, setExampleIndex] = useState(0);
   useEffect(() => {
-    if (!showAddServer || inviteInput.length > 0) return;
+    if (!active || inviteInput.length > 0) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
 
     const timer = setInterval(
@@ -356,7 +266,7 @@ export function AddNewServer({
       PLACEHOLDER_ROTATE_MS,
     );
     return () => clearInterval(timer);
-  }, [showAddServer, inviteInput.length, inputExamples.length]);
+  }, [active, inviteInput.length, inputExamples.length]);
 
   /** Only claimed when the server said which tiers it takes: silence beats
       telling somebody to sign in for a server that would have let them in. */
@@ -384,6 +294,229 @@ export function AddNewServer({
   const joinAction = alreadyMember
     ? { label: "Already joined", tone: "secondary" as const, disabled: true, run: () => {} }
     : openAction;
+
+  return {
+    inviteInput, setInviteInput, serverHost, serverInfo, serverPrivate, isSearching, lookupError, webAddressError,
+    inviteCode, setManualCode, inviteRequired, joinNote, setJoinNote, awaitingApproval, joinError,
+    isJoining, alreadyMember, joinAction, handleJoin, resetJoinState, placeholder: inputExamples[exampleIndex],
+  };
+}
+
+type JoinFlow = ReturnType<typeof useJoinFlow>;
+
+/** What appears under the address once there is one: the preview, then whatever the server asks for. */
+function JoinDetails({ flow }: { flow: JoinFlow }) {
+  const { serverHost, serverInfo, isSearching, webAddressError, lookupError, serverPrivate, alreadyMember, inviteRequired, isJoining, inviteCode, setManualCode, awaitingApproval, joinNote, setJoinNote, joinError } = flow;
+  return (
+    <>
+                {/* The preview, and it stays a preview. There used to be a
+                    details card between pasting and joining, which is a whole
+                    screen spent confirming something the name alone settles. */}
+                <AnimatePresence>
+                  {serverHost.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <ServerPreview
+                        host={serverHost}
+                        info={serverInfo}
+                        loading={isSearching}
+                        error={webAddressError || lookupError}
+                        privateInfo={serverPrivate}
+                        alreadyMember={alreadyMember}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {inviteRequired && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <span className="text-sm font-bold">
+                          Invite code
+                        </span>
+                        <TextField
+                          disabled={isJoining}
+                          placeholder="Paste invite code"
+                          value={inviteCode}
+                          onChange={(e) =>
+                            setManualCode(normalizeCode(e.target.value))
+                          }
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {serverInfo?.joinPolicy === "request" && !awaitingApproval && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      {/* Only on a server that lets people in by hand, which
+                          is the only place there is anybody to read it. The
+                          label carries what the paragraph used to. */}
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-bold">
+                          Say who you are
+                        </span>
+                        <TextField
+                          disabled={isJoining}
+                          placeholder="Optional"
+                          maxLength={300}
+                          value={joinNote}
+                          onChange={(e) => setJoinNote(e.target.value)}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {awaitingApproval && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <Alert severity="info">
+                        Asked. Somebody who runs this server has to let you in.
+                        It is in your server list now, marked as waiting, and
+                        opens on its own once they do. You can close this.
+                      </Alert>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {joinError.length > 0 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <Alert severity="error" role="alert">
+                        <span className="inline-flex items-center gap-2">
+                          <PiWarningFill size={16} />
+                          {joinError}
+                        </span>
+                      </Alert>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+    </>
+  );
+}
+
+/** Where the welcome page hands somebody over, so the dialog's own join and create run. */
+type Start = { mode: "host" } | { cloud: true };
+let pendingStart: Start | null = null;
+
+export function AddNewServer({
+  showAddServer,
+  setShowAddServer,
+}: AddNewServerProps) {
+  const { servers, switchToServer, addServer } = useServerManagement();
+  const { isElectron } = useLanDiscovery();
+
+  const { openSettings, officialServerHidden, setOfficialServerHidden } =
+    useSettings();
+  const { isAvailable: embeddedServerAvailable, servers: hostedServers } =
+    useEmbeddedServer();
+  /** Only wording now: it used to decide whether create was reachable, back when
+      there could be one server and no more. */
+  const hasOwnServer = hostedServers.length > 0;
+
+  /** Probed only while the dialog is open and shown once it answers: an offer
+      that fails is worse than none, and this is a new install's first sight. */
+  const officialServer = useOfficialServer(showAddServer);
+
+  /** Null means unchosen. A browser has no embedded server, so offering the
+      choice there is one real option and one dead end. */
+  const [mode, setMode] = useState<"host" | "join" | "create" | null>(null);
+  /** 1.2 while the checkout runs in the browser, then 1.3 with the new server's address. */
+  const [cloud, setCloud] = useState<null | "waiting" | { host: string }>(null);
+  const step = embeddedServerAvailable ? mode : "join";
+
+  const flow = useJoinFlow({ active: showAddServer && step === "join", onJoined: () => closeDialog() });
+  const { inviteInput, setInviteInput, serverHost, serverInfo, isJoining, joinAction, handleJoin, resetJoinState } = flow;
+
+  function closeDialog() {
+    if (isJoining) return;
+
+    setMode(null);
+    setCloud(null);
+    resetJoinState();
+    setShowAddServer(false);
+  }
+
+  useEffect(() => {
+    if (cloud !== "waiting") return;
+    cloudWait.start((host) => {
+      markCloudWelcome(host);
+      setCloud({ host });
+      setInviteInput(host);
+    });
+    return () => cloudWait.stop();
+  }, [cloud, setInviteInput]);
+
+  function startCloud() {
+    window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer");
+    setCloud("waiting");
+  }
+
+  useEffect(() => {
+    if (!showAddServer || !pendingStart) return;
+    const start = pendingStart;
+    pendingStart = null;
+    if ("cloud" in start) {
+      setCloud("waiting");
+      return;
+    }
+    setMode(start.mode);
+  }, [showAddServer]);
+
+  // From the top rather than where the last visit stopped: somebody who closed
+  // this halfway is not usually coming back to finish.
+  useEffect(() => {
+    if (showAddServer) return;
+    setMode(null);
+    setCloud(null);
+    resetJoinState();
+  }, [showAddServer, resetJoinState]);
+
+  function openMyServers() {
+    closeDialog();
+    openSettings("my-servers");
+  }
+
+  /** Everything the join needs already hangs off the address in that field, and
+      the person still gets to read who they are joining. */
+  function pickOfficialServer(host: string) {
+    setMode("join");
+    setInviteInput(host);
+  }
+
+  /** Hidden once you are on it. It is a suggestion, not a shortcut. */
+
+  /** It answered, they are not on it, and they have not hidden it. */
+  const showOfficial =
+    !!officialServer && !servers[officialServer.host] && !officialServerHidden;
 
   // One step back, and none on the first screen; in a browser Join is the first screen.
   const behind = step === "host" ? "create" : null;
@@ -576,7 +709,7 @@ export function AddNewServer({
                     autoFocus
                     disabled={isJoining}
                     aria-label="Invite or server address"
-                    placeholder={inputExamples[exampleIndex]}
+                    placeholder={flow.placeholder}
                     value={inviteInput}
                     onChange={(e) => setInviteInput(e.target.value)}
                   />
@@ -615,115 +748,7 @@ export function AddNewServer({
                   </>
                 )}
 
-                {/* The preview, and it stays a preview. There used to be a
-                    details card between pasting and joining, which is a whole
-                    screen spent confirming something the name alone settles. */}
-                <AnimatePresence>
-                  {serverHost.length > 0 && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      style={{ overflow: "hidden" }}
-                    >
-                      <ServerPreview
-                        host={serverHost}
-                        info={serverInfo}
-                        loading={isSearching}
-                        error={webAddressError || lookupError}
-                        privateInfo={serverPrivate}
-                        alreadyMember={alreadyMember}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                  {inviteRequired && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      style={{ overflow: "hidden" }}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <span className="text-sm font-bold">
-                          Invite code
-                        </span>
-                        <TextField
-                          disabled={isJoining}
-                          placeholder="Paste invite code"
-                          value={inviteCode}
-                          onChange={(e) =>
-                            setManualCode(normalizeCode(e.target.value))
-                          }
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                  {serverInfo?.joinPolicy === "request" && !awaitingApproval && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      style={{ overflow: "hidden" }}
-                    >
-                      {/* Only on a server that lets people in by hand, which
-                          is the only place there is anybody to read it. The
-                          label carries what the paragraph used to. */}
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-bold">
-                          Say who you are
-                        </span>
-                        <TextField
-                          disabled={isJoining}
-                          placeholder="Optional"
-                          maxLength={300}
-                          value={joinNote}
-                          onChange={(e) => setJoinNote(e.target.value)}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                  {awaitingApproval && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      style={{ overflow: "hidden" }}
-                    >
-                      <Alert severity="info">
-                        Asked. Somebody who runs this server has to let you in.
-                        It is in your server list now, marked as waiting, and
-                        opens on its own once they do. You can close this.
-                      </Alert>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                  {joinError.length > 0 && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      style={{ overflow: "hidden" }}
-                    >
-                      <Alert severity="error" role="alert">
-                        <span className="inline-flex items-center gap-2">
-                          <PiWarningFill size={16} />
-                          {joinError}
-                        </span>
-                      </Alert>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <JoinDetails flow={flow} />
 
                 <Dialog.Footer className="justify-end">
                   <Button
@@ -816,13 +841,14 @@ function EntryCard({
 }
 
 /** What an empty Gryt shows: the dialog's join and create on the page itself. */
-export function Welcome({ onLookAround }: { onLookAround: () => void }) {
+export function Welcome() {
   const { servers, setShowAddServer } = useServerManagement();
   const { isAvailable: canHost } = useEmbeddedServer();
-  const { isElectron } = useLanDiscovery();
   const { officialServerHidden } = useSettings();
   const officialServer = useOfficialServer(true);
-  const [invite, setInvite] = useState("");
+  const flow = useJoinFlow({ active: true, onJoined: () => {} });
+  const { joinAction, isJoining } = flow;
+  const typing = flow.serverHost.length > 0;
 
   const open = (start: Start) => {
     pendingStart = start;
@@ -842,10 +868,10 @@ export function Welcome({ onLookAround }: { onLookAround: () => void }) {
         </div>
 
         <form
-          className="flex flex-col gap-2.5 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-5"
+          className="flex flex-col gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-5"
           onSubmit={(e) => {
             e.preventDefault();
-            open({ mode: "join", input: invite.trim() });
+            if (!joinAction.disabled) joinAction.run();
           }}
         >
           <label htmlFor="welcome-invite" className="text-sm font-bold">
@@ -855,60 +881,59 @@ export function Welcome({ onLookAround }: { onLookAround: () => void }) {
             <div data-tour="join-address" className="min-w-0 flex-1">
               <TextField
                 id="welcome-invite"
-                placeholder={WEB_INPUT_EXAMPLES[0]}
-                value={invite}
-                onChange={(e) => setInvite(e.target.value)}
+                disabled={isJoining}
+                placeholder={flow.placeholder}
+                value={flow.inviteInput}
+                onChange={(e) => flow.setInviteInput(e.target.value)}
               />
             </div>
-            <Button type="submit">Join</Button>
+            <Button type="submit" tone={joinAction.tone} disabled={joinAction.disabled}>
+              {isJoining ? "Joining…" : joinAction.label}
+            </Button>
           </div>
+          <JoinDetails flow={flow} />
         </form>
 
-        <OrRule label="or start your own" />
+        {!typing && (
+          <>
+            <OrRule label="or start your own" />
 
-        <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(15rem, 100%), 1fr))" }}>
-          {canHost && (
-            <EntryCard icon={<PiMonitorFill size={17} />} name="On this computer" hint="Free. Online while this computer is on." onPick={() => open({ mode: "host" })} />
-          )}
-          {cloudEnabled ? (
-            <EntryCard
-              icon={<PiCloudFill size={17} />}
-              name="Gryt Cloud"
-              hint="From €4 a month. Always online."
-              external
-              accent
-              onPick={() => {
-                window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer");
-                open({ cloud: true });
-              }}
-            />
-          ) : (
-            <EntryCard icon={<PiCloudFill size={17} />} name="Gryt Cloud" hint="Coming soon. Always online." external onPick={() => window.open(CLOUD_URL, "_blank", "noopener,noreferrer")} />
-          )}
-        </div>
-        {!canHost && (
-          <span className="text-xs text-center" style={{ color: "var(--gryt-neutral-11)" }}>
-            Or run one on your own computer with the{" "}
-            <a className="gryt-link" href="https://gryt.chat/download" target="_blank" rel="noopener noreferrer">
-              desktop app
-            </a>
-            .
-          </span>
-        )}
+            <div className="grid gap-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(15rem, 100%), 1fr))" }}>
+              {canHost && (
+                <EntryCard icon={<PiMonitorFill size={17} />} name="On this computer" hint="Free. Online while this computer is on." onPick={() => open({ mode: "host" })} />
+              )}
+              {cloudEnabled ? (
+                <EntryCard
+                  icon={<PiCloudFill size={17} />}
+                  name="Gryt Cloud"
+                  hint="From €4 a month. Always online."
+                  external
+                  accent
+                  onPick={() => {
+                    window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer");
+                    open({ cloud: true });
+                  }}
+                />
+              ) : (
+                <EntryCard icon={<PiCloudFill size={17} />} name="Gryt Cloud" hint="Coming soon. Always online." external onPick={() => window.open(CLOUD_URL, "_blank", "noopener,noreferrer")} />
+              )}
+            </div>
+            {!canHost && (
+              <span className="text-xs text-center" style={{ color: "var(--gryt-neutral-11)" }}>
+                Or run one on your own computer with the{" "}
+                <a className="gryt-link" href="https://gryt.chat/download" target="_blank" rel="noopener noreferrer">
+                  desktop app
+                </a>
+                .
+              </span>
+            )}
 
-        {(showOfficial || isElectron) && (
-          <div className="flex flex-col items-center gap-3.5">
             {showOfficial && officialServer && (
-              <div data-tour="official-server">
-                <CommunityChip onPick={() => open({ mode: "join", input: officialServer.host })} />
+              <div data-tour="official-server" className="flex justify-center">
+                <CommunityChip onPick={() => flow.setInviteInput(officialServer.host)} />
               </div>
             )}
-            {isElectron && (
-              <button type="button" className="gryt-link cursor-pointer appearance-none border-0 bg-transparent p-0 text-sm" onClick={onLookAround}>
-                Servers on your network
-              </button>
-            )}
-          </div>
+          </>
         )}
       </div>
     </div>

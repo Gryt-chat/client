@@ -92,7 +92,7 @@ export function MainApp() {
       {dmSpaceOpen && hasServers && <ServerView dmSpace />}
       {!(dmSpaceOpen && hasServers) && showDiscovery && <Discovery />}
       {!dmSpaceOpen && !showDiscovery && hasServers && <ServerView />}
-      {!showDiscovery && !hasServers && <Welcome onLookAround={() => setShowDiscovery(true)} />}
+      {!showDiscovery && !hasServers && <Welcome />}
 
       {showTour && <OnboardingTour onFinish={dismissTour} />}
       {!showTour && ownerTourHost && (
