@@ -416,6 +416,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("profile:updated", (data: { nickname: string; avatarFileId: string | null; avatarWorn?: string | null; cardStyle?: unknown; bio?: string | null; pronouns?: string | null; statusLine?: string | null }) => {
+    setMlsSenderName(host, data.nickname);
     setServerProfiles(prev => {
       // This event doesn't say whether the avatar is a video; the member list does, for this file id.
       const avatarVideo = !!data.avatarFileId && prev[host]?.avatarFileId === data.avatarFileId && !!prev[host]?.avatarVideo;
@@ -745,6 +746,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       if (myEntry.serverUserId) {
         myServerUserIdByHost.set(host, myEntry.serverUserId);
       }
+      // A client holding a token never gets `server:joined`, so the DM preview's name comes from here too.
+      if (myEntry.nickname) setMlsSenderName(host, myEntry.nickname);
     }
   });
 
