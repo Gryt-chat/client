@@ -24,6 +24,7 @@ import {
   setServerUnread,
   setThreadMentionCounts,
   subscribeToPrefs,
+  uploadPendingServerIcon,
 } from "@/common";
 import {
   checkApproveTicket,
@@ -339,6 +340,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // Before anything renders. Every avatar and every picture reaches for this,
     // so storing it late means a screen of broken images on the first join.
     setServerFileAccess(host, joinInfo);
+    void uploadPendingServerIcon(host, joinInfo.accessToken).then(
+      (sent) => sent && socket.emit("server:details"),
+      (e: Error) => toast.error(e.message),
+    );
 
     // The earlier of the two publishes, so the key is on the server before the
     // first member list goes out and nobody sees them appear without one.

@@ -7,6 +7,7 @@ import {
   getServerHttpBase,
   normalizeCode,
   parseServerInput,
+  setPendingServerIcon,
   useAccount,
 } from "@/common";
 
@@ -532,8 +533,9 @@ export function AddNewServer({
 
             {step === "host" && embeddedServerAvailable && (
               <CreateServerPanel
-                onServerReady={(serverUrl, serverName) => {
+                onServerReady={(serverUrl, serverName, icon) => {
                   const { host } = parseServerInput(serverUrl);
+                  if (icon) setPendingServerIcon(host, icon);
 
                   if (servers[host]) {
                     switchToServer(host);
