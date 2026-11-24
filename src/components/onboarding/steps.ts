@@ -32,6 +32,8 @@ export interface TourStep {
    * events, so the app does its own opening. A step with `via` needs no `enter`.
    */
   via?: string[];
+  /** Press `via` only when the target isn't on screen already. */
+  viaIfHidden?: boolean;
 }
 
 /**
@@ -76,8 +78,8 @@ export const tourSteps: TourStep[] = [
   {
     id: "server",
     target: "add-server",
-    title: "Gryt is empty until you join a server",
-    body: "This is where you add one, whether it is a friend's or your own.",
+    title: "Your servers live here",
+    body: "Every server you join shows up in this rail, and the + adds another, a friend's or your own.",
     // The owl presses the same X the user would, so the panel closing has a cause.
     via: ["settings-close"],
     // Coming back from the join step, its dialog would cover this.
@@ -87,10 +89,12 @@ export const tourSteps: TourStep[] = [
     id: "join",
     target: "join-address",
     title: "Paste an invite to join",
-    body: "A friend's invite link goes straight in here, and a plain address works too. It tells you whether the server needs an account before you join.",
+    body: "A friend's invite link goes in here, and a plain address works too. Before you join, you'll see the server and whether it needs an account.",
     // Two hops now that the dialog asks which errand you are on: open it, then
     // choose Join. The cursor makes the same choice a person would.
     via: ["add-server", "choose-join"],
+    // The empty home has the field on the page; the dialog is the route once you have servers.
+    viaIfHidden: true,
   },
   {
     id: "community",

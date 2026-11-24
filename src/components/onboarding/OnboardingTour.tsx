@@ -163,7 +163,8 @@ export function OnboardingTour({
       }
 
       // The owl stays put while the route is pressed, and flies once to where the step ends.
-      for (const anchor of step.via ?? []) {
+      const route = step.viaIfHidden && readRect(step.target) ? [] : step.via ?? [];
+      for (const anchor of route) {
         if (!readRect(anchor)) {
           console.warn(`[tour] no control for "${anchor}" — skipping this hop`);
           continue;
