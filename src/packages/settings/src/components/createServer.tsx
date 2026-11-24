@@ -10,15 +10,13 @@ import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
 interface CreateServerPanelProps {
   /** Called once the new server is up and reachable. */
   onServerReady: (serverUrl: string, serverName: string) => void;
-  /** Back out to the step that chose this. */
-  onBack: () => void;
 }
 
 /**
  * Making a server, and nothing else — the manager lives in Settings → My servers.
  * Create writes the config, starts the process and hands the address back.
  */
-export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
+export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
   const { isAvailable, creating, createServer, suggestPort, checkPort } =
     useEmbeddedServer();
 
@@ -106,52 +104,38 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           until it started.
 
           No caption underneath: it changes as you type, which says it. */}
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-bold">Name</span>
-        <div className="flex items-end gap-3">
-          <Avatar
-            size="medium"
-            className="rounded-(--gryt-radius-md) shrink-0"
-            fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
-          />
-          <TextField
-            autoFocus
-            className="flex-1"
-            placeholder="My Server"
-            value={serverName}
-            onChange={(e) => setServerName(e.target.value)}
-            disabled={creating}
-            maxLength={64}
-          />
-        </div>
-      </div>
-
-      {/* A port is four characters, so the field is short and its status sits
-          beside it on the same line — a status about a value belongs next to
-          the value rather than up beside the label. Tabular digits so the
-          number does not jiggle while it is typed.
-
-          "Available" rather than "Free": on a product surface Free reads as a
-          price, and nothing here costs money. */}
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-bold">Port</span>
+      {/* One grid, so the port field starts where the name field does. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3">
+        <Avatar
+          size="medium"
+          className="rounded-(--gryt-radius-md) shrink-0"
+          fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
+        />
+        <TextField
+          autoFocus
+          aria-label="Server name"
+          placeholder="My Server"
+          value={serverName}
+          onChange={(e) => setServerName(e.target.value)}
+          disabled={creating}
+          maxLength={64}
+        />
+        <span className="text-sm font-bold text-right">Port</span>
         <div className="flex items-center gap-3">
-          {/* The width goes on a wrapper, not on TextField: the class lands on
-              the input and its wrapper stays full-width, which pushed the
-              status a quarter of the dialog away from the value it is about. */}
           <div className="w-28 shrink-0">
-          <TextField
-            inputMode="numeric"
-            className="tabular-nums"
-            placeholder="5000"
-            value={port}
-            onChange={(e) => {
-              touched.current = true;
-              setPort(e.target.value.replace(/[^0-9]/g, ""));
-            }}
-            disabled={creating}
-            maxLength={5}
-          />
+            <TextField
+              inputMode="numeric"
+              aria-label="Port"
+              className="tabular-nums"
+              placeholder="5000"
+              value={port}
+              onChange={(e) => {
+                touched.current = true;
+                setPort(e.target.value.replace(/[^0-9]/g, ""));
+              }}
+              disabled={creating}
+              maxLength={5}
+            />
           </div>
           {portState === "free" && (
             <span
@@ -215,11 +199,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
         )}
       </AnimatePresence>
 
-      <Dialog.Footer className="justify-between">
-        <Button tone="ghost" size="small" onClick={onBack} disabled={creating}>
-          Back
-        </Button>
-
+      <Dialog.Footer className="justify-end">
         <Button size="small"
           onClick={() => {
             void handleCreate();
