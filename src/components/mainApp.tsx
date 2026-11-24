@@ -1,4 +1,3 @@
-import { Button } from "@gryt/ui";
 import { useEffect } from "react";
 
 import { OPEN_CHANNEL_EVENT } from "@/lib/channelDirectory";
@@ -6,7 +5,7 @@ import {
   NOTIFICATION_CHANNEL_OPEN_EVENT,
   onDesktopNotificationOpen,
 } from "@/lib/desktopNotification";
-import { useSettings } from "@/settings";
+import { useSettings, Welcome } from "@/settings";
 import { DmFeeds, NewMessageDialog, useDmSpaceOpen, useRememberView, useServerManagement } from "@/socket";
 import { ServerView } from "@/socket/src/components/serverView";
 import { useIsTinyWindow } from "@/socket/src/hooks/useNarrowWindow";
@@ -93,20 +92,7 @@ export function MainApp() {
       {dmSpaceOpen && hasServers && <ServerView dmSpace />}
       {!(dmSpaceOpen && hasServers) && showDiscovery && <Discovery />}
       {!dmSpaceOpen && !showDiscovery && hasServers && <ServerView />}
-      {!showDiscovery && !hasServers && (
-        /* Was a line of text with a finger emoji pointing at the sidebar. That is
-           the tour's job; somebody who dismissed it still ends up here. */
-        <div className="flex grow items-center justify-center">
-          <div className="flex flex-col items-center gap-3" style={{ maxWidth: "24rem", textAlign: "center" }}>
-            <h2 className="text-lg">Nothing here yet</h2>
-            <span className="text-sm text-gryt-muted">
-              Gryt is empty until you join a server. Add a friend&rsquo;s with an
-              invite, or start one of your own.
-            </span>
-            <Button onClick={() => setShowAddServer(true)}>Add a server</Button>
-          </div>
-        </div>
-      )}
+      {!showDiscovery && !hasServers && <Welcome onLookAround={() => setShowDiscovery(true)} />}
 
       {showTour && <OnboardingTour onFinish={dismissTour} />}
       {!showTour && ownerTourHost && (

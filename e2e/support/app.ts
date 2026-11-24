@@ -47,7 +47,7 @@ export function messageRow(page: Page, text: string | RegExp): Locator {
 }
 
 export async function joinServer(page: Page, host: string): Promise<void> {
-  await page.getByRole("button", { name: "Add a server" }).first().click();
+  await page.getByRole("button", { name: "Join", exact: true }).click();
   await joinFromDialog(page, host);
 }
 

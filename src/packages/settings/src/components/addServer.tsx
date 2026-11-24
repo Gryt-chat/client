@@ -112,6 +112,10 @@ function isLocalhostHost(host: string): boolean {
   );
 }
 
+/** Where the welcome page hands somebody over, so the dialog's own join and create run. */
+type Start = { mode: "join" | "host"; input?: string } | { cloud: true };
+let pendingStart: Start | null = null;
+
 export function AddNewServer({
   showAddServer,
   setShowAddServer,
@@ -267,6 +271,18 @@ export function AddNewServer({
       controller.abort();
     };
   }, [serverHost, webAddressError]);
+
+  useEffect(() => {
+    if (!showAddServer || !pendingStart) return;
+    const start = pendingStart;
+    pendingStart = null;
+    if ("cloud" in start) {
+      setCloud("waiting");
+      return;
+    }
+    setMode(start.mode);
+    if (start.input) setInviteInput(start.input);
+  }, [showAddServer]);
 
   // From the top rather than where the last visit stopped: somebody who closed
   // this halfway is not usually coming back to finish.
@@ -762,7 +778,7 @@ function EntryCard({
   name: string;
   hint: string;
   onPick: () => void;
-  tour: string;
+  tour?: string;
   external?: boolean;
   accent?: boolean;
 }) {
@@ -795,6 +811,108 @@ function EntryCard({
         {hint}
       </span>
     </button>
+  );
+}
+
+/** What an empty Gryt shows: both of the dialog's doors on the page. */
+export function Welcome({ onLookAround }: { onLookAround: () => void }) {
+  const { setShowAddServer } = useServerManagement();
+  const { isAvailable: canHost } = useEmbeddedServer();
+  const { isElectron } = useLanDiscovery();
+  const [invite, setInvite] = useState("");
+
+  const open = (start: Start) => {
+    pendingStart = start;
+    setShowAddServer(true);
+  };
+
+  return (
+    <div className="flex grow items-center justify-center overflow-auto p-4">
+      <div className="flex w-full flex-col items-center gap-8" style={{ maxWidth: "55rem" }}>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="m-0 text-3xl font-bold">Welcome to Gryt</h1>
+          <p className="m-0 text-sm" style={{ color: "var(--gryt-neutral-11)" }}>
+            Join a friend&rsquo;s server, or start one of your own.
+          </p>
+        </div>
+
+        <div className="grid w-full gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(18rem, 100%), 1fr))" }}>
+          <form
+            className="flex flex-col gap-4 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              open({ mode: "join", input: invite.trim() });
+            }}
+          >
+            <WelcomeIcon icon={<PiSignInFill size={20} />} />
+            <div className="flex flex-col gap-1">
+              <h2 className="m-0 text-lg font-bold">Join</h2>
+              <p className="m-0 text-sm" style={{ color: "var(--gryt-neutral-11)" }}>
+                Paste the invite a friend sent you, or the address of a server you know.
+              </p>
+            </div>
+            <TextField
+              aria-label="Invite or server address"
+              placeholder={WEB_INPUT_EXAMPLES[0]}
+              value={invite}
+              onChange={(e) => setInvite(e.target.value)}
+            />
+            <Button type="submit">Join</Button>
+          </form>
+
+          <section className="flex flex-col gap-4 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-6">
+            <WelcomeIcon icon={<PiSparkleFill size={20} />} />
+            <div className="flex flex-col gap-1">
+              <h2 className="m-0 text-lg font-bold">Create</h2>
+              <p className="m-0 text-sm" style={{ color: "var(--gryt-neutral-11)" }}>
+                Run it yourself, or let us run it for you.
+              </p>
+            </div>
+            {canHost && (
+              <EntryCard icon={<PiMonitorFill size={17} />} name="On this computer" hint="Free. Online while this computer is on." onPick={() => open({ mode: "host" })} />
+            )}
+            {cloudEnabled ? (
+              <EntryCard
+                icon={<PiCloudFill size={17} />}
+                name="Gryt Cloud"
+                hint="From €4 a month. Always online."
+                external
+                accent
+                onPick={() => {
+                  window.open(CLOUD_CONSOLE_URL, "_blank", "noopener,noreferrer");
+                  open({ cloud: true });
+                }}
+              />
+            ) : (
+              <EntryCard icon={<PiCloudFill size={17} />} name="Gryt Cloud" hint="Coming soon. Always online." external onPick={() => window.open(CLOUD_URL, "_blank", "noopener,noreferrer")} />
+            )}
+            {!canHost && (
+              <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>
+                Or run one on your own computer with the{" "}
+                <a className="gryt-link" href="https://gryt.chat/download" target="_blank" rel="noopener noreferrer">
+                  desktop app
+                </a>
+                .
+              </span>
+            )}
+          </section>
+        </div>
+
+        {isElectron && (
+          <button type="button" className="gryt-link cursor-pointer appearance-none border-0 bg-transparent p-0 text-sm" onClick={onLookAround}>
+            Or look for servers on your network
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WelcomeIcon({ icon }: { icon: React.ReactNode }) {
+  return (
+    <span className="flex items-center justify-center" style={{ width: 44, height: 44, borderRadius: 14, background: "var(--gryt-accent-a3)", color: "var(--gryt-accent-11)" }}>
+      {icon}
+    </span>
   );
 }
 
