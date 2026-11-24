@@ -249,7 +249,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@gryt/core": "0.35.4",
+    "@gryt/core": "0.35.5",
     "@gryt/crypto": "0.17.1",
     "@gryt/owl": "^0.8.1",
     "@gryt/ui": "^0.54.0",
