@@ -272,7 +272,7 @@ const dms = read("src/packages/socket/src/hooks/useDirectMessages.ts");
 
   // GRYT-1341: the header names the server, with the icon from the same place.
   assert.ok(
-    /<ServerChip name=\{name\} icon=\{serverIconSrc\(host, stored \|\| "", serverDetailsList\)\} \/>/.test(view),
+    /<ServerChip name=\{name\} icon=\{serverIconSrc\(host, stored \|\| "", serverDetailsList\)\}[^>]*\/>/.test(view),
     "the header's server takes its icon from somewhere other than the rail",
   );
 }
