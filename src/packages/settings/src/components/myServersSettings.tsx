@@ -595,13 +595,9 @@ function HostedServerCard({
             </Accordion.Item>
           </Accordion>
 
-        {/* Behind an accordion, and genuinely unmounted when shut.
-            EmbeddedServerLogs pulls the whole history and opens a live
-            subscription the moment it mounts, so hiding it with CSS would have
-            kept both running for a panel nobody had asked to see. Closed means
-            not fetching. */}
-        {(isRunning || isStarting) && (
-          <Accordion
+        {/* Unmounted when shut, since the pane fetches and subscribes on mount. Shown
+            when the server is stopped too: that's when a crash needs reading. */}
+        <Accordion
             value={logsOpen}
             onValueChange={(value: unknown) => setLogsOpen(value as string[])}
           >
@@ -614,11 +610,10 @@ function HostedServerCard({
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
-        )}
 
         {hasError && server.error && (
           <div className="flex flex-col gap-2">
-            <Alert severity="info" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{server.error}</span></Alert>
+            <Alert severity="error" role="alert"><span className="inline-flex items-start gap-2"><PiWarningFill size={16} />{server.error}</span></Alert>
             <div className="flex justify-end">
               <Button tone="ghost" size="xsmall" onClick={onDismissError}>
                 <PiX size={14} />

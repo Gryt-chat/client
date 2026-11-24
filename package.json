@@ -24,6 +24,7 @@
     "typecheck": "tsc -b",
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test:updater-bridge": "node scripts/check-updater-bridge.ts",
+    "test:exit-detail": "node scripts/check-exit-detail.ts",
     "test:update-feed-pin": "node scripts/check-update-feed-pin.ts",
     "test:update-supersede": "node scripts/check-update-supersede.ts",
     "test:update-in-progress": "node scripts/check-update-in-progress.ts",
