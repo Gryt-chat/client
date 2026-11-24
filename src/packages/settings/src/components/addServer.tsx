@@ -850,7 +850,7 @@ export function Welcome() {
   const { joinAction, isJoining } = flow;
   const typing = flow.serverHost.length > 0;
   const still = useReducedMotion();
-  const glide = { duration: still ? 0 : 0.32, ease: [0.2, 0, 0, 1] as const };
+  const glide = { duration: still ? 0 : 1, ease: [0.2, 0, 0, 1] as const };
 
   const open = (start: Start) => {
     pendingStart = start;
@@ -906,7 +906,7 @@ export function Welcome() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 12 }}
-              transition={{ ...glide, duration: still ? 0 : 0.2 }}
+              transition={{ ...glide, duration: still ? 0 : 0.6 }}
             >
               <OrRule label="or start your own" />
 
