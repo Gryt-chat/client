@@ -851,6 +851,8 @@ export function Welcome() {
   const typing = flow.serverHost.length > 0;
   const still = useReducedMotion();
   const glide = { duration: still ? 0 : 1, ease: [0.2, 0, 0, 1] as const };
+  /* Mid-glide the moving parts overlap their old places and overflow for a second. */
+  const [gliding, setGliding] = useState(false);
 
   const open = (start: Start) => {
     pendingStart = start;
@@ -859,7 +861,7 @@ export function Welcome() {
   const showOfficial = !!officialServer && !servers[officialServer.host] && !officialServerHidden;
 
   return (
-    <div className="flex grow items-center justify-center overflow-auto p-4">
+    <div className={`flex grow items-center justify-center p-4 ${gliding ? "overflow-hidden" : "overflow-auto"}`}>
       <div className="relative flex w-full flex-col gap-7" style={{ maxWidth: "40rem" }}>
         {/* Re-measured only when typing flips; per keystroke it restarted the glide. */}
         <motion.div layout="position" layoutDependency={typing} transition={glide} className="flex flex-col items-center gap-3 pb-2 text-center">
@@ -874,6 +876,8 @@ export function Welcome() {
           layout="position"
           layoutDependency={typing}
           transition={glide}
+          onLayoutAnimationStart={() => setGliding(true)}
+          onLayoutAnimationComplete={() => setGliding(false)}
           className="flex flex-col gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-5"
           onSubmit={(e) => {
             e.preventDefault();
