@@ -1,9 +1,9 @@
 import { type ChildProcess, fork, spawn } from "child_process";
 import { app, type BrowserWindow } from "electron";
-import { existsSync, readFileSync } from "fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from "fs";
 import { chmod, cp, mkdir, rename, rm, writeFile } from "fs/promises";
 import { createServer } from "net";
-import { join } from "path";
+import { dirname, join } from "path";
 import { extract } from "tar";
 
 import { pruneEmbeddedRuntimes } from "./embeddedRuntimeCleanup";
@@ -26,6 +26,7 @@ import {
   updateCustomAdvertisedAddresses,
   updateServerPorts,
 } from "./embeddedServerConfig";
+import { CRASH_START, exitDetail } from "./exitDetail";
 import { loadGlobalStore, setGlobalValue } from "./globalStore";
 import { runMediaJob } from "./mediaSandbox";
 import { parseMediaRequest } from "./mediaSandboxFormat";
@@ -78,12 +79,16 @@ function outputKey(owner: LogOwner, source: LogSource): string {
   return `${owner ?? "-"}:${source}`;
 }
 
+const crashStart = new Map<string, { line: string; at: number }>();
+
 function rememberOutput(owner: LogOwner, source: LogSource, msg: string): void {
   const key = outputKey(owner, source);
   const lines = recentOutput.get(key) ?? [];
   for (const line of msg.split("\n")) {
     const trimmed = line.trim();
     if (trimmed) lines.push(trimmed);
+    const seen = crashStart.get(key);
+    if (CRASH_START.test(trimmed) && !(seen && Date.now() - seen.at < 60_000)) crashStart.set(key, { line: trimmed, at: Date.now() });
   }
   if (lines.length > OUTPUT_TAIL) lines.splice(0, lines.length - OUTPUT_TAIL);
   recentOutput.set(key, lines);
@@ -100,11 +105,8 @@ function explainExit(
 
   // Prefer a line that names the actual failure over the last line, which is
   // often a shutdown notice rather than the cause.
-  const telling = [...lines]
-    .reverse()
-    .find((l) => /error|failed|fatal|panic|denied|refused|address already|EADDR|ENOENT/i.test(l));
-
-  const detail = telling ?? lines[lines.length - 1];
+  const crash = crashStart.get(outputKey(owner, source));
+  const detail = exitDetail(lines, crash && Date.now() - crash.at < 60_000 ? crash.line : undefined);
   const base = `${label} process exited unexpectedly (code ${code})`;
   if (!detail) return base;
 
@@ -160,6 +162,21 @@ function levelOf(source: LogSource, text: string): LogLevel {
   return "info";
 }
 
+/* On disk too, because a crash restarts the process and the history above is gone with the app. */
+const LOG_FILE_MAX = 5 * 1024 * 1024;
+let logFile: string | null = null;
+
+function writeLogFile(lines: LogLine[]): void {
+  try {
+    logFile ??= join(app.getPath("userData"), "logs", "embedded-servers.log");
+    mkdirSync(dirname(logFile), { recursive: true });
+    if (existsSync(logFile) && statSync(logFile).size > LOG_FILE_MAX) renameSync(logFile, `${logFile}.1`);
+    appendFileSync(logFile, lines.map((l) => `${new Date(l.at).toISOString()} ${l.serverId ?? "-"} ${l.source} ${l.text}\n`).join(""));
+  } catch {
+    // A full disk or a locked file mustn't take the servers down with it.
+  }
+}
+
 function emitLog(owner: LogOwner, source: LogSource, data: string): void {
   const lines: LogLine[] = [];
 
@@ -178,6 +195,7 @@ function emitLog(owner: LogOwner, source: LogSource, data: string): void {
   if (!lines.length) return;
 
   logHistory.push(...lines);
+  writeLogFile(lines);
   if (logHistory.length > LOG_HISTORY) {
     logHistory.splice(0, logHistory.length - LOG_HISTORY);
   }

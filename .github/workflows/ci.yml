@@ -26,6 +26,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn test:updater-bridge
+      - run: yarn test:exit-detail
       - run: yarn test:update-feed-pin
       # A newer release has to replace a download that is waiting or still running,
       # so one press installs the newest. Nothing else here runs that sequence.
