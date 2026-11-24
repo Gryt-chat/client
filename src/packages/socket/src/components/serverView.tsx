@@ -169,7 +169,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     devFakeParticipants, devFakeMuted, devFakeScreenShare,
     devFakeDeafened, devFakeSpeaking, devFakeMembers, devFakeChatSeconds,
   } = useSettings();
-  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace, addServer, removeServer } = useServerManagement();
+  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace, addServer, removeServer, switchToServer } = useServerManagement();
   /* Switches the saved server to the address it gave as public (GRYT-2007). A new address is
      joined and proved like any server added by hand, so its identity check runs as normal. */
   const switchToPublicAddress = (server: { host: string; name?: string; publicHost?: string }) => {
@@ -1060,10 +1060,10 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     return (
       <>
         {dmPresence}
-        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
+        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} onOpen={() => switchToServer(host)} />
       </>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, dmPresence]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, dmPresence, switchToServer]);
 
   /* Board 1's header: the face where a channel has its icon, and under the name where
      the conversation lives and whether it's sealed. */
@@ -1101,7 +1101,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     return (
       <span className="flex min-w-0 items-center gap-1.5 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
         {activeDm.kind === "group" ? <span>{activeDm.members.length + 1} people ·</span> : <span>on</span>}
-        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
+        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} onOpen={() => switchToServer(host)} />
         <span aria-hidden>·</span>
         {sealed && activeDm.kind === "dm" && (
           <button
@@ -1134,7 +1134,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         )}
       </span>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, compareKeys, peerKeys.comparedAt]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, compareKeys, peerKeys.comparedAt, switchToServer]);
 
   /* Board 7, option A: behind ⋯ in a channel's header. The pin button stays beside it. */
   const channelMoreMenu = useMemo(() => {
