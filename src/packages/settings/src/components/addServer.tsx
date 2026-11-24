@@ -861,7 +861,8 @@ export function Welcome() {
   return (
     <div className="flex grow items-center justify-center overflow-auto p-4">
       <div className="relative flex w-full flex-col gap-7" style={{ maxWidth: "40rem" }}>
-        <motion.div layout="position" transition={glide} className="flex flex-col items-center gap-3 pb-2 text-center">
+        {/* Re-measured only when typing flips; per keystroke it restarted the glide. */}
+        <motion.div layout="position" layoutDependency={typing} transition={glide} className="flex flex-col items-center gap-3 pb-2 text-center">
           <LogoIcon size={72} />
           <h1 className="m-0 text-3xl font-bold">Welcome to Gryt</h1>
           <p className="m-0 text-base" style={{ color: "var(--gryt-neutral-11)", maxWidth: "28rem" }}>
@@ -871,6 +872,7 @@ export function Welcome() {
 
         <motion.form
           layout="position"
+          layoutDependency={typing}
           transition={glide}
           className="flex flex-col gap-3 rounded-(--gryt-radius-lg) border border-gryt-border bg-gryt-surface p-5"
           onSubmit={(e) => {
