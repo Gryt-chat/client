@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { GeneratedServerIcon } from "@/common";
 
-import { PiCheckCircleFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { PiCameraFill, PiCheckCircleFill, PiWarningFill, PiX } from "../../../../lib/icons";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
+import { SERVER_ICON_SHAPE } from "./pictureCrop";
+import { PictureCropDialog } from "./PictureCropDialog";
 
 interface CreateServerPanelProps {
   /** Called once the new server is up and reachable. */
-  onServerReady: (serverUrl: string, serverName: string) => void;
+  onServerReady: (serverUrl: string, serverName: string, icon: File | null) => void;
 }
 
 /**
@@ -23,6 +25,17 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
   const [serverName, setServerName] = useState("My Server");
   const [lanDiscoverable, setLanDiscoverable] = useState(true);
   const [error, setError] = useState("");
+  const [picking, setPicking] = useState<File | null>(null);
+  const [icon, setIcon] = useState<File | null>(null);
+  const [iconSrc, setIconSrc] = useState<string | undefined>();
+  const iconInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!icon) return setIconSrc(undefined);
+    const url = URL.createObjectURL(icon);
+    setIconSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [icon]);
 
   /**
    * The port, offered rather than demanded. Prefilled with one that is free, so
@@ -89,7 +102,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
       return;
     }
 
-    onServerReady(created.serverUrl, created.config.serverName);
+    onServerReady(created.serverUrl, created.config.serverName, icon);
   }
 
   return (
@@ -106,10 +119,35 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
           No caption underneath: it changes as you type, which says it. */}
       {/* One grid, so the port field starts where the name field does. */}
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3">
-        <Avatar
-          size="medium"
-          className="rounded-(--gryt-radius-md) shrink-0"
-          fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
+        <button
+          type="button"
+          aria-label="Choose a server picture"
+          className="relative shrink-0 cursor-pointer rounded-(--gryt-radius-md)"
+          onClick={() => iconInput.current?.click()}
+          disabled={creating}
+        >
+          <Avatar
+            size="medium"
+            className="rounded-(--gryt-radius-md)"
+            src={iconSrc}
+            fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
+          />
+          <span
+            className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full"
+            style={{ background: "var(--gryt-accent-9)", color: "var(--color-gryt-on-accent)", boxShadow: "0 1px 4px var(--gryt-neutral-a5)" }}
+          >
+            <PiCameraFill size={11} />
+          </span>
+        </button>
+        <input
+          ref={iconInput}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+          hidden
+          onChange={(e) => {
+            setPicking(e.target.files?.[0] ?? null);
+            e.currentTarget.value = "";
+          }}
         />
         <TextField
           autoFocus
@@ -198,6 +236,14 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PictureCropDialog
+        file={picking}
+        shape={SERVER_ICON_SHAPE}
+        onDone={(cropped) => {
+          setPicking(null);
+          if (cropped) setIcon(cropped);
+        }}      />
 
       <Dialog.Footer className="justify-end">
         <Button size="small"
