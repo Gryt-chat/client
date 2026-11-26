@@ -1,5 +1,5 @@
 import { Dialog, IconButton, Select, Switch, TextField } from "@gryt/ui";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { NotificationLevel } from "@/common";
 import {
@@ -92,12 +92,15 @@ interface SidebarEditDialogProps {
   lookField?: React.ReactNode;
 }
 
+type ChannelPage = "overview" | "look" | "voice" | "notifications" | "permissions";
+const CHANNEL_KIND_LABEL: Record<string, string> = { chat: "Text channel", voice: "Voice channel", forum: "Forum", automated: "Automated channel" };
+
 export const SidebarEditDialog = ({ open, onOpenChange, editor, lookField }: SidebarEditDialogProps) => {
   const {
     selectedSidebarItem,
     sheetChannelName, setSheetChannelName,
     sheetChannelDescription, setSheetChannelDescription,
-    sheetChannelIsVoice, setSheetChannelIsVoice,
+    setSheetChannelIsVoice,
     sheetChannelKind, setSheetChannelKind,
     sheetForumTags, setSheetForumTags,
     sheetRequirePtt, setSheetRequirePtt,
@@ -194,6 +197,20 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor, lookField }: Sid
     [scopeRoles],
   );
 
+  const [channelPage, setChannelPage] = useState<ChannelPage>("overview");
+  const itemKey = selectedSidebarItem?.kind === "channel" ? selectedSidebarItem.id : null;
+  useEffect(() => setChannelPage("overview"), [itemKey]);
+  const channelPages: { value: ChannelPage; label: string }[] = [
+    { value: "overview", label: "Overview" },
+    ...(sheetChannelKind === "voice" ? [{ value: "voice" as const, label: "Voice" }] : []),
+    ...(sheetChannelKind !== "voice" && lookField ? [{ value: "look" as const, label: "Look" }] : []),
+    { value: "notifications", label: "Notifications" },
+    { value: "permissions", label: "Permissions" },
+  ];
+
+  // A type change can take away the page you were on.
+  const shownPage = channelPages.some((p) => p.value === channelPage) ? channelPage : "overview";
+
   const handleClose = () => { flushSave(); flushScopeSave(); closeEditDialog(); };
   const handleKeyEnter = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleClose(); };
 
@@ -201,6 +218,196 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor, lookField }: Sid
     <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(o); }}>
       <Dialog.Portal>
         <Dialog.Backdrop />
+        {selectedSidebarItem?.kind === "channel" ? (
+        <Dialog.Popup data-gryt="edit-channel" className="w-[60rem] max-w-[calc(100vw-3rem)] p-3" style={{ height: "min(680px, calc(100vh - 3rem))" }}>
+        <div className="flex h-full flex-col gap-3 sm:flex-row">
+          <nav aria-label="Channel settings" className="flex shrink-0 gap-1 overflow-x-auto rounded-[calc(var(--gryt-radius-xl)-12px)] bg-gryt-neutral-2 p-2 sm:w-58 sm:flex-col sm:overflow-visible sm:py-4">
+            <div className="hidden min-w-0 flex-col px-3 pb-3 sm:flex">
+              <span className="truncate text-[15px] font-extrabold">{sheetChannelName || "Channel"}</span>
+              <span className="text-xs text-gryt-muted">{CHANNEL_KIND_LABEL[sheetChannelKind] ?? "Channel"}</span>
+            </div>
+            {channelPages.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                aria-current={shownPage === p.value ? "page" : undefined}
+                onClick={() => setChannelPage(p.value)}
+                className="h-10 shrink-0 cursor-pointer rounded-(--gryt-radius-sm) border-0 bg-transparent px-3 text-left text-sm text-gryt-neutral-11 hover:bg-gryt-neutral-4 aria-[current=page]:bg-gryt-accent-9 aria-[current=page]:font-bold aria-[current=page]:text-gryt-on-accent"
+              >
+                {p.label}
+              </button>
+            ))}
+          </nav>
+          <section className="flex min-h-0 min-w-0 grow flex-col gap-5 overflow-y-auto px-2 py-2 sm:px-6 sm:py-5">
+            <div className="flex items-center justify-between">
+              <Dialog.Title style={{ margin: 0 }}>{channelPages.find((p) => p.value === shownPage)?.label}</Dialog.Title>
+              <Dialog.Close>
+                <IconButton size="xsmall" aria-label="Close"><PiX size={16} /></IconButton>
+              </Dialog.Close>
+            </div>
+          {shownPage === "overview" && (
+            <>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Name</span>
+              <TextField
+                value={sheetChannelName}
+                onChange={(e) => setSheetChannelName(e.target.value)}
+                onBlur={flushSave}
+                onKeyDown={handleKeyEnter}
+                placeholder="Channel name"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">
+                Description <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span>
+              </span>
+              <TextField
+                value={sheetChannelDescription}
+                onChange={(e) => setSheetChannelDescription(e.target.value)}
+                onBlur={flushSave}
+                onKeyDown={handleKeyEnter}
+                placeholder="What's this channel for?"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Channel type</span>
+              <ChannelKindPicker
+                value={sheetChannelKind}
+                onChange={(k) => {
+                  setSheetChannelKind(k);
+                  // Kept in step because the voice-only block below still reads it.
+                  setSheetChannelIsVoice(k === "voice");
+                  debouncedSave();
+                }}
+              />
+            </div>
+            {sheetChannelKind === "forum" && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Tags</span>
+                <ForumTagsField
+                  tags={sheetForumTags}
+                  onChange={(t) => { setSheetForumTags(t); debouncedSave(); }}
+                />
+              </div>
+            )}
+            </>
+          )}
+          {shownPage === "look" && lookField}
+          {shownPage === "voice" && (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">eSports Mode</span>
+                  <span className="text-xs">Lowest latency: PTT, no RNNoise, 128 kbps bitrate, 10ms Opus</span>
+                </div>
+                <Switch checked={sheetEsportsMode} onCheckedChange={(v) => {
+                  setSheetEsportsMode(v);
+                  if (v) { setSheetRequirePtt(true); setSheetDisableRnnoise(true); }
+                  debouncedSave();
+                }} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">Require Push to Talk</span>
+                  <span className="text-xs">Users must hold a key to transmit</span>
+                </div>
+                <Switch checked={sheetRequirePtt} onCheckedChange={(v) => { setSheetRequirePtt(v); debouncedSave(); }} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">Disable Noise Reduction</span>
+                  <span className="text-xs">Raw audio with no processing for lower latency</span>
+                </div>
+                <Switch checked={sheetDisableRnnoise} disabled={sheetEsportsMode} onCheckedChange={(v) => { setSheetDisableRnnoise(v); debouncedSave(); }} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Max Bitrate</span>
+                {/* The separator under Default is gone: the library's
+                    Select takes a flat list of options, and Default reads
+                    as the first of them well enough without a rule. */}
+                <Select
+                  value={sheetMaxBitrate || "default"}
+                  onValueChange={(v) => {
+                    setSheetMaxBitrate(v === "default" ? "" : String(v));
+                    debouncedSave();
+                  }}
+                  options={[
+                    { label: "Default", value: "default" },
+                    { label: "32 kbps", value: "32000" },
+                    { label: "64 kbps", value: "64000" },
+                    { label: "96 kbps", value: "96000" },
+                    { label: "128 kbps", value: "128000" },
+                    { label: "256 kbps", value: "256000" },
+                    { label: "510 kbps", value: "510000" },
+                  ]}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium">Enable Text Chat</span>
+                  <span className="text-xs">Allow text messages in this voice channel</span>
+                </div>
+                <Switch checked={sheetTextInVoice} onCheckedChange={(v) => { setSheetTextInVoice(v); debouncedSave(); }} />
+              </div>
+            </>
+          )}
+          {shownPage === "notifications" && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Default notifications</span>
+              <div role="radiogroup" aria-label="Default notifications" className="flex max-w-md flex-col gap-2">
+                {NOTIFICATION_LEVEL_OPTIONS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={sheetDefaultNotificationLevel === o.value}
+                    onClick={() => { setSheetDefaultNotificationLevel(o.value); debouncedSave(); }}
+                    className="min-h-13 cursor-pointer rounded-(--gryt-radius-md) border px-3.5 text-left text-sm font-bold text-gryt-neutral-12 aria-checked:border-2 aria-checked:border-gryt-accent-9 aria-checked:bg-gryt-neutral-4 border-gryt-neutral-6 bg-gryt-neutral-3"
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs">
+                What members get from this channel until they pick their own level for it.
+              </span>
+            </div>
+          )}
+          {shownPage === "permissions" && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Who can use this channel</span>
+              {sheetScopeFolder && !sheetScopeFollowsFolder && (
+                <span className="text-xs">{folderFollowNote(sheetScopeFolder.name)}</span>
+              )}
+              <ScopePicker
+                choice={following ? FOLLOW_FOLDER_VALUE : sheetScopeChoice}
+                rules={sheetScopeRules}
+                options={channelScopeOptions}
+                roles={scopeRoles}
+                permissions={channelPermissions}
+                loading={scopeLoading}
+                lockedMatrix={following && sheetScopeChoice === CUSTOM_VALUE}
+                description={
+                  following
+                    ? followingFolderDescription(
+                        sheetScopeFolder?.name ?? null,
+                        sheetScopeRules,
+                        roleNames,
+                        sheetScopeChoice !== EVERYONE_VALUE && sheetScopeChoice !== CUSTOM_VALUE
+                          ? scopeChoiceOptions.find((o) => o.value === sheetScopeChoice)?.label ?? null
+                          : null,
+                      )
+                    : channelScopeLine(sheetScopeChoice, sheetScopeRules, roleNames)
+                }
+                onChoice={pickChannelScope}
+                onRules={drawRules}
+              />
+            </div>
+          )}
+          </section>
+        </div>
+        </Dialog.Popup>
+        ) : (
         <Dialog.Popup>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
@@ -212,156 +419,6 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor, lookField }: Sid
             </Dialog.Close>
           </div>
 
-          {selectedSidebarItem?.kind === "channel" && (
-            <>
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Name</span>
-                <TextField
-                  value={sheetChannelName}
-                  onChange={(e) => setSheetChannelName(e.target.value)}
-                  onBlur={flushSave}
-                  onKeyDown={handleKeyEnter}
-                  placeholder="Channel name"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">
-                  Description <span style={{ color: "var(--gryt-neutral-10)", fontWeight: 400 }}>(optional)</span>
-                </span>
-                <TextField
-                  value={sheetChannelDescription}
-                  onChange={(e) => setSheetChannelDescription(e.target.value)}
-                  onBlur={flushSave}
-                  onKeyDown={handleKeyEnter}
-                  placeholder="What's this channel for?"
-                />
-              </div>
-              {sheetChannelKind !== "voice" && lookField}
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Channel type</span>
-                <ChannelKindPicker
-                  value={sheetChannelKind}
-                  onChange={(k) => {
-                    setSheetChannelKind(k);
-                    // Kept in step because the voice-only block below still reads it.
-                    setSheetChannelIsVoice(k === "voice");
-                    debouncedSave();
-                  }}
-                />
-              </div>
-              {sheetChannelKind === "forum" && (
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-medium">Tags</span>
-                  <ForumTagsField
-                    tags={sheetForumTags}
-                    onChange={(t) => { setSheetForumTags(t); debouncedSave(); }}
-                  />
-                </div>
-              )}
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Default notifications</span>
-                <Select
-                  value={sheetDefaultNotificationLevel}
-                  onValueChange={(v) => {
-                    if (v !== "all" && v !== "mentions" && v !== "none") return;
-                    setSheetDefaultNotificationLevel(v);
-                    debouncedSave();
-                  }}
-                  options={NOTIFICATION_LEVEL_OPTIONS}
-                />
-                <span className="text-xs">
-                  What members get from this channel until they pick their own level for it.
-                </span>
-              </div>
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Who can use this channel</span>
-                {sheetScopeFolder && !sheetScopeFollowsFolder && (
-                  <span className="text-xs">{folderFollowNote(sheetScopeFolder.name)}</span>
-                )}
-                <ScopePicker
-                  choice={following ? FOLLOW_FOLDER_VALUE : sheetScopeChoice}
-                  rules={sheetScopeRules}
-                  options={channelScopeOptions}
-                  roles={scopeRoles}
-                  permissions={channelPermissions}
-                  loading={scopeLoading}
-                  lockedMatrix={following && sheetScopeChoice === CUSTOM_VALUE}
-                  description={
-                    following
-                      ? followingFolderDescription(
-                          sheetScopeFolder?.name ?? null,
-                          sheetScopeRules,
-                          roleNames,
-                          sheetScopeChoice !== EVERYONE_VALUE && sheetScopeChoice !== CUSTOM_VALUE
-                            ? scopeChoiceOptions.find((o) => o.value === sheetScopeChoice)?.label ?? null
-                            : null,
-                        )
-                      : channelScopeLine(sheetScopeChoice, sheetScopeRules, roleNames)
-                  }
-                  onChoice={pickChannelScope}
-                  onRules={drawRules}
-                />
-              </div>
-              {sheetChannelIsVoice && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium">eSports Mode</span>
-                      <span className="text-xs">Lowest latency: PTT, no RNNoise, 128 kbps bitrate, 10ms Opus</span>
-                    </div>
-                    <Switch checked={sheetEsportsMode} onCheckedChange={(v) => {
-                      setSheetEsportsMode(v);
-                      if (v) { setSheetRequirePtt(true); setSheetDisableRnnoise(true); }
-                      debouncedSave();
-                    }} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium">Require Push to Talk</span>
-                      <span className="text-xs">Users must hold a key to transmit</span>
-                    </div>
-                    <Switch checked={sheetRequirePtt} onCheckedChange={(v) => { setSheetRequirePtt(v); debouncedSave(); }} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium">Disable Noise Reduction</span>
-                      <span className="text-xs">Raw audio with no processing for lower latency</span>
-                    </div>
-                    <Switch checked={sheetDisableRnnoise} disabled={sheetEsportsMode} onCheckedChange={(v) => { setSheetDisableRnnoise(v); debouncedSave(); }} />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium">Max Bitrate</span>
-                    {/* The separator under Default is gone: the library's
-                        Select takes a flat list of options, and Default reads
-                        as the first of them well enough without a rule. */}
-                    <Select
-                      value={sheetMaxBitrate || "default"}
-                      onValueChange={(v) => {
-                        setSheetMaxBitrate(v === "default" ? "" : String(v));
-                        debouncedSave();
-                      }}
-                      options={[
-                        { label: "Default", value: "default" },
-                        { label: "32 kbps", value: "32000" },
-                        { label: "64 kbps", value: "64000" },
-                        { label: "96 kbps", value: "96000" },
-                        { label: "128 kbps", value: "128000" },
-                        { label: "256 kbps", value: "256000" },
-                        { label: "510 kbps", value: "510000" },
-                      ]}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium">Enable Text Chat</span>
-                      <span className="text-xs">Allow text messages in this voice channel</span>
-                    </div>
-                    <Switch checked={sheetTextInVoice} onCheckedChange={(v) => { setSheetTextInVoice(v); debouncedSave(); }} />
-                  </div>
-                </>
-              )}
-            </>
-          )}
 
           {selectedSidebarItem?.kind === "spacer" && (
             <div className="flex flex-col gap-2">
@@ -417,6 +474,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor, lookField }: Sid
           )}
         </div>
       </Dialog.Popup>
+        )}
       </Dialog.Portal>
     </Dialog.Root>
   );
