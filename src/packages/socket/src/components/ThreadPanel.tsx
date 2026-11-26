@@ -135,9 +135,12 @@ export function ThreadPanel({ thread, root, messages, loading, renderMessage, re
       style={{
         ...(resizable
           ? {
-              position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 20,
-              width: expanded ? "100%" : THREAD_PANEL_WIDTH,
-              borderLeft: "1px solid var(--gryt-neutral-6)",
+              // Inset in the chat panel, so its close button reads as the panel's and not the window's.
+              position: "absolute", top: 8, right: 8, bottom: 8, zIndex: 20,
+              width: expanded ? "calc(100% - 16px)" : THREAD_PANEL_WIDTH - 8,
+              border: "1px solid var(--gryt-neutral-6)",
+              borderRadius: "var(--gryt-radius-md)",
+              overflow: "hidden",
             }
           : { position: "absolute", inset: 0, zIndex: 20 }),
         display: "flex", flexDirection: "column", minWidth: 0,
