@@ -362,9 +362,10 @@ const clip = new Blob(["frames"], { type: "video/webm" });
 }
 URL.revokeObjectURL = realRevoke;
 
-const audio = [...player.matchAll(/<audio\b[\s\S]*?\/>/g)];
+const AUDIO = "src/packages/socket/src/components/ChatAudioPlayer.tsx";
+const audio = [...read(AUDIO).matchAll(/<audio\b[\s\S]*?\/>/g)];
 assert.equal(audio.length, 1);
-assert.match(audio[0][0], /preload="metadata"/, `${PLAYER}'s audio preload changed. "none" leaves no duration shown.`);
+assert.match(audio[0][0], /preload="metadata"/, `${AUDIO}'s audio preload changed. "none" leaves no duration shown.`);
 
 // The installed VideoPlayer itself: idle, it must hold no src and one play button.
 const { createElement } = await import("react");
