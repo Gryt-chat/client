@@ -361,8 +361,9 @@ export function Settings() {
     return () => el.classList.remove("gryt-setting-hit");
   }, [highlighted]);
 
-  // A page mounts on its first visit and then stays. Mounting all of them up front makes opening slow.
+  // A page mounts on its first visit and stays until settings closes. Mounting all of them makes opening slow.
   const visitedRef = useRef(new Set<string>());
+  if (!showSettings) visitedRef.current.clear();
   const visited = (key: string, shown: boolean) => {
     if (shown) visitedRef.current.add(key);
     return visitedRef.current.has(key);
