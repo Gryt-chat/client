@@ -870,6 +870,27 @@ body {
 
 /* ── Chat scroll container ────────────────────────────────── */
 
+/* The header strip folds in as the channel's poster scrolls away, and back out on the way up. */
+.chat-poster { view-timeline: --chat-poster block; }
+@keyframes chat-strip-wipe { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0); } }
+@keyframes chat-strip-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes chat-strip-drift { from { translate: 0 24px; } to { translate: 0 0; } }
+@keyframes chat-strip-pill { from { background-color: transparent; backdrop-filter: none; } }
+@keyframes chat-poster-lift { to { translate: 0 -40px; opacity: 0; } }
+@keyframes chat-poster-parallax { to { translate: 0 64px; } }
+@supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .chat-strip-bg { animation: chat-strip-wipe auto linear both; animation-timeline: --chat-poster; animation-range: exit 10% exit 90%; }
+    .chat-strip-pat { animation: chat-strip-drift auto linear both; animation-timeline: --chat-poster; animation-range: exit 0% exit 100%; }
+    .chat-poster-words { animation: chat-poster-lift auto linear both; animation-timeline: --chat-poster; animation-range: exit 0% exit 70%; }
+    .chat-poster-pat { animation: chat-poster-parallax auto linear both; animation-timeline: --chat-poster; animation-range: exit 0% exit 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .chat-strip-bg { animation: chat-strip-fade auto linear both; animation-timeline: --chat-poster; animation-range: exit 30% exit 70%; }
+  }
+  .chat-strip-pill { animation: chat-strip-pill auto linear both; animation-timeline: --chat-poster; animation-range: exit 10% exit 90%; }
+}
+
 .chat-scroll-container {
   flex: 1;
   min-width: 0;

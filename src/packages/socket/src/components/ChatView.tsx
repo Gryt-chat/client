@@ -80,13 +80,13 @@ function placeholderFor(s: {
   return `Message ${s.channelName}${s.inClear ? " (not encrypted)" : ""}`;
 }
 
-/* The poster behind the header, with the words on frosted pills: 82% panel and a blur keeps 4.5:1 over pure white. */
+/* The poster behind the header, with the words on frosted pills: 82% panel and a blur keeps 4.5:1 over pure white.
+   Radii nest inside the panel: 12 px in, then 8 px in. */
 const STRIP_STYLE: React.CSSProperties = {
-  position: "relative", overflow: "hidden", marginBottom: 16, padding: 8,
-  borderRadius: "var(--gryt-radius-lg)", background: "var(--poster-bg, var(--gryt-accent-9))",
+  position: "relative", marginBottom: 16, padding: 8, borderRadius: "calc(var(--gryt-radius-xl) - 12px)",
 };
 const PILL_STYLE: React.CSSProperties = {
-  position: "relative", minWidth: 0, padding: "6px 14px", borderRadius: 999,
+  position: "relative", minWidth: 0, padding: "6px 14px", borderRadius: "calc(var(--gryt-radius-xl) - 20px)",
   background: "color-mix(in oklab, var(--gryt-neutral-3) 82%, transparent)", backdropFilter: "blur(8px)",
 };
 
@@ -955,7 +955,7 @@ export const ChatView = memo(({
       */}
       <div className="grow overflow-hidden" role="main" aria-label="Conversation" data-gryt="chat-view" style={{ minWidth: 0,
           background: "var(--gryt-neutral-3)",
-          borderRadius: flush ? 0 : "var(--gryt-radius-lg)",
+          borderRadius: flush ? 0 : "var(--gryt-radius-xl)",
           position: "relative",
         }} onDragEnter={handleViewDragEnter} onDragLeave={handleViewDragLeave} onDragOver={handleViewDragOver} onDropCapture={clearDragOver} onDrop={handleViewDrop}>
         {isDragOver && (
@@ -969,11 +969,15 @@ export const ChatView = memo(({
         {/* The conversation and the thread share this row. Beside it the panel is
             a column of its own; below the breakpoint it covers the row instead. */}
         <div className="flex h-full w-full" style={{ position: "relative" }}>
-        <div className="flex min-w-0 grow flex-col p-3" style={{ position: "relative" }}>
+        <div className="flex min-w-0 grow flex-col p-3" style={{ position: "relative", timelineScope: "--chat-poster" } as React.CSSProperties}>
           {channelName && (
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={strip ? { ...stripLayers(stripVars), ...STRIP_STYLE } : { marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
-              {strip && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />}
-              <div className="flex min-w-0 items-center gap-2" style={strip ? PILL_STYLE : { display: "contents" }}>
+              {strip && (
+                <div aria-hidden className="chat-strip-bg absolute inset-0 overflow-hidden" style={{ borderRadius: "inherit", background: "var(--poster-bg, var(--gryt-accent-9))" }}>
+                  <div className="chat-strip-pat absolute inset-x-0 top-0 -bottom-6" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />
+                </div>
+              )}
+              <div className={strip ? "chat-strip-pill flex min-w-0 items-center gap-2" : "flex min-w-0 items-center gap-2"} style={strip ? PILL_STYLE : { display: "contents" }}>
               {headerLead}
               {headerIcon ?? <HeaderGlyph forum={isForum} automated={automated} voice={channelType === "voice" && conversationKind === "channel"} color={conversationKind === "channel" ? channelColor : null} />}
               {/* One line that gives way, or a long name pushes the buttons out of a narrow window. */}
@@ -991,7 +995,7 @@ export const ChatView = memo(({
               )}
               {headerDetail}
               </div>
-              <div className="flex shrink-0 items-center gap-1" style={strip ? { ...PILL_STYLE, marginLeft: "auto" } : { marginLeft: "auto" }}>
+              <div className={strip ? "chat-strip-pill flex shrink-0 items-center gap-1" : "flex shrink-0 items-center gap-1"} style={strip ? { ...PILL_STYLE, marginLeft: "auto" } : { marginLeft: "auto" }}>
                 {onSearch && (
                   <Tooltip title={`Search (${SEARCH_SHORTCUT})`}>
                     <button type="button" aria-label="Search" data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>
