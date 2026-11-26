@@ -330,7 +330,7 @@ export const MemberSidebar = ({
   return (
     <div role="complementary" aria-label="Members" style={{ width,
         background: "var(--gryt-neutral-3)",
-        borderRadius: "var(--gryt-radius-lg)",
+        borderRadius: "var(--gryt-radius-xl)",
         height: "100%",
         overflow: "hidden",
       }}>
