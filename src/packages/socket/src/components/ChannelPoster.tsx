@@ -18,7 +18,7 @@ export function ChannelPoster({ poster, channelName, topic, serverName }: {
     return (
       <section
         aria-label={`Start of ${channelName}`}
-        className="mx-4 mt-4 mb-6 flex flex-col gap-2 rounded-(--gryt-radius-lg) bg-gryt-neutral-2 px-6 py-8"
+        className="mb-6 flex flex-col gap-2 rounded-[calc(var(--gryt-radius-xl)-12px)] bg-gryt-neutral-2 px-6 py-8"
         style={{ borderLeft: `6px solid ${poster.c1 ?? "var(--gryt-accent-9)"}` }}
       >
         <h2 className="m-0 flex items-center gap-3 text-3xl font-extrabold tracking-tight" style={{ overflowWrap: "anywhere" }}>
@@ -34,12 +34,12 @@ export function ChannelPoster({ poster, channelName, topic, serverName }: {
   return (
     <section
       aria-label={`Start of ${channelName}`}
-      className="relative mx-4 mt-4 mb-6 overflow-hidden rounded-(--gryt-radius-lg)"
+      className="chat-poster relative mb-6 overflow-hidden rounded-[calc(var(--gryt-radius-xl)-12px)]"
       style={{ ...vars, minHeight: 220, background: "var(--poster-bg, var(--gryt-accent-9))" }}
     >
-      <div aria-hidden className="absolute inset-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />
+      <div aria-hidden className="chat-poster-pat absolute inset-x-0 -top-16 bottom-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />
       <div
-        className={`relative flex h-full min-h-[220px] flex-col gap-3 px-8 py-8 ${centred ? "items-center justify-center text-center" : "justify-end"}`}
+        className={`chat-poster-words relative flex h-full min-h-[220px] flex-col gap-3 px-8 py-8 ${centred ? "items-center justify-center text-center" : "justify-end"}`}
         style={{ color: "var(--gryt-text, #fff)" }}
       >
         <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.08em", opacity: 0.85 }}>{label}</span>
