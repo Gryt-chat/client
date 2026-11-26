@@ -528,6 +528,11 @@ function ServerItem({
                       awaitingApproval,
                       isReconnecting,
                     }),
+                    // The status ring takes this spot while it shows.
+                    boxShadow:
+                      currentlyViewingServer?.host === host && ringState === "none"
+                        ? "0 0 0 2px var(--gryt-neutral-1), 0 0 0 4px var(--gryt-accent-9)"
+                        : undefined,
                     filter:
                       !isStarting &&
                       (isUnavailable || isReconnecting || awaitingApproval)
