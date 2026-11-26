@@ -41,6 +41,7 @@ import {
 } from "../../../socket/src/lib/memberCard/cardStyle";
 import { BANNER_SHAPE, CARD_BANNER_SHAPE, isStillPicture } from "./bannerCrop";
 import { CardPresetTile } from "./CardPresetTile";
+import { bestSize } from "./pictureCrop";
 import { PictureCropDialog } from "./PictureCropDialog";
 import { SettingGroup, SettingsContainer } from "./settingsComponents";
 
@@ -354,7 +355,7 @@ export function CardSettings() {
           }
         >
           <span className="text-xs text-gryt-muted">
-            {bannerHint(videoBannerHosts.length, bannerHosts.length)}
+            {bannerHint(videoBannerHosts.length, bannerHosts.length)} {bestSize(style.bannerSize === "card" ? CARD_BANNER_SHAPE : BANNER_SHAPE)}
           </span>
           <div className="flex flex-wrap gap-2">
             <Button size="small" disabled={bannerBusy} onClick={() => bannerInput.current?.click()}>

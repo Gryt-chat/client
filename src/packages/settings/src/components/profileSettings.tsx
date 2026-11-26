@@ -13,7 +13,7 @@ import { ConfirmDialog } from "../../../socket/src/components/ConfirmDialog";
 import { MemberCardView } from "../../../socket/src/components/memberCard/MemberCardView";
 import { EMPTY_CARD, useStoredCard } from "../../../socket/src/lib/memberCard/cardStore";
 import { isStillPicture } from "./bannerCrop";
-import { AVATAR_SHAPE } from "./pictureCrop";
+import { AVATAR_SHAPE, bestSize } from "./pictureCrop";
 import { PictureCropDialog } from "./PictureCropDialog";
 import { RichPresenceSettings } from "./richPresence";
 import { SettingsContainer } from "./settingsComponents";
@@ -219,6 +219,7 @@ function ProfileEditor({
           disabled={uploading || removing}
           onClick={onPickAvatar}
           aria-label="Change avatar"
+          title={bestSize(AVATAR_SHAPE)}
           style={{
             all: "unset",
             cursor: uploading || removing ? "default" : "pointer",

@@ -2,7 +2,7 @@ import { Button, Dialog } from "@gryt/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { type Box, type Corner, type CropShape, initialBox, MAX_PICTURE_BYTES, MAX_PICTURE_PIXELS, moveBox, previewOf, renderCrop, resizeBox, scaleBox, smallCopy } from "./pictureCrop";
+import { bestSize, type Box, type Corner, type CropShape, initialBox, MAX_PICTURE_BYTES, MAX_PICTURE_PIXELS, moveBox, previewOf, renderCrop, resizeBox, scaleBox, smallCopy } from "./pictureCrop";
 
 const FRAME_W = 300, FRAME_H = 280;
 // Room around the picture, so a corner handle on its edge isn't cut off by the frame.
@@ -123,7 +123,7 @@ export function PictureCropDialog({ file, shape, onDone, preview }: { file: File
         <Dialog.Backdrop />
         <Dialog.Popup className="flex w-[40rem] max-w-[calc(100vw-2rem)] flex-col gap-3 p-4">
           <Dialog.Title className="text-lg">{shape.title}</Dialog.Title>
-          <Dialog.Description className="text-xs text-gryt-muted">{shape.hint}</Dialog.Description>
+          <Dialog.Description className="text-xs text-gryt-muted">{shape.hint} {bestSize(shape)}</Dialog.Description>
           <div className="flex flex-wrap items-start gap-4">
             <div
               className="relative shrink-0 touch-none overflow-hidden rounded-(--gryt-radius-lg) bg-gryt-surface select-none"

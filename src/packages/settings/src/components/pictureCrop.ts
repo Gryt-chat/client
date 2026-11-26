@@ -23,6 +23,9 @@ export const AVATAR_SHAPE: CropShape = { title: "Frame your picture", hint: "Dra
 /** Rounded square like the server list draws it, at twice the size. */
 export const SERVER_ICON_SHAPE: CropShape = { title: "Frame the server picture", hint: "Drag the box to move it, pull a corner to resize. The box is what everyone sees.", aspect: 1, outW: 256, round: false, name: "server-icon" };
 
+/** The size the crop is saved at, so a smaller picture comes out blurry. */
+export const bestSize = (s: CropShape) => `Best at ${s.outW} × ${Math.round(s.outW / s.aspect)} px or bigger.`;
+
 /** The largest box of this shape the picture holds, centred: its whole width or its whole height. */
 export function initialBox(W: number, H: number, aspect: number): Box {
   const w = Math.min(W, H * aspect);
