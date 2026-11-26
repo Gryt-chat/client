@@ -974,7 +974,7 @@ export const ChatView = memo(({
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={strip ? { ...stripLayers(stripVars), ...STRIP_STYLE } : { marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {strip && (
                 <div aria-hidden className="chat-strip-bg absolute inset-0 overflow-hidden" style={{ borderRadius: "inherit", background: "var(--poster-bg, var(--gryt-accent-9))" }}>
-                  <div className="chat-strip-pat absolute inset-x-0 -top-6 bottom-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />
+                  <div className="chat-strip-pat absolute inset-x-0 top-0 -bottom-6" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />
                 </div>
               )}
               <div className={strip ? "chat-strip-pill flex min-w-0 items-center gap-2" : "flex min-w-0 items-center gap-2"} style={strip ? PILL_STYLE : { display: "contents" }}>

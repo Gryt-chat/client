@@ -872,9 +872,9 @@ body {
 
 /* The header strip folds in as the channel's poster scrolls away, and back out on the way up. */
 .chat-poster { view-timeline: --chat-poster block; }
-@keyframes chat-strip-wipe { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+@keyframes chat-strip-wipe { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0); } }
 @keyframes chat-strip-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes chat-strip-drift { from { translate: 0 -24px; } to { translate: 0 0; } }
+@keyframes chat-strip-drift { from { translate: 0 24px; } to { translate: 0 0; } }
 @keyframes chat-strip-pill { from { background-color: transparent; backdrop-filter: none; } }
 @keyframes chat-poster-lift { to { translate: 0 -40px; opacity: 0; } }
 @keyframes chat-poster-parallax { to { translate: 0 64px; } }
