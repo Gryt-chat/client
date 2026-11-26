@@ -61,11 +61,13 @@ export const ImageLightbox = ({
   src,
   alt,
   gallery,
+  onIndexChange,
   onClose,
 }: {
   src?: string;
   alt?: string;
   gallery?: LightboxGallery;
+  onIndexChange?: (index: number) => void;
   onClose: () => void;
 }) => {
   const items = useMemo<LightboxItem[]>(
@@ -92,7 +94,10 @@ export const ImageLightbox = ({
       open={open}
       onClose={() => setOpen(false)}
       onExited={onClose}
-      onIndexChange={setIndex}
+      onIndexChange={(i) => {
+        setIndex(i);
+        onIndexChange?.(i);
+      }}
       origin={(i) => thumbnailOf(items[i])}
       originCrop={(i) => cropOfThumbnail(thumbnailOf(items[i]))}
       title={() =>
@@ -123,7 +128,7 @@ export const ImageLightbox = ({
       )}
       renderVideo={(item, { active }) => (
         <div className="gryt-lightbox-video">
-          {active && <VideoPlayer src={item.src} poster={item.poster} fileName={item.alt ?? "Video"} autoLoad />}
+          {active && item.src && <VideoPlayer key={item.src} src={item.src} poster={item.poster} fileName={item.alt ?? "Video"} autoLoad />}
         </div>
       )}
       icons={{ close: <PiX size={18} />, previous: <PiCaretLeftBold size={24} />, next: <PiCaretRightBold size={24} /> }}
