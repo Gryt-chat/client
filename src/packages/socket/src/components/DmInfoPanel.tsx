@@ -1,17 +1,17 @@
 import type { DirectConversation } from "@gryt/core";
 import { Avatar, Button, ContextMenu, Menu } from "@gryt/ui";
 import { BellSlash } from "@phosphor-icons/react";
-import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { generatedAvatarColor, getOwnLevel, getUploadsFileUrl, identityScopeFor, type NotificationLevel, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey, setNotificationLevel, subscribeToPrefs, useTheme } from "@/common";
 
-import { PiArchiveFill, PiBellFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiLockFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
-import { openLightbox } from "../../../../lib/lightboxStore";
+import { PiArchiveFill, PiBellFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiLockFill, PiMagnifyingGlassBold, PiPlayFill, PiPlus } from "../../../../lib/icons";
 import type { usePins } from "../hooks/usePins";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
 import { EmojiText } from "./EmojiText";
 import { GroupFace } from "./GroupFace";
+import { ImageLightbox } from "./ImageLightbox";
 import { MemberCardView } from "./memberCard/MemberCardView";
 import { MemberIdentityCard } from "./MemberIdentityCard";
 import type { MemberInfo } from "./MemberSidebar";
@@ -25,59 +25,102 @@ interface SharedFile {
   fileId: string;
   messageId: string;
   name: string | null;
-  /** A blob URL for an image this device opened, or null for anything else. */
-  thumb: string | null;
+  kind: "image" | "video" | null;
+}
+
+function kindOf(mime: string | undefined): SharedFile["kind"] {
+  if (mime?.startsWith("image/")) return "image";
+  if (mime?.startsWith("video/")) return "video";
+  return null;
 }
 
 /**
- * Files in a conversation, as this device holds them: a count and the newest few.
- * Images are opened here to draw a thumbnail; nothing is asked of the server but the bytes.
+ * Files in a conversation, as this device holds them, newest first. A file is decrypted only when something
+ * shows it, and each once; nothing is asked of the server but the bytes.
  */
-function useSharedFiles(host: string, conversationId: string): { count: number; files: SharedFile[] } {
-  const [state, setState] = useState<{ count: number; files: SharedFile[] }>({ count: 0, files: [] });
+function useSharedFiles(host: string, conversationId: string) {
+  const [files, setFiles] = useState<SharedFile[]>([]);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const keys = useRef(new Map<string, SealedAttachmentKey>());
+  const pending = useRef(new Map<string, Promise<void>>());
+  const made = useRef<string[]>([]);
 
   useEffect(() => {
     let live = true;
-    const made: string[] = [];
+    keys.current = new Map();
+    pending.current = new Map();
+    setFiles([]);
+    setUrls({});
     void openLocalArchive()
       .then(async (archive) => {
         const scope = identityScopeFor(host);
-        const found: { fileId: string; messageId: string; key: SealedAttachmentKey }[] = [];
+        const found: SharedFile[] = [];
         let before: { sentAt: number; messageId: string } | undefined;
         for (;;) {
           const page = await archive.messages.page(scope, conversationId, { before, limit: 500 });
           for (const m of [...page].reverse()) {
-            for (const [fileId, key] of Object.entries(m.attachments)) found.push({ fileId, messageId: m.messageId, key });
+            for (const [fileId, key] of Object.entries(m.attachments)) {
+              keys.current.set(fileId, key);
+              found.push({ fileId, messageId: m.messageId, name: key.name ?? null, kind: kindOf(key.mime) });
+            }
           }
           if (page.length < 500) break;
           before = { sentAt: page[0].sentAt, messageId: page[0].messageId };
         }
-        if (!live) return;
-        const newest = found.slice(0, THUMBS);
-        setState({ count: found.length, files: newest.map((f) => ({ fileId: f.fileId, messageId: f.messageId, name: f.key.name ?? null, thumb: null })) });
-        for (const f of newest) {
-          if (!(f.key.mime ?? "").startsWith("image/")) continue;
-          const blob = await fetchSealedAttachment({
-            url: getUploadsFileUrl(host, f.fileId),
-            key: f.key,
-            openFile: (ciphertext, meta) => openAttachment({ ciphertext, conversationId, meta }),
-          }).catch(() => null);
-          if (!blob || !live) continue;
-          const url = URL.createObjectURL(blob);
-          made.push(url);
-          setState((prev) => ({ ...prev, files: prev.files.map((x) => (x.fileId === f.fileId ? { ...x, thumb: url } : x)) }));
-        }
+        if (live) setFiles(found);
       })
       .catch(() => {
         // No archive here: the section reads as no files, which is what this device holds.
       });
     return () => {
       live = false;
-      for (const url of made) URL.revokeObjectURL(url);
+      made.current.forEach((url) => URL.revokeObjectURL(url));
+      made.current = [];
     };
   }, [host, conversationId]);
 
-  return state;
+  const decrypt = useCallback((fileId: string) => {
+    const key = keys.current.get(fileId);
+    if (!key || pending.current.has(fileId)) return;
+    pending.current.set(
+      fileId,
+      fetchSealedAttachment({
+        url: getUploadsFileUrl(host, fileId),
+        key,
+        openFile: (ciphertext, meta) => openAttachment({ ciphertext, conversationId, meta }),
+      })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          made.current.push(url);
+          setUrls((prev) => ({ ...prev, [fileId]: url }));
+        })
+        .catch(() => {}),
+    );
+  }, [host, conversationId]);
+
+  return { files, urls, decrypt };
+}
+
+/** Every picture and video in the conversation, oldest first; each one is opened as you get near it. */
+function SharedGallery({ media, start, urls, decrypt, onClose }: {
+  media: SharedFile[];
+  start: number;
+  urls: Record<string, string>;
+  decrypt: (fileId: string) => void;
+  onClose: () => void;
+}) {
+  const [index, setIndex] = useState(start);
+  useEffect(() => {
+    for (let i = index - 2; i <= index + 2; i++) if (media[i]) decrypt(media[i].fileId);
+  }, [index, media, decrypt]);
+  const gallery = useMemo(
+    () => ({
+      items: media.map((m) => ({ kind: m.kind ?? "image", name: m.name ?? (m.kind === "video" ? "Video" : "Image"), local: urls[m.fileId] ?? "" })),
+      index: start,
+    }),
+    [media, urls, start],
+  );
+  return <ImageLightbox gallery={gallery} onIndexChange={setIndex} onClose={onClose} />;
 }
 
 function Heading({ title, detail }: { title: string; detail?: string }) {
@@ -90,15 +133,23 @@ function Heading({ title, detail }: { title: string; detail?: string }) {
 }
 
 function SharedFiles({ host, conversationId, onJump }: { host: string; conversationId: string; onJump: (messageId: string) => void }) {
-  const { count, files } = useSharedFiles(host, conversationId);
+  const { files, urls, decrypt } = useSharedFiles(host, conversationId);
+  const newest = useMemo(() => files.slice(0, THUMBS), [files]);
+  const media = useMemo(() => files.filter((f) => f.kind).reverse(), [files]);
+  const [opened, setOpened] = useState<number | null>(null);
+
+  useEffect(() => {
+    for (const f of newest) if (f.kind === "image") decrypt(f.fileId);
+  }, [newest, decrypt]);
+
   return (
     <section className="flex flex-col gap-2">
-      <Heading title="Shared files" detail={`${count} on this device`} />
+      <Heading title="Shared files" detail={`${files.length} on this device`} />
       {files.length === 0 ? (
         <p className="m-0 px-0.5 text-xs text-gryt-muted">Nothing shared that this device has.</p>
       ) : (
         <div className="grid grid-cols-3 gap-1.5">
-          {files.map((f) => (
+          {newest.map((f) => (
             <ContextMenu.Root key={f.fileId}>
               <ContextMenu.Trigger
                 render={
@@ -106,16 +157,14 @@ function SharedFiles({ host, conversationId, onJump }: { host: string; conversat
                     type="button"
                     title={f.name ?? undefined}
                     aria-label={f.name ?? "Shared file"}
-                    onClick={() => (f.thumb ? openLightbox({ src: f.thumb, alt: f.name ?? undefined }) : onJump(f.messageId))}
+                    onClick={() => (f.kind ? setOpened(media.findIndex((m) => m.fileId === f.fileId)) : onJump(f.messageId))}
                     className="flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-(--gryt-radius-md) border-0 bg-gryt-neutral-4 p-0 hover:opacity-85"
                   />
                 }
               >
-                {f.thumb ? (
-                  <img src={f.thumb} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <PiFileFill size={20} style={{ color: "var(--gryt-accent-11)" }} />
-                )}
+                {f.kind === "image" && urls[f.fileId] && <img src={urls[f.fileId]} alt="" className="h-full w-full object-cover" />}
+                {f.kind === "video" && <PiPlayFill size={20} style={{ color: "var(--gryt-accent-11)" }} />}
+                {(!f.kind || (f.kind === "image" && !urls[f.fileId])) && <PiFileFill size={20} style={{ color: "var(--gryt-accent-11)" }} />}
               </ContextMenu.Trigger>
               <ContextMenu.Portal>
                 <ContextMenu.Positioner>
@@ -127,6 +176,9 @@ function SharedFiles({ host, conversationId, onJump }: { host: string; conversat
             </ContextMenu.Root>
           ))}
         </div>
+      )}
+      {opened !== null && opened >= 0 && (
+        <SharedGallery media={media} start={opened} urls={urls} decrypt={decrypt} onClose={() => setOpened(null)} />
       )}
     </section>
   );
