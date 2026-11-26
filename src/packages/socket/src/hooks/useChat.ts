@@ -91,6 +91,7 @@ interface UseChatReturn {
   activeChannelForumTags: ForumTag[];
   activeChannelDescription: string | undefined;
   activeChannelPoster: ChannelPoster | null;
+  activeChannelColor: string | null;
   restoreText: string | null;
   clearRestoreText: () => void;
   fetchOlderMessages: () => void;
@@ -484,6 +485,7 @@ export function useChat({
   const activeChannelForumTags: ForumTag[] = activeChannel?.forumTags ?? [];
   const activeChannelDescription = activeChannel?.description?.trim() || undefined;
   const activeChannelPoster: ChannelPoster | null = activeChannel?.poster ?? null;
+  const activeChannelColor = activeChannel?.color ?? null;
 
   // Chat event listeners
   useEffect(() => {
@@ -871,6 +873,7 @@ export function useChat({
     activeChannelForumTags,
     activeChannelDescription,
     activeChannelPoster,
+    activeChannelColor,
     restoreText,
     clearRestoreText,
     fetchOlderMessages: historyWindow.messages ? historyWindow.loadOlder : fetchOlderMessages,

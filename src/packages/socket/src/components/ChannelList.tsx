@@ -422,6 +422,8 @@ export const ChannelList = ({
           unread={unread > 0 || mentions > 0}
           locked={locked}
           inCall={inThisCall}
+          data-tint={channel?.color && !selected ? "" : undefined}
+          style={channel?.color && !selected ? ({ "--channel-color": channel.color } as React.CSSProperties) : undefined}
           onClick={() => {
             if (threadHere && threadExpanded) closeOpenThread();
             if (channel) onChannelClick(channel);
