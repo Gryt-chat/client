@@ -1,13 +1,8 @@
-import { cardVars, normalizeCardStyle, seedFromId, usePatternAssets } from "@gryt/ui";
-import { type CSSProperties, useMemo } from "react";
-
-import { useTheme } from "@/common";
 import type { ChannelPoster as Poster } from "@/settings/src/types/server";
 
 import { PiChatTeardropTextFill } from "../../../../lib/icons";
+import { usePosterVars } from "../hooks/usePosterVars";
 import { EmojiText } from "./EmojiText";
-
-const NO_OWL = { nickname: "" };
 
 /** The top of a channel's history, drawn from the same card variables as a member card. */
 export function ChannelPoster({ poster, channelName, topic, serverName }: {
@@ -16,16 +11,7 @@ export function ChannelPoster({ poster, channelName, topic, serverName }: {
   topic?: string;
   serverName?: string;
 }) {
-  const { resolvedAppearance } = useTheme();
-  const style = useMemo(
-    () => normalizeCardStyle({ fill: poster.fill, c1: poster.c1, c2: poster.c2, angle: poster.angle, pattern: poster.pattern }),
-    [poster.fill, poster.c1, poster.c2, poster.angle, poster.pattern],
-  );
-  const assets = usePatternAssets(style, NO_OWL);
-  const { vars } = useMemo(
-    () => cardVars(style, poster.c1 ?? "#7c5cff", { appearance: resolvedAppearance, seed: seedFromId(channelName), ...assets }),
-    [style, poster.c1, resolvedAppearance, channelName, assets],
-  );
+  const vars = usePosterVars(poster, channelName);
   const label = serverName ? `${serverName} · start of the channel` : "Start of the channel";
 
   if (poster.layout === "quiet") {
@@ -49,7 +35,7 @@ export function ChannelPoster({ poster, channelName, topic, serverName }: {
     <section
       aria-label={`Start of ${channelName}`}
       className="relative mx-4 mt-4 mb-6 overflow-hidden rounded-(--gryt-radius-lg)"
-      style={{ ...(vars as CSSProperties), minHeight: 220, background: "var(--band-bg, var(--gryt-accent-9))" }}
+      style={{ ...vars, minHeight: 220, background: "var(--band-bg, var(--gryt-accent-9))" }}
     >
       <div aria-hidden className="absolute inset-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />
       <div

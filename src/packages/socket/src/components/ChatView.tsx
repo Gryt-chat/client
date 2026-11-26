@@ -17,6 +17,7 @@ import type { HistoryWindowControls } from "../hooks/useHistoryWindow";
 import { useJumpToMessage } from "../hooks/useJumpToMessage";
 import { useServerPermissions } from "../hooks/usePermissions";
 import { usePins } from "../hooks/usePins";
+import { usePosterVars } from "../hooks/usePosterVars";
 import { useSockets } from "../hooks/useSockets";
 import { useThreads } from "../hooks/useThreads";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
@@ -79,8 +80,18 @@ function placeholderFor(s: {
   return `Message ${s.channelName}${s.inClear ? " (not encrypted)" : ""}`;
 }
 
-function HeaderGlyph({ forum, automated, voice }: { forum: boolean; automated: boolean | undefined; voice: boolean }) {
-  const style = { color: "var(--gryt-neutral-11)", flexShrink: 0 };
+/* The poster behind the header, with the words on frosted pills: 82% panel and a blur keeps 4.5:1 over pure white. */
+const STRIP_STYLE: React.CSSProperties = {
+  position: "relative", overflow: "hidden", marginBottom: 16, padding: 8,
+  borderRadius: "var(--gryt-radius-lg)", background: "var(--band-bg, var(--gryt-accent-9))",
+};
+const PILL_STYLE: React.CSSProperties = {
+  position: "relative", minWidth: 0, padding: "6px 14px", borderRadius: 999,
+  background: "color-mix(in oklab, var(--gryt-neutral-3) 82%, transparent)", backdropFilter: "blur(8px)",
+};
+
+function HeaderGlyph({ forum, automated, voice, color }: { forum: boolean; automated: boolean | undefined; voice: boolean; color?: string | null }) {
+  const style = { color: color ?? "var(--gryt-neutral-11)", flexShrink: 0 };
   if (forum) return <PiChatsTeardropFill size={18} style={style} />;
   if (automated) return <PiRobotFill size={18} style={style} />;
   return voice ? <PiSpeakerHighFill size={18} style={style} /> : <PiChatTeardropTextFill size={18} style={style} />;
@@ -126,6 +137,7 @@ export const ChatView = memo(({
   forumTags,
   poster,
   posterTopic,
+  channelColor,
   channelType,
   conversationKind = "channel",
   sealing,
@@ -188,8 +200,10 @@ export const ChatView = memo(({
   /** A forum channel shows a topic index instead of a chat stream. GRYT-981 Stage 2. */
   layout?: "chat" | "forum";
   forumTags?: import("@/settings/src/types/server").ForumTag[];
-  /** Drawn above the first message once nothing older is left to load. */
+  /** Drawn above the first message once nothing older is left to load, and behind the header. */
   poster?: import("@/settings/src/types/server").ChannelPoster | null;
+  /** Tints the header's channel icon. */
+  channelColor?: string | null;
   posterTopic?: string;
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
@@ -918,6 +932,8 @@ export const ChatView = memo(({
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = mayRead && !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
+  const strip = poster && poster.layout !== "quiet" && conversationKind === "channel" ? poster : null;
+  const stripVars = usePosterVars(strip, channelName ?? "");
   const posterHere = poster && conversationKind === "channel" && channelName
     ? <ChannelPoster poster={poster} channelName={channelName} topic={posterTopic} serverName={serverName} />
     : null;
@@ -949,9 +965,11 @@ export const ChatView = memo(({
         <div className="flex h-full w-full" style={{ position: "relative" }}>
         <div className="flex min-w-0 grow flex-col p-3" style={{ position: "relative" }}>
           {channelName && (
-            <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={{ marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+            <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={strip ? { ...stripVars, ...STRIP_STYLE } : { marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+              {strip && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />}
+              <div className="flex min-w-0 items-center gap-2" style={strip ? PILL_STYLE : { display: "contents" }}>
               {headerLead}
-              {headerIcon ?? <HeaderGlyph forum={isForum} automated={automated} voice={channelType === "voice" && conversationKind === "channel"} />}
+              {headerIcon ?? <HeaderGlyph forum={isForum} automated={automated} voice={channelType === "voice" && conversationKind === "channel"} color={conversationKind === "channel" ? channelColor : null} />}
               {/* One line that gives way, or a long name pushes the buttons out of a narrow window. */}
               {headerSubtitle ? (
                 <span className="flex min-w-0 flex-col gap-0.5">
@@ -966,7 +984,8 @@ export const ChatView = memo(({
                 </span>
               )}
               {headerDetail}
-              <div className="flex shrink-0 items-center gap-1" style={{ marginLeft: "auto" }}>
+              </div>
+              <div className="flex shrink-0 items-center gap-1" style={strip ? { ...PILL_STYLE, marginLeft: "auto" } : { marginLeft: "auto" }}>
                 {onSearch && (
                   <Tooltip title={`Search (${SEARCH_SHORTCUT})`}>
                     <button type="button" aria-label="Search" data-gryt="search-button" onClick={onSearch} className="flex cursor-pointer items-center rounded border-0 bg-transparent p-1 max-[360px]:hidden" style={{ color: "var(--gryt-neutral-11)" }}>

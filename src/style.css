@@ -2668,3 +2668,8 @@ img.discord-import-letter { object-fit: cover; }
   color: var(--gryt-accent-11);
   font-weight: 600;
 }
+
+/* A channel's own colour on its icon in the list, while it isn't the open one. */
+[data-gryt="channel-row"][data-tint] > div:first-child {
+  color: var(--channel-color);
+}
