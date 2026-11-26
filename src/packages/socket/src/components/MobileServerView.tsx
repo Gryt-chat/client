@@ -95,6 +95,8 @@ interface MobileServerViewProps {
   automated?: boolean;
   layout?: "chat" | "forum";
   forumTags?: import("@/settings/src/types/server").ForumTag[];
+  poster?: import("@/settings/src/types/server").ChannelPoster | null;
+  posterTopic?: string;
   conversationKind?: "channel" | "dm";
   headerAction?: React.ReactNode;
   headerDetail?: React.ReactNode;
@@ -231,6 +233,8 @@ export const MobileServerView = (props: MobileServerViewProps) => {
           automated={props.automated}
           layout={props.layout}
           forumTags={props.forumTags}
+          poster={props.poster}
+          posterTopic={props.posterTopic}
           conversationKind={props.conversationKind}
           headerAction={props.headerAction}
           headerDetail={props.headerDetail}
