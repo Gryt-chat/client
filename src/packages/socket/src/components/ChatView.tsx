@@ -83,12 +83,18 @@ function placeholderFor(s: {
 /* The poster behind the header, with the words on frosted pills: 82% panel and a blur keeps 4.5:1 over pure white. */
 const STRIP_STYLE: React.CSSProperties = {
   position: "relative", overflow: "hidden", marginBottom: 16, padding: 8,
-  borderRadius: "var(--gryt-radius-lg)", background: "var(--band-bg, var(--gryt-accent-9))",
+  borderRadius: "var(--gryt-radius-lg)", background: "var(--poster-bg, var(--gryt-accent-9))",
 };
 const PILL_STYLE: React.CSSProperties = {
   position: "relative", minWidth: 0, padding: "6px 14px", borderRadius: 999,
   background: "color-mix(in oklab, var(--gryt-neutral-3) 82%, transparent)", backdropFilter: "blur(8px)",
 };
+
+/** Only the poster's two layers: the card's `--gryt-*` overrides would restyle the header's buttons. */
+function stripLayers(vars: React.CSSProperties): React.CSSProperties {
+  const v = vars as Record<string, string>;
+  return { "--poster-bg": v["--poster-bg"], "--pat-img": v["--pat-img"] } as React.CSSProperties;
+}
 
 function HeaderGlyph({ forum, automated, voice, color }: { forum: boolean; automated: boolean | undefined; voice: boolean; color?: string | null }) {
   const style = { color: color ?? "var(--gryt-neutral-11)", flexShrink: 0 };
@@ -965,7 +971,7 @@ export const ChatView = memo(({
         <div className="flex h-full w-full" style={{ position: "relative" }}>
         <div className="flex min-w-0 grow flex-col p-3" style={{ position: "relative" }}>
           {channelName && (
-            <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={strip ? { ...stripVars, ...STRIP_STYLE } : { marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
+            <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={strip ? { ...stripLayers(stripVars), ...STRIP_STYLE } : { marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {strip && <div aria-hidden className="absolute inset-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />}
               <div className="flex min-w-0 items-center gap-2" style={strip ? PILL_STYLE : { display: "contents" }}>
               {headerLead}

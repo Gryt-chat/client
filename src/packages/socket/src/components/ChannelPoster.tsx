@@ -35,12 +35,12 @@ export function ChannelPoster({ poster, channelName, topic, serverName }: {
     <section
       aria-label={`Start of ${channelName}`}
       className="relative mx-4 mt-4 mb-6 overflow-hidden rounded-(--gryt-radius-lg)"
-      style={{ ...vars, minHeight: 220, background: "var(--band-bg, var(--gryt-accent-9))" }}
+      style={{ ...vars, minHeight: 220, background: "var(--poster-bg, var(--gryt-accent-9))" }}
     >
       <div aria-hidden className="absolute inset-0" style={{ backgroundImage: "var(--pat-img, none)", backgroundSize: "cover" }} />
       <div
         className={`relative flex h-full min-h-[220px] flex-col gap-3 px-8 py-8 ${centred ? "items-center justify-center text-center" : "justify-end"}`}
-        style={{ color: "var(--band-ink, #fff)" }}
+        style={{ color: "var(--gryt-text, #fff)" }}
       >
         <span className="text-xs font-bold uppercase" style={{ letterSpacing: "0.08em", opacity: 0.85 }}>{label}</span>
         <h2 className="m-0 font-extrabold leading-none" style={{ fontSize: "clamp(36px, 6vw, 64px)", letterSpacing: "-0.03em", overflowWrap: "anywhere" }}>

@@ -16,9 +16,10 @@ export function usePosterVars(poster: Poster | null, seed: string): CSSPropertie
     [p.fill, p.c1, p.c2, p.angle, p.pattern],
   );
   const assets = usePatternAssets(style, NO_OWL);
-  return useMemo(
-    () => cardVars(style, p.c1 ?? "#7c5cff", { appearance: resolvedAppearance, seed: seedFromId(seed), ...assets }).vars as CSSProperties,
-    [style, p.c1, resolvedAppearance, seed, assets],
-  );
+  return useMemo(() => {
+    const { vars } = cardVars(style, p.c1 ?? "#7c5cff", { appearance: resolvedAppearance, seed: seedFromId(seed), ...assets });
+    // A whole-card style fills `--fc-bg`, a banner one `--band-bg`; the poster takes whichever it got.
+    return { ...vars, "--poster-bg": vars["--fc-bg"] ?? vars["--band-bg"] ?? vars["--base"] } as CSSProperties;
+  }, [style, p.c1, resolvedAppearance, seed, assets]);
 }
 
