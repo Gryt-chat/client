@@ -1393,15 +1393,75 @@ body {
 /* ── Media Players ────────────────────────────────────────── */
 
 .chat-audio-player {
-  max-width: 420px;
+  max-width: 480px;
   min-width: 260px;
 }
 
-.chat-audio-player audio {
-  width: 100%;
-  height: 36px;
-  border-radius: var(--gryt-radius-md);
+/* A 56 px capsule with a 40 px round button 8 px in, so the radii nest. */
+.chat-audio {
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 28px;
+  background: var(--gryt-neutral-4);
+  color: var(--gryt-neutral-11);
 }
+.chat-audio audio { display: none; }
+.chat-audio-play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gryt-accent-9);
+  color: var(--color-gryt-on-accent);
+  cursor: pointer;
+}
+.chat-audio-play:hover { background: var(--gryt-accent-10); }
+.chat-audio-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.chat-audio-icon:hover { background: var(--gryt-neutral-6); color: var(--gryt-neutral-12); }
+.chat-audio :is(button, input):focus-visible { outline: 2px solid var(--gryt-accent-light); outline-offset: 2px; }
+.chat-audio-time { flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; }
+.chat-audio :is(.chat-audio-seek, .chat-audio-level) {
+  appearance: none;
+  height: 4px;
+  margin: 0;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--gryt-accent-9) var(--played), color-mix(in oklab, var(--gryt-neutral-12) 30%, transparent) var(--played) var(--buffered, var(--played)), color-mix(in oklab, var(--gryt-neutral-12) 15%, transparent) var(--buffered, var(--played)));
+  cursor: pointer;
+  transition: height 150ms;
+}
+.chat-audio-seek { flex: 1; min-width: 0; }
+.chat-audio-seek:hover, .chat-audio-seek:focus-visible { height: 6px; }
+.chat-audio :is(.chat-audio-seek, .chat-audio-level)::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; border-radius: 999px; background: #fff; opacity: 0; }
+.chat-audio :is(.chat-audio-seek, .chat-audio-level):is(:hover, :focus-visible)::-webkit-slider-thumb { opacity: 1; }
+.chat-audio :is(.chat-audio-seek, .chat-audio-level)::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 999px; background: #fff; }
+.chat-audio-volume { flex: none; display: flex; align-items: center; border-radius: 999px; }
+.chat-audio-level { width: 0; opacity: 0; transition: width 150ms, opacity 150ms; }
+.chat-audio-volume:is(:hover, :focus-within) { background: var(--gryt-neutral-5); padding-right: 10px; }
+.chat-audio-volume:is(:hover, :focus-within) .chat-audio-level { width: 64px; opacity: 1; margin-left: 4px; }
+.chat-audio-warn { flex: none; margin-left: 12px; color: var(--gryt-danger-11); }
+.chat-audio-failed { flex: 1; font-size: 14px; color: var(--gryt-neutral-12); }
+.chat-audio-retry { flex: none; height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--gryt-neutral-6); color: var(--gryt-neutral-12); font: inherit; font-size: 13px; cursor: pointer; }
+@container (max-width: 320px) { .chat-audio-volume { display: none; } }
+@media (prefers-reduced-motion: reduce) { .chat-audio :is(.chat-audio-seek, .chat-audio-level) { transition: none; } }
 
 .chat-video-player {
   width: 480px;

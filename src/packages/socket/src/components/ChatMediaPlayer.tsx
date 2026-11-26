@@ -1,9 +1,10 @@
 import { Button, Spinner, VideoPlayer } from "@gryt/ui";
-import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { type CSSProperties, useCallback, useLayoutEffect, useRef } from "react";
 
 import { PiWarningCircle } from "../../../../lib/icons";
 import type { SealedVideo } from "../hooks/useSealedVideo";
 import { formatFileSize } from "../utils/formatFileSize";
+import { ChatAudioPlayer } from "./ChatAudioPlayer";
 
 function mediaLabel(fileName?: string | null, size?: number | null): string | null {
   return fileName ? `${fileName}${size != null ? ` · ${formatFileSize(size)}` : ""}` : null;
@@ -67,7 +68,7 @@ export const ChatMediaPlayer = ({
   }
 
   return (
-    <ChatAudio src={src} label={label} volume={volume} onVolumeChange={onVolumeChange} onError={onError} />
+    <ChatAudioPlayer src={src} label={label} fileName={fileName} volume={volume} onVolumeChange={onVolumeChange} onError={onError} />
   );
 };
 
@@ -190,75 +191,6 @@ export function ChatSealedVideo({
           </Button>
         </div>
       )}
-    </div>
-  );
-}
-
-function ChatAudio({
-  src,
-  label,
-  volume,
-  onVolumeChange,
-  onError,
-}: {
-  src: string;
-  label: string | null;
-  volume: number;
-  onVolumeChange: (v: number) => void;
-  onError?: () => void;
-}) {
-  const mediaRef = useRef<HTMLAudioElement | null>(null);
-  const suppressNextEvent = useRef(false);
-  const resumeAt = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (mediaRef.current) {
-      const linear = Math.max(0, Math.min(1, volume / 100));
-      if (Math.abs(mediaRef.current.volume - linear) > 0.005) {
-        suppressNextEvent.current = true;
-        mediaRef.current.volume = linear;
-      }
-    }
-  }, [volume]);
-
-  const handleVolumeChange = useCallback(() => {
-    if (suppressNextEvent.current) {
-      suppressNextEvent.current = false;
-      return;
-    }
-    if (mediaRef.current) {
-      const pct = Math.round(mediaRef.current.volume * 100);
-      onVolumeChange(pct);
-    }
-  }, [onVolumeChange]);
-
-  const handleError = useCallback(() => {
-    const el = mediaRef.current;
-    if (el && el.currentTime > 0) resumeAt.current = el.currentTime;
-    onError?.();
-  }, [onError]);
-
-  const handleLoadedMetadata = useCallback(() => {
-    const el = mediaRef.current;
-    if (!el || resumeAt.current == null) return;
-    el.currentTime = resumeAt.current;
-    resumeAt.current = null;
-    void el.play().catch(() => {});
-  }, []);
-
-  return (
-    <div className="chat-audio-player">
-      {label && <span className="chat-media-filename">{label}</span>}
-      <audio
-        ref={mediaRef}
-        controls
-        preload="metadata"
-        src={src}
-        onVolumeChange={handleVolumeChange}
-        onError={handleError}
-        onLoadedMetadata={handleLoadedMetadata}
-        onContextMenu={(e) => e.preventDefault()}
-      />
     </div>
   );
 }
