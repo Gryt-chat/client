@@ -13,7 +13,7 @@ import {
   scopeSetPayload,
 } from "@/settings/src/channelPermissionRules";
 import { type ChannelScopeState, folderMoveAction } from "@/settings/src/folderPermissionRules";
-import type { Channel, serverDetailsList as ServerDetailsList, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
+import type { Channel, ChannelPoster, serverDetailsList as ServerDetailsList, SidebarItem, SidebarReorderEntry } from "@/settings/src/types/server";
 
 import { type ChannelKind, fieldsToKind, kindToFields } from "../components/channelKind";
 import type { ForumTagDraft } from "../components/ForumTagsField";
@@ -667,7 +667,17 @@ export function useSidebarEditor({
     sheetSeparatorLabel,
   ]);
 
+  const saveLook = (channelId: string, poster: ChannelPoster | null, color: string | null) => {
+    const accessToken = getFreshAccessToken();
+    if (!accessToken || !currentConnection?.connected) {
+      toast.error("Not connected to the server yet.");
+      return;
+    }
+    currentConnection.emit("server:channels:look", { accessToken, channelId, poster, color });
+  };
+
   return {
+    saveLook,
     editDialogOpen,
     setEditDialogOpen,
     selectedSidebarItemId,
