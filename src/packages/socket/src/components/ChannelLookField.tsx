@@ -83,42 +83,55 @@ export function ChannelLookField({ channel, serverName, onSave }: {
   const c1 = poster?.c1 ?? DEFAULT_POSTER.c1 ?? "#5b4fd6";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label>Poster</Label>
-        <Select
-          value={poster?.layout ?? "none"}
-          onValueChange={(v) => (v === "none" ? change(null, color) : edit({ layout: v as Poster["layout"] }))}
-          options={LAYOUTS}
-        />
-      </div>
+    <div className="@container flex flex-col gap-4">
       {poster && (
-        <>
-          <ChannelPoster poster={poster} channelName={channel.name} topic={channel.description} serverName={serverName} />
-          {poster.layout !== "quiet" && (
-            <div className="flex flex-col gap-2">
-              <Label>Fill</Label>
-              <Select
-                value={poster.fill === "gradient" ? "gradient" : "solid"}
-                onValueChange={(v) => edit(v === "gradient" ? { fill: "gradient", c2: poster.c2 ?? "#1a1d24" } : { fill: "solid", c2: undefined })}
-                options={[{ label: "Solid", value: "solid" }, { label: "Gradient", value: "gradient" }]}
-              />
-            </div>
+        <ChannelPoster poster={poster} channelName={channel.name} topic={channel.description} serverName={serverName} />
+      )}
+      <div className="grid gap-6 @xl:grid-cols-[14rem_minmax(0,1fr)]">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>Poster</Label>
+            <Select
+              value={poster?.layout ?? "none"}
+              onValueChange={(v) => (v === "none" ? change(null, color) : edit({ layout: v as Poster["layout"] }))}
+              options={LAYOUTS}
+            />
+          </div>
+          {poster && (
+            <>
+              {poster.layout !== "quiet" && (
+                <div className="flex flex-col gap-2">
+                  <Label>Fill</Label>
+                  <Select
+                    value={poster.fill === "gradient" ? "gradient" : "solid"}
+                    onValueChange={(v) => edit(v === "gradient" ? { fill: "gradient", c2: poster.c2 ?? "#1a1d24" } : { fill: "solid", c2: undefined })}
+                    options={[{ label: "Solid", value: "solid" }, { label: "Gradient", value: "gradient" }]}
+                  />
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                <Label>{poster.fill === "gradient" ? "First colour" : "Colour"}</Label>
+                <Swatches value={c1} onPick={(c) => c && edit({ c1: c })} />
+              </div>
+              {poster.fill === "gradient" && poster.layout !== "quiet" && (
+                <div className="flex flex-col gap-2">
+                  <Label>Second colour</Label>
+                  <Swatches value={poster.c2} onPick={(c) => c && edit({ c2: c })} />
+                </div>
+              )}
+            </>
           )}
           <div className="flex flex-col gap-2">
-            <Label>{poster.fill === "gradient" ? "First colour" : "Colour"}</Label>
-            <Swatches value={c1} onPick={(c) => c && edit({ c1: c })} />
+            <Label>Channel colour</Label>
+            <Swatches value={color} allowNone onPick={(c) => change(poster, c)} />
+            <span className="text-xs text-gryt-muted">Colours this channel&rsquo;s icon in the list and its header. Everything else keeps each person&rsquo;s theme.</span>
           </div>
-          {poster.fill === "gradient" && poster.layout !== "quiet" && (
-            <div className="flex flex-col gap-2">
-              <Label>Second colour</Label>
-              <Swatches value={poster.c2} onPick={(c) => c && edit({ c2: c })} />
-            </div>
-          )}
-          {poster.layout !== "quiet" && (
+        </div>
+        {poster && (
+          poster.layout !== "quiet" && (
             <div className="flex flex-col gap-2">
               <Label>Pattern</Label>
-              <div className="flex max-h-72 flex-col gap-3 overflow-y-auto pr-1">
+              <div className="flex max-h-[26rem] flex-col gap-3 overflow-y-auto pr-1">
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                   <PatternSwatch pattern={undefined} c1={c1} picked={!poster.pattern} onPick={() => edit({ pattern: undefined })} />
                 </div>
@@ -134,13 +147,8 @@ export function ChannelLookField({ channel, serverName, onSave }: {
                 ))}
               </div>
             </div>
-          )}
-        </>
-      )}
-      <div className="flex flex-col gap-2">
-        <Label>Channel colour</Label>
-        <Swatches value={color} allowNone onPick={(c) => change(poster, c)} />
-        <span className="text-xs text-gryt-muted">Colours this channel&rsquo;s icon in the list and its header. Everything else keeps each person&rsquo;s theme.</span>
+          )
+        )}
       </div>
     </div>
   );
