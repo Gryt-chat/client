@@ -21,7 +21,13 @@ const LOCAL = new Set(
   ].map((name) => name.toLowerCase())
 );
 
-const LINK_ID = "gryt-google-fonts";
+const LINK_CLASS = "gryt-google-fonts";
+
+/** One family's request: weights 400..700, as the interface uses regular to semibold, or none. */
+function cssUrl(name: string, weights: boolean): string {
+  const family = encodeURIComponent(name).replace(/%20/g, "+");
+  return `https://fonts.googleapis.com/css2?family=${family}${weights ? ":wght@400..700" : ""}&display=swap`;
+}
 
 /**
  * A family name Google's API will accept, and that cannot carry anything else.
@@ -41,46 +47,29 @@ function primary(stack: string): string {
  * one link element: a theme changes on every keystroke in the editor.
  */
 export function syncGoogleFonts(stacks: string[], enabled: boolean): void {
-  const existing = document.getElementById(LINK_ID);
+  const families = enabled
+    ? [
+        ...new Set(
+          stacks
+            .map(primary)
+            .filter((name) => name !== "" && !LOCAL.has(name.toLowerCase()))
+            .filter(isFamilyName)
+        )
+      ].sort()
+    : [];
 
-  if (!enabled) {
-    // Removed rather than left pointing at nothing, so turning the setting off
-    // stops the requests that a reload would otherwise repeat.
-    existing?.remove();
-    return;
+  // Removed rather than left pointing at nothing, so turning the setting off stops the requests.
+  for (const link of document.querySelectorAll<HTMLLinkElement>(`link.${LINK_CLASS}`)) {
+    if (!families.includes(link.dataset.family ?? "")) link.remove();
   }
 
-  const families = [
-    ...new Set(
-      stacks
-        .map(primary)
-        .filter((name) => name !== "" && !LOCAL.has(name.toLowerCase()))
-        .filter(isFamilyName)
-    )
-  ].sort();
-
-  if (families.length === 0) {
-    existing?.remove();
-    return;
+  /* A link per family: Google answers 400 for one that doesn't cover 400..700, like Lobster,
+     which used to fail every family in a shared request. That one is asked for again bare. */
+  for (const name of families) {
+    if (document.querySelector(`link.${LINK_CLASS}[data-family="${CSS.escape(name)}"]`)) continue;
+    const link = Object.assign(document.createElement("link"), { rel: "stylesheet", className: LINK_CLASS, href: cssUrl(name, true) });
+    link.dataset.family = name;
+    link.addEventListener("error", () => void (link.href = cssUrl(name, false)), { once: true });
+    document.head.append(link);
   }
-
-  /* One request for all of them. Weights 400..700 because the interface uses
-     regular, medium and semibold; the whole variable range fetches more. */
-  const href = `https://fonts.googleapis.com/css2?${families
-    .map(
-      (name) =>
-        `family=${encodeURIComponent(name).replace(/%20/g, "+")}:wght@400..700`
-    )
-    .join("&")}&display=swap`;
-
-  const link =
-    existing instanceof HTMLLinkElement
-      ? existing
-      : Object.assign(document.createElement("link"), {
-          id: LINK_ID,
-          rel: "stylesheet"
-        });
-
-  if (link.href !== href) link.href = href;
-  if (link.parentNode === null) document.head.append(link);
 }

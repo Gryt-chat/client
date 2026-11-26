@@ -361,6 +361,14 @@ export function Settings() {
     return () => el.classList.remove("gryt-setting-hit");
   }, [highlighted]);
 
+  // A page mounts on its first visit and stays until settings closes. Mounting all of them makes opening slow.
+  const visitedRef = useRef(new Set<string>());
+  if (!showSettings) visitedRef.current.clear();
+  const visited = (key: string, shown: boolean) => {
+    if (shown) visitedRef.current.add(key);
+    return visitedRef.current.has(key);
+  };
+
   return (
     <Dialog.Root
       open={showSettings}
@@ -604,13 +612,14 @@ export function Settings() {
                     {pages
                       ? pages.map((page) => {
                           const shown = value === active && page.value === activePage;
+                          const seen = visited(`${value}/${page.value}`, shown);
                           return (
                             <div key={page.value} hidden={!shown}>
-                              {page.mountWhenActive ? shown && page.content : page.content}
+                              {page.mountWhenActive ? shown && page.content : seen && page.content}
                             </div>
                           );
                         })
-                      : content}
+                      : visited(value, value === active) && content}
                   </div>
                 ))}
               </div>

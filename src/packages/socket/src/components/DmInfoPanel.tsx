@@ -1,11 +1,12 @@
 import type { DirectConversation } from "@gryt/core";
-import { Avatar, Button, Menu } from "@gryt/ui";
+import { Avatar, Button, ContextMenu, Menu } from "@gryt/ui";
 import { BellSlash } from "@phosphor-icons/react";
 import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { generatedAvatarColor, getOwnLevel, getUploadsFileUrl, identityScopeFor, type NotificationLevel, openAttachment, openLocalArchive, resolveAvatarSrc, type SealedAttachmentKey, setNotificationLevel, subscribeToPrefs, useTheme } from "@/common";
 
 import { PiArchiveFill, PiBellFill, PiDoorOpenBold,PiEyeSlashFill, PiFileFill, PiLockFill, PiMagnifyingGlassBold, PiPlus } from "../../../../lib/icons";
+import { openLightbox } from "../../../../lib/lightboxStore";
 import type { usePins } from "../hooks/usePins";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { fetchSealedAttachment } from "../utils/sealedAttachments";
@@ -22,6 +23,7 @@ const THUMBS = 6;
 
 interface SharedFile {
   fileId: string;
+  messageId: string;
   name: string | null;
   /** A blob URL for an image this device opened, or null for anything else. */
   thumb: string | null;
@@ -40,19 +42,19 @@ function useSharedFiles(host: string, conversationId: string): { count: number; 
     void openLocalArchive()
       .then(async (archive) => {
         const scope = identityScopeFor(host);
-        const found: { fileId: string; key: SealedAttachmentKey }[] = [];
+        const found: { fileId: string; messageId: string; key: SealedAttachmentKey }[] = [];
         let before: { sentAt: number; messageId: string } | undefined;
         for (;;) {
           const page = await archive.messages.page(scope, conversationId, { before, limit: 500 });
           for (const m of [...page].reverse()) {
-            for (const [fileId, key] of Object.entries(m.attachments)) found.push({ fileId, key });
+            for (const [fileId, key] of Object.entries(m.attachments)) found.push({ fileId, messageId: m.messageId, key });
           }
           if (page.length < 500) break;
           before = { sentAt: page[0].sentAt, messageId: page[0].messageId };
         }
         if (!live) return;
         const newest = found.slice(0, THUMBS);
-        setState({ count: found.length, files: newest.map((f) => ({ fileId: f.fileId, name: f.key.name ?? null, thumb: null })) });
+        setState({ count: found.length, files: newest.map((f) => ({ fileId: f.fileId, messageId: f.messageId, name: f.key.name ?? null, thumb: null })) });
         for (const f of newest) {
           if (!(f.key.mime ?? "").startsWith("image/")) continue;
           const blob = await fetchSealedAttachment({
@@ -87,7 +89,7 @@ function Heading({ title, detail }: { title: string; detail?: string }) {
   );
 }
 
-function SharedFiles({ host, conversationId }: { host: string; conversationId: string }) {
+function SharedFiles({ host, conversationId, onJump }: { host: string; conversationId: string; onJump: (messageId: string) => void }) {
   const { count, files } = useSharedFiles(host, conversationId);
   return (
     <section className="flex flex-col gap-2">
@@ -97,17 +99,32 @@ function SharedFiles({ host, conversationId }: { host: string; conversationId: s
       ) : (
         <div className="grid grid-cols-3 gap-1.5">
           {files.map((f) => (
-            <div
-              key={f.fileId}
-              title={f.name ?? undefined}
-              className="flex aspect-square items-center justify-center overflow-hidden rounded-(--gryt-radius-md) bg-gryt-neutral-4"
-            >
-              {f.thumb ? (
-                <img src={f.thumb} alt={f.name ?? ""} className="h-full w-full object-cover" />
-              ) : (
-                <PiFileFill size={20} style={{ color: "var(--gryt-accent-11)" }} />
-              )}
-            </div>
+            <ContextMenu.Root key={f.fileId}>
+              <ContextMenu.Trigger
+                render={
+                  <button
+                    type="button"
+                    title={f.name ?? undefined}
+                    aria-label={f.name ?? "Shared file"}
+                    onClick={() => (f.thumb ? openLightbox({ src: f.thumb, alt: f.name ?? undefined }) : onJump(f.messageId))}
+                    className="flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-(--gryt-radius-md) border-0 bg-gryt-neutral-4 p-0 hover:opacity-85"
+                  />
+                }
+              >
+                {f.thumb ? (
+                  <img src={f.thumb} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <PiFileFill size={20} style={{ color: "var(--gryt-accent-11)" }} />
+                )}
+              </ContextMenu.Trigger>
+              <ContextMenu.Portal>
+                <ContextMenu.Positioner>
+                  <ContextMenu.Popup>
+                    <ContextMenu.Item onClick={() => onJump(f.messageId)}>Go to message</ContextMenu.Item>
+                  </ContextMenu.Popup>
+                </ContextMenu.Positioner>
+              </ContextMenu.Portal>
+            </ContextMenu.Root>
           ))}
         </div>
       )}
@@ -288,7 +305,7 @@ export function DmPersonPanel({
         </div>
         {importSection}
         <Pinned pins={pins} memberList={memberList} onJump={onJump} />
-        <SharedFiles host={host} conversationId={conversation.conversation_id} />
+        <SharedFiles host={host} conversationId={conversation.conversation_id} onJump={onJump} />
       </div>
       <button type="button" onClick={onHide} className={`${footerButton} mx-2 text-gryt-neutral-11 hover:text-gryt-text`}>
         <PiEyeSlashFill size={16} /> Hide conversation
@@ -299,12 +316,13 @@ export function DmPersonPanel({
 
 /** Board 3: the group's face and name, who's in it, and what it holds. */
 export function DmGroupPanel({
-  host, conversation, self, memberList, onEdit, onAdd, onLeave,
+  host, conversation, self, memberList, onJump, onEdit, onAdd, onLeave,
 }: {
   host: string;
   conversation: DirectConversation;
   self?: DirectConversation["other"];
   memberList?: Record<string, MemberInfo>;
+  onJump: (messageId: string) => void;
   onEdit: () => void;
   onAdd: () => void;
   onLeave: () => void;
@@ -346,7 +364,7 @@ export function DmGroupPanel({
           <PiPlus size={16} /> Add someone
         </button>
       </section>
-      <SharedFiles host={host} conversationId={conversation.conversation_id} />
+      <SharedFiles host={host} conversationId={conversation.conversation_id} onJump={onJump} />
       <button type="button" onClick={onLeave} className={`${footerButton} text-gryt-danger hover:opacity-80`}>
         <PiDoorOpenBold size={16} /> Leave group
       </button>

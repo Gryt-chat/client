@@ -9,7 +9,7 @@ import { showDesktopNotification } from "@/lib/desktopNotification";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { MESSAGE_SOUNDS, resolveSound } from "@/lib/soundPresets";
 import { useSettings } from "@/settings";
-import type { ForumTag, serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
+import type { ChannelPoster, ForumTag, serverDetailsList as ServerDetailsList } from "@/settings/src/types/server";
 
 import { PiInfoFill } from "../../../../lib/icons";
 import type { ChatMessage } from "../components/chatUtils";
@@ -90,6 +90,8 @@ interface UseChatReturn {
   activeChannelLayout: "chat" | "forum";
   activeChannelForumTags: ForumTag[];
   activeChannelDescription: string | undefined;
+  activeChannelPoster: ChannelPoster | null;
+  activeChannelColor: string | null;
   restoreText: string | null;
   clearRestoreText: () => void;
   fetchOlderMessages: () => void;
@@ -482,6 +484,8 @@ export function useChat({
   const activeChannelLayout: "chat" | "forum" = activeChannel?.layout === "forum" ? "forum" : "chat";
   const activeChannelForumTags: ForumTag[] = activeChannel?.forumTags ?? [];
   const activeChannelDescription = activeChannel?.description?.trim() || undefined;
+  const activeChannelPoster: ChannelPoster | null = activeChannel?.poster ?? null;
+  const activeChannelColor = activeChannel?.color ?? null;
 
   // Chat event listeners
   useEffect(() => {
@@ -868,6 +872,8 @@ export function useChat({
     activeChannelLayout,
     activeChannelForumTags,
     activeChannelDescription,
+    activeChannelPoster,
+    activeChannelColor,
     restoreText,
     clearRestoreText,
     fetchOlderMessages: historyWindow.messages ? historyWindow.loadOlder : fetchOlderMessages,

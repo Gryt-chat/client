@@ -5,6 +5,16 @@ export type ForumTag = {
   color?: string | null;
 };
 
+/** Checked by the server; an older server sends none. Mirrors `utils/channelPoster.ts` there. */
+export type ChannelPoster = {
+  layout: "classic" | "centred" | "quiet";
+  fill?: "solid" | "gradient";
+  c1?: string;
+  c2?: string;
+  angle?: number;
+  pattern?: string;
+};
+
 export type Channel = {
   name: string;
   type: "text" | "voice";
@@ -25,6 +35,10 @@ export type Channel = {
   defaultNotificationLevel?: "all" | "mentions" | "none";
   /** A forum channel's tag palette. GRYT-981 Stage 3. */
   forumTags?: ForumTag[];
+  /** Drawn at the start of the channel's history. */
+  poster?: ChannelPoster | null;
+  /** `#rrggbb`, tinting the channel's icon and header. */
+  color?: string | null;
   /**
    * Which permission scope decides what each role may do here, or null when the
    * channel has no opinion. For the editor — an unreadable channel is not sent.

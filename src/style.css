@@ -1113,6 +1113,11 @@ body {
   max-height: 400px;
 }
 
+/* An iframe's own width is 300px, so a box sized to its content needs a width of its own. */
+.link-embed-container:has(> .link-embed-iframe) {
+  width: 420px;
+}
+
 .link-embed-iframe {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -1645,6 +1650,10 @@ body {
 
   .link-embed-container {
     max-width: min(620px, 100%);
+  }
+
+  .link-embed-container:has(> .link-embed-iframe) {
+    width: 620px;
   }
 
   .link-embed-image {
@@ -2658,4 +2667,9 @@ img.discord-import-letter { object-fit: cover; }
   background: var(--gryt-accent-a3);
   color: var(--gryt-accent-11);
   font-weight: 600;
+}
+
+/* A channel's own colour on its icon in the list, while it isn't the open one. */
+[data-gryt="channel-row"][data-tint] > div:first-child {
+  color: var(--channel-color);
 }

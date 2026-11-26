@@ -7,6 +7,7 @@ import {
   getServerHttpBase,
   normalizeCode,
   parseServerInput,
+  setPendingServerIcon,
   useAccount,
 } from "@/common";
 
@@ -15,6 +16,7 @@ import { Confetti } from "../../../../components/confetti";
 import { CLOUD_CONSOLE_URL, cloudEnabled } from "../../../../lib/cloud";
 import {
   PiArrowSquareOutBold,
+  PiCaretLeftBold,
   PiCaretRightBold,
   PiCloudFill,
   PiHandWavingFill,
@@ -366,6 +368,10 @@ export function AddNewServer({
     ? { label: "Already joined", tone: "secondary" as const, disabled: true, run: () => {} }
     : openAction;
 
+  // One step back, and none on the first screen; in a browser Join is the first screen.
+  const behind = step === "host" ? "create" : null;
+  const backTo = !embeddedServerAvailable || cloud || step === null ? undefined : behind;
+
   return (
     <Dialog.Root
       open={showAddServer}
@@ -391,6 +397,13 @@ export function AddNewServer({
                 the className does not survive that clone in either position —
                 the button was dropping into normal flow at the top left of the
                 content. */}
+            {backTo !== undefined && (
+              <div className="absolute top-2 left-2 z-10">
+                <IconButton aria-label="Back" disabled={isJoining} onClick={() => setMode(backTo)}>
+                  <PiCaretLeftBold size={16} />
+                </IconButton>
+              </div>
+            )}
             <div className="absolute top-2 right-2 z-10">
               <Dialog.Close
                 render={
@@ -515,17 +528,14 @@ export function AddNewServer({
                 ) : (
                   <EntryCard tour="choose-cloud" icon={<PiCloudFill size={17} />} name="Gryt Cloud" hint="Coming soon. Always online." external onPick={() => window.open(CLOUD_URL, "_blank", "noopener,noreferrer")} />
                 )}
-                <Button tone="ghost" onClick={() => setMode(null)}>
-                  Back
-                </Button>
               </div>
             )}
 
             {step === "host" && embeddedServerAvailable && (
               <CreateServerPanel
-                onBack={() => setMode(null)}
-                onServerReady={(serverUrl, serverName) => {
+                onServerReady={(serverUrl, serverName, icon) => {
                   const { host } = parseServerInput(serverUrl);
+                  if (icon) setPendingServerIcon(host, icon);
 
                   if (servers[host]) {
                     switchToServer(host);
@@ -563,7 +573,7 @@ export function AddNewServer({
                     This is the only place a browser sees the offer at all: the
                     step above it is skipped when there is no embedded server to
                     create with. */}
-                {showOfficial && officialServer && serverHost.length === 0 && (
+                {!embeddedServerAvailable && showOfficial && officialServer && serverHost.length === 0 && (
                   <div data-tour="official-server">
                     <OfficialServerOffer
                       server={officialServer}
@@ -698,23 +708,7 @@ export function AddNewServer({
                   )}
                 </AnimatePresence>
 
-                <Dialog.Footer className="flex-wrap justify-between">
-                  {/* Only offered when there is a step behind this one. In a
-                      browser Join *is* the first step, and a Back that lands on
-                      a choice between one real option and a dead end is worse
-                      than no Back. */}
-                  {embeddedServerAvailable ? (
-                    <Button
-                      tone="ghost"
-                      disabled={isJoining}
-                      onClick={() => setMode(null)}
-                    >
-                      Back
-                    </Button>
-                  ) : (
-                    <span />
-                  )}
-
+                <Dialog.Footer className="justify-end">
                   <Button
                     tone={joinAction.tone}
                     disabled={joinAction.disabled}

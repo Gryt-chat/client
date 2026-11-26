@@ -24,6 +24,7 @@ import {
   setServerUnread,
   setThreadMentionCounts,
   subscribeToPrefs,
+  uploadPendingServerIcon,
 } from "@/common";
 import {
   checkApproveTicket,
@@ -59,7 +60,7 @@ import {
 import { cardToOffer, cardUpdatePayload, hasCardFields } from "../lib/memberCard/cardStore";
 import { cardProfileFor } from "../lib/memberCard/generatedCard";
 import { resendHistoryAsks } from "../mls/historyAsk";
-import { answerOwnAsk, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady } from "../mls/serverMls";
+import { answerOwnAsk, attachServerMls, serverMlsOwnKey, serverMlsPinned, serverMlsReady, setMlsSenderName } from "../mls/serverMls";
 import type { Clients, ServerProfile } from "../types/clients";
 import { publishDmKey } from "../utils/dmKeys";
 import { fetchCustomEmojis, setCustomEmojis } from "../utils/emojiData";
@@ -339,6 +340,10 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
     // Before anything renders. Every avatar and every picture reaches for this,
     // so storing it late means a screen of broken images on the first join.
     setServerFileAccess(host, joinInfo);
+    void uploadPendingServerIcon(host, joinInfo.accessToken).then(
+      (sent) => sent && socket.emit("server:details"),
+      (e: Error) => toast.error(e.message),
+    );
 
     // The earlier of the two publishes, so the key is on the server before the
     // first member list goes out and nobody sees them appear without one.
@@ -365,6 +370,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       toast.success(`You were let in to ${rest.name || host}`, { duration: 8000 });
     }
 
+    setMlsSenderName(host, joinInfo.nickname);
     setServerProfiles(prev => ({
       ...prev,
       [host]: {
@@ -410,6 +416,7 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
   });
 
   socket.on("profile:updated", (data: { nickname: string; avatarFileId: string | null; avatarWorn?: string | null; cardStyle?: unknown; bio?: string | null; pronouns?: string | null; statusLine?: string | null }) => {
+    setMlsSenderName(host, data.nickname);
     setServerProfiles(prev => {
       // This event doesn't say whether the avatar is a video; the member list does, for this file id.
       const avatarVideo = !!data.avatarFileId && prev[host]?.avatarFileId === data.avatarFileId && !!prev[host]?.avatarVideo;
@@ -739,6 +746,8 @@ export function registerServerSocketEvents(socket: Socket, host: string, ctx: Se
       if (myEntry.serverUserId) {
         myServerUserIdByHost.set(host, myEntry.serverUserId);
       }
+      // A client holding a token never gets `server:joined`, so the DM preview's name comes from here too.
+      if (myEntry.nickname) setMlsSenderName(host, myEntry.nickname);
     }
   });
 

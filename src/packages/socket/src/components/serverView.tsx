@@ -71,6 +71,7 @@ import { setOnScreenConversation } from "../utils/onScreenConversation";
 import { type CallWindow, openCallWindow } from "../utils/popoutCall";
 import { CallPopout } from "./CallPopout";
 import { ChannelDescription } from "./ChannelDescription";
+import { ChannelLookField } from "./ChannelLookField";
 import { ChatView } from "./ChatView";
 import { CompareCodesDialog } from "./CompareCodesDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -169,7 +170,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     devFakeParticipants, devFakeMuted, devFakeScreenShare,
     devFakeDeafened, devFakeSpeaking, devFakeMembers, devFakeChatSeconds,
   } = useSettings();
-  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace, addServer, removeServer } = useServerManagement();
+  const { currentlyViewingServer, setShowRemoveServer, setLastSelectedChannelForServer, viewServerBehindDmSpace, addServer, removeServer, switchToServer } = useServerManagement();
   /* Switches the saved server to the address it gave as public (GRYT-2007). A new address is
      joined and proved like any server added by hand, so its identity check runs as normal. */
   const switchToPublicAddress = (server: { host: string; name?: string; publicHost?: string }) => {
@@ -500,7 +501,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const {
     chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
-    canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
+    canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription, activeChannelPoster, activeChannelColor,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
     mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded, sealedHistory,
@@ -1060,10 +1061,10 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     return (
       <>
         {dmPresence}
-        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
+        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} onOpen={() => switchToServer(host)} />
       </>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, dmPresence]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, dmPresence, switchToServer]);
 
   /* Board 1's header: the face where a channel has its icon, and under the name where
      the conversation lives and whether it's sealed. */
@@ -1101,7 +1102,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
     return (
       <span className="flex min-w-0 items-center gap-1.5 text-xs" style={{ color: "var(--gryt-neutral-10)" }}>
         {activeDm.kind === "group" ? <span>{activeDm.members.length + 1} people ·</span> : <span>on</span>}
-        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} />
+        <ServerChip name={name} icon={serverIconSrc(host, stored || "", serverDetailsList)} onOpen={() => switchToServer(host)} />
         <span aria-hidden>·</span>
         {sealed && activeDm.kind === "dm" && (
           <button
@@ -1134,7 +1135,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         )}
       </span>
     );
-  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, compareKeys, peerKeys.comparedAt]);
+  }, [activeDm, currentlyViewingServer, serverDetailsList, sealing, memberNames, sendChat, compareKeys, peerKeys.comparedAt, switchToServer]);
 
   /* Board 7, option A: behind ⋯ in a channel's header. The pin button stays beside it. */
   const channelMoreMenu = useMemo(() => {
@@ -1414,6 +1415,9 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         automated={!activeDm && activeChannelAutomated}
         layout={activeDm ? "chat" : activeChannelLayout}
 forumTags={activeDm ? [] : activeChannelForumTags}
+        poster={activeDm ? null : activeChannelPoster}
+        posterTopic={activeChannelDescription}
+        channelColor={activeDm ? null : activeChannelColor}
         conversationKind={activeDm ? "dm" : "channel"}
         headerAction={dmHeaderActions}
         headerLead={tinyBack}
@@ -1486,6 +1490,19 @@ forumTags={activeDm ? [] : activeChannelForumTags}
   const job = discordImport.state;
   const importState: DiscordImportState | null = (job?.kind === "running" ? { ...job, peerAdded: peerHasImported } : job)
     ?? (peerImported && activeDm?.kind === "dm" ? { kind: "asked", by: activeDm.other.nickname } : null);
+
+  const lookItem = sidebarEditor.selectedSidebarItem;
+  const lookChannel = lookItem?.kind === "channel"
+    ? serverDetails.channels?.find((c) => c.id === (lookItem.channelId ?? lookItem.id))
+    : undefined;
+  const lookField = lookChannel ? (
+    <ChannelLookField
+      key={lookChannel.id}
+      channel={lookChannel}
+      serverName={serverName}
+      onSave={(poster, color) => sidebarEditor.saveLook(lookChannel.id, poster, color)}
+    />
+  ) : undefined;
 
   return (
     <MemberCardActionsContext.Provider value={memberCardActions}>
@@ -1579,6 +1596,9 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             automated={!activeDm && activeChannelAutomated}
             layout={activeDm ? "chat" : activeChannelLayout}
 forumTags={activeDm ? [] : activeChannelForumTags}
+        poster={activeDm ? null : activeChannelPoster}
+        posterTopic={activeChannelDescription}
+        channelColor={activeDm ? null : activeChannelColor}
             conversationKind={activeDm ? "dm" : "channel"}
             headerAction={dmHeaderActions}
             headerDetail={activeDm ? dmHeaderDetail : <ChannelDescription text={activeChannelDescription} />}
@@ -1836,6 +1856,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   host={host}
                   conversation={activeDm}
                   memberList={memberListMap}
+                  onJump={(messageId) => setPendingJump({ conversationId: activeDm.conversation_id, messageId, nonce: Date.now() })}
                   onEdit={() => setGroupDialog(activeDm)}
                   onAdd={() => setGroupDialog(activeDm)}
                   onLeave={() => {
@@ -1943,7 +1964,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         }}
       />
 
-      <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
+      <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} lookField={lookField} />
       <NewFolderDialog
         open={newFolderOpen}
         onOpenChange={setNewFolderOpen}

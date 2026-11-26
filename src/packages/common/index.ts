@@ -62,6 +62,7 @@ export * from "./src/utils/fileUrlAuth";
 export * from "./src/utils/imageCompress";
 export * from "./src/utils/invite";
 export * from "./src/utils/openServerLink";
+export * from "./src/utils/pendingServerIcon";
 export * from "./src/utils/preLoginUrl";
 /* The name pool moved to @gryt/core, and is re-exported from here so the
    consumers that import it from `@/common` do not all have to move. */

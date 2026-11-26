@@ -16,6 +16,8 @@ import { networkInterfaces, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { CRASH_START, exitDetail } from "../electron/exitDetail.ts";
+
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG = "electron/embeddedServerConfig.ts";
 const MANAGER = "electron/embeddedServerManager.ts";
@@ -201,7 +203,8 @@ function loadManager(app: App, { onSpawn = () => {} }: { onSpawn?: (proc: FakeSf
   const manager = new Function(
     "fork", "spawn", "app", "existsSync", "readFileSync", "chmod", "cp", "mkdir", "rename",
     "rm", "writeFile", "createServer", "join", "extract", "loadGlobalStore", "setGlobalValue",
-    "setTimeout", "clearTimeout", "process", "console", ...CONFIG_EXPORTS,
+    "setTimeout", "clearTimeout", "process", "console",
+    "appendFileSync", "mkdirSync", "renameSync", "statSync", "dirname", "CRASH_START", "exitDetail", ...CONFIG_EXPORTS,
     moduleBody(MANAGER, ["createAndStartServer", "startExistingServer", "stopAllServers", "getEmbeddedServerState"]),
   )(
     fork, spawn, app, fs.existsSync, fs.readFileSync, null, null, null, null,
@@ -214,6 +217,7 @@ function loadManager(app: App, { onSpawn = () => {} }: { onSpawn?: (proc: FakeSf
       resourcesPath: join(scratch, "none"),
     },
     quiet,
+    fs.appendFileSync, fs.mkdirSync, fs.renameSync, fs.statSync, dirname, CRASH_START, exitDetail,
     ...CONFIG_EXPORTS.map((name) => config[name]),
   );
 

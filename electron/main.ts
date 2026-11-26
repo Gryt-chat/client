@@ -611,6 +611,10 @@ process.on("unhandledRejection", (reason) => {
   }
 });
 
+// Windows drops toasts from an app whose ID doesn't match its Start menu shortcut,
+// which the installer creates with the appId. The Store build gets its ID from the package.
+if (process.platform === "win32" && !process.windowsStore) app.setAppUserModelId("com.gryt.chat");
+
 // ── Deep link protocol ───────────────────────────────────────────────────
 
 if (process.defaultApp) {

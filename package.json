@@ -1,7 +1,7 @@
 {
   "name": "gryt-chat",
   "private": true,
-  "version": "1.16.0-beta.12",
+  "version": "1.16.5",
   "description": "Gryt Chat — real-time voice chat desktop client",
   "author": {
     "name": "Gryt Chat",
@@ -24,6 +24,7 @@
     "typecheck": "tsc -b",
     "lint": "tsc -b && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test:updater-bridge": "node scripts/check-updater-bridge.ts",
+    "test:exit-detail": "node scripts/check-exit-detail.ts",
     "test:update-feed-pin": "node scripts/check-update-feed-pin.ts",
     "test:update-supersede": "node scripts/check-update-supersede.ts",
     "test:update-in-progress": "node scripts/check-update-in-progress.ts",
@@ -249,8 +250,8 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@gryt/core": "0.35.4",
-    "@gryt/crypto": "0.17.1",
+    "@gryt/core": "0.35.6",
+    "@gryt/crypto": "0.17.2",
     "@gryt/owl": "^0.8.1",
     "@gryt/ui": "^0.54.0",
     "@gryt/voice": "0.10.3",
@@ -312,6 +313,6 @@
     "dmg-license": "1.0.11"
   },
   "resolutions": {
-    "@gryt/core/@gryt/crypto": "0.17.1"
+    "@gryt/core/@gryt/crypto": "0.17.2"
   }
 }

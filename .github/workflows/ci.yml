@@ -26,6 +26,7 @@ jobs:
           cache: yarn
       - run: yarn install --frozen-lockfile
       - run: yarn test:updater-bridge
+      - run: yarn test:exit-detail
       - run: yarn test:update-feed-pin
       # A newer release has to replace a download that is waiting or still running,
       # so one press installs the newest. Nothing else here runs that sequence.
@@ -318,6 +319,8 @@ jobs:
 
   # The Rich Presence helper talks to sockets and pipes that differ on every OS, so it runs on all three.
   helper:
+    needs: changes
+    if: needs.changes.outputs.helper == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -393,6 +396,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       web: ${{ steps.filter.outputs.web }}
+      helper: ${{ steps.filter.outputs.helper }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -403,12 +407,15 @@ jobs:
         run: |
           if [ "$EVENT" != "pull_request" ]; then
             echo "web=true" >> "$GITHUB_OUTPUT"
+            echo "helper=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # electron/ only skips while nothing in the web build imports from it.
           electron=skip
           if git grep -qE "(\.\./)+electron/" -- src index.html; then electron=web; fi
           files=$(git diff --name-only HEAD^1 HEAD)
+          # The helper's three-OS test needs a macOS runner, which GitHub is often short of.
+          if [ -z "$files" ] || grep -qE '^(helper/|scripts/build-helper\.ts$|\.github/workflows/ci\.yml$)' <<< "$files"; then echo "helper=true" >> "$GITHUB_OUTPUT"; else echo "helper=false" >> "$GITHUB_OUTPUT"; fi
           web=false
           if [ -z "$files" ]; then web=true; fi
           while IFS= read -r file; do

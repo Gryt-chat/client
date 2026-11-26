@@ -4,21 +4,21 @@ import { useEffect, useRef, useState } from "react";
 
 import { GeneratedServerIcon } from "@/common";
 
-import { PiCheckCircleFill, PiWarningFill, PiX } from "../../../../lib/icons";
+import { PiCameraFill, PiCheckCircleFill, PiWarningFill, PiX } from "../../../../lib/icons";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
+import { SERVER_ICON_SHAPE } from "./pictureCrop";
+import { PictureCropDialog } from "./PictureCropDialog";
 
 interface CreateServerPanelProps {
   /** Called once the new server is up and reachable. */
-  onServerReady: (serverUrl: string, serverName: string) => void;
-  /** Back out to the step that chose this. */
-  onBack: () => void;
+  onServerReady: (serverUrl: string, serverName: string, icon: File | null) => void;
 }
 
 /**
  * Making a server, and nothing else — the manager lives in Settings → My servers.
  * Create writes the config, starts the process and hands the address back.
  */
-export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelProps) {
+export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
   const { isAvailable, creating, progress, createServer, suggestPort, checkPort } =
     useEmbeddedServer();
 
@@ -31,6 +31,17 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
   }, [creating]);
   const [lanDiscoverable, setLanDiscoverable] = useState(true);
   const [error, setError] = useState("");
+  const [picking, setPicking] = useState<File | null>(null);
+  const [icon, setIcon] = useState<File | null>(null);
+  const [iconSrc, setIconSrc] = useState<string | undefined>();
+  const iconInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!icon) return setIconSrc(undefined);
+    const url = URL.createObjectURL(icon);
+    setIconSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [icon]);
 
   /**
    * The port, offered rather than demanded. Prefilled with one that is free, so
@@ -97,7 +108,7 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
       return;
     }
 
-    onServerReady(created.serverUrl, created.config.serverName);
+    onServerReady(created.serverUrl, created.config.serverName, icon);
   }
 
   return (
@@ -112,52 +123,63 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
           until it started.
 
           No caption underneath: it changes as you type, which says it. */}
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-bold">Name</span>
-        <div className="flex items-end gap-3">
+      {/* One grid, so the port field starts where the name field does. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3">
+        <button
+          type="button"
+          aria-label="Choose a server picture"
+          className="relative shrink-0 cursor-pointer rounded-(--gryt-radius-md)"
+          onClick={() => iconInput.current?.click()}
+          disabled={creating}
+        >
           <Avatar
             size="medium"
-            className="rounded-(--gryt-radius-md) shrink-0"
+            className="rounded-(--gryt-radius-md)"
+            src={iconSrc}
             fallback={<GeneratedServerIcon seed={serverName || "My Server"} />}
           />
-          <TextField
-            autoFocus
-            className="flex-1"
-            placeholder="My Server"
-            value={serverName}
-            onChange={(e) => setServerName(e.target.value)}
-            disabled={creating}
-            maxLength={64}
-          />
-        </div>
-      </div>
-
-      {/* A port is four characters, so the field is short and its status sits
-          beside it on the same line — a status about a value belongs next to
-          the value rather than up beside the label. Tabular digits so the
-          number does not jiggle while it is typed.
-
-          "Available" rather than "Free": on a product surface Free reads as a
-          price, and nothing here costs money. */}
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-bold">Port</span>
+          <span
+            className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full"
+            style={{ background: "var(--gryt-accent-9)", color: "var(--color-gryt-on-accent)", boxShadow: "0 1px 4px var(--gryt-neutral-a5)" }}
+          >
+            <PiCameraFill size={11} />
+          </span>
+        </button>
+        <input
+          ref={iconInput}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+          hidden
+          onChange={(e) => {
+            setPicking(e.target.files?.[0] ?? null);
+            e.currentTarget.value = "";
+          }}
+        />
+        <TextField
+          autoFocus
+          aria-label="Server name"
+          placeholder="My Server"
+          value={serverName}
+          onChange={(e) => setServerName(e.target.value)}
+          disabled={creating}
+          maxLength={64}
+        />
+        <span className="text-sm font-bold text-right">Port</span>
         <div className="flex items-center gap-3">
-          {/* The width goes on a wrapper, not on TextField: the class lands on
-              the input and its wrapper stays full-width, which pushed the
-              status a quarter of the dialog away from the value it is about. */}
           <div className="w-28 shrink-0">
-          <TextField
-            inputMode="numeric"
-            className="tabular-nums"
-            placeholder="5000"
-            value={port}
-            onChange={(e) => {
-              touched.current = true;
-              setPort(e.target.value.replace(/[^0-9]/g, ""));
-            }}
-            disabled={creating}
-            maxLength={5}
-          />
+            <TextField
+              inputMode="numeric"
+              aria-label="Port"
+              className="tabular-nums"
+              placeholder="5000"
+              value={port}
+              onChange={(e) => {
+                touched.current = true;
+                setPort(e.target.value.replace(/[^0-9]/g, ""));
+              }}
+              disabled={creating}
+              maxLength={5}
+            />
           </div>
           {portState === "free" && (
             <span
@@ -227,11 +249,15 @@ export function CreateServerPanel({ onServerReady, onBack }: CreateServerPanelPr
         </p>
       )}
 
-      <Dialog.Footer className="justify-between">
-        <Button tone="ghost" size="small" onClick={onBack} disabled={creating}>
-          Back
-        </Button>
+      <PictureCropDialog
+        file={picking}
+        shape={SERVER_ICON_SHAPE}
+        onDone={(cropped) => {
+          setPicking(null);
+          if (cropped) setIcon(cropped);
+        }}      />
 
+      <Dialog.Footer className="justify-end">
         <Button size="small"
           onClick={() => {
             void handleCreate();
