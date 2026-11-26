@@ -1,4 +1,4 @@
-import { Select } from "@gryt/ui";
+import { CARD_PATTERNS, PATTERN_GROUPS, Select } from "@gryt/ui";
 import { useEffect, useRef, useState } from "react";
 
 import type { Channel, ChannelPoster as Poster } from "@/settings/src/types/server";
@@ -7,7 +7,11 @@ import { usePosterVars } from "../hooks/usePosterVars";
 import { ChannelPoster } from "./ChannelPoster";
 import { ROLE_COLOR_PRESETS } from "./roleColorPresets";
 
-const PATTERNS = ["contours", "dots", "weave", "waves-3", "hexagon-2", "triangles-3", "circles-3", "japanese-pattern-2"];
+// Line patterns only: a base pattern replaces the fill, and the scatter ones need an owl, icon or emoji a poster doesn't store.
+const PATTERNS_BY_GROUP = PATTERN_GROUPS.map((group) => ({
+  group,
+  ids: CARD_PATTERNS.filter((p) => p.group === group && (p.kind === "svg" || p.kind === "tile")).map((p) => p.id),
+})).filter((g) => g.ids.length > 0);
 const LAYOUTS = [
   { label: "None", value: "none" },
   { label: "Classic", value: "classic" },
@@ -114,9 +118,19 @@ export function ChannelLookField({ channel, serverName, onSave }: {
           {poster.layout !== "quiet" && (
             <div className="flex flex-col gap-2">
               <Label>Pattern</Label>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                {[undefined, ...PATTERNS].map((p) => (
-                  <PatternSwatch key={p ?? "none"} pattern={p} c1={c1} picked={(poster.pattern ?? undefined) === p} onPick={() => edit({ pattern: p })} />
+              <div className="flex max-h-72 flex-col gap-3 overflow-y-auto pr-1">
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                  <PatternSwatch pattern={undefined} c1={c1} picked={!poster.pattern} onPick={() => edit({ pattern: undefined })} />
+                </div>
+                {PATTERNS_BY_GROUP.map(({ group, ids }) => (
+                  <div key={group} className="flex flex-col gap-2">
+                    <span className="text-xs" style={{ color: "var(--gryt-neutral-11)" }}>{group}</span>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                      {ids.map((p) => (
+                        <PatternSwatch key={p} pattern={p} c1={c1} picked={poster.pattern === p} onPick={() => edit({ pattern: p })} />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
