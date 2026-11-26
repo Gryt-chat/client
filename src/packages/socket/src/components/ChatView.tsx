@@ -27,6 +27,7 @@ import { SEARCH_SHORTCUT } from "../utils/messageSearch";
 import type { NewPoll } from "../utils/polls";
 import type { CustomEmojiEntry } from "../utils/remarkEmoji";
 import { mentionsViewer } from "../utils/webhookCards";
+import { ChannelPoster } from "./ChannelPoster";
 import type { ChatEditorHandle } from "./ChatEditor";
 import { ChatEditorBar } from "./ChatEditorBar";
 import { MessageSkeleton, WelcomeMessage } from "./ChatMessage";
@@ -123,6 +124,8 @@ export const ChatView = memo(({
   automated,
   layout,
   forumTags,
+  poster,
+  posterTopic,
   channelType,
   conversationKind = "channel",
   sealing,
@@ -185,6 +188,9 @@ export const ChatView = memo(({
   /** A forum channel shows a topic index instead of a chat stream. GRYT-981 Stage 2. */
   layout?: "chat" | "forum";
   forumTags?: import("@/settings/src/types/server").ForumTag[];
+  /** Drawn above the first message once nothing older is left to load. */
+  poster?: import("@/settings/src/types/server").ChannelPoster | null;
+  posterTopic?: string;
   /** A direct message reads differently: no `#`, and its own empty state. */
   conversationKind?: "channel" | "dm";
   /** Absent on a channel, which is never encrypted and needs no note. */
@@ -912,6 +918,9 @@ export const ChatView = memo(({
 
   const showVoiceDisabled = !canViewVoiceChannelText && isVoiceChannelTextChat;
   const showMessages = mayRead && !showVoiceDisabled && !isLoadingMessages && chatMessages.length > 0;
+  const posterHere = poster && conversationKind === "channel" && channelName
+    ? <ChannelPoster poster={poster} channelName={channelName} topic={posterTopic} serverName={serverName} />
+    : null;
 
   return (
     <MentionViewerContext.Provider value={mentionViewer}>
@@ -1032,7 +1041,11 @@ export const ChatView = memo(({
                 <CloudWelcome host={cloudWelcomeHost} serverName={serverName ?? cloudWelcomeHost} />
               ) : (
                 <>
-                  <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} sealing={sealing} />
+                  {posterHere ? (
+                    <div className="w-full self-stretch">{posterHere}</div>
+                  ) : (
+                    <WelcomeMessage channelName={channelName} channelType={channelType} conversationKind={conversationKind} serverName={serverName} automated={automated} sealing={sealing} />
+                  )}
                   {discordOfferHost && <DiscordOffer host={discordOfferHost} />}
                 </>
               )}
@@ -1049,6 +1062,7 @@ export const ChatView = memo(({
                   <span className="text-xs text-gryt-muted">Loading older messages...</span>
                 </div>
               )}
+              {!isLoadingOlder && !hasOlderMessages && posterHere}
                 {chatMessages.map((m, i) => {
                   const meta = messageMetadata[i];
                   if (!meta) return null;

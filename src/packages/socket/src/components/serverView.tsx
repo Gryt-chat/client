@@ -500,7 +500,7 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
   const {
     chatMessages, sealing, canSend, sendChat, editMessage, isLoadingMessages,
     isRateLimited, rateLimitCountdown, isVoiceChannelTextChat,
-    canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription,
+    canViewVoiceChannelText, activeChannelName, activeChannelType, activeChannelAutomated, activeChannelLayout, activeChannelForumTags, activeChannelDescription, activeChannelPoster,
     restoreText, clearRestoreText, fetchOlderMessages, isLoadingOlder, hasOlderMessages, historyWindow,
     plaintextPrompt, confirmPlaintextSend, cancelPlaintextSend, reencryptReady,
     mlsNotice, composerHeld, deleteMlsMessage, reactMlsMessage, mlsReportsTaken, archiveFailed, mlsActions, peerKeyNotice, mlsNotAdded, sealedHistory,
@@ -1414,6 +1414,8 @@ export const ServerView = ({ dmSpace = false }: { dmSpace?: boolean }) => {
         automated={!activeDm && activeChannelAutomated}
         layout={activeDm ? "chat" : activeChannelLayout}
 forumTags={activeDm ? [] : activeChannelForumTags}
+        poster={activeDm ? null : activeChannelPoster}
+        posterTopic={activeChannelDescription}
         conversationKind={activeDm ? "dm" : "channel"}
         headerAction={dmHeaderActions}
         headerLead={tinyBack}
@@ -1579,6 +1581,8 @@ forumTags={activeDm ? [] : activeChannelForumTags}
             automated={!activeDm && activeChannelAutomated}
             layout={activeDm ? "chat" : activeChannelLayout}
 forumTags={activeDm ? [] : activeChannelForumTags}
+        poster={activeDm ? null : activeChannelPoster}
+        posterTopic={activeChannelDescription}
             conversationKind={activeDm ? "dm" : "channel"}
             headerAction={dmHeaderActions}
             headerDetail={activeDm ? dmHeaderDetail : <ChannelDescription text={activeChannelDescription} />}
