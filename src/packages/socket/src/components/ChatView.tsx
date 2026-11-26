@@ -969,7 +969,7 @@ export const ChatView = memo(({
         {/* The conversation and the thread share this row. Beside it the panel is
             a column of its own; below the breakpoint it covers the row instead. */}
         <div className="flex h-full w-full" style={{ position: "relative" }}>
-        <div className="flex min-w-0 grow flex-col p-3 chat-column" style={{ position: "relative" }}>
+        <div className="flex min-w-0 grow flex-col p-3" style={{ position: "relative", timelineScope: "--chat-poster" } as React.CSSProperties}>
           {channelName && (
             <div className="flex min-w-0 items-center gap-2" data-gryt="chat-header" style={strip ? { ...stripLayers(stripVars), ...STRIP_STYLE } : { marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid var(--gryt-neutral-6)" }}>
               {strip && (

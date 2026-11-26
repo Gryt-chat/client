@@ -871,7 +871,6 @@ body {
 /* ── Chat scroll container ────────────────────────────────── */
 
 /* The header strip folds in as the channel's poster scrolls away, and back out on the way up. */
-.chat-column { timeline-scope: --chat-poster; }
 .chat-poster { view-timeline: --chat-poster block; }
 @keyframes chat-strip-wipe { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
 @keyframes chat-strip-fade { from { opacity: 0; } to { opacity: 1; } }
