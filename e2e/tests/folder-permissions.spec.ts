@@ -104,6 +104,7 @@ test("a folder's permissions hide it, and a channel with its own keeps them", as
   // One channel gets its own permissions, and the folder comes back holding only it.
   const follow = `Follow the ${folderLabel} folder`;
   const keptDialog = await editRow(owner.page, kept);
+  await keptDialog.getByRole("button", { name: "Permissions", exact: true }).click();
   await expect(keptDialog.getByRole("combobox").filter({ hasText: follow })).toBeVisible();
   await expect(keptDialog.getByText(`The ${folderLabel} folder decides who can use this channel.`, { exact: false })).toBeVisible();
   await pick(owner.page, keptDialog.getByRole("combobox").filter({ hasText: follow }), "Everyone");
@@ -123,6 +124,7 @@ test("a folder's permissions hide it, and a channel with its own keeps them", as
 
   // Opening a following channel's settings and closing them again changes nothing.
   const hiddenDialog = await editRow(owner.page, hidden);
+  await hiddenDialog.getByRole("button", { name: "Permissions", exact: true }).click();
   await expect(hiddenDialog.getByRole("combobox").filter({ hasText: follow })).toBeVisible();
   await owner.page.keyboard.press("Escape");
   await expect(hiddenDialog).toBeHidden();
