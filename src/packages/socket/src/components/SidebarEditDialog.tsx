@@ -88,9 +88,11 @@ interface SidebarEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editor: SidebarEditorFields;
+  /** The poster and colour editor, for a text channel. It saves on its own event. */
+  lookField?: React.ReactNode;
 }
 
-export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDialogProps) => {
+export const SidebarEditDialog = ({ open, onOpenChange, editor, lookField }: SidebarEditDialogProps) => {
   const {
     selectedSidebarItem,
     sheetChannelName, setSheetChannelName,
@@ -234,6 +236,7 @@ export const SidebarEditDialog = ({ open, onOpenChange, editor }: SidebarEditDia
                   placeholder="What's this channel for?"
                 />
               </div>
+              {sheetChannelKind !== "voice" && lookField}
               <div className="flex flex-col gap-2">
                 <span className="text-sm font-medium">Channel type</span>
                 <ChannelKindPicker

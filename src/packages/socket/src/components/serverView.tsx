@@ -71,6 +71,7 @@ import { setOnScreenConversation } from "../utils/onScreenConversation";
 import { type CallWindow, openCallWindow } from "../utils/popoutCall";
 import { CallPopout } from "./CallPopout";
 import { ChannelDescription } from "./ChannelDescription";
+import { ChannelLookField } from "./ChannelLookField";
 import { ChatView } from "./ChatView";
 import { CompareCodesDialog } from "./CompareCodesDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -1490,6 +1491,19 @@ forumTags={activeDm ? [] : activeChannelForumTags}
   const importState: DiscordImportState | null = (job?.kind === "running" ? { ...job, peerAdded: peerHasImported } : job)
     ?? (peerImported && activeDm?.kind === "dm" ? { kind: "asked", by: activeDm.other.nickname } : null);
 
+  const lookItem = sidebarEditor.selectedSidebarItem;
+  const lookChannel = lookItem?.kind === "channel"
+    ? serverDetails.channels?.find((c) => c.id === (lookItem.channelId ?? lookItem.id))
+    : undefined;
+  const lookField = lookChannel ? (
+    <ChannelLookField
+      key={lookChannel.id}
+      channel={lookChannel}
+      serverName={serverName}
+      onSave={(poster, color) => sidebarEditor.saveLook(lookChannel.id, poster, color)}
+    />
+  ) : undefined;
+
   return (
     <MemberCardActionsContext.Provider value={memberCardActions}>
       {/* min-w-0, or a header's one-line name sets the narrowest this can get. */}
@@ -1950,7 +1964,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
         }}
       />
 
-      <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} />
+      <SidebarEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editor={sidebarEditor} lookField={lookField} />
       <NewFolderDialog
         open={newFolderOpen}
         onOpenChange={setNewFolderOpen}
