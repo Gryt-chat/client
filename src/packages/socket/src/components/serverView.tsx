@@ -1836,6 +1836,7 @@ forumTags={activeDm ? [] : activeChannelForumTags}
                   host={host}
                   conversation={activeDm}
                   memberList={memberListMap}
+                  onJump={(messageId) => setPendingJump({ conversationId: activeDm.conversation_id, messageId, nonce: Date.now() })}
                   onEdit={() => setGroupDialog(activeDm)}
                   onAdd={() => setGroupDialog(activeDm)}
                   onLeave={() => {
