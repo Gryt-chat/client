@@ -6,7 +6,7 @@ import { GeneratedServerIcon } from "@/common";
 
 import { PiCameraFill, PiCheckCircleFill, PiWarningFill, PiX } from "../../../../lib/icons";
 import { useEmbeddedServer } from "../hooks/useEmbeddedServer";
-import { SERVER_ICON_SHAPE } from "./pictureCrop";
+import { bestSize, SERVER_ICON_SHAPE } from "./pictureCrop";
 import { PictureCropDialog } from "./PictureCropDialog";
 
 interface CreateServerPanelProps {
@@ -128,6 +128,7 @@ export function CreateServerPanel({ onServerReady }: CreateServerPanelProps) {
         <button
           type="button"
           aria-label="Choose a server picture"
+          title={bestSize(SERVER_ICON_SHAPE)}
           className="relative shrink-0 cursor-pointer rounded-(--gryt-radius-md)"
           onClick={() => iconInput.current?.click()}
           disabled={creating}
