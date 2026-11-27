@@ -1078,7 +1078,7 @@ body {
 }
 
 .link-embed-container:has(> .link-embed-card) {
-  max-width: 100%;
+  width: fit-content;
 }
 
 .link-embed-dismiss {
