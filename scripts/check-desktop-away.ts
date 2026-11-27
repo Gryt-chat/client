@@ -1,5 +1,5 @@
 // An open desktop blocked phone pushes all day: AFK was only ever set in voice. Now the
-// desktop says it's away after a minute out of focus or five without input. GRYT-1699.
+// desktop says it's away after five minutes without input on the computer, or out of focus in a browser.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -53,7 +53,7 @@ function fakeDesktop({ focused = true } = {}) {
   assert.deepEqual(d.seen, [false, true, false], "the next input is back at once, not on the next tick");
 }
 
-// Switching to another app hands pushes to the phone after a minute.
+// In a browser, switching to another app hands pushes to the phone after five minutes.
 {
   const d = fakeDesktop();
   d.setFocus(false);
@@ -81,6 +81,46 @@ function fakeDesktop({ focused = true } = {}) {
   assert.equal(d.seen.at(-1), true);
   d.stop();
   assert.equal(d.listeners(), 0, "listeners left behind after stopping");
+}
+
+// The desktop app reads the computer's idle time, so working in another app keeps the phone quiet.
+{
+  let idleSeconds = 0;
+  let fail = false;
+  const ticks = new Set<() => void>();
+  const focusListeners = new Set<(focused: boolean) => void>();
+  const seen: boolean[] = [];
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  const tick = async () => {
+    for (const cb of ticks) cb();
+    await flush();
+  };
+  const stop = watchAway((away) => seen.push(away), {
+    now: () => 1_000_000,
+    focused: () => true,
+    onFocusChange: (cb) => (focusListeners.add(cb), () => focusListeners.delete(cb)),
+    onInput: () => () => {},
+    every: (_ms, cb) => (ticks.add(cb), () => ticks.delete(cb)),
+    systemIdleSeconds: () => (fail ? Promise.reject(new Error("no ipc")) : Promise.resolve(idleSeconds)),
+  });
+  for (const cb of focusListeners) cb(false);
+  idleSeconds = IDLE_MS / 1000 - 1;
+  await tick();
+  assert.deepEqual(seen, [false], "out of focus but typing elsewhere is still here");
+  idleSeconds = IDLE_MS / 1000;
+  await tick();
+  assert.deepEqual(seen, [false, true], "five idle minutes on the computer is away");
+  idleSeconds = 3;
+  await tick();
+  assert.deepEqual(seen, [false, true, false], "input anywhere brings it back");
+  fail = true;
+  await tick();
+  assert.deepEqual(seen, [false, true, false], "a failed read falls back without flapping");
+  stop();
+  idleSeconds = IDLE_MS / 1000;
+  fail = false;
+  await tick();
+  assert.equal(seen.length, 3, "a read landing after stop is dropped");
 }
 
 // Every connected server is told, and told again when one reconnects.

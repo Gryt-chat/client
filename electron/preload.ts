@@ -515,6 +515,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return () => ipcRenderer.removeListener("window-focus-change", handler);
   },
 
+  getSystemIdleSeconds(): Promise<number> {
+    return ipcRenderer.invoke("system-idle-seconds");
+  },
+
   openExternal(url: string) {
     ipcRenderer.send("auth:open-external", url);
   },

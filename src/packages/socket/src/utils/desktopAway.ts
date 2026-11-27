@@ -1,8 +1,8 @@
 /* Whether you're at this desktop, for the server's push decision (GRYT-1699). Away, it wakes your
    phone instead; here, it doesn't, so a message you're reading doesn't buzz in your pocket too. */
 
-/** The window out of focus or hidden this long counts as away. */
-export const UNFOCUSED_MS = 60_000;
+/** The window out of focus or hidden this long counts as away, where the computer's idle time can't be read. */
+export const UNFOCUSED_MS = 5 * 60_000;
 /** No mouse or keyboard this long counts as away, even with the window in front. */
 export const IDLE_MS = 5 * 60_000;
 const TICK_MS = 15_000;
@@ -28,6 +28,8 @@ export interface AwayDeps {
   /** Calls back on any mouse, key or touch input, and returns a function that stops. */
   onInput: (callback: () => void) => () => void;
   every: (ms: number, callback: () => void) => () => void;
+  /** Seconds since input anywhere on the computer. With it, using another app still counts as here. */
+  systemIdleSeconds?: () => Promise<number>;
 }
 
 /** Calls `onChange` with the starting state and again whenever it flips. */
@@ -35,12 +37,20 @@ export function watchAway(onChange: (away: boolean) => void, deps: AwayDeps): ()
   const start = deps.now();
   const focused = deps.focused();
   const activity: Activity = { focused, blurredAt: focused ? null : start, lastInput: start };
-  let away = isAway(activity, start);
+  let away = deps.systemIdleSeconds ? false : isAway(activity, start);
+  let stopped = false;
   onChange(away);
 
+  const set = (next: boolean) => {
+    if (!stopped && next !== away) onChange((away = next));
+  };
   const check = () => {
-    const next = isAway(activity, deps.now());
-    if (next !== away) onChange((away = next));
+    const idle = deps.systemIdleSeconds;
+    if (!idle) return set(isAway(activity, deps.now()));
+    idle().then(
+      (seconds) => set(seconds * 1000 >= IDLE_MS),
+      () => set(isAway(activity, deps.now())),
+    );
   };
   const stops = [
     deps.onFocusChange((nowFocused) => {
@@ -57,13 +67,20 @@ export function watchAway(onChange: (away: boolean) => void, deps: AwayDeps): ()
     }),
     deps.every(TICK_MS, check),
   ];
-  return () => stops.forEach((stop) => stop());
+  return () => {
+    stopped = true;
+    stops.forEach((stop) => stop());
+  };
 }
 
 /** The real window, the page's visibility, and Electron's own focus events where there are any. */
-export function browserAwayDeps(electronFocus?: (callback: (focused: boolean) => void) => () => void): AwayDeps {
+export function browserAwayDeps(
+  electronFocus?: (callback: (focused: boolean) => void) => () => void,
+  systemIdleSeconds?: () => Promise<number>,
+): AwayDeps {
   const focusedNow = () => document.visibilityState === "visible" && document.hasFocus();
   return {
+    systemIdleSeconds,
     now: Date.now,
     focused: focusedNow,
     onFocusChange: (callback) => {
