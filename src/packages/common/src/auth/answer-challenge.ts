@@ -3,6 +3,8 @@
  * a second kind of identity to one copy would have left the other answering old.
  */
 
+import { bindChallengeToServer } from "@gryt/core";
+
 import { rememberGuestScope } from "./guest-history";
 import { getCertificateSub, getValidCertificate } from "./identity-certificate";
 import { mayClaim } from "./identity-claims";
@@ -11,6 +13,7 @@ import { hasLocalIdentity, identityScopeFor, signAssertion } from "./identity-ke
 import { rememberIdentitySource } from "./identity-source";
 import { getValidIdentityToken } from "./keycloak";
 import { getLocalIdentity, signIdentityLink } from "./local-identity";
+import { getExpectedKeyIdForHost } from "./server-pins";
 import { isSessionExpired } from "./session-expired";
 
 export interface ChallengeAnswer {
@@ -33,9 +36,14 @@ export async function answerChallenge(
   challenge: {
     nonce: string;
     serverHost: string;
+    serverKey?: string;
     identityTiers?: ChallengeAnswer["tier"][];
   },
 ): Promise<ChallengeAnswer> {
+  // The pin is what `server:identify` proved on this connection; the challenge alone proves nothing.
+  const bound = bindChallengeToServer(challenge.serverKey, getExpectedKeyIdForHost(host));
+  if ("refuse" in bound) throw new Error(bound.refuse);
+
   const accepts = (tier: ChallengeAnswer["tier"]) =>
     !challenge.identityTiers || challenge.identityTiers.includes(tier);
 
@@ -57,6 +65,7 @@ export async function answerChallenge(
       challenge.serverHost,
       challenge.nonce,
       { kind: "account" },
+      bound.claims,
     );
 
     // If this device was here before without an account, say so and prove it, so
@@ -96,6 +105,7 @@ export async function answerChallenge(
     challenge.serverHost,
     challenge.nonce,
     source,
+    bound.claims,
   );
   return { certificate, assertion, tier: "local" };
 }
