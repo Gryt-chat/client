@@ -3123,6 +3123,8 @@ if (!gotSingleInstanceLock) {
 
       ipcMain.handle("discord-file-fetch", (_event, url: unknown) => fetchDiscordFile(url, net.fetch.bind(net)));
 
+      ipcMain.handle("system-idle-seconds", () => powerMonitor.getSystemIdleTime());
+
       ipcMain.handle(
         "get-app-version",
         () => app.getVersion()

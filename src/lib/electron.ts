@@ -366,6 +366,8 @@ export interface ElectronAPI {
   onNativeScreenFrame(callback: (frame: NativeScreenFrame) => void): () => void;
   onNativeScreenCaptureStopped(callback: () => void): () => void;
   onWindowFocusChange(callback: (focused: boolean) => void): () => void;
+  /** Seconds since any mouse or keyboard input anywhere on the computer. Missing on older builds. */
+  getSystemIdleSeconds?(): Promise<number>;
   onUpdateStatus(callback: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): void;
   /** Quits for real, rather than closing to the tray: Linux often has no tray to quit from. */

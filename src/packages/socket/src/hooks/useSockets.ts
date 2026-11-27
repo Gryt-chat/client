@@ -537,7 +537,14 @@ function useSocketsHook() {
      sends when it goes to the background; servers too old to know it ignore it. */
   const [awayFromDesktop, setAwayFromDesktop] = useState(false);
   useEffect(
-    () => watchAway(setAwayFromDesktop, browserAwayDeps(window.electronAPI?.onWindowFocusChange?.bind(window.electronAPI))),
+    () =>
+      watchAway(
+        setAwayFromDesktop,
+        browserAwayDeps(
+          window.electronAPI?.onWindowFocusChange?.bind(window.electronAPI),
+          window.electronAPI?.getSystemIdleSeconds?.bind(window.electronAPI),
+        ),
+      ),
     [],
   );
   useEffect(() => {
