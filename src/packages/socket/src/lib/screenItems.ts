@@ -1,3 +1,5 @@
+import { hubStreamId } from "@gryt/voice";
+
 /**
  * A share's tile id. The first window keeps `screen:<client>`, which everything already
  * reads; later ones add `#<index>` (GRYT-1905).
@@ -15,16 +17,24 @@ export function parseScreenItem(itemId: string): { clientId: string; index: numb
 }
 
 interface ShareFields {
+  serverUserId?: string;
   screenShareVideoStreamID?: string;
   screenShareAudioStreamID?: string;
   screenShares?: { videoStreamID: string; audioStreamID: string; name?: string }[];
 }
 
+/** A share on the video hub is announced as `gryt-video:<track>` by everybody, so it's looked up with its user. */
+const onHub = (id: string, userId: string | undefined) => (userId && /^gryt-video:\d+$/.test(id) ? hubStreamId(Number(id.slice(11)), userId) : id);
+
 /** One window's stream ids and name. A server from before the list only knows the first's ids. */
 export function shareOf(client: ShareFields | undefined, index: number): { videoStreamID: string; audioStreamID: string; name?: string } {
-  if (index > 0) return client?.screenShares?.[index] ?? { videoStreamID: "", audioStreamID: "" };
+  if (index > 0) {
+    const share = client?.screenShares?.[index];
+    return share ? { ...share, videoStreamID: onHub(share.videoStreamID, client?.serverUserId) } : { videoStreamID: "", audioStreamID: "" };
+  }
   const name = client?.screenShares?.[0]?.name;
-  return { videoStreamID: client?.screenShareVideoStreamID ?? "", audioStreamID: client?.screenShareAudioStreamID ?? "", ...(name ? { name } : {}) };
+  const videoStreamID = onHub(client?.screenShareVideoStreamID ?? "", client?.serverUserId);
+  return { videoStreamID, audioStreamID: client?.screenShareAudioStreamID ?? "", ...(name ? { name } : {}) };
 }
 
 /** How many windows a client is sharing, from the list where the server sends one. */

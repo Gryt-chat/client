@@ -18,6 +18,12 @@ const two = { ...legacy, screenShares: [{ videoStreamID: "v0", audioStreamID: "a
 assert.equal(shareCount(two), 2);
 assert.deepEqual(shareOf(two, 1), { videoStreamID: "v1", audioStreamID: "" });
 
+// A share on the video hub is gryt-video:<track> from everybody, so it's looked up with its user (GRYT-2261).
+const hub = { ...legacy, serverUserId: "u1", screenShareVideoStreamID: "gryt-video:1", screenShares: [{ videoStreamID: "gryt-video:1", audioStreamID: "" }, { videoStreamID: "gryt-video:2", audioStreamID: "" }] };
+assert.equal(shareOf(hub, 0).videoStreamID, "gryt-video:1@u1");
+assert.equal(shareOf(hub, 1).videoStreamID, "gryt-video:2@u1");
+assert.equal(shareOf({ ...hub, serverUserId: undefined }, 0).videoStreamID, "gryt-video:1", "no user, no key to add");
+
 const named = { ...legacy, screenShares: [{ videoStreamID: "v0", audioStreamID: "a0", name: "Counter-Strike 2" }] };
 assert.equal(shareOf(named, 0).name, "Counter-Strike 2", "the first window's name comes from the list");
 assert.equal(shareCount({ ...two, screenShareEnabled: false }), 0);

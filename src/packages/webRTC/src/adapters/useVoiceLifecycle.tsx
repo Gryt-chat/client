@@ -33,7 +33,8 @@ export function useVoiceLifecycle() {
 
   // How big we draw everybody's video goes to the SFU, so nobody sends more than is watched.
   useEffect(() => {
-    setDrawnVideoReporter(reportVideoDemand ?? null, Object.keys(videoStreams));
+    // A video hub stream is drawn under its MediaStream's id, not the key it's looked up by.
+    setDrawnVideoReporter(reportVideoDemand ?? null, [...Object.keys(videoStreams), ...Object.values(videoStreams).map((s) => s.id)]);
   }, [reportVideoDemand, videoStreams]);
 
   // The voice connection is only chosen at join, so flipping it mid-call rejoins the call.
