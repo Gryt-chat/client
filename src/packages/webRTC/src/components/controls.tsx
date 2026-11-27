@@ -74,6 +74,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
     getScreenVideoSender,
     setVideoSendSettings,
     setVideoCeiling,
+    getOwnVideoStreamId,
   } = useSFU();
   const { playDisconnect } = useVoiceSounds();
   const { cameraStream, cameraEnabled, setCameraEnabled } = useCamera();
@@ -171,7 +172,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
         voiceLog.info("SCREEN", `controls: syncing video track=${videoTrack.id} stream=${screenVideoStream.id} prev=${prevScreenVideoRef.current?.id ?? "null"}`);
         addScreenVideoTrack(videoTrack, screenVideoStream, screenShareCodec);
         // Kept after the share stops: the engine pauses this sender rather than removing it.
-        webrtcScreenVideoStreamId.current = senderStreamId(getPeerConnectionRef.current?.(), "screenVideo", screenVideoStream.id);
+        webrtcScreenVideoStreamId.current = getOwnVideoStreamId?.(0) ?? senderStreamId(getPeerConnectionRef.current?.(), "screenVideo", screenVideoStream.id);
         prevScreenVideoRef.current = screenVideoStream;
       }
     } else if (prevScreenVideoRef.current) {
@@ -180,7 +181,7 @@ export function Controls({ onDisconnect }: ControlsProps) {
       setVideoSendSettingsRef.current?.("screen", null);
       prevScreenVideoRef.current = null;
     }
-  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareCodec]);
+  }, [screenShareActive, screenVideoStream, isConnected, addScreenVideoTrack, removeScreenVideoTrack, screenShareCodec, getOwnVideoStreamId]);
 
   // The picker's preset for window 1 lives in shareMeta; the settings are only the default.
   const firstPreset = shareMeta(firstShareKey());

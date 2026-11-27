@@ -37,6 +37,16 @@ function nativeVoiceOn(): boolean {
     return IS_BETA_BUILD;
   }
 }
+/** Shared windows on the SFU's video hub (GRYT-2261): off until viewers on every platform can draw it.
+    `localStorage["gryt.ownVideoTransport"]` = "1" turns it on, read at start. */
+function ownVideoOn(): boolean {
+  try {
+    return localStorage.getItem("gryt.ownVideoTransport") === "1";
+  } catch {
+    return false;
+  }
+}
+const ownVideo = ownVideoOn();
 let newVoice = ownTransportOn();
 let nativeAudio = nativeVoiceOn();
 const listeners = new Set<() => void>();
@@ -120,6 +130,7 @@ export function useVoiceConfigFromSettings(stunHosts: string[]): VoiceConfig {
         eSportsMode: s.eSportsModeEnabled,
         audioTransportWasm: on ? loadOpusWasm : undefined,
         nativeAudio: on && nativeAudio,
+        ownVideoTransport: ownVideo,
       },
     }),
     [

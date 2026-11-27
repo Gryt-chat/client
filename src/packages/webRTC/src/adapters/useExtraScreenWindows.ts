@@ -20,7 +20,7 @@ export interface AnnouncedShare {
 export function useExtraScreenWindows(): AnnouncedShare[] {
   const { extraWindows } = useScreenShare();
   const {
-    isConnected, getPeerConnection, setVideoSendSettings,
+    isConnected, getPeerConnection, setVideoSendSettings, getOwnVideoStreamId,
     addScreenVideoTrack, removeScreenVideoTrack, addScreenAudioTrack, removeScreenAudioTrack,
   } = useSFU();
   const {
@@ -63,7 +63,7 @@ export function useExtraScreenWindows(): AnnouncedShare[] {
   // A sender keeps the first stream id it was given, so a reused index announces that one.
   const pc = getPeerConnection?.();
   return extraWindows.map((w) => ({
-    videoStreamId: senderStreamId(pc, `screenVideo:${w.index}`, w.videoStream.id),
+    videoStreamId: getOwnVideoStreamId?.(w.index) ?? senderStreamId(pc, `screenVideo:${w.index}`, w.videoStream.id),
     audioStreamId: w.audioStream ? senderStreamId(pc, `screenAudio:${w.index}`, w.audioStream.id) : "",
     name: shareMeta(windowKey(w))?.name,
   }));
