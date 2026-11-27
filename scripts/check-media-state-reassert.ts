@@ -107,7 +107,7 @@ assert.equal(senderStreamId(null, "camera", "camera-5"), "camera-5");
 for (const role of ["camera", "screenVideo", "screenAudio"]) {
   assert.match(
     controls,
-    new RegExp(`StreamId\\.current = senderStreamId\\([^\\n]*"${role}"`),
+    new RegExp(`StreamId\\.current = (?:[^\\n]*\\?\\? )?senderStreamId\\([^\\n]*"${role}"`),
     `Controls doesn't take the ${role} id from senderStreamIds`,
   );
 }

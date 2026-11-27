@@ -37,13 +37,14 @@ function nativeVoiceOn(): boolean {
     return IS_BETA_BUILD;
   }
 }
-/** Shared windows on the SFU's video hub (GRYT-2261): off until viewers on every platform can draw it.
-    `localStorage["gryt.ownVideoTransport"]` = "1" turns it on, read at start. */
+/** Shared windows on the SFU's video hub (GRYT-2261, GRYT-2390): on in beta builds, off in stable, read at start.
+    `localStorage["gryt.ownVideoTransport"]` = "1" or "0" overrides either way. */
 function ownVideoOn(): boolean {
   try {
-    return localStorage.getItem("gryt.ownVideoTransport") === "1";
+    const set = localStorage.getItem("gryt.ownVideoTransport");
+    return set === null ? IS_BETA_BUILD : set === "1";
   } catch {
-    return false;
+    return IS_BETA_BUILD;
   }
 }
 const ownVideo = ownVideoOn();
