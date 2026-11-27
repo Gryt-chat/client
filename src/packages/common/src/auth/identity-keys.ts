@@ -569,10 +569,12 @@ export async function signAssertion(
   serverHost: string,
   nonce: string,
   source: IdentitySource = { kind: "account" },
+  claims: { server_key?: string } = {},
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return signJwt(
     {
+      ...claims,
       iss: sub,
       aud: serverHost,
       nonce,

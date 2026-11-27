@@ -85,6 +85,7 @@ jobs:
       - run: yarn test:reset-warning
       - run: yarn test:guest-history
       - run: yarn test:identity-claim
+      - run: yarn test:join-server-key
       # Linking a device: what the new one writes, in what order, and that a wrong
       # account or a mismatch writes nothing. Both of core's machines, one relay in memory.
       - run: yarn test:pairing-new-device
